@@ -55,9 +55,6 @@ public class DashboardWidget
     @Column(name = "refresh_interval_unit", length = 20)
     private String refreshIntervalUnit;
 
-    @Column(name = "store_result", nullable = false)
-    private Boolean storeResult = false;
-
     @Column(name = "details_enabled", nullable = false)
     private Boolean detailsEnabled = false;
 
@@ -224,16 +221,6 @@ public class DashboardWidget
     public void setRefreshIntervalUnit(String refreshIntervalUnit)
     {
         this.refreshIntervalUnit = refreshIntervalUnit;
-    }
-
-    public Boolean getStoreResult()
-    {
-        return storeResult;
-    }
-
-    public void setStoreResult(Boolean storeResult)
-    {
-        this.storeResult = storeResult;
     }
 
     public Boolean getDetailsEnabled()
