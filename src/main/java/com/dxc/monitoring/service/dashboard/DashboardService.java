@@ -6,16 +6,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.DashboardTab;
 import com.dxc.monitoring.entity.DashboardWidget;
 import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringResult;
+import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringExecutionRepository;
 import com.dxc.monitoring.repository.MonitoringResultRepository;
+import com.dxc.monitoring.repository.MonitoringJobRepository;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -27,18 +30,21 @@ public class DashboardService
     private final DashboardWidgetRepository dashboardWidgetRepository;
     private final MonitoringExecutionRepository monitoringExecutionRepository;
     private final MonitoringResultRepository monitoringResultRepository;
+    private final MonitoringJobRepository monitoringJobRepository;
     private final ObjectMapper objectMapper;
 
     public DashboardService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
             MonitoringExecutionRepository monitoringExecutionRepository,
             MonitoringResultRepository monitoringResultRepository,
+            MonitoringJobRepository monitoringJobRepository,
             ObjectMapper objectMapper)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringExecutionRepository = monitoringExecutionRepository;
         this.monitoringResultRepository = monitoringResultRepository;
+        this.monitoringJobRepository = monitoringJobRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -57,9 +63,13 @@ public class DashboardService
                 .toList();
 
         Map<Long, MonitoringExecution> latestExecutions = new HashMap<>();
+        Map<Long, MonitoringJob> jobs = new HashMap<>();
 
         if (!jobIds.isEmpty())
         {
+            monitoringJobRepository.findAllById(jobIds)
+                    .forEach(job -> jobs.put(job.getId(), job));
+
             monitoringExecutionRepository.findLatestByMonitoringJobIds(jobIds)
                     .forEach(execution -> latestExecutions.put(execution.getMonitoringJob().getId(), execution));
         }
@@ -97,8 +107,9 @@ public class DashboardService
 
             MonitoringExecution execution = latestExecutions.get(widget.getDataSourceId());
             MonitoringResult result = execution == null ? null : latestResults.get(execution.getId());
+            MonitoringJob job = jobs.get(widget.getDataSourceId());
 
-            tabResponse.getWidgets().add(createWidgetResponse(widget, execution, result));
+            tabResponse.getWidgets().add(createWidgetResponse(widget, job, execution, result));
         }
 
         List<DashboardTabResponse> response = new ArrayList<>();
@@ -115,7 +126,7 @@ public class DashboardService
     }
 
     private DashboardWidgetResponse createWidgetResponse(DashboardWidget widget,
-            MonitoringExecution execution, MonitoringResult monitoringResult)
+            MonitoringJob job, MonitoringExecution execution, MonitoringResult monitoringResult)
     {
         DashboardWidgetDefinition definition = new DashboardWidgetDefinition();
         definition.setId(widget.getId());
@@ -132,6 +143,9 @@ public class DashboardService
         definition.setRefreshInterval(widget.getRefreshInterval());
         definition.setRefreshIntervalUnit(widget.getRefreshIntervalUnit());
         definition.setDetailsEnabled(widget.getDetailsEnabled());
+        definition.setJobRunning(execution != null
+                && execution.getStatus() == MonitoringExecution.ExecutionStatus.RUNNING);
+        definition.setRunNowEnabled(canRunNow(widget, job, execution));
 
         WidgetResult result = createResult(execution, monitoringResult);
 
@@ -165,6 +179,28 @@ public class DashboardService
         }
 
         return result;
+    }
+
+    private boolean canRunNow(DashboardWidget widget, MonitoringJob job, MonitoringExecution execution)
+    {
+        if (!"MONITORING_JOB".equals(widget.getDataSourceType()) || job == null || !job.isManualRunEnabled()
+                || !job.isEnabled())
+        {
+            return false;
+        }
+
+        boolean hasPermission = SecurityContextHolder.getContext().getAuthentication() != null
+                && SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                    .anyMatch(authority -> "MONITORING_RUN".equals(authority.getAuthority()));
+
+        if (!hasPermission)
+        {
+            return false;
+        }
+
+        return job.isAllowConcurrentExecution()
+                || execution == null
+                || execution.getStatus() != MonitoringExecution.ExecutionStatus.RUNNING;
     }
 
     private WidgetStatus mapExecutionStatus(MonitoringExecution.ExecutionStatus executionStatus,
@@ -269,7 +305,10 @@ public class DashboardService
             }
         }
 
-        return createWidgetResponse(widget, execution, monitoringResult);
+        MonitoringJob job = widget.getDataSourceId() == null ? null
+                : monitoringJobRepository.findById(widget.getDataSourceId()).orElse(null);
+
+        return createWidgetResponse(widget, job, execution, monitoringResult);
     }
 
     @Transactional(readOnly = true)
