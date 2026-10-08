@@ -51,8 +51,8 @@ public class ScheduleService
 
         String scheduleName = schedule.getName();
 
+        monitoringSchedulerService.cancelSchedule(id);
         scheduleRepository.delete(schedule);
-        monitoringSchedulerService.refreshSchedule(id);
 
         return scheduleName;
     }
