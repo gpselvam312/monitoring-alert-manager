@@ -1,7 +1,6 @@
 package com.dxc.monitoring.service.dashboard;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -10,10 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.DashboardTab;
 import com.dxc.monitoring.entity.DashboardWidget;
-import com.dxc.monitoring.entity.DashboardWidgetResult;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
-import com.dxc.monitoring.repository.DashboardWidgetResultRepository;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -23,12 +20,11 @@ public class DashboardService
 {
     private final DashboardTabRepository dashboardTabRepository;
     private final DashboardWidgetRepository dashboardWidgetRepository;
-    private final DashboardWidgetResultRepository dashboardWidgetResultRepository;
     private final ObjectMapper objectMapper;
 
     public DashboardService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
-            DashboardWidgetResultRepository dashboardWidgetResultRepository, ObjectMapper objectMapper)
+            ObjectMapper objectMapper)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
@@ -43,17 +39,6 @@ public class DashboardService
 
         List<DashboardWidget> widgets =
             dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc();
-
-        List<Long> widgetIds = widgets.stream().filter(widget -> Boolean.TRUE.equals(widget.getStoreResult()))
-                .map(DashboardWidget::getId).toList();
-
-        Map<Long, DashboardWidgetResult> latestResults = new HashMap<>();
-
-        if (!widgetIds.isEmpty())
-        {
-            dashboardWidgetResultRepository.findLatestResultsByWidgetIds(widgetIds)
-                    .forEach(result -> latestResults.put(result.getWidget().getId(), result));
-        }
 
         Map<Long, DashboardTabResponse> tabResponses = new HashMap<>();
 
@@ -77,7 +62,7 @@ public class DashboardService
                 continue;
             }
 
-            DashboardWidgetResponse widgetResponse = createWidgetResponse(widget, latestResults.get(widget.getId()));
+            DashboardWidgetResponse widgetResponse = createWidgetResponse(widget);
 
             tabResponse.getWidgets().add(widgetResponse);
         }
@@ -97,7 +82,7 @@ public class DashboardService
         return result;
     }
 
-    private DashboardWidgetResponse createWidgetResponse(DashboardWidget widget, DashboardWidgetResult storedResult)
+    private DashboardWidgetResponse createWidgetResponse(DashboardWidget widget)
     {
         DashboardWidgetDefinition definition = new DashboardWidgetDefinition();
 
@@ -116,7 +101,7 @@ public class DashboardService
         definition.setRefreshIntervalUnit(widget.getRefreshIntervalUnit());
         definition.setDetailsEnabled(widget.getDetailsEnabled());
 
-        WidgetResult result = createResult(storedResult);
+        WidgetResult result = createResult(widget);
 
         DashboardWidgetResponse response = new DashboardWidgetResponse();
 
@@ -126,22 +111,16 @@ public class DashboardService
         return response;
     }
 
-    private WidgetResult createResult(DashboardWidgetResult storedResult)
+    private WidgetResult createResult(DashboardWidget widget)
     {
         WidgetResult result = new WidgetResult();
 
-        if (storedResult == null)
+        if (!"MONITORING_JOB".equals(widget.getDataSourceType()) || widget.getDataSourceId() == null)
         {
             result.setStatus(WidgetStatus.GRAY);
-            result.setMessage("No data");
+            result.setMessage("No monitoring job configured");
             return result;
         }
-
-        result.setStatus(parseStatus(storedResult.getStatus()));
-        result.setMessage(storedResult.getMessage());
-        result.setLastUpdated(storedResult.getResultTime());
-
-        deserializeResultData(storedResult.getResultData(), result);
 
         return result;
     }
@@ -236,14 +215,9 @@ public class DashboardService
     }
 
     @Transactional(readOnly = true)
-    public List<DashboardWidgetResult> getWidgetHistory(Long widgetId)
+    public DashboardWidget getWidget(Long widgetId)
     {
-        return dashboardWidgetResultRepository.findAllByWidgetIdOrderByResultTimeDesc(widgetId);
-    }
-
-    @Transactional(readOnly = true)
-    public WidgetResult getWidgetResult(DashboardWidgetResult storedResult)
-    {
-        return createResult(storedResult);
+        return dashboardWidgetRepository.findById(widgetId)
+                .orElseThrow(() -> new IllegalArgumentException("Dashboard widget not found: " + widgetId));
     }
 }
