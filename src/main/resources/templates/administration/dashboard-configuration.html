@@ -1426,26 +1426,6 @@
                             </div>
 
 
-                            <div class="col-md-4">
-
-                                <div class="form-check mt-4">
-
-                                    <input class="form-check-input"
-									       type="checkbox"
-									       th:field="*{storeResult}"
-									       id="dashboardWidgetStoreResult">
-
-                                    <label class="form-check-label"
-                                           for="dashboardWidgetStoreResult">
-
-                                        Store Result
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
 
                             <div class="col-md-4">
 
@@ -1656,9 +1636,6 @@
 
                         document.getElementById('dashboardWidgetAutoRefresh').checked =
                             widget.autoRefresh === true;
-
-                        document.getElementById('dashboardWidgetStoreResult').checked =
-                            widget.storeResult === true;
 
                         document.getElementById('dashboardWidgetDetailsEnabled').checked =
                             widget.detailsEnabled === true;
