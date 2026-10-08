@@ -46,7 +46,9 @@
                   style="display: inline;">
 
                 <button type="submit"
-                        class="btn btn-success">
+                        class="btn btn-success"
+                        th:disabled="${!job.manualRunEnabled or !job.enabled}"
+                        onclick="return confirm('Run this monitoring job now?');">
 
                     <i class="bi bi-play-fill me-1"></i>
                     Run Now
@@ -489,159 +491,46 @@
     </div>
 
 
-    <!-- Dashboard Configuration -->
-
+    <!-- Execution Controls -->
     <div class="app-card mb-4">
-
         <div class="app-card-header">
-
             <div>
-
-                <h2 class="app-card-title">
-                    Dashboard Configuration
-                </h2>
-
-                <p class="app-card-subtitle">
-                    Dashboard display settings for this monitoring job
-                </p>
-
+                <h2 class="app-card-title">Execution Controls</h2>
+                <p class="app-card-subtitle">Current execution and result retention settings.</p>
             </div>
-
-            <i class="bi bi-grid-1x2 app-card-header-icon"></i>
-
+            <i class="bi bi-play-circle app-card-header-icon"></i>
         </div>
-
-
         <div class="app-card-body">
-
             <div class="row g-4">
-
-                <!-- Display on Dashboard -->
-
-                <div class="col-md-6">
-
+                <div class="col-md-4">
                     <div class="detail-item">
-
-                        <div class="detail-label">
-                            Display on Dashboard
-                        </div>
-
+                        <div class="detail-label">Store Detailed Result</div>
                         <div class="detail-value">
-
-                            <span th:if="${job.dashboardEnabled}"
-                                  class="status-badge status-healthy">
-
-                                <span class="status-dot"></span>
-                                Enabled
-
-                            </span>
-
-                            <span th:unless="${job.dashboardEnabled}"
-                                  class="status-badge status-disabled">
-
-                                <span class="status-dot"></span>
-                                Disabled
-
-                            </span>
-
+                            <span th:if="${job.storeResult}" class="status-badge status-healthy"><span class="status-dot"></span>Enabled</span>
+                            <span th:unless="${job.storeResult}" class="status-badge status-disabled"><span class="status-dot"></span>Disabled</span>
                         </div>
-
                     </div>
-
                 </div>
-
-
-                <!-- Dashboard Title -->
-
-                <div class="col-md-6">
-
+                <div class="col-md-4">
                     <div class="detail-item">
-
-                        <div class="detail-label">
-                            Dashboard Title
-                        </div>
-
-                        <div class="detail-value detail-value-primary"
-                             th:text="${job.dashboardTitle ?: job.name}">
-                            -
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Dashboard Width -->
-
-                <div class="col-md-6">
-
-                    <div class="detail-item">
-
-                        <div class="detail-label">
-                            Dashboard Width
-                        </div>
-
+                        <div class="detail-label">Manual Run</div>
                         <div class="detail-value">
-
-                            <span th:switch="${job.dashboardWidth}">
-
-                                <span th:case="3">
-                                    Quarter
-                                </span>
-
-                                <span th:case="4">
-                                    One-third
-                                </span>
-
-                                <span th:case="6">
-                                    Half
-                                </span>
-
-                                <span th:case="8">
-                                    Two-thirds
-                                </span>
-
-                                <span th:case="12">
-                                    Full
-                                </span>
-
-                                <span th:case="*"
-                                      th:text="${job.dashboardWidth}">
-                                    -
-                                </span>
-
-                            </span>
-
+                            <span th:if="${job.manualRunEnabled}" class="status-badge status-healthy"><span class="status-dot"></span>Enabled</span>
+                            <span th:unless="${job.manualRunEnabled}" class="status-badge status-disabled"><span class="status-dot"></span>Disabled</span>
                         </div>
-
                     </div>
-
                 </div>
-
-
-                <!-- Dashboard Sort Order -->
-
-                <div class="col-md-6">
-
+                <div class="col-md-4">
                     <div class="detail-item">
-
-                        <div class="detail-label">
-                            Sort Order
+                        <div class="detail-label">Concurrent Execution</div>
+                        <div class="detail-value">
+                            <span th:if="${job.allowConcurrentExecution}" class="status-badge status-warning"><span class="status-dot"></span>Allowed</span>
+                            <span th:unless="${job.allowConcurrentExecution}" class="status-badge status-disabled"><span class="status-dot"></span>Blocked</span>
                         </div>
-
-                        <div class="detail-value detail-value-primary"
-                             th:text="${job.dashboardSortOrder}">
-                            -
-                        </div>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
 
