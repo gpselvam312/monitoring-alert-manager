@@ -156,6 +156,9 @@ public class MonitoringJobController
         job.setRetryCount(0);
         job.setRetryDelaySeconds(5);
         job.setRecoveryEnabled(true);
+        job.setStoreResult(true);
+        job.setManualRunEnabled(true);
+        job.setAllowConcurrentExecution(false);
 
         model.addAttribute("job", job);
         model.addAttribute("machines", machineRepository.findAll());
@@ -196,11 +199,9 @@ public class MonitoringJobController
             existingJob.setType(job.getType());
             existingJob.setSeverity(job.getSeverity());
             existingJob.setEnabled(job.isEnabled());
-
-            existingJob.setDashboardEnabled(job.isDashboardEnabled());
-            existingJob.setDashboardTitle(job.getDashboardTitle());
-            existingJob.setDashboardWidth(job.getDashboardWidth());
-            existingJob.setDashboardSortOrder(job.getDashboardSortOrder());
+            existingJob.setStoreResult(job.isStoreResult());
+            existingJob.setManualRunEnabled(job.isManualRunEnabled());
+            existingJob.setAllowConcurrentExecution(job.isAllowConcurrentExecution());
 
             // Monitoring configuration
             existingJob.setTimeoutSeconds(job.getTimeoutSeconds());
@@ -381,6 +382,11 @@ public class MonitoringJobController
     public String runNow(@PathVariable Long id)
     {
         MonitoringJob job = monitoringJobService.findById(id);
+
+        if (!job.isManualRunEnabled())
+        {
+            throw new IllegalStateException("Manual execution is disabled for this monitoring job.");
+        }
 
         monitoringExecutionManager.execute(job);
 
