@@ -2290,6 +2290,7 @@
 
     async function loadDashboard()
     {
+        clearAutoRefreshTimers();
         showState("loading");
 
 
