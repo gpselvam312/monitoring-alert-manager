@@ -13,10 +13,13 @@ public class MonitoringJobService
 {
 
     private final MonitoringJobRepository monitoringJobRepository;
+    private final MonitoringSchedulerService monitoringSchedulerService;
 
-    public MonitoringJobService(MonitoringJobRepository monitoringJobRepository)
+    public MonitoringJobService(MonitoringJobRepository monitoringJobRepository,
+            MonitoringSchedulerService monitoringSchedulerService)
     {
         this.monitoringJobRepository = monitoringJobRepository;
+        this.monitoringSchedulerService = monitoringSchedulerService;
     }
 
     @Transactional(readOnly = true)
@@ -35,7 +38,9 @@ public class MonitoringJobService
     @Transactional
     public MonitoringJob save(MonitoringJob job)
     {
-        return monitoringJobRepository.save(job);
+        MonitoringJob saved = monitoringJobRepository.save(job);
+        monitoringSchedulerService.refreshJob(saved.getId());
+        return saved;
     }
 
     @Transactional
@@ -47,6 +52,7 @@ public class MonitoringJobService
         String jobName = job.getName();
 
         monitoringJobRepository.delete(job);
+        monitoringSchedulerService.cancelJob(id);
 
         return jobName;
     }
@@ -57,5 +63,6 @@ public class MonitoringJobService
         MonitoringJob job = findById(id);
         job.setEnabled(!job.isEnabled());
         monitoringJobRepository.save(job);
+        monitoringSchedulerService.refreshJob(job.getId());
     }
 }
