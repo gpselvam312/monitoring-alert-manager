@@ -44,6 +44,9 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
             """)
     Optional<MonitoringJob> findByIdForDetails(@Param("id") Long id);
 
+    @EntityGraph(attributePaths = { "application", "environment", "machine", "schedule" })
+    List<MonitoringJob> findByScheduleId(Long scheduleId);
+
     boolean existsByApplicationId(Long applicationId);
 
 }
