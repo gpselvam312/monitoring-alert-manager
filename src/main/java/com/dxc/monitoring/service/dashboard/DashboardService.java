@@ -245,6 +245,34 @@ public class DashboardService
     }
 
     @Transactional(readOnly = true)
+    public DashboardWidgetResponse getWidgetResponse(Long widgetId)
+    {
+        DashboardWidget widget = getWidget(widgetId);
+
+        MonitoringExecution execution = null;
+        MonitoringResult monitoringResult = null;
+
+        if ("MONITORING_JOB".equals(widget.getDataSourceType()) && widget.getDataSourceId() != null)
+        {
+            List<MonitoringExecution> executions =
+                    monitoringExecutionRepository.findLatestByMonitoringJobIds(List.of(widget.getDataSourceId()));
+
+            if (!executions.isEmpty())
+            {
+                execution = executions.get(0);
+                List<MonitoringResult> results =
+                        monitoringResultRepository.findByExecutionIds(List.of(execution.getId()));
+                if (!results.isEmpty())
+                {
+                    monitoringResult = results.get(0);
+                }
+            }
+        }
+
+        return createWidgetResponse(widget, execution, monitoringResult);
+    }
+
+    @Transactional(readOnly = true)
     public DashboardWidget getWidget(Long widgetId)
     {
         return dashboardWidgetRepository.findById(widgetId)
