@@ -53,6 +53,7 @@
      */
 
     let dashboardData = [];
+    const autoRefreshTimers = new Map();
 
     /*
      * Keep references to Chart.js instances.
@@ -1322,17 +1323,29 @@
 
         const refreshButton =
             '<button type="button"' +
-
                     ' class="btn btn-sm btn-link dashboard-widget-refresh"' +
-
-                    ' data-widget-id="' +
-                        escapeHtml(widget.id) +
-                    '"' +
-
-                    ' title="Refresh widget">' +
-
+                    ' data-widget-id="' + escapeHtml(widget.id) + '"' +
+                    ' title="Refresh widget" aria-label="Refresh widget">' +
                 '<i class="bi bi-arrow-clockwise"></i>' +
+            '</button>';
 
+        const runNowEnabled =
+            widget.runNowEnabled === true;
+
+        const runNowButton =
+            '<button type="button"' +
+                    ' class="btn btn-sm btn-link dashboard-widget-run-now"' +
+                    ' data-widget-id="' + escapeHtml(widget.id) + '"' +
+                    (runNowEnabled ? '' : ' disabled') +
+                    ' title="' +
+                        escapeHtml(
+                            runNowEnabled
+                                ? 'Run monitoring job now'
+                                : 'Run Now is not available for this job'
+                        ) +
+                    '"' +
+                    ' aria-label="Run monitoring job now">' +
+                '<i class="bi bi-play-fill"></i>' +
             '</button>';
 
 
@@ -1726,6 +1739,8 @@
          */
         initializeDashboardCharts();
 
+        configureAutoRefresh();
+
 
         /*
          * Resize the charts in the first visible tab.
@@ -1828,263 +1843,444 @@
      * ------------------------------------------------------------
      */
 
-    function bindWidgetActions()
+    function clearAutoRefreshTimers()
     {
-        /*
-         * Keep widget refresh disabled for now.
-         *
-         * The actual per-widget execution API is not yet
-         * implemented.
-         */
-        contentElement
-            .querySelectorAll(
-                ".dashboard-widget-refresh"
-            )
-            .forEach(
-                function (button)
+        autoRefreshTimers.forEach(
+            function (timer)
+            {
+                clearInterval(timer);
+            }
+        );
+
+        autoRefreshTimers.clear();
+    }
+
+
+    async function refreshWidget(widgetId)
+    {
+        const response =
+            await fetch(
+                "/api/dashboard/widgets/" +
+                encodeURIComponent(widgetId),
                 {
-                    button.addEventListener(
-                        "click",
-                        function (event)
+                    method: "GET",
+                    headers:
+                    {
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok)
+        {
+            throw new Error("Widget refresh failed (" + response.status + ")");
+        }
+
+        const widgetResponse = await response.json();
+
+        dashboardData.forEach(
+            function (tab)
+            {
+                (tab.widgets || []).forEach(
+                    function (item)
+                    {
+                        if (String(item.widget.id) === String(widgetId))
                         {
-                            event.preventDefault();
-                            event.stopPropagation();
+                            item.widget = widgetResponse.widget;
+                            item.result = widgetResponse.result;
                         }
-                    );
+                    }
+                );
+            }
+        );
+
+        renderTabs();
+    }
 
 
-                    button.setAttribute(
-                        "disabled",
-                        "disabled"
-                    );
+    async function runWidget(widgetId, button)
+    {
+        if (button.disabled)
+        {
+            return;
+        }
 
+        if (!window.confirm("Run this monitoring job now?"))
+        {
+            return;
+        }
 
-                    button.setAttribute(
-                        "title",
-                        "Widget refresh will be enabled with live data execution"
+        button.disabled = true;
+
+        try
+        {
+            const response =
+                await fetch(
+                    "/api/dashboard/widgets/" +
+                    encodeURIComponent(widgetId) +
+                    "/run",
+                    {
+                        method: "POST",
+                        headers:
+                        {
+                            "Accept": "application/json"
+                        },
+                        cache: "no-store"
+                    }
+                );
+
+            if (!response.ok)
+            {
+                let message = "Unable to run monitoring job.";
+                try
+                {
+                    const errorBody = await response.json();
+                    if (errorBody.message)
+                    {
+                        message = errorBody.message;
+                    }
+                }
+                catch (ignored)
+                {
+                    // Keep the generic message.
+                }
+
+                throw new Error(message);
+            }
+
+            const widgetResponse = await response.json();
+
+            dashboardData.forEach(
+                function (tab)
+                {
+                    (tab.widgets || []).forEach(
+                        function (item)
+                        {
+                            if (String(item.widget.id) === String(widgetId))
+                            {
+                                item.widget = widgetResponse.widget;
+                                item.result = widgetResponse.result;
+                            }
+                        }
                     );
                 }
             );
 
+            renderTabs();
+        }
+        catch (error)
+        {
+            console.error("Unable to run dashboard monitoring job.", error);
+            window.alert(
+                error && error.message
+                    ? error.message
+                    : "Unable to run monitoring job."
+            );
+            button.disabled = false;
+        }
+    }
 
-        /*
-         * Details button.
-         */
+
+    function configureAutoRefresh()
+    {
+        clearAutoRefreshTimers();
+
+        dashboardData.forEach(
+            function (tab)
+            {
+                (tab.widgets || []).forEach(
+                    function (item)
+                    {
+                        const widget = item.widget;
+
+                        if (!widget || widget.autoRefresh !== true)
+                        {
+                            return;
+                        }
+
+                        const interval =
+                            Number(widget.refreshInterval);
+
+                        if (!Number.isFinite(interval) || interval <= 0)
+                        {
+                            return;
+                        }
+
+                        const multiplier =
+                            String(widget.refreshIntervalUnit || "").toUpperCase() === "MINUTES"
+                                ? 60000
+                                : 1000;
+
+                        const delay =
+                            Math.max(1000, interval * multiplier);
+
+                        const timer =
+                            setInterval(
+                                function ()
+                                {
+                                    refreshWidget(widget.id).catch(
+                                        function (error)
+                                        {
+                                            console.error(
+                                                "Unable to auto-refresh widget.",
+                                                error
+                                            );
+                                        }
+                                    );
+                                },
+                                delay
+                            );
+
+                        autoRefreshTimers.set(
+                            String(widget.id),
+                            timer
+                        );
+                    }
+                );
+            }
+        );
+    }
+
+
+    function bindWidgetActions()
+    {
         contentElement
-            .querySelectorAll(
-                ".dashboard-widget-details"
-            )
+            .querySelectorAll(".dashboard-widget-refresh")
             .forEach(
                 function (button)
                 {
                     button.addEventListener(
                         "click",
-                        function (event)
+                        async function (event)
                         {
                             event.preventDefault();
                             event.stopPropagation();
 
-
                             const widgetId =
                                 button.dataset.widgetId;
-
 
                             if (!widgetId)
                             {
                                 return;
                             }
 
+                            button.disabled = true;
 
-                            /*
-                             * Keep the common details URL ready.
-                             * The backend details page can be
-                             * connected when that part is implemented.
-                             */
+                            try
+                            {
+                                await refreshWidget(widgetId);
+                            }
+                            catch (error)
+                            {
+                                console.error(
+                                    "Unable to refresh dashboard widget.",
+                                    error
+                                );
+
+                                window.alert(
+                                    error && error.message
+                                        ? error.message
+                                        : "Unable to refresh widget."
+                                );
+                            }
+                            finally
+                            {
+                                if (button.isConnected)
+                                {
+                                    button.disabled = false;
+                                }
+                            }
+                        }
+                    );
+                }
+            );
+
+
+        contentElement
+            .querySelectorAll(".dashboard-widget-run-now")
+            .forEach(
+                function (button)
+                {
+                    button.addEventListener(
+                        "click",
+                        function (event)
+                        {
+                            event.preventDefault();
+                            event.stopPropagation();
+
+                            const widgetId =
+                                button.dataset.widgetId;
+
+                            if (widgetId)
+                            {
+                                runWidget(widgetId, button);
+                            }
+                        }
+                    );
+                }
+            );
+
+
+        contentElement
+            .querySelectorAll(".dashboard-widget-details")
+            .forEach(
+                function (button)
+                {
+                    button.addEventListener(
+                        "click",
+                        function (event)
+                        {
+                            event.preventDefault();
+                            event.stopPropagation();
+
+                            const widgetId =
+                                button.dataset.widgetId;
+
+                            if (!widgetId)
+                            {
+                                return;
+                            }
+
                             window.location.href =
                                 "/dashboard/widgets/" +
-                                encodeURIComponent(
-                                    widgetId
-                                ) +
+                                encodeURIComponent(widgetId) +
                                 "/details";
                         }
                     );
                 }
             );
-			
-			/*
-			 * Table column sorting.
-			 */
-			contentElement
-			    .querySelectorAll(
-			        ".dashboard-table-sortable"
-			    )
-			    .forEach(
-			        function (header)
-			        {
-			            header.addEventListener(
-			                "click",
-			                function ()
-			                {
-			                    const table =
-			                        header.closest(
-			                            ".dashboard-table"
-			                        );
 
-			                    if (!table)
-			                    {
-			                        return;
-			                    }
 
-			                    const tbody =
-			                        table.querySelector(
-			                            "tbody"
-			                        );
+        contentElement
+            .querySelectorAll(".dashboard-table-sortable")
+            .forEach(
+                function (header)
+                {
+                    header.addEventListener(
+                        "click",
+                        function ()
+                        {
+                            const table =
+                                header.closest(".dashboard-table");
 
-			                    if (!tbody)
-			                    {
-			                        return;
-			                    }
+                            if (!table)
+                            {
+                                return;
+                            }
 
-			                    const columnIndex =
-			                        Number(
-			                            header.dataset.columnIndex
-			                        );
+                            const tbody =
+                                table.querySelector("tbody");
 
-			                    const currentDirection =
-			                        header.dataset.sortDirection ||
-			                        "none";
+                            if (!tbody)
+                            {
+                                return;
+                            }
 
-			                    const direction =
-			                        currentDirection === "asc"
-			                            ? "desc"
-			                            : "asc";
+                            const columnIndex =
+                                Number(header.dataset.columnIndex);
 
-			                    table
-			                        .querySelectorAll(
-			                            ".dashboard-table-sortable"
-			                        )
-			                        .forEach(
-			                            function (otherHeader)
-			                            {
-			                                otherHeader
-			                                    .removeAttribute(
-			                                        "data-sort-direction"
-			                                    );
+                            const currentDirection =
+                                header.dataset.sortDirection || "none";
 
-			                                const icon =
-			                                    otherHeader.querySelector(
-			                                        ".dashboard-table-sort-icon"
-			                                    );
+                            const direction =
+                                currentDirection === "asc"
+                                    ? "desc"
+                                    : "asc";
 
-			                                if (icon)
-			                                {
-			                                    icon.className =
-			                                        "bi bi-arrow-down-up dashboard-table-sort-icon";
-			                                }
-			                            }
-			                        );
+                            table
+                                .querySelectorAll(".dashboard-table-sortable")
+                                .forEach(
+                                    function (otherHeader)
+                                    {
+                                        otherHeader.removeAttribute(
+                                            "data-sort-direction"
+                                        );
 
-			                    header.dataset.sortDirection =
-			                        direction;
+                                        const icon =
+                                            otherHeader.querySelector(
+                                                ".dashboard-table-sort-icon"
+                                            );
 
-			                    const activeIcon =
-			                        header.querySelector(
-			                            ".dashboard-table-sort-icon"
-			                        );
+                                        if (icon)
+                                        {
+                                            icon.className =
+                                                "bi bi-arrow-down-up dashboard-table-sort-icon";
+                                        }
+                                    }
+                                );
 
-			                    if (activeIcon)
-			                    {
-			                        activeIcon.className =
-			                            direction === "asc"
-			                                ? "bi bi-arrow-up dashboard-table-sort-icon"
-			                                : "bi bi-arrow-down dashboard-table-sort-icon";
-			                    }
+                            header.dataset.sortDirection = direction;
 
-			                    const rows =
-			                        Array.from(
-			                            tbody.querySelectorAll(
-			                                "tr"
-			                            )
-			                        );
+                            const activeIcon =
+                                header.querySelector(
+                                    ".dashboard-table-sort-icon"
+                                );
 
-			                    rows.sort(
-			                        function (rowA, rowB)
-			                        {
-			                            const cellA =
-			                                rowA.cells[columnIndex];
+                            if (activeIcon)
+                            {
+                                activeIcon.className =
+                                    direction === "asc"
+                                        ? "bi bi-arrow-up dashboard-table-sort-icon"
+                                        : "bi bi-arrow-down dashboard-table-sort-icon";
+                            }
 
-			                            const cellB =
-			                                rowB.cells[columnIndex];
+                            const rows =
+                                Array.from(
+                                    tbody.querySelectorAll("tr")
+                                );
 
-			                            const valueA =
-			                                cellA
-			                                    ? cellA.textContent.trim()
-			                                    : "";
+                            rows.sort(
+                                function (rowA, rowB)
+                                {
+                                    const cellA = rowA.cells[columnIndex];
+                                    const cellB = rowB.cells[columnIndex];
+                                    const valueA = cellA ? cellA.textContent.trim() : "";
+                                    const valueB = cellB ? cellB.textContent.trim() : "";
+                                    const numberA = Number(valueA.replace(/,/g, ""));
+                                    const numberB = Number(valueB.replace(/,/g, ""));
 
-			                            const valueB =
-			                                cellB
-			                                    ? cellB.textContent.trim()
-			                                    : "";
+                                    let comparison;
 
-			                            const numberA =
-			                                Number(
-			                                    valueA.replace(
-			                                        /,/g,
-			                                        ""
-			                                    )
-			                                );
+                                    if (
+                                        valueA !== "" &&
+                                        valueB !== "" &&
+                                        !Number.isNaN(numberA) &&
+                                        !Number.isNaN(numberB)
+                                    )
+                                    {
+                                        comparison = numberA - numberB;
+                                    }
+                                    else
+                                    {
+                                        comparison =
+                                            valueA.localeCompare(
+                                                valueB,
+                                                undefined,
+                                                {
+                                                    numeric: true,
+                                                    sensitivity: "base"
+                                                }
+                                            );
+                                    }
 
-			                            const numberB =
-			                                Number(
-			                                    valueB.replace(
-			                                        /,/g,
-			                                        ""
-			                                    )
-			                                );
+                                    return direction === "asc"
+                                        ? comparison
+                                        : -comparison;
+                                }
+                            );
 
-			                            let comparison;
-
-			                            if (
-			                                valueA !== "" &&
-			                                valueB !== "" &&
-			                                !Number.isNaN(numberA) &&
-			                                !Number.isNaN(numberB)
-			                            )
-			                            {
-			                                comparison =
-			                                    numberA - numberB;
-			                            }
-			                            else
-			                            {
-			                                comparison =
-			                                    valueA.localeCompare(
-			                                        valueB,
-			                                        undefined,
-			                                        {
-			                                            numeric: true,
-			                                            sensitivity: "base"
-			                                        }
-			                                    );
-			                            }
-
-			                            return direction === "asc"
-			                                ? comparison
-			                                : -comparison;
-			                        }
-			                    );
-
-			                    rows.forEach(
-			                        function (row)
-			                        {
-			                            tbody.appendChild(row);
-			                        }
-			                    );
-			                }
-			            );
-			        }
-			    );
+                            rows.forEach(
+                                function (row)
+                                {
+                                    tbody.appendChild(row);
+                                }
+                            );
+                        }
+                    );
+                }
+            );
     }
-
 
     /*
      * ------------------------------------------------------------
