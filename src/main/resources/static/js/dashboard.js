@@ -1994,7 +1994,9 @@
                     {
                         const widget = item.widget;
 
-                        if (!widget || widget.autoRefresh !== true)
+                        if (!widget ||
+                            widget.autoRefresh !== true ||
+                            widget.dataSourceType !== "MONITORING_JOB")
                         {
                             return;
                         }
