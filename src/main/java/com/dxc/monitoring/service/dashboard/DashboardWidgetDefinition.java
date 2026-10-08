@@ -31,6 +31,10 @@ public class DashboardWidgetDefinition
 
     private Boolean detailsEnabled;
 
+    private Boolean runNowEnabled;
+
+    private Boolean jobRunning;
+
     public Long getId()
     {
         return id;
@@ -169,5 +173,25 @@ public class DashboardWidgetDefinition
     public void setDetailsEnabled(Boolean detailsEnabled)
     {
         this.detailsEnabled = detailsEnabled;
+    }
+
+    public Boolean getRunNowEnabled()
+    {
+        return runNowEnabled;
+    }
+
+    public void setRunNowEnabled(Boolean runNowEnabled)
+    {
+        this.runNowEnabled = runNowEnabled;
+    }
+
+    public Boolean getJobRunning()
+    {
+        return jobRunning;
+    }
+
+    public void setJobRunning(Boolean jobRunning)
+    {
+        this.jobRunning = jobRunning;
     }
 }
