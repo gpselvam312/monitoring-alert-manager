@@ -46,6 +46,15 @@ public class MonitoringJob
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "store_result", nullable = false)
+    private boolean storeResult = true;
+
+    @Column(name = "manual_run_enabled", nullable = false)
+    private boolean manualRunEnabled = true;
+
+    @Column(name = "allow_concurrent_execution", nullable = false)
+    private boolean allowConcurrentExecution = false;
+
     @Column(name = "timeout_seconds", nullable = false)
     private Integer timeoutSeconds;
 
@@ -63,18 +72,6 @@ public class MonitoringJob
 
     @Column(name = "recovery_enabled", nullable = false)
     private boolean recoveryEnabled = true;
-
-    @Column(name = "dashboard_enabled", nullable = false)
-    private boolean dashboardEnabled = false;
-
-    @Column(name = "dashboard_title", length = 200)
-    private String dashboardTitle;
-
-    @Column(name = "dashboard_width", nullable = false)
-    private Integer dashboardWidth = 6;
-
-    @Column(name = "dashboard_sort_order", nullable = false)
-    private Integer dashboardSortOrder = 100;
 
     // Script configuration
 
@@ -314,44 +311,34 @@ public class MonitoringJob
         this.recoveryEnabled = recoveryEnabled;
     }
 
-    public boolean isDashboardEnabled()
+    public boolean isStoreResult()
     {
-        return dashboardEnabled;
+        return storeResult;
     }
 
-    public void setDashboardEnabled(boolean dashboardEnabled)
+    public void setStoreResult(boolean storeResult)
     {
-        this.dashboardEnabled = dashboardEnabled;
+        this.storeResult = storeResult;
     }
 
-    public String getDashboardTitle()
+    public boolean isManualRunEnabled()
     {
-        return dashboardTitle;
+        return manualRunEnabled;
     }
 
-    public void setDashboardTitle(String dashboardTitle)
+    public void setManualRunEnabled(boolean manualRunEnabled)
     {
-        this.dashboardTitle = dashboardTitle;
+        this.manualRunEnabled = manualRunEnabled;
     }
 
-    public Integer getDashboardWidth()
+    public boolean isAllowConcurrentExecution()
     {
-        return dashboardWidth;
+        return allowConcurrentExecution;
     }
 
-    public void setDashboardWidth(Integer dashboardWidth)
+    public void setAllowConcurrentExecution(boolean allowConcurrentExecution)
     {
-        this.dashboardWidth = dashboardWidth;
-    }
-
-    public Integer getDashboardSortOrder()
-    {
-        return dashboardSortOrder;
-    }
-
-    public void setDashboardSortOrder(Integer dashboardSortOrder)
-    {
-        this.dashboardSortOrder = dashboardSortOrder;
+        this.allowConcurrentExecution = allowConcurrentExecution;
     }
 
     public String getScriptPath()
