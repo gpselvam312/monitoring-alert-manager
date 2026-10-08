@@ -60,6 +60,11 @@ public class MonitoringSchedulerService
         monitoringJobRepository.findByScheduleId(scheduleId).forEach(job -> refreshJob(job.getId()));
     }
 
+    public synchronized void cancelSchedule(Long scheduleId)
+    {
+        monitoringJobRepository.findByScheduleId(scheduleId).forEach(job -> cancelJob(job.getId()));
+    }
+
     public synchronized void cancelJob(Long jobId)
     {
         ScheduledFuture<?> future = scheduledJobs.remove(jobId);
