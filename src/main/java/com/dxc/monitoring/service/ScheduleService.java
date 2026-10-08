@@ -13,10 +13,13 @@ public class ScheduleService
 {
 
     private final ScheduleRepository scheduleRepository;
+    private final MonitoringSchedulerService monitoringSchedulerService;
 
-    public ScheduleService(ScheduleRepository scheduleRepository)
+    public ScheduleService(ScheduleRepository scheduleRepository,
+            MonitoringSchedulerService monitoringSchedulerService)
     {
         this.scheduleRepository = scheduleRepository;
+        this.monitoringSchedulerService = monitoringSchedulerService;
     }
 
     @Transactional(readOnly = true)
@@ -35,7 +38,9 @@ public class ScheduleService
     @Transactional
     public Schedule save(Schedule schedule)
     {
-        return scheduleRepository.save(schedule);
+        Schedule saved = scheduleRepository.save(schedule);
+        monitoringSchedulerService.refreshSchedule(saved.getId());
+        return saved;
     }
 
     @Transactional
@@ -47,6 +52,7 @@ public class ScheduleService
         String scheduleName = schedule.getName();
 
         scheduleRepository.delete(schedule);
+        monitoringSchedulerService.refreshSchedule(id);
 
         return scheduleName;
     }
@@ -57,5 +63,6 @@ public class ScheduleService
         Schedule schedule = findById(id);
         schedule.setEnabled(!schedule.isEnabled());
         scheduleRepository.save(schedule);
+        monitoringSchedulerService.refreshSchedule(id);
     }
 }
