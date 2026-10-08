@@ -416,158 +416,86 @@
 
 
     <!-- ================================================== -->
-    <!-- DASHBOARD CONFIGURATION -->
+    <!-- EXECUTION CONTROLS -->
     <!-- ================================================== -->
 
     <div class="app-card mb-4">
 
         <div class="app-card-header">
-
             <div>
-
-                <div class="app-card-title">
-                    Dashboard Configuration
-                </div>
-
+                <div class="app-card-title">Execution Controls</div>
                 <div class="app-card-subtitle">
-                    Configure how this monitoring job appears on the dashboard.
+                    Control result retention and manual execution behavior.
                 </div>
-
             </div>
-
         </div>
 
         <div class="app-card-body">
 
             <div class="row g-4">
 
-
-                <!-- Display on Dashboard -->
-
-                <div class="col-12">
-
+                <div class="col-md-4">
                     <div class="machine-enabled-option">
-
                         <div class="machine-enabled-icon">
-                            <i class="bi bi-grid-1x2"></i>
+                            <i class="bi bi-database-check"></i>
                         </div>
-
                         <div class="machine-enabled-content">
-
-                            <label for="dashboardEnabled"
-                                   class="machine-enabled-title">
-                                Display on Dashboard
+                            <label for="storeResult" class="machine-enabled-title">
+                                Store Detailed Result
                             </label>
-
                             <div class="machine-enabled-description">
-                                When enabled, this monitoring job will appear as a dashboard panel.
+                                Store detailed monitoring result data for dashboard details and history.
                             </div>
-
                         </div>
-
                         <div class="machine-enabled-switch">
-
-                            <input type="checkbox"
-                                   id="dashboardEnabled"
-                                   th:field="*{dashboardEnabled}"
-                                   class="form-check-input">
-
+                            <input type="checkbox" id="storeResult" th:field="*{storeResult}" class="form-check-input">
                         </div>
-
                     </div>
-
                 </div>
 
-
-                <!-- Dashboard Title -->
-
-                <div class="col-md-6">
-
-                    <label for="dashboardTitle"
-                           class="form-label">
-                        Dashboard Title
-                    </label>
-
-                    <input type="text"
-                           id="dashboardTitle"
-                           th:field="*{dashboardTitle}"
-                           class="form-control"
-                           maxlength="200"
-                           placeholder="Defaults to job name">
-
-                    <div class="form-text">
-                        Leave blank to use the monitoring job name.
+                <div class="col-md-4">
+                    <div class="machine-enabled-option">
+                        <div class="machine-enabled-icon">
+                            <i class="bi bi-play-circle"></i>
+                        </div>
+                        <div class="machine-enabled-content">
+                            <label for="manualRunEnabled" class="machine-enabled-title">
+                                Allow Manual Run
+                            </label>
+                            <div class="machine-enabled-description">
+                                Allow users with monitoring run permission to execute this job immediately.
+                            </div>
+                        </div>
+                        <div class="machine-enabled-switch">
+                            <input type="checkbox" id="manualRunEnabled" th:field="*{manualRunEnabled}" class="form-check-input">
+                        </div>
                     </div>
-
                 </div>
 
-
-                <!-- Dashboard Width -->
-
-                <div class="col-md-3">
-
-                    <label for="dashboardWidth"
-                           class="form-label">
-                        Dashboard Width
-                    </label>
-
-                    <select id="dashboardWidth"
-                            th:field="*{dashboardWidth}"
-                            class="form-select">
-
-                        <option value="3">
-                            Quarter
-                        </option>
-
-                        <option value="4">
-                            One-third
-                        </option>
-
-                        <option value="6">
-                            Half
-                        </option>
-
-                        <option value="8">
-                            Two-thirds
-                        </option>
-
-                        <option value="12">
-                            Full
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <!-- Dashboard Sort Order -->
-
-                <div class="col-md-3">
-
-                    <label for="dashboardSortOrder"
-                           class="form-label">
-                        Sort Order
-                    </label>
-
-                    <input type="number"
-                           id="dashboardSortOrder"
-                           th:field="*{dashboardSortOrder}"
-                           class="form-control"
-                           min="0"
-                           placeholder="100">
-
-                    <div class="form-text">
-                        Lower numbers appear first.
+                <div class="col-md-4">
+                    <div class="machine-enabled-option">
+                        <div class="machine-enabled-icon">
+                            <i class="bi bi-layers"></i>
+                        </div>
+                        <div class="machine-enabled-content">
+                            <label for="allowConcurrentExecution" class="machine-enabled-title">
+                                Allow Concurrent Runs
+                            </label>
+                            <div class="machine-enabled-description">
+                                Allow a new execution while another execution of this job is running.
+                            </div>
+                        </div>
+                        <div class="machine-enabled-switch">
+                            <input type="checkbox" id="allowConcurrentExecution"
+                                   th:field="*{allowConcurrentExecution}" class="form-check-input">
+                        </div>
                     </div>
-
                 </div>
 
             </div>
 
         </div>
-
     </div>
-
 
     <!-- ================================================== -->
     <!-- SCRIPT CONFIGURATION -->
