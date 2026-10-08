@@ -103,12 +103,6 @@ public class DashboardConfigurationService
     }
 
     @Transactional(readOnly = true)
-    public List<MonitoringJob> findDashboardJobs()
-    {
-        return monitoringJobRepository.findDashboardJobs();
-    }
-
-    @Transactional(readOnly = true)
     public DashboardWidget findWidgetById(Long id)
     {
         return dashboardWidgetRepository.findById(id)
@@ -169,11 +163,6 @@ public class DashboardConfigurationService
             }
         }
 
-        if (widget.getStoreResult() == null)
-        {
-            widget.setStoreResult(false);
-        }
-
         if (widget.getDetailsEnabled() == null)
         {
             widget.setDetailsEnabled(false);
@@ -208,7 +197,7 @@ public class DashboardConfigurationService
     @Transactional(readOnly = true)
     public List<MonitoringJob> findDashboardMonitoringJobs()
     {
-        return monitoringJobRepository.findDashboardJobs();
+        return monitoringJobRepository.findAll();
     }
 
     @Transactional(readOnly = true)
@@ -260,7 +249,6 @@ public class DashboardConfigurationService
         form.setAutoRefresh(widget.getAutoRefresh());
         form.setRefreshInterval(widget.getRefreshInterval());
         form.setRefreshIntervalUnit(widget.getRefreshIntervalUnit());
-        form.setStoreResult(widget.getStoreResult());
         form.setDetailsEnabled(widget.getDetailsEnabled());
 
         return form;
@@ -298,7 +286,6 @@ public class DashboardConfigurationService
         widget.setAutoRefresh(form.getAutoRefresh());
         widget.setRefreshInterval(form.getRefreshInterval());
         widget.setRefreshIntervalUnit(form.getRefreshIntervalUnit());
-        widget.setStoreResult(form.getStoreResult());
         widget.setDetailsEnabled(form.getDetailsEnabled());
 
         validateWidget(widget);
