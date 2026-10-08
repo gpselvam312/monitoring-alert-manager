@@ -1,6 +1,5 @@
 package com.dxc.monitoring.repository;
 
-import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -46,14 +45,5 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
     Optional<MonitoringJob> findByIdForDetails(@Param("id") Long id);
 
     boolean existsByApplicationId(Long applicationId);
-
-    @Query("""
-            SELECT j
-            FROM MonitoringJob j
-            WHERE j.dashboardEnabled = true
-              AND j.enabled = true
-            ORDER BY j.name ASC
-            """)
-    List<MonitoringJob> findDashboardJobs();
 
 }
