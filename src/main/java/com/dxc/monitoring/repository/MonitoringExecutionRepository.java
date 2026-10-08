@@ -17,6 +17,18 @@ public interface MonitoringExecutionRepository extends JpaRepository<MonitoringE
     @Query("""
             SELECT e
             FROM MonitoringExecution e
+            WHERE e.monitoringJob.id IN :jobIds
+              AND e.startedAt = (
+                  SELECT MAX(e2.startedAt)
+                  FROM MonitoringExecution e2
+                  WHERE e2.monitoringJob.id = e.monitoringJob.id
+              )
+            """)
+    List<MonitoringExecution> findLatestByMonitoringJobIds(@Param("jobIds") List<Long> jobIds);
+
+    @Query("""
+            SELECT e
+            FROM MonitoringExecution e
             WHERE e.monitoringJob.id = :monitoringJobId
               AND (
                     LOWER(CAST(e.status AS string)) LIKE
