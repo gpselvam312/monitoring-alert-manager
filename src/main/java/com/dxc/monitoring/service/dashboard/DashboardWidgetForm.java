@@ -44,8 +44,6 @@ public class DashboardWidgetForm
 
     private String refreshIntervalUnit;
 
-    private Boolean storeResult;
-
     private Boolean detailsEnabled;
 
     public Long getId()
@@ -196,16 +194,6 @@ public class DashboardWidgetForm
     public void setRefreshIntervalUnit(String refreshIntervalUnit)
     {
         this.refreshIntervalUnit = refreshIntervalUnit;
-    }
-
-    public Boolean getStoreResult()
-    {
-        return storeResult;
-    }
-
-    public void setStoreResult(Boolean storeResult)
-    {
-        this.storeResult = storeResult;
     }
 
     public Boolean getDetailsEnabled()
