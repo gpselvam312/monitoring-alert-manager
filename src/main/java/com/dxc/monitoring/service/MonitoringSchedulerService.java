@@ -14,6 +14,7 @@ import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.scheduling.support.PeriodicTrigger;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import com.dxc.monitoring.entity.MonitoringJob;
@@ -39,6 +40,7 @@ public class MonitoringSchedulerService
     }
 
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional(readOnly = true)
     public void initialize()
     {
         monitoringJobRepository.findAll().stream()
