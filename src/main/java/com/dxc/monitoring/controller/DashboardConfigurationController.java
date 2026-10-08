@@ -233,7 +233,6 @@ public class DashboardConfigurationController
             case "sortOrder" -> "sortOrder";
             case "enabled" -> "enabled";
             case "autoRefresh" -> "autoRefresh";
-            case "storeResult" -> "storeResult";
             case "detailsEnabled" -> "detailsEnabled";
             default -> "sortOrder";
         };
@@ -283,7 +282,7 @@ public class DashboardConfigurationController
         model.addAttribute("dashboardTabs", dashboardTabs);
         model.addAttribute("selectedTab", selectedTab);
         model.addAttribute("widgets", widgets);
-        model.addAttribute("monitoringJobs", dashboardConfigurationService.findDashboardJobs());
+        model.addAttribute("monitoringJobs", dashboardConfigurationService.findDashboardMonitoringJobs());
         model.addAttribute("tabSearch", tabSearch);
         model.addAttribute("widgetSearch", widgetSearch);
         model.addAttribute("widgetPage", widgetPage);
