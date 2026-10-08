@@ -23,6 +23,10 @@ public class DashboardWidgetDefinition
 
     private Boolean enabled;
 
+    private String dataSourceType;
+
+    private Long dataSourceId;
+
     private Boolean autoRefresh;
 
     private Integer refreshInterval;
@@ -133,6 +137,26 @@ public class DashboardWidgetDefinition
     public void setEnabled(Boolean enabled)
     {
         this.enabled = enabled;
+    }
+
+    public String getDataSourceType()
+    {
+        return dataSourceType;
+    }
+
+    public void setDataSourceType(String dataSourceType)
+    {
+        this.dataSourceType = dataSourceType;
+    }
+
+    public Long getDataSourceId()
+    {
+        return dataSourceId;
+    }
+
+    public void setDataSourceId(Long dataSourceId)
+    {
+        this.dataSourceId = dataSourceId;
     }
 
     public Boolean getAutoRefresh()
