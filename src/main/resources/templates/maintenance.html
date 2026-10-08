@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<head>
+
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title th:text="'Maintenance | ' + ${applicationName}">
+    Maintenance | Monitoring Alert Manager
+</title>
+
+<link rel="stylesheet"
+      th:href="@{/css/bootstrap.min.css}">
+
+<link rel="stylesheet"
+      th:href="@{/css/bootstrap-icons.min.css}">
+
+<link rel="stylesheet"
+      th:href="@{/css/app.css}">
+
+
+</head>
+
+<body class="monitoring-maintenance-page"
+      th:attr="data-theme=${applicationTheme}">
+
+<!-- Background Effects -->
+
+<div class="maintenance-background"
+     aria-hidden="true">
+
+
+<div class="maintenance-glow maintenance-glow-left"></div>
+<div class="maintenance-glow maintenance-glow-right"></div>
+<div class="maintenance-grid"></div>
+
+
+</div>
+
+<!-- Maintenance Container -->
+
+<main class="maintenance-container">
+
+
+<section class="maintenance-card"
+         aria-labelledby="maintenance-title">
+
+    <!-- Branding -->
+    <div class="maintenance-brand">
+
+        <div class="maintenance-logo">
+            <img th:src="@{/images/logo.png}"
+                 alt="DXC Technology">
+        </div>
+
+        <div class="maintenance-product-subtitle">
+            Infrastructure &amp; Application Monitoring
+        </div>
+
+    </div>
+
+    <!-- Maintenance Status -->
+    <div class="maintenance-status">
+
+        <div class="maintenance-status-icon"
+             aria-hidden="true">
+            <i class="bi bi-gear"></i>
+        </div>
+
+        <h1 id="maintenance-title"
+            class="maintenance-title">
+            Scheduled System Maintenance
+        </h1>
+
+        <p class="maintenance-message"
+           th:text="${maintenanceMessage}">
+            Site is currently under maintenance.
+            Please try again later.
+        </p>
+
+    </div>
+  
+
+    <!-- Action -->
+    <div class="maintenance-action">
+
+      <a th:href="@{/maintenance/check}"
+		   class="maintenance-submit">
+		    <span>Check Status Again</span>
+		    <i class="bi bi-arrow-clockwise"
+		       aria-hidden="true"></i>
+		</a>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="maintenance-footer">
+
+        <div class="maintenance-footer-copyright">
+
+            ©
+            <span th:text="${T(java.time.Year).now().value}">
+                2026
+            </span>
+
+            DXC Technology. All rights reserved.
+
+        </div>
+
+    </div>
+
+</section>
+
+</main>
+
+</body>
+</html>

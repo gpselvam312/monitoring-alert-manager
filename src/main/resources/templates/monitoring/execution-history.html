@@ -1,0 +1,200 @@
+<div th:fragment="executionHistory">
+
+    <div th:replace="~{fragments/data-table :: controls(
+            'executionSearch',
+            'executionPageSize',
+            'Search execution history...',
+            ${pageSize},
+            ${search}
+    )}">
+    </div>
+
+    <div id="executionHistoryTableContainer">
+
+        <div th:if="${executions.totalElements == 0}"
+             class="empty-state">
+
+            <div class="empty-state-icon">
+
+                <i th:if="${search != null and !search.isBlank()}"
+                   class="bi bi-search"></i>
+
+                <i th:unless="${search != null and !search.isBlank()}"
+                   class="bi bi-clock-history"></i>
+
+            </div>
+
+            <div th:if="${search != null and !search.isBlank()}">
+
+                <h6>No execution history matches your search</h6>
+
+                <p>
+                    Try a different search term or clear the search.
+                </p>
+
+            </div>
+
+            <div th:unless="${search != null and !search.isBlank()}">
+
+                <h6>No execution history available</h6>
+
+                <p>
+                    This monitoring job has not been executed yet.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div th:unless="${executions.totalElements == 0}">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover mb-0">
+
+                    <thead>
+                        <tr>
+                            <th>Started</th>
+                            <th>Completed</th>
+                            <th>Duration</th>
+                            <th>Attempt</th>
+                            <th>Execution</th>
+                            <th>Result</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        <tr th:each="execution : ${executions.content}">
+
+                            <td th:text="${@monitoringDateTime.format(execution.startedAt)}">
+                                09/30/2026 10:35:42 AM
+                            </td>
+
+                            <td th:text="${@monitoringDateTime.format(execution.completedAt)}">
+                                09/30/2026 10:35:43 AM
+                            </td>
+
+                            <td>
+
+                                <span th:if="${execution.durationMs != null}"
+                                      th:text="${execution.durationMs + ' ms'}">
+                                    842 ms
+                                </span>
+
+                                <span th:unless="${execution.durationMs != null}">
+                                    -
+                                </span>
+
+                            </td>
+
+                            <td th:text="${execution.attemptNumber}">
+                                1
+                            </td>
+
+                            <td>
+
+                                <span th:switch="${execution.status}">
+
+                                    <span th:case="${T(com.dxc.monitoring.entity.MonitoringExecution.ExecutionStatus).SUCCESS}"
+                                          class="badge bg-success">
+                                        SUCCESS
+                                    </span>
+
+                                    <span th:case="${T(com.dxc.monitoring.entity.MonitoringExecution.ExecutionStatus).FAILED}"
+                                          class="badge bg-danger">
+                                        FAILED
+                                    </span>
+
+                                    <span th:case="${T(com.dxc.monitoring.entity.MonitoringExecution.ExecutionStatus).TIMEOUT}"
+                                          class="badge bg-warning text-dark">
+                                        TIMEOUT
+                                    </span>
+
+                                    <span th:case="${T(com.dxc.monitoring.entity.MonitoringExecution.ExecutionStatus).ERROR}"
+                                          class="badge bg-danger">
+                                        ERROR
+                                    </span>
+
+                                    <span th:case="*"
+                                          class="badge bg-secondary"
+                                          th:text="${execution.status}">
+                                        RUNNING
+                                    </span>
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <span th:if="${resultStatuses.get(execution.id) == T(com.dxc.monitoring.entity.MonitoringResult.ResultStatus).OK}"
+                                      class="badge bg-success">
+                                    OK
+                                </span>
+
+                                <span th:if="${resultStatuses.get(execution.id) == T(com.dxc.monitoring.entity.MonitoringResult.ResultStatus).WARNING}"
+                                      class="badge bg-warning text-dark">
+                                    WARNING
+                                </span>
+
+                                <span th:if="${resultStatuses.get(execution.id) == T(com.dxc.monitoring.entity.MonitoringResult.ResultStatus).FAILED}"
+                                      class="badge bg-danger">
+                                    FAILED
+                                </span>
+
+                                <span th:if="${resultStatuses.get(execution.id) == null}"
+                                      class="text-muted">
+                                    -
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        th:onclick="'viewExecution(' + ${execution.id} + ')'">
+
+                                    <i class="bi bi-eye"></i>
+                                    View
+
+                                </button>
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div th:replace="~{fragments/data-table :: pagination(
+                    ${executions},
+                    ${pageSize},
+                    'executionTableConfig'
+            )}">
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+
+    window.executionTableConfig = {
+        endpoint: /*[[@{'/monitoring/jobs/' + ${jobId} + '/executions/table'}]]*/ '',
+        searchId: 'executionSearch',
+        clearSearchId: 'clear-executionSearch',
+        pageSizeId: 'executionPageSize',
+        containerId: 'executionHistoryTableContainer'
+    };
+
+    DataTable.init(window.executionTableConfig);
+
+</script>

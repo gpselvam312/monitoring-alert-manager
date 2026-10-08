@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<body>
+
+<div th:fragment="header(pageTitle)"
+     class="app-header">
+
+    <div class="header-left">
+
+        <button type="button"
+                class="mobile-menu-button"
+                id="mobileMenuButton"
+                aria-label="Open navigation menu">
+            <i class="bi bi-list"></i>
+        </button>
+
+        <div class="header-page-info">
+            <span class="header-title"
+                  th:text="${pageTitle}">
+                Page Title
+            </span>
+
+            <span class="header-separator">|</span>
+
+           <span class="header-subtitle" th:text="${applicationName}"> Monitoring Alert Manager </span>
+           
+        </div>
+
+    </div>
+
+    <div class="header-user">
+
+        <div class="user-avatar">
+            <i class="bi bi-person"></i>
+        </div>
+
+        <div class="user-info">
+			<span class="user-name"
+			      th:text="${#authentication.principal.fullName}">
+			    User
+			</span>
+
+            <span class="header-separator">|</span>
+
+            <span class="user-role"
+                  sec:authorize="hasRole('ADMIN')">
+                ADMIN
+            </span>
+
+            <span class="user-role"
+                  sec:authorize="hasRole('OPERATOR')">
+                OPERATOR
+            </span>
+
+            <span class="user-role"
+                  sec:authorize="hasRole('VIEWER')">
+                VIEWER
+            </span>
+
+        </div>
+
+        <form th:action="@{/logout}" method="post">
+            <button type="submit"
+                    class="btn btn-sm btn-outline-secondary logout-button">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </button>
+        </form>
+
+    </div>
+
+</div> 
+
+</body>
+</html>

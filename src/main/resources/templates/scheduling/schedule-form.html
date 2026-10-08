@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout(${pageTitle}, ~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+
+<!-- Page Header -->
+<div class="page-header">
+
+    <div>
+        <h1 class="page-title"
+            th:text="${pageTitle}">
+            Add Schedule
+        </h1>
+
+        <p class="page-subtitle">
+            Configure when monitoring jobs should execute.
+        </p>
+    </div>
+
+    <a th:href="@{/scheduling/schedules}"
+       class="btn btn-outline-primary">
+
+        <i class="bi bi-arrow-left me-1"></i>
+        Back to Schedules
+
+    </a>
+
+</div>
+
+<!-- Schedule Configuration Form -->
+<form sec:authorize="hasAuthority('SCHEDULE_CONFIG')"
+      th:action="@{/scheduling/schedules}"
+      th:object="${schedule}"
+      method="post">
+
+    <input type="hidden"
+           th:field="*{id}">
+
+    <!-- ================================================= -->
+    <!-- BASIC INFORMATION                                  -->
+    <!-- ================================================= -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+                <h5 class="app-card-title">
+                    Basic Information
+                </h5>
+
+                <p class="app-card-subtitle">
+                    Define the schedule name and scheduling mechanism.
+                </p>
+            </div>
+
+            <i class="bi bi-calendar3 app-card-header-icon"></i>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-3">
+
+                <div class="col-lg-6">
+
+                    <label for="scheduleName"
+                           class="form-label">
+
+                        Name
+                        <span class="text-danger">*</span>
+
+                    </label>
+
+                    <input id="scheduleName"
+                           type="text"
+                           class="form-control"
+                           th:field="*{name}"
+                           maxlength="100"
+                           placeholder="Example: Every 5 Minutes"
+                           required>
+
+                    <div class="form-text">
+                        Unique name used to identify this schedule.
+                    </div>
+
+                </div>
+
+                <div class="col-lg-6">
+
+                    <label for="scheduleType"
+                           class="form-label">
+
+                        Schedule Type
+                        <span class="text-danger">*</span>
+
+                    </label>
+
+                    <select id="scheduleType"
+                            class="form-select"
+                            th:field="*{type}"
+                            required>
+
+                        <option value="">
+                            -- Select Type --
+                        </option>
+
+                        <option value="CRON">
+                            Cron
+                        </option>
+
+                        <option value="FIXED_DELAY">
+                            Fixed Delay
+                        </option>
+
+                        <option value="FIXED_RATE">
+                            Fixed Rate
+                        </option>
+
+                    </select>
+
+                    <div class="form-text">
+                        Choose how execution timing should be calculated.
+                    </div>
+
+                </div>
+
+                <div class="col-12">
+
+                    <label for="description"
+                           class="form-label">
+
+                        Description
+
+                    </label>
+
+                    <textarea id="description"
+                              class="form-control"
+                              th:field="*{description}"
+                              rows="3"
+                              maxlength="500"
+                              placeholder="Describe when and why this schedule is used"></textarea>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- CRON CONFIGURATION                                 -->
+    <!-- ================================================= -->
+
+    <div id="cronConfig"
+         class="app-card mb-4 schedule-config">
+
+        <div class="app-card-header">
+
+            <div>
+                <h5 class="app-card-title">
+                    Cron Configuration
+                </h5>
+
+                <p class="app-card-subtitle">
+                    Execute jobs according to a Spring cron expression.
+                </p>
+            </div>
+
+            <i class="bi bi-clock-history app-card-header-icon"></i>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <label for="cronExpression"
+                   class="form-label">
+
+                Cron Expression
+
+            </label>
+
+            <input id="cronExpression"
+                   type="text"
+                   class="form-control schedule-expression"
+                   th:field="*{cronExpression}"
+                   placeholder="0 */5 * * * *">
+
+            <div class="form-text">
+
+                Spring cron format:
+                <code>second minute hour day-of-month month day-of-week</code>
+
+            </div>
+
+            <div class="schedule-example">
+
+                <i class="bi bi-lightbulb"></i>
+
+                <span>
+                    Example:
+                    <code>0 */5 * * * *</code>
+                    runs every 5 minutes.
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- FIXED DELAY CONFIGURATION                         -->
+    <!-- ================================================= -->
+
+    <div id="fixedDelayConfig"
+         class="app-card mb-4 schedule-config">
+
+        <div class="app-card-header">
+
+            <div>
+                <h5 class="app-card-title">
+                    Fixed Delay Configuration
+                </h5>
+
+                <p class="app-card-subtitle">
+                    Wait for a fixed period after each execution completes.
+                </p>
+            </div>
+
+            <i class="bi bi-hourglass-split app-card-header-icon"></i>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="col-lg-6">
+
+                <label for="fixedDelaySeconds"
+                       class="form-label">
+
+                    Delay
+
+                </label>
+
+                <div class="input-group">
+
+                    <input id="fixedDelaySeconds"
+                           type="number"
+                           class="form-control"
+                           th:field="*{fixedDelaySeconds}"
+                           min="1"
+                           placeholder="300">
+
+                    <span class="input-group-text">
+                        seconds
+                    </span>
+
+                </div>
+
+                <div class="form-text">
+
+                    Time between the completion of one execution
+                    and the start of the next.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- FIXED RATE CONFIGURATION                          -->
+    <!-- ================================================= -->
+
+    <div id="fixedRateConfig"
+         class="app-card mb-4 schedule-config">
+
+        <div class="app-card-header">
+
+            <div>
+                <h5 class="app-card-title">
+                    Fixed Rate Configuration
+                </h5>
+
+                <p class="app-card-subtitle">
+                    Start executions at a fixed interval.
+                </p>
+            </div>
+
+            <i class="bi bi-stopwatch app-card-header-icon"></i>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="col-lg-6">
+
+                <label for="fixedRateSeconds"
+                       class="form-label">
+
+                    Rate
+
+                </label>
+
+                <div class="input-group">
+
+                    <input id="fixedRateSeconds"
+                           type="number"
+                           class="form-control"
+                           th:field="*{fixedRateSeconds}"
+                           min="1"
+                           placeholder="300">
+
+                    <span class="input-group-text">
+                        seconds
+                    </span>
+
+                </div>
+
+                <div class="form-text">
+
+                    Time between scheduled execution starts.
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- TIME WINDOW                                        -->
+    <!-- ================================================= -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+                <h5 class="app-card-title">
+                    Time Window
+                </h5>
+
+                <p class="app-card-subtitle">
+                    Optionally restrict when the schedule is active.
+                </p>
+            </div>
+
+            <i class="bi bi-calendar-range app-card-header-icon"></i>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+
+                    <label for="startTime"
+                           class="form-label">
+
+                        Start Time
+
+                    </label>
+
+                    <input id="startTime"
+                           type="time"
+                           class="form-control"
+                           th:field="*{startTime}">
+
+                    <div class="form-text">
+                        Optional.
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <label for="endTime"
+                           class="form-label">
+
+                        End Time
+
+                    </label>
+
+                    <input id="endTime"
+                           type="time"
+                           class="form-control"
+                           th:field="*{endTime}">
+
+                    <div class="form-text">
+                        Optional.
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <label for="timezone"
+                           class="form-label">
+
+                        Timezone
+                        <span class="text-danger">*</span>
+
+                    </label>
+
+                    <input id="timezone"
+                           type="text"
+                           class="form-control"
+                           th:field="*{timezone}"
+                           required
+                           placeholder="Europe/London">
+
+                    <div class="form-text">
+                        Defaults to the monitoring server timezone.
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- STATUS                                             -->
+    <!-- ================================================= -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+                <h5 class="app-card-title">
+                    Schedule Status
+                </h5>
+
+                <p class="app-card-subtitle">
+                    Control whether this schedule can be used by monitoring jobs.
+                </p>
+            </div>
+
+            <i class="bi bi-toggle-on app-card-header-icon"></i>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="machine-enabled-option">
+
+                <div class="machine-enabled-icon">
+
+                    <i class="bi bi-calendar-check"></i>
+
+                </div>
+
+                <div class="machine-enabled-content">
+
+                    <label for="enabled"
+                           class="machine-enabled-title">
+
+                        Schedule Enabled
+
+                    </label>
+
+                    <div class="machine-enabled-description">
+
+                        Disabled schedules will not trigger
+                        associated monitoring jobs.
+
+                    </div>
+
+                </div>
+
+                <div class="form-check form-switch machine-enabled-switch">
+
+                    <input type="checkbox"
+                           id="enabled"
+                           class="form-check-input"
+                           th:field="*{enabled}">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- ACTIONS                                            -->
+    <!-- ================================================= -->
+
+    <div class="form-actions">
+
+        <a th:href="@{/scheduling/schedules}"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-x-lg me-1"></i>
+            Cancel
+
+        </a>
+
+        <button type="submit"
+                class="btn btn-primary">
+
+            <i class="bi bi-check-lg me-1"></i>
+
+            <span th:text="${submitLabel}">
+                Save Schedule
+            </span>
+
+        </button>
+
+    </div>
+
+</form>
+
+
+</div>
+
+</body>
+</html>

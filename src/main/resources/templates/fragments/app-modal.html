@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<body>
+
+<div th:fragment="appModal">
+
+    <div class="modal fade"
+         id="appModal"
+         tabindex="-1"
+         aria-labelledby="appModalTitle"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered">
+
+            <div class="modal-content app-modal">
+
+                <!-- Header -->
+
+                <div class="modal-header">
+                    <div class="flex-grow-1">
+
+                        <h5 class="modal-title"
+                            id="appModalTitle">
+                            Information
+                        </h5>
+
+                    </div>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+
+                </div>
+
+                <!-- Body -->
+
+                <div class="modal-body">
+
+                    <div class="app-modal-content">
+
+                        <div class="app-modal-body-icon">
+
+                            <i id="appModalBodyIcon"
+                               class="bi bi-info-circle">
+                            </i>
+
+                        </div>
+
+                        <div class="flex-grow-1">
+
+                            <p id="appModalMessage"
+                               class="app-modal-message">
+                                Message goes here.
+                            </p>
+
+                            <p id="appModalDescription"
+                               class="app-modal-description d-none">
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            id="appModalCancelButton"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+
+                        <span id="appModalCancelText">
+                            Cancel
+                        </span>
+
+                    </button>
+
+                    <button type="button"
+                            id="appModalConfirmButton"
+                            class="btn btn-primary">
+
+                        <i id="appModalConfirmIcon"
+                           class="bi bi-check-lg me-1">
+                        </i>
+
+                        <span id="appModalConfirmText">
+                            Continue
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

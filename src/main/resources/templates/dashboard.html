@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout('Dashboard', ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+    <!-- Loading -->
+    <div id="dashboardLoading"
+         class="dashboard-state">
+
+        <div class="dashboard-state-icon">
+            <i class="bi bi-arrow-repeat dashboard-spin"></i>
+        </div>
+
+        <h6>Loading dashboard</h6>
+
+        <p>
+            Loading configured monitoring widgets...
+        </p>
+
+    </div>
+
+
+    <!-- Error -->
+    <div id="dashboardError"
+         class="dashboard-state d-none">
+
+        <div class="dashboard-state-icon dashboard-state-danger">
+            <i class="bi bi-exclamation-triangle"></i>
+        </div>
+
+        <h6>Unable to load dashboard</h6>
+
+        <p id="dashboardErrorMessage">
+            An error occurred while loading the dashboard.
+        </p>
+
+        <button type="button"
+                class="btn btn-primary btn-sm"
+                id="dashboardRetryButton">
+
+            <i class="bi bi-arrow-clockwise me-1"></i>
+            Retry
+
+        </button>
+
+    </div>
+
+
+    <!-- Empty -->
+    <div id="dashboardEmpty"
+         class="dashboard-state d-none">
+
+        <div class="dashboard-state-icon">
+            <i class="bi bi-grid"></i>
+        </div>
+
+        <h6>No dashboard configuration</h6>
+
+        <p>
+            No enabled dashboard tabs or widgets are currently configured.
+        </p>
+
+    </div>
+
+
+    <!-- Dashboard -->
+    <div id="dashboardContainer"
+         class="d-none">
+
+        <!-- Tabs and Dashboard Actions -->
+		<div class="dashboard-tab-toolbar">
+		
+		    <div class="dashboard-tabs-wrapper">
+		        <div class="dashboard-tabs"
+		             id="dashboardTabs"
+		             role="tablist"
+		             aria-label="Dashboard tabs">
+		        </div>
+		    </div>
+		
+		    <div class="dashboard-tab-actions">
+		
+		        <button type="button"
+		                class="btn btn-outline-primary btn-sm"
+		                id="dashboardRefreshButton">
+		
+		            <i class="bi bi-arrow-clockwise me-1"></i>
+		            Refresh
+		
+		        </button>
+		
+		    </div>
+		
+		</div>
+
+
+        <!-- Tab content -->
+        <div id="dashboardContent">
+        </div>
+
+    </div>
+
+
+    <!-- Chart.js -->
+    <script th:src="@{/js/chart.umd.min.js}"></script>
+
+    <!-- script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script -->
+
+
+    <!-- Dashboard JavaScript -->
+    <script th:src="@{/js/dashboard.js}"></script>
+
+</div>
+
+</body>
+
+</html>

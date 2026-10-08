@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<head>
+
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Sign In | Monitoring Alert Manager</title>
+
+<link rel="stylesheet"
+      th:href="@{/css/bootstrap.min.css}">
+
+<link rel="stylesheet"
+      th:href="@{/css/bootstrap-icons.min.css}">
+
+<link rel="stylesheet"
+      th:href="@{/css/app.css}">
+
+
+</head>
+
+<body class="monitoring-login-page">
+
+<!-- Background Effects -->
+
+<div class="login-background"
+     aria-hidden="true">
+
+
+<div class="login-glow login-glow-left"></div>
+
+<div class="login-glow login-glow-right"></div>
+
+<div class="login-grid"></div>
+
+
+</div>
+
+<!-- Login Container -->
+
+<main class="login-container">
+
+
+<section class="login-card"
+         aria-labelledby="login-title">
+
+    <!-- Branding -->
+    <div class="login-brand">
+
+        <div class="login-logo">
+
+            <img th:src="@{/images/logo.png}"
+                 alt="DXC Technology">
+
+        </div>
+
+       
+        <div class="login-product-subtitle">
+            Infrastructure &amp; Application Monitoring
+        </div>
+
+    </div>
+
+
+    <!-- Authentication Error -->
+    <div th:if="${param.error}"
+         class="login-message login-message-error"
+         role="alert">
+
+        <i class="bi bi-exclamation-circle-fill"></i>
+
+        <span>
+            Invalid username or password.
+        </span>
+
+    </div>
+
+
+    <!-- Logout Message -->
+    <div th:if="${param.logout}"
+         class="login-message login-message-success"
+         role="status">
+
+        <i class="bi bi-check-circle-fill"></i>
+
+        <span>
+            You have been signed out successfully.
+        </span>
+
+    </div>
+
+
+    <!-- Login Form -->
+    <form th:action="@{/login}"
+          method="post"
+          class="login-form">
+
+        <!-- Username -->
+        <div class="login-field">
+
+            <label for="username"
+                   class="login-label">
+
+                Username
+
+            </label>
+
+            <div class="login-input-wrapper">
+
+                <i class="bi bi-person login-input-icon"
+                   aria-hidden="true"></i>
+
+                <input type="text"
+                       id="username"
+                       name="username"
+                       class="form-control login-input"
+                       placeholder="Enter your username"
+                       autocomplete="username"
+                       required
+                       autofocus>
+
+            </div>
+
+        </div>
+
+
+        <!-- Password -->
+        <div class="login-field">
+
+            <label for="password"
+                   class="login-label">
+
+                Password
+
+            </label>
+
+            <div class="login-input-wrapper">
+
+                <i class="bi bi-lock login-input-icon"
+                   aria-hidden="true"></i>
+
+                <input type="password"
+                       id="password"
+                       name="password"
+                       class="form-control login-input login-password-input"
+                       placeholder="Enter your password"
+                       autocomplete="current-password"
+                       required>
+
+                <button type="button"
+                        id="passwordToggle"
+                        class="login-password-toggle"
+                        aria-label="Show password">
+
+                    <i class="bi bi-eye"
+                       id="passwordToggleIcon"
+                       aria-hidden="true"></i>
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- Remember Me -->
+        <div class="login-options">
+
+            <div class="form-check login-remember">
+
+                <input type="checkbox"
+                       class="form-check-input"
+                       id="remember-me"
+                       name="remember-me">
+
+                <label class="form-check-label"
+                       for="remember-me">
+
+                    Remember this device
+
+                </label>
+
+            </div>
+
+        </div>
+
+
+        <!-- Submit -->
+        <button type="submit"
+                class="login-submit">
+
+            <span>
+                Sign In to Dashboard
+            </span>
+
+            <i class="bi bi-arrow-right"
+               aria-hidden="true"></i>
+
+        </button>
+
+    </form>
+
+
+    <!-- Footer -->
+ <div class="login-footer">
+    <div class="login-footer-copyright">
+        © <span th:text="${T(java.time.Year).now().value}">2026</span>
+        DXC Technology. All rights reserved.
+    </div>
+    
+</div>
+
+</section>
+
+
+</main>
+<div th:replace="~{fragments/footer :: footer}"></div>
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const passwordInput =
+            document.getElementById("password");
+
+        const passwordToggle =
+            document.getElementById("passwordToggle");
+
+        const passwordToggleIcon =
+            document.getElementById("passwordToggleIcon");
+
+
+        if (!passwordInput ||
+            !passwordToggle ||
+            !passwordToggleIcon) {
+
+            return;
+
+        }
+
+
+        passwordToggle.addEventListener("click", function () {
+
+            const showPassword =
+                passwordInput.type === "password";
+
+            passwordInput.type =
+                showPassword ? "text" : "password";
+
+            passwordToggleIcon.className =
+                showPassword
+                    ? "bi bi-eye-slash"
+                    : "bi bi-eye";
+
+            passwordToggle.setAttribute(
+                "aria-label",
+                showPassword
+                    ? "Hide password"
+                    : "Show password"
+            );
+
+        });
+
+    });
+
+</script>
+
+</body>
+
+</html>

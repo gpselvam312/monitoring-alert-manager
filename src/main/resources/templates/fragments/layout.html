@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+	th:fragment="layout(pageTitle, pageContent)">
+<head th:replace="~{fragments/head :: head(${pageTitle})}">
+</head>
+<body th:attr="data-theme=${applicationTheme}">
+	<div class="app-shell">
+		<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+		<div class="sidebar-overlay" id="sidebarOverlay"></div>
+		<main class="app-main">
+			<div th:replace="~{fragments/header :: header(${pageTitle})}">
+			</div>
+			<div th:replace="~{fragments/messages :: messages}"></div>
+			<div class="app-content">
+				<div th:replace="${pageContent}"></div>
+			</div>
+		</main>
+	</div>
+	<div th:replace="~{fragments/footer :: footer}"></div>
+	<div th:replace="~{fragments/app-modal :: appModal}"></div>
+	<div th:replace="~{fragments/scripts :: scripts}"></div>
+</body>
+</html>

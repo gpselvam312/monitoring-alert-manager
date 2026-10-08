@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head th:replace="~{fragments/head :: head(${pageTitle})}"></head>
+
+<body>
+
+<div class="app-shell">
+
+
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+<div class="app-main">
+
+    <div th:replace="~{fragments/header :: header(${pageTitle})}"></div>
+
+    <main class="app-content">
+
+        <div class="page-header">
+
+            <div>
+
+                <h1 class="page-title"
+                    th:text="${pageTitle}">
+                    Add Application
+                </h1>
+
+                <p class="page-subtitle">
+                    Configure an application used by monitoring.
+                </p>
+
+            </div>
+
+        </div>
+
+        <form sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+              th:action="@{/administration/applications/save}"
+              th:object="${appName}"
+              method="post">
+
+            <input type="hidden"
+                   th:field="*{id}">
+
+            <div class="app-card mb-4">
+
+                <div class="app-card-header">
+
+                    <div>
+
+                        <h2 class="app-card-title">
+                            Application Details
+                        </h2>
+
+                        <p class="app-card-subtitle">
+                            Define the application identity and status.
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="app-card-body">
+
+                    <div class="row g-4">
+
+                        <div class="col-12 col-md-6">
+
+                            <label for="name"
+                                   class="form-label">
+
+                                Application Name
+                                <span class="text-danger">*</span>
+
+                            </label>
+
+                            <input type="text"
+                                   id="name"
+                                   th:field="*{name}"
+                                   class="form-control"
+                                   maxlength="100"
+                                   required
+                                   placeholder="e.g. RA">
+
+                            <div class="form-text">
+                                Use a unique application name.
+                            </div>
+
+                        </div>
+
+                        <div class="col-12">
+
+                            <label for="description"
+                                   class="form-label">
+
+                                Description
+
+                            </label>
+
+                            <textarea id="description"
+                                      th:field="*{description}"
+                                      class="form-control"
+                                      rows="4"
+                                      maxlength="500"
+                                      placeholder="Describe the application."></textarea>
+
+                        </div>
+
+                        <div class="col-12">
+
+                            <div class="machine-enabled-option">
+
+                                <div class="machine-enabled-icon">
+                                    <i class="bi bi-check-circle"></i>
+                                </div>
+
+                                <div class="machine-enabled-content">
+
+                                    <label for="enabled"
+                                           class="machine-enabled-title">
+
+                                        Application enabled
+
+                                    </label>
+
+                                    <div class="machine-enabled-description">
+
+                                        Enabled applications can be selected
+                                        when configuring monitoring jobs.
+
+                                    </div>
+
+                                </div>
+
+                                <div class="machine-enabled-switch form-check form-switch">
+
+                                    <input id="enabled"
+                                           class="form-check-input"
+                                           type="checkbox"
+                                           th:field="*{enabled}">
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+
+                <a th:href="@{/administration/applications}"
+                   class="btn btn-outline-secondary">
+
+                    Cancel
+
+                </a>
+
+                <button type="submit"
+                        class="btn btn-primary">
+
+                    <i class="bi bi-check-lg"></i>
+                    Save Application
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </main>
+
+</div>
+
+
+</div>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<div th:replace="~{fragments/scripts :: scripts}"></div>
+
+</body>
+
+</html>

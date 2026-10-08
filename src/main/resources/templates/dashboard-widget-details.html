@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout('Widget Details', ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+    <!-- Page header -->
+    <div class="page-header">
+
+        <div>
+            <h1 class="page-title"
+                th:text="${widget.name}">
+                Widget Details
+            </h1>
+
+            <p class="page-subtitle">
+                Historical monitoring results for this dashboard widget.
+            </p>
+        </div>
+
+        <div class="page-header-actions">
+
+            <a th:href="@{/dashboard}"
+               class="btn btn-outline-primary">
+
+                <i class="bi bi-arrow-left me-1"></i>
+                Back to Dashboard
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Widget details card -->
+    <div class="app-card">
+
+        <div class="app-card-body p-0"
+             id="dashboardWidgetDetailsTableWrapper">
+
+            <!-- Search and page size -->
+            <div th:replace="~{fragments/data-table :: controls(
+                    'dashboardWidgetDetailsSearch',
+                    'dashboardWidgetDetailsPageSize',
+                    'Search results...',
+                    ${pageSize},
+                    ${search}
+            )}">
+            </div>
+
+            <div id="dashboardWidgetDetailsTableContainer">
+
+                <div th:fragment="dashboardWidgetDetailsTable">
+
+                    <!-- Empty state -->
+                    <div th:if="${history.totalElements == 0}"
+                         class="empty-state">
+
+                        <div class="empty-state-icon">
+
+                            <i th:if="${search != null and !search.isBlank()}"
+                               class="bi bi-search">
+                            </i>
+
+                            <i th:unless="${search != null and !search.isBlank()}"
+                               class="bi bi-clock-history">
+                            </i>
+
+                        </div>
+
+                        <!-- No search results -->
+                        <div th:if="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No results match your search
+                            </h6>
+
+                            <p>
+                                Try a different search term or clear the search.
+                            </p>
+
+                        </div>
+
+                        <!-- No history -->
+                        <div th:unless="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No historical results available
+                            </h6>
+
+                            <p>
+                                This widget has no stored monitoring results.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Result table -->
+                    <div th:if="${history.totalElements > 0}"
+                         class="table-responsive">
+
+                        <table class="table app-table align-middle mb-0">
+
+                            <thead>
+
+                            <tr>
+
+                                <!-- Result Time -->
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="dashboardWidgetDetailsTableConfig"
+                                            data-sort="resultTime"
+                                            onclick="DataTable.sort(this)">
+
+                                        Result Time
+
+                                        <i class="bi bi-caret-down-fill table-sort-icon"
+                                           aria-label="Sort descending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+                                <!-- Status -->
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="dashboardWidgetDetailsTableConfig"
+                                            data-sort="status"
+                                            onclick="DataTable.sort(this)">
+
+                                        Status
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+                                <!-- Message -->
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="dashboardWidgetDetailsTableConfig"
+                                            data-sort="message"
+                                            onclick="DataTable.sort(this)">
+
+                                        Message
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+                                <!-- Actions -->
+                               <th class="text-end table-actions-column">
+								    Actions
+								</th>
+
+                            </tr>
+
+                            </thead>
+
+						 	<tbody>
+
+								<th:block th:each="result : ${history.content}">
+								
+								    <!-- Result summary row -->
+								    <tr>
+								
+								        <!-- Result Time -->
+								        <td>
+								            <div class="table-primary-text"
+											     th:text="${#temporals.format(result.resultTime, 'yyyy-MM-dd HH:mm:ss')}">
+											</div>
+								        </td>
+								
+								        <!-- Status -->
+								        <td>
+								
+								            <span th:if="${result.status == 'GREEN'}"
+								                  class="status-badge status-healthy">
+								
+								                <span class="status-dot"></span>
+								                GREEN
+								
+								            </span>
+								
+								            <span th:if="${result.status == 'YELLOW'}"
+								                  class="status-badge status-warning">
+								
+								                <span class="status-dot"></span>
+								                YELLOW
+								
+								            </span>
+								
+								            <span th:if="${result.status == 'RED'}"
+								                  class="status-badge status-critical">
+								
+								                <span class="status-dot"></span>
+								                RED
+								
+								            </span>
+								
+								            <span th:if="${result.status == 'GRAY' or result.status == null}"
+								                  class="status-badge status-disabled">
+								
+								                <span class="status-dot"></span>
+								                UNKNOWN
+								
+								            </span>
+								
+								        </td>
+								
+								        <!-- Message -->
+								        <td>
+								
+								            <span th:if="${result.message != null and !result.message.isBlank()}"
+								                  class="table-secondary-text"
+								                  th:text="${result.message}">
+								                Result message
+								            </span>
+								
+								            <span th:unless="${result.message != null and !result.message.isBlank()}"
+								                  class="text-muted">
+								                —
+								            </span>
+								
+								        </td>
+								
+								        <!-- Actions -->
+								        <td class="text-end table-actions-column">
+								
+								            <button type="button"
+								                    class="btn btn-sm btn-outline-primary dashboard-result-details"
+								                    th:attr="data-result-id=${result.id}"
+								                    aria-expanded="false"
+								                    title="View result details"
+								                    aria-label="View result details">
+								
+								                <i class="bi bi-chevron-down"></i>
+								
+								            </button>
+								
+								        </td>
+								
+								    </tr>
+								
+								  <!-- Expandable result details -->
+								<tr class="dashboard-result-details-row"
+								    th:id="'result-details-' + ${result.id}"
+								    style="display: none;">
+								
+								    <td colspan="4">
+								
+								        <div class="p-3">
+								
+								            <div class="d-flex align-items-center mb-3">
+								                <i class="bi bi-bar-chart-line me-2"></i>
+								                <strong>Result Details</strong>
+								            </div>
+								
+								            <div th:with="parsedResult=${parsedResults[result.id]}">
+								
+								                <!-- Chart result -->
+								              <div th:if="${widget.widgetType == 'CHART'
+												            and parsedResult != null
+												            and parsedResult.data != null
+												            and !parsedResult.data.isEmpty()}"
+												     class="dashboard-history-chart">
+												
+												    <div class="dashboard-chart-wrapper"
+												         style="height: 320px;">
+												
+												        <canvas th:id="'result-chart-' + ${result.id}"
+												                th:attr="data-chart-type=${widget.chartType},
+												                         data-chart-data=${result.resultData}"
+												                th:aria-label="${widget.name}">
+												        </canvas>
+												
+												    </div>
+												
+												</div>
+												
+												<!-- Stat / status result -->
+												<div th:if="${(widget.widgetType == 'STAT' or widget.widgetType == 'STATUS')
+												             and parsedResult != null}"
+												     class="table-responsive">
+												
+												    <table class="table table-sm app-table align-middle mb-0">
+												
+												        <thead>
+												        <tr>
+												            <th>Metric</th>
+												            <th>Value</th>
+												        </tr>
+												        </thead>
+												
+												        <tbody>
+												
+												        <!-- Primary value -->
+												        <tr th:if="${parsedResult.value != null}">
+												            <td>
+												                <strong>Value</strong>
+												            </td>
+												            <td th:text="${parsedResult.value}">
+												                Value
+												            </td>
+												        </tr>
+												
+												        <!-- Additional metrics -->
+												        <tr th:each="metric : ${parsedResult.metrics}">
+												            <td th:text="${metric.key}">
+												                Metric
+												            </td>
+												            <td th:text="${metric.value}">
+												                Value
+												            </td>
+												        </tr>
+												
+												        </tbody>
+												
+												    </table>
+												
+												</div>
+								
+								                <!-- Structured table result -->
+								                <div th:if="${widget.widgetType != 'CHART'
+								                            and parsedResult != null
+								                            and parsedResult.columns != null
+								                            and !parsedResult.columns.isEmpty()
+								                            and parsedResult.rows != null
+								                            and !parsedResult.rows.isEmpty()}"
+								                     class="table-responsive">
+								
+								                    <table class="table table-sm app-table align-middle mb-0">
+								
+								                        <thead>
+								                        <tr>
+								                            <th th:each="column : ${parsedResult.columns}"
+								                                th:text="${column.label}">
+								                                Column
+								                            </th>
+								                        </tr>
+								                        </thead>
+								
+								                        <tbody>
+								
+								                        <tr th:each="row : ${parsedResult.rows}">
+								
+								                            <td th:each="column : ${parsedResult.columns}"
+								                                th:text="${row[column.key] != null
+								                                         ? row[column.key]
+								                                         : '—'}">
+								                                Value
+								                            </td>
+								
+								                        </tr>
+								
+								                        </tbody>
+								
+								                    </table>
+								
+								                </div>
+								
+								                <!-- Simple value result -->
+												<div th:if="${parsedResult != null
+												            and widget.widgetType != 'STAT'
+												            and widget.widgetType != 'STATUS'
+												            and parsedResult.value != null
+												            and (parsedResult.columns == null
+												                 or parsedResult.columns.isEmpty())
+												            and (parsedResult.data == null
+												                 or parsedResult.data.isEmpty())}">
+												    <div class="table-primary-text"
+												         th:text="${parsedResult.value}">
+												        Value
+												    </div>
+												</div>
+								
+								                <!-- No structured result -->
+								              <div th:if="${parsedResult == null
+											            or (
+											                widget.widgetType == 'STAT'
+											                and parsedResult.value == null
+											                and (parsedResult.metrics == null
+											                     or parsedResult.metrics.isEmpty())
+											            )
+											            or (
+											                widget.widgetType == 'STATUS'
+											                and parsedResult.value == null
+											                and (parsedResult.metrics == null
+											                     or parsedResult.metrics.isEmpty())
+											            )
+											            or (
+											                widget.widgetType != 'STAT'
+											                and widget.widgetType != 'STATUS'
+											                and widget.widgetType != 'CHART'
+											                and (parsedResult.columns == null
+											                     or parsedResult.columns.isEmpty())
+											                and (parsedResult.data == null
+											                     or parsedResult.data.isEmpty())
+											                and (parsedResult.value == null)
+											                and (parsedResult.metrics == null
+											                     or parsedResult.metrics.isEmpty())
+											            )}"
+											     class="text-muted">
+											    No detailed result data available.
+											</div>
+								
+								            </div>
+								
+								        </div>
+								
+								    </td>
+								
+								</tr>
+								
+								</th:block>
+								
+								</tbody>
+
+                        </table>
+
+                    </div>
+
+                    <!-- Pagination -->
+                    <div th:replace="~{fragments/data-table :: pagination(
+                            ${history},
+                            ${pageSize},
+                            'dashboardWidgetDetailsTableConfig'
+                    )}">
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+<script th:src="@{/js/chart.umd.min.js}"></script>
+
+   <script th:inline="javascript">
+
+    window.dashboardWidgetDetailsTableConfig = {
+        endpoint: '/dashboard/widgets/' + /*[[${widget.id}]]*/ 0 + '/details',
+        searchId: 'dashboardWidgetDetailsSearch',
+        clearSearchId: 'clear-dashboardWidgetDetailsSearch',
+        pageSizeId: 'dashboardWidgetDetailsPageSize',
+        containerId: 'dashboardWidgetDetailsTableContainer',
+        sort: /*[[${sort}]]*/ 'resultTime',
+        direction: /*[[${direction}]]*/ 'desc'
+    };
+
+
+    document.addEventListener("DOMContentLoaded", function ()
+    {
+        const historyCharts = new Map();
+
+
+        function normalizeChartType(chartType)
+        {
+            switch (String(chartType || "").toUpperCase())
+            {
+                case "LINE":
+                    return "line";
+
+                case "BAR":
+                    return "bar";
+
+                case "PIE":
+                    return "pie";
+
+                case "DONUT":
+                    return "doughnut";
+
+                default:
+                    return "bar";
+            }
+        }
+
+
+        function getChartColors()
+        {
+            const styles =
+                getComputedStyle(document.body);
+
+            return [
+                styles.getPropertyValue("--theme-primary").trim(),
+                styles.getPropertyValue("--success").trim(),
+                styles.getPropertyValue("--warning").trim(),
+                styles.getPropertyValue("--danger").trim(),
+                styles.getPropertyValue("--info").trim(),
+                styles.getPropertyValue("--text-secondary").trim()
+            ];
+        }
+
+
+        function toChartNumber(value)
+        {
+            const number = Number(value);
+
+            return Number.isFinite(number)
+                ? number
+                : 0;
+        }
+
+
+        function createChart(container)
+        {
+            const canvas =
+                container.querySelector("canvas");
+
+            if (!canvas)
+            {
+                return;
+            }
+
+
+            if (typeof Chart === "undefined")
+            {
+                console.error(
+                    "Chart.js is not loaded on the Widget Details page."
+                );
+
+                return;
+            }
+
+
+            const canvasId = canvas.id;
+
+            if (historyCharts.has(canvasId))
+            {
+                return;
+            }
+
+
+            let resultData;
+
+            try
+            {
+                resultData =
+                    JSON.parse(
+                        canvas.dataset.chartData
+                    );
+            }
+            catch (error)
+            {
+                console.error(
+                    "Unable to parse dashboard chart data.",
+                    error
+                );
+
+                return;
+            }
+
+
+            const data =
+                Array.isArray(resultData.data)
+                    ? resultData.data
+                    : [];
+
+
+            if (data.length === 0)
+            {
+                console.warn(
+                    "No chart data found for " + canvasId
+                );
+
+                return;
+            }
+
+
+            const chartType =
+                normalizeChartType(
+                    canvas.dataset.chartType
+                );
+
+
+            const labels =
+                data.map(function (point)
+                {
+                    return point.label || "";
+                });
+
+
+            const values =
+                data.map(function (point)
+                {
+                    return toChartNumber(point.value);
+                });
+
+
+            const colors =
+                getChartColors();
+
+
+            let chartData;
+
+
+            if (
+                chartType === "pie" ||
+                chartType === "doughnut"
+            )
+            {
+                chartData =
+                {
+                    labels: labels,
+
+                    datasets:
+                    [
+                        {
+                            label: "Value",
+                            data: values,
+                            backgroundColor: colors,
+                            borderColor: colors
+                        }
+                    ]
+                };
+            }
+            else
+            {
+                chartData =
+                {
+                    labels: labels,
+
+                    datasets:
+                    [
+                        {
+                            label: "Value",
+                            data: values,
+                            borderColor: colors[0],
+                            backgroundColor: colors[0],
+                            pointBackgroundColor: colors[0],
+                            pointBorderColor: colors[0]
+                        }
+                    ]
+                };
+            }
+
+
+            const options =
+            {
+                responsive: true,
+                maintainAspectRatio: false,
+
+                plugins:
+                {
+                    legend:
+                    {
+                        display: true
+                    }
+                }
+            };
+
+
+            if (
+                chartType === "line" ||
+                chartType === "bar"
+            )
+            {
+                options.scales =
+                {
+                    x:
+                    {
+                        ticks:
+                        {
+                            color:
+                                getComputedStyle(document.body)
+                                    .getPropertyValue(
+                                        "--text-secondary"
+                                    )
+                                    .trim()
+                        }
+                    },
+
+                    y:
+                    {
+                        beginAtZero: true,
+
+                        ticks:
+                        {
+                            color:
+                                getComputedStyle(document.body)
+                                    .getPropertyValue(
+                                        "--text-secondary"
+                                    )
+                                    .trim()
+                        }
+                    }
+                };
+            }
+
+
+            const chart =
+                new Chart(
+                    canvas,
+                    {
+                        type: chartType,
+                        data: chartData,
+                        options: options
+                    }
+                );
+
+
+            historyCharts.set(
+                canvasId,
+                chart
+            );
+        }
+
+
+        document
+        .querySelectorAll(".dashboard-result-details")
+        .forEach(function (button)
+        {
+            button.addEventListener("click", function ()
+            {
+                const resultId =
+                    button.dataset.resultId;
+
+                const detailsRow =
+                    document.getElementById(
+                        "result-details-" + resultId
+                    );
+
+                if (!detailsRow)
+                {
+                    return;
+                }
+
+                const isExpanded =
+                    button.getAttribute("aria-expanded") === "true";
+
+
+                /*
+                 * Close all other expanded result rows.
+                 */
+                document
+                    .querySelectorAll(".dashboard-result-details")
+                    .forEach(function (otherButton)
+                    {
+                        if (otherButton === button)
+                        {
+                            return;
+                        }
+
+                        const otherResultId =
+                            otherButton.dataset.resultId;
+
+                        const otherDetailsRow =
+                            document.getElementById(
+                                "result-details-" + otherResultId
+                            );
+
+                        if (otherDetailsRow)
+                        {
+                            otherDetailsRow.style.display =
+                                "none";
+                        }
+
+                        otherButton.setAttribute(
+                            "aria-expanded",
+                            "false"
+                        );
+
+                        const otherIcon =
+                            otherButton.querySelector("i");
+
+                        if (otherIcon)
+                        {
+                            otherIcon.classList.remove(
+                                "bi-chevron-up"
+                            );
+
+                            otherIcon.classList.add(
+                                "bi-chevron-down"
+                            );
+                        }
+                    });
+
+
+                /*
+                 * Toggle the selected result.
+                 */
+                detailsRow.style.display =
+                    isExpanded
+                        ? "none"
+                        : "table-row";
+
+                button.setAttribute(
+                    "aria-expanded",
+                    String(!isExpanded)
+                );
+
+
+                const icon =
+                    button.querySelector("i");
+
+                if (icon)
+                {
+                    icon.classList.toggle(
+                        "bi-chevron-down",
+                        isExpanded
+                    );
+
+                    icon.classList.toggle(
+                        "bi-chevron-up",
+                        !isExpanded
+                    );
+                }
+
+
+                /*
+                 * Render chart only when opening.
+                 */
+                if (!isExpanded)
+                {
+                    const chartContainer =
+                        detailsRow.querySelector(
+                            ".dashboard-history-chart"
+                        );
+
+                    if (chartContainer)
+                    {
+                        createChart(chartContainer);
+                    }
+                }
+            });
+        });
+    });
+
+</script>
+
+</div>
+
+</body>
+
+</html>

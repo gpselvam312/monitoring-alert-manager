@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout(${pageTitle}, ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+
+<!-- Page Header -->
+
+<div class="page-header">
+
+    <div>
+
+        <h1 class="page-title"
+            th:text="${pageTitle}">
+            Add Monitoring Job
+        </h1>
+
+        <div class="page-subtitle">
+            Configure the monitoring job, schedule and execution settings.
+        </div>
+
+    </div>
+
+    <a th:href="@{/monitoring/jobs}"
+       class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>
+        Back
+    </a>
+
+</div>
+
+
+<!-- ====================================================== -->
+<!-- FORM -->
+<!-- ====================================================== -->
+
+<form th:action="@{/monitoring/jobs}"
+      th:object="${job}"
+      method="post">
+
+    <input type="hidden"
+           th:field="*{id}">
+
+
+    <!-- ================================================== -->
+    <!-- BASIC INFORMATION -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <div class="app-card-title">
+                    Basic Information
+                </div>
+
+                <div class="app-card-subtitle">
+                    Basic details of the monitoring job.
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- Job Name -->
+
+                <div class="col-md-8">
+
+                    <label for="name"
+                           class="form-label">
+                        Job Name
+                        <span class="text-danger">*</span>
+                    </label>
+
+                    <input type="text"
+                           id="name"
+                           th:field="*{name}"
+                           class="form-control"
+                           placeholder="Enter monitoring job name"
+                           required>
+
+                </div>
+
+
+                <!-- Severity -->
+
+                <div class="col-md-4">
+
+                    <label for="severity"
+                           class="form-label">
+                        Severity
+                        <span class="text-danger">*</span>
+                    </label>
+
+                    <select id="severity"
+                            name="severity"
+                            class="form-select"
+                            required>
+
+                        <option value="">
+                            -- Select Severity --
+                        </option>
+
+                        <option value="INFO"
+                                th:selected="${job.severity != null and job.severity.name() == 'INFO'}">
+                            INFO
+                        </option>
+
+                        <option value="WARNING"
+                                th:selected="${job.severity != null and job.severity.name() == 'WARNING'}">
+                            WARNING
+                        </option>
+
+                        <option value="CRITICAL"
+                                th:selected="${job.severity != null and job.severity.name() == 'CRITICAL'}">
+                            CRITICAL
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Description -->
+
+                <div class="col-12">
+
+                    <label for="description"
+                           class="form-label">
+                        Description
+                    </label>
+
+                    <textarea id="description"
+                              th:field="*{description}"
+                              class="form-control"
+                              rows="3"
+                              placeholder="Enter a description"></textarea>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- MONITORING CONFIGURATION -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <div class="app-card-title">
+                    Monitoring Configuration
+                </div>
+
+                <div class="app-card-subtitle">
+                    Define where and how this monitoring job will run.
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+
+                <!-- Application -->
+
+                <div class="col-md-6">
+
+                    <label for="applicationId"
+                           class="form-label">
+                        Application
+                        <span class="text-danger">*</span>
+                    </label>
+
+                    <select id="applicationId"
+                            name="applicationId"
+                            class="form-select"
+                            required>
+
+                        <option value="">
+                            -- Select Application --
+                        </option>
+
+                        <option th:each="appName : ${applications}"
+                                th:value="${appName.id}"
+                                th:text="${appName.name}"
+                                th:selected="${job.application != null and job.application.id == appName.id}">
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Environment -->
+
+                <div class="col-md-6">
+
+                    <label for="environmentId"
+                           class="form-label">
+                        Environment
+                        <span class="text-danger">*</span>
+                    </label>
+
+                    <select id="environmentId"
+                            name="environmentId"
+                            class="form-select"
+                            required>
+
+                        <option value="">
+                            -- Select Environment --
+                        </option>
+
+                        <option th:each="environment : ${environments}"
+                                th:value="${environment.id}"
+                                th:text="${environment.name}"
+                                th:selected="${job.environment != null and job.environment.id == environment.id}">
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Monitoring Type -->
+
+                <div class="col-md-6">
+
+                    <label for="type"
+                           class="form-label">
+                        Monitoring Type
+                        <span class="text-danger">*</span>
+                    </label>
+
+                    <select id="type"
+                            name="type"
+                            class="form-select"
+                            required>
+
+                        <option value="">
+                            -- Select Monitoring Type --
+                        </option>
+
+                        <option value="SCRIPT"
+                                th:selected="${job.type != null and job.type.name() == 'SCRIPT'}">
+                            Script
+                        </option>
+
+                        <option value="API"
+                                th:selected="${job.type != null and job.type.name() == 'API'}">
+                            API
+                        </option>
+
+                        <option value="HEALTH_CHECK"
+                                th:selected="${job.type != null and job.type.name() == 'HEALTH_CHECK'}">
+                            Health Check
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Timeout -->
+
+                <div class="col-md-6">
+
+                    <label for="timeoutSeconds"
+                           class="form-label">
+                        Timeout
+                        <span class="text-danger">*</span>
+                    </label>
+
+                    <div class="input-group">
+
+                        <input type="number"
+                               id="timeoutSeconds"
+                               th:field="*{timeoutSeconds}"
+                               class="form-control"
+                               min="1"
+                               required>
+
+                        <span class="input-group-text">
+                            seconds
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Machine -->
+
+                <div class="col-md-6">
+
+                    <label for="machineId"
+                           class="form-label">
+                        Machine
+                    </label>
+
+                    <select id="machineId"
+                            name="machineId"
+                            class="form-select">
+
+                        <option value="">
+                            -- Select Machine --
+                        </option>
+
+                        <option th:each="machine : ${machines}"
+                                th:value="${machine.id}"
+                                th:text="${machine.name}"
+                                th:attr="data-environment=${machine.environment != null ? machine.environment.id : ''}"
+                                th:selected="${job.machine != null and job.machine.id == machine.id}">
+                        </option>
+
+                    </select>
+
+                    <div class="form-text">
+                        Machines are filtered based on the selected environment.
+                    </div>
+
+                </div>
+
+
+                <!-- Schedule -->
+
+                <div class="col-md-6">
+
+                    <label for="scheduleId"
+                           class="form-label">
+                        Schedule
+                    </label>
+
+                    <select id="scheduleId"
+                            name="scheduleId"
+                            class="form-select">
+
+                        <option value="">
+                            -- Select Schedule --
+                        </option>
+
+                        <option th:each="schedule : ${schedules}"
+                                th:value="${schedule.id}"
+                                th:text="${schedule.name}"
+                                th:selected="${job.schedule != null and job.schedule.id == schedule.id}">
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Enabled -->
+
+                <div class="col-12">
+
+                    <div class="machine-enabled-option">
+
+                        <div class="machine-enabled-icon">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+
+                        <div class="machine-enabled-content">
+
+                            <label for="enabled"
+                                   class="machine-enabled-title">
+                                Monitoring Enabled
+                            </label>
+
+                            <div class="machine-enabled-description">
+                                When enabled, this monitoring job will run according to its schedule.
+                            </div>
+
+                        </div>
+
+                        <div class="machine-enabled-switch">
+
+                            <input type="checkbox"
+                                   id="enabled"
+                                   th:field="*{enabled}"
+                                   class="form-check-input">
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- DASHBOARD CONFIGURATION -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <div class="app-card-title">
+                    Dashboard Configuration
+                </div>
+
+                <div class="app-card-subtitle">
+                    Configure how this monitoring job appears on the dashboard.
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+
+                <!-- Display on Dashboard -->
+
+                <div class="col-12">
+
+                    <div class="machine-enabled-option">
+
+                        <div class="machine-enabled-icon">
+                            <i class="bi bi-grid-1x2"></i>
+                        </div>
+
+                        <div class="machine-enabled-content">
+
+                            <label for="dashboardEnabled"
+                                   class="machine-enabled-title">
+                                Display on Dashboard
+                            </label>
+
+                            <div class="machine-enabled-description">
+                                When enabled, this monitoring job will appear as a dashboard panel.
+                            </div>
+
+                        </div>
+
+                        <div class="machine-enabled-switch">
+
+                            <input type="checkbox"
+                                   id="dashboardEnabled"
+                                   th:field="*{dashboardEnabled}"
+                                   class="form-check-input">
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Dashboard Title -->
+
+                <div class="col-md-6">
+
+                    <label for="dashboardTitle"
+                           class="form-label">
+                        Dashboard Title
+                    </label>
+
+                    <input type="text"
+                           id="dashboardTitle"
+                           th:field="*{dashboardTitle}"
+                           class="form-control"
+                           maxlength="200"
+                           placeholder="Defaults to job name">
+
+                    <div class="form-text">
+                        Leave blank to use the monitoring job name.
+                    </div>
+
+                </div>
+
+
+                <!-- Dashboard Width -->
+
+                <div class="col-md-3">
+
+                    <label for="dashboardWidth"
+                           class="form-label">
+                        Dashboard Width
+                    </label>
+
+                    <select id="dashboardWidth"
+                            th:field="*{dashboardWidth}"
+                            class="form-select">
+
+                        <option value="3">
+                            Quarter
+                        </option>
+
+                        <option value="4">
+                            One-third
+                        </option>
+
+                        <option value="6">
+                            Half
+                        </option>
+
+                        <option value="8">
+                            Two-thirds
+                        </option>
+
+                        <option value="12">
+                            Full
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Dashboard Sort Order -->
+
+                <div class="col-md-3">
+
+                    <label for="dashboardSortOrder"
+                           class="form-label">
+                        Sort Order
+                    </label>
+
+                    <input type="number"
+                           id="dashboardSortOrder"
+                           th:field="*{dashboardSortOrder}"
+                           class="form-control"
+                           min="0"
+                           placeholder="100">
+
+                    <div class="form-text">
+                        Lower numbers appear first.
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- SCRIPT CONFIGURATION -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <div class="app-card-title">
+                    Script Configuration
+                </div>
+
+                <div class="app-card-subtitle">
+                    Used when Monitoring Type is Script.
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+
+                <!-- Script Path -->
+
+                <div class="col-md-8">
+
+                    <label for="scriptPath"
+                           class="form-label">
+                        Script Path
+                    </label>
+
+                    <input type="text"
+                           id="scriptPath"
+                           th:field="*{scriptPath}"
+                           class="form-control form-control-code"
+                           placeholder="/opt/monitoring/scripts/check.sh">
+
+                </div>
+
+
+                <!-- Working Directory -->
+
+                <div class="col-md-4">
+
+                    <label for="workingDirectory"
+                           class="form-label">
+                        Working Directory
+                    </label>
+
+                    <input type="text"
+                           id="workingDirectory"
+                           th:field="*{workingDirectory}"
+                           class="form-control form-control-code"
+                           placeholder="/opt/monitoring">
+
+                </div>
+
+
+                <!-- Command Arguments -->
+
+                <div class="col-12">
+
+                    <label for="commandArguments"
+                           class="form-label">
+                        Command Arguments
+                    </label>
+
+                    <textarea id="commandArguments"
+                              th:field="*{commandArguments}"
+                              class="form-control form-control-code"
+                              rows="3"
+                              placeholder="Optional command arguments"></textarea>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- API CONFIGURATION -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <div class="app-card-title">
+                    API Configuration
+                </div>
+
+                <div class="app-card-subtitle">
+                    Used when Monitoring Type is API.
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+
+                <!-- HTTP Method -->
+
+                <div class="col-md-3">
+
+                    <label for="httpMethod"
+                           class="form-label">
+                        HTTP Method
+                    </label>
+
+                    <select id="httpMethod"
+                            th:field="*{httpMethod}"
+                            class="form-select">
+
+                        <option value="">
+                            -- Select --
+                        </option>
+
+                        <option value="GET">
+                            GET
+                        </option>
+
+                        <option value="POST">
+                            POST
+                        </option>
+
+                        <option value="PUT">
+                            PUT
+                        </option>
+
+                        <option value="DELETE">
+                            DELETE
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- URL -->
+
+                <div class="col-md-9">
+
+                    <label for="url"
+                           class="form-label">
+                        URL
+                    </label>
+
+                    <input type="text"
+                           id="url"
+                           th:field="*{url}"
+                           class="form-control"
+                           placeholder="https://example.com/api/status">
+
+                </div>
+
+
+                <!-- Request Headers -->
+
+                <div class="col-12">
+
+                    <label for="requestHeaders"
+                           class="form-label">
+                        Request Headers
+                    </label>
+
+                    <textarea id="requestHeaders"
+                              th:field="*{requestHeaders}"
+                              class="form-control form-control-code"
+                              rows="4"
+                              placeholder="Content-Type: application/json"></textarea>
+
+                </div>
+
+
+                <!-- Request Body -->
+
+                <div class="col-12">
+
+                    <label for="requestBody"
+                           class="form-label">
+                        Request Body
+                    </label>
+
+                    <textarea id="requestBody"
+                              th:field="*{requestBody}"
+                              class="form-control form-control-code"
+                              rows="5"
+                              placeholder="Optional request body"></textarea>
+
+                </div>
+
+
+                <!-- Expected HTTP Status -->
+
+                <div class="col-md-4">
+
+                    <label for="expectedHttpStatus"
+                           class="form-label">
+                        Expected HTTP Status
+                    </label>
+
+                    <input type="number"
+                           id="expectedHttpStatus"
+                           th:field="*{expectedHttpStatus}"
+                           class="form-control"
+                           placeholder="200">
+
+                </div>
+
+
+                <!-- Expected Response -->
+
+                <div class="col-md-8">
+
+                    <label for="expectedResponse"
+                           class="form-label">
+                        Expected Response
+                    </label>
+
+                    <input type="text"
+                           id="expectedResponse"
+                           th:field="*{expectedResponse}"
+                           class="form-control"
+                           placeholder="Optional expected response">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- HEALTH CHECK CONFIGURATION -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <div class="app-card-title">
+                    Health Check Configuration
+                </div>
+
+                <div class="app-card-subtitle">
+                    Used when Monitoring Type is Health Check.
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+
+                <!-- Health Check Type -->
+
+                <div class="col-md-4">
+
+                    <label for="healthCheckType"
+                           class="form-label">
+                        Health Check Type
+                    </label>
+
+                    <select id="healthCheckType"
+                            th:field="*{healthCheckType}"
+                            class="form-select">
+
+                        <option value="">
+                            -- Select --
+                        </option>
+
+                        <option value="TCP">
+                            TCP
+                        </option>
+
+                        <option value="HTTP">
+                            HTTP
+                        </option>
+
+                        <option value="PING">
+                            PING
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- Target Host -->
+
+                <div class="col-md-5">
+
+                    <label for="targetHost"
+                           class="form-label">
+                        Target Host
+                    </label>
+
+                    <input type="text"
+                           id="targetHost"
+                           th:field="*{targetHost}"
+                           class="form-control"
+                           placeholder="Hostname or IP address">
+
+                </div>
+
+
+                <!-- Target Port -->
+
+                <div class="col-md-3">
+
+                    <label for="targetPort"
+                           class="form-label">
+                        Target Port
+                    </label>
+
+                    <input type="number"
+                           id="targetPort"
+                           th:field="*{targetPort}"
+                           class="form-control"
+                           placeholder="8080">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- RETRY & RECOVERY -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <div class="app-card-title">
+                    Retry &amp; Recovery
+                </div>
+
+                <div class="app-card-subtitle">
+                    Configure retry and recovery behavior.
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+
+                <!-- Retry Count -->
+
+                <div class="col-md-4">
+
+                    <label for="retryCount"
+                           class="form-label">
+                        Retry Count
+                    </label>
+
+                    <input type="number"
+                           id="retryCount"
+                           th:field="*{retryCount}"
+                           class="form-control"
+                           min="0">
+
+                </div>
+
+
+                <!-- Retry Delay -->
+
+                <div class="col-md-4">
+
+                    <label for="retryDelaySeconds"
+                           class="form-label">
+                        Retry Delay
+                    </label>
+
+                    <div class="input-group">
+
+                        <input type="number"
+                               id="retryDelaySeconds"
+                               th:field="*{retryDelaySeconds}"
+                               class="form-control"
+                               min="0">
+
+                        <span class="input-group-text">
+                            seconds
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Recovery Enabled -->
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Recovery Detection
+                    </label>
+
+                    <div class="form-check mt-2">
+
+                        <input type="checkbox"
+                               id="recoveryEnabled"
+                               th:field="*{recoveryEnabled}"
+                               class="form-check-input">
+
+                        <label for="recoveryEnabled"
+                               class="form-check-label">
+                            Enable recovery detection
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Expected Result -->
+
+                <div class="col-md-6">
+
+                    <label for="expectedResult"
+                           class="form-label">
+                        Expected Result
+                    </label>
+
+                    <textarea id="expectedResult"
+                              th:field="*{expectedResult}"
+                              class="form-control"
+                              rows="3"
+                              placeholder="Optional expected result"></textarea>
+
+                </div>
+
+
+                <!-- Failure Message -->
+
+                <div class="col-md-6">
+
+                    <label for="failureMessage"
+                           class="form-label">
+                        Failure Message
+                    </label>
+
+                    <textarea id="failureMessage"
+                              th:field="*{failureMessage}"
+                              class="form-control"
+                              rows="3"
+                              placeholder="Optional failure message"></textarea>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- FORM ACTIONS -->
+    <!-- ================================================== -->
+
+    <div class="form-actions">
+
+        <a th:href="@{/monitoring/jobs}"
+           class="btn btn-outline-secondary">
+            Cancel
+        </a>
+
+        <button type="submit"
+                class="btn btn-primary">
+
+            <i class="bi bi-check-lg me-1"></i>
+
+            <span th:text="${submitLabel}">
+                Save Job
+            </span>
+
+        </button>
+
+    </div>
+
+</form>
+
+
+<!-- Monitoring Job Machine Filtering -->
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const environmentSelect =
+            document.getElementById("environmentId");
+
+        const machineSelect =
+            document.getElementById("machineId");
+
+        if (!environmentSelect || !machineSelect) {
+            return;
+        }
+
+        const allMachineOptions =
+            Array.from(
+                machineSelect.querySelectorAll(
+                    "option[data-environment]"
+                )
+            );
+
+        function filterMachines() {
+
+            const selectedEnvironment =
+                environmentSelect
+                    .options[environmentSelect.selectedIndex]
+                    ?.text.trim();
+
+            const currentMachineId =
+                machineSelect.value;
+
+            machineSelect.innerHTML = "";
+
+            const defaultOption =
+                document.createElement("option");
+
+            defaultOption.value = "";
+            defaultOption.textContent =
+                "-- Select Machine --";
+
+            machineSelect.appendChild(defaultOption);
+
+            if (!selectedEnvironment ||
+                selectedEnvironment === "-- Select Environment --") {
+
+                return;
+            }
+
+            allMachineOptions.forEach(function (option) {
+
+                const machineEnvironment =
+                    option.getAttribute(
+                        "data-environment"
+                    );
+
+                if (machineEnvironment === selectedEnvironment) {
+
+                    const newOption =
+                        option.cloneNode(true);
+
+                    machineSelect.appendChild(
+                        newOption
+                    );
+
+                    if (newOption.value === currentMachineId) {
+                        newOption.selected = true;
+                    }
+
+                }
+
+            });
+
+        }
+
+        environmentSelect.addEventListener(
+            "change",
+            function () {
+
+                /*
+                 * Environment changed, so clear the currently
+                 * selected machine and show only matching machines.
+                 */
+
+                machineSelect.value = "";
+
+                filterMachines();
+
+            }
+        );
+
+        /*
+         * Initial filtering is important when editing
+         * an existing monitoring job.
+         */
+
+        filterMachines();
+
+    });
+
+</script>
+
+
+</div>
+
+</body>
+</html>

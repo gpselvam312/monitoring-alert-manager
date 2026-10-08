@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(pageTitle)">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title
+	th:text="${pageTitle != null ? pageTitle + ' | ' + applicationName : applicationName}">
+	Infrastructure &amp; Application Monitoring</title>
+<!-- Bootstrap -->
+<link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" th:href="@{/css/bootstrap-icons.min.css}">
+<!-- Application CSS -->
+<link rel="stylesheet" th:href="@{/css/app.css}">
+</head>

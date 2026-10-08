@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('Applications', ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+    <!-- Page header -->
+    <div class="page-header">
+
+        <div>
+
+            <h1 class="page-title">
+                Applications
+            </h1>
+
+            <p class="page-subtitle">
+                Manage applications used by monitoring jobs.
+            </p>
+
+        </div>
+
+        <div class="page-header-actions">
+
+            <a sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+               th:href="@{/administration/applications/new}"
+               class="btn btn-primary">
+
+                <i class="bi bi-plus-lg me-1"></i>
+                Add Application
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- Applications card -->
+    <div class="app-card">
+
+        <div class="app-card-body p-0"
+             id="applicationsTableWrapper">
+
+            <!-- Search and page size -->
+            <div th:replace="~{fragments/data-table :: controls(
+                    'applicationSearch',
+                    'applicationPageSize',
+                    'Search applications...',
+                    ${pageSize},
+                    ${search}
+            )}">
+            </div>
+
+            <div id="applicationsTableContainer">
+
+                <div th:fragment="applicationsTable">
+
+                    <!-- Empty state -->
+                    <div th:if="${applications.totalElements == 0}"
+                         class="empty-state">
+
+                        <div class="empty-state-icon">
+
+                            <i th:if="${search != null and !search.isBlank()}"
+                               class="bi bi-search">
+                            </i>
+
+                            <i th:unless="${search != null and !search.isBlank()}"
+                               class="bi bi-box">
+                            </i>
+
+                        </div>
+
+                        <!-- No search results -->
+                        <div th:if="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No applications match your search
+                            </h6>
+
+                            <p>
+                                Try a different search term or clear the search.
+                            </p>
+
+                        </div>
+
+                        <!-- No applications -->
+                        <div th:unless="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No applications configured
+                            </h6>
+
+                            <p>
+                                Add an application to start configuring monitoring.
+                            </p>
+
+                            <a sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                               th:href="@{/administration/applications/new}"
+                               class="btn btn-primary">
+
+                                <i class="bi bi-plus-lg me-1"></i>
+                                Add Application
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Application table -->
+                    <div th:if="${applications.totalElements > 0}"
+                         class="table-responsive">
+
+                        <table class="table app-table align-middle mb-0">
+
+                            <thead>
+
+                            <tr>
+
+                                <!-- Name -->
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="applicationTableConfig"
+                                            data-sort="name"
+                                            onclick="DataTable.sort(this)">
+
+                                        Name
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+                                </th>
+
+                                <!-- Description -->
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="applicationTableConfig"
+                                            data-sort="description"
+                                            onclick="DataTable.sort(this)">
+
+                                        Description
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+                                </th>
+
+                                <!-- Status -->
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="applicationTableConfig"
+                                            data-sort="enabled"
+                                            onclick="DataTable.sort(this)">
+
+                                        Status
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+                                </th>
+
+                                <!-- Actions -->
+                                <th sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                    class="text-end table-actions-column">
+
+                                    Actions
+
+                                </th>
+
+                            </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                            <tr th:each="appName : ${applications.content}">
+
+                                <!-- Name -->
+                                <td>
+
+                                    <div class="table-primary-text"
+                                         th:text="${appName.name}">
+                                        Application
+                                    </div>
+
+                                </td>
+
+                                <!-- Description -->
+                                <td>
+
+                                    <span th:if="${appName.description != null and !appName.description.isBlank()}"
+                                          class="table-secondary-text"
+                                          th:text="${appName.description}">
+                                        Description
+                                    </span>
+
+                                    <span th:unless="${appName.description != null and !appName.description.isBlank()}"
+                                          class="text-muted">
+                                        —
+                                    </span>
+
+                                </td>
+
+                                <!-- Status -->
+                                <td>
+
+                                    <span th:if="${appName.enabled}"
+                                          class="status-badge status-healthy">
+
+                                        <span class="status-dot"></span>
+                                        ENABLED
+
+                                    </span>
+
+                                    <span th:unless="${appName.enabled}"
+                                          class="status-badge status-disabled">
+
+                                        <span class="status-dot"></span>
+                                        DISABLED
+
+                                    </span>
+
+                                </td>
+
+                                <!-- Actions -->
+                                <td sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                    class="text-end table-actions-column">
+
+                                  <!-- Text actions -->
+									<div class="table-actions table-actions-text">
+									
+									    <!-- Edit -->
+									    <a th:href="@{/administration/applications/{id}/edit(id=${appName.id})}"
+									       class="btn btn-sm btn-outline-primary"
+									       title="Edit">
+									        <i class="bi bi-pencil"></i>
+									        <span>Edit</span>
+									    </a>
+									
+									    <!-- Enable / Disable -->
+									    <form th:action="@{/administration/applications/{id}/toggle(id=${appName.id})}"
+									          method="post">
+									
+									        <button type="submit"
+									                class="btn btn-sm btn-outline-warning"
+									                th:title="${appName.enabled ? 'Disable' : 'Enable'}">
+									
+									            <i th:if="${appName.enabled}"
+									               class="bi bi-pause-circle"></i>
+									
+									            <i th:unless="${appName.enabled}"
+									               class="bi bi-play-circle"></i>
+									
+									            <span th:if="${appName.enabled}">
+									                Disable
+									            </span>
+									
+									            <span th:unless="${appName.enabled}">
+									                Enable
+									            </span>
+									
+									        </button>
+									
+									    </form>
+									
+									    <!-- Delete -->
+																 
+							 		<form method="post"
+								      th:action="@{/administration/applications/{id}/delete(id=${appName.id})}"
+								      data-app-action="delete"
+								      data-app-action-title="Delete Application"
+								      data-app-action-message="Are you sure you want to delete this application?"
+								      data-app-action-description="This action cannot be undone.">
+	      
+										    <button type="submit"
+										            class="btn btn-sm btn-outline-danger"
+										            title="Delete">
+										
+										        <i class="bi bi-trash"></i>
+										        <span>Delete</span>
+										
+										    </button>
+									
+									</form>
+									
+									</div>
+
+                                    <!-- Icon actions -->
+									<div class="table-actions table-actions-icons">
+									
+									    <!-- Edit -->
+									    <a th:href="@{/administration/applications/{id}/edit(id=${appName.id})}"
+									       class="btn btn-sm btn-outline-primary"
+									       title="Edit"
+									       aria-label="Edit">
+									
+									        <i class="bi bi-pencil"></i>
+									
+									    </a>
+									
+									    <!-- Enable / Disable -->
+									    <form th:action="@{/administration/applications/{id}/toggle(id=${appName.id})}"
+									          method="post">
+									
+									        <button type="submit"
+									                class="btn btn-sm btn-outline-warning"
+									                th:title="${appName.enabled ? 'Disable' : 'Enable'}"
+									                th:attr="aria-label=${appName.enabled ? 'Disable' : 'Enable'}">
+									
+									            <i th:if="${appName.enabled}"
+									               class="bi bi-pause-circle"></i>
+									
+									            <i th:unless="${appName.enabled}"
+									               class="bi bi-play-circle"></i>
+									
+									        </button>
+									
+									    </form>
+									
+									    <!-- Delete -->
+									  <form method="post"
+								      th:action="@{/administration/applications/{id}/delete(id=${appName.id})}"
+								      data-app-action="delete"
+								      data-app-action-title="Delete Application"
+								      data-app-action-message="Are you sure you want to delete this application?"
+								      data-app-action-description="This action cannot be undone.">
+									
+									    <button type="submit"
+									            class="btn btn-sm btn-outline-danger"
+									            title="Delete"
+									            aria-label="Delete">
+									
+									        <i class="bi bi-trash"></i>
+									
+									    </button>
+									   </form>
+									
+									
+									</div>
+
+                                </td>
+
+                            </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                    <!-- Pagination -->
+                    <div th:replace="~{fragments/data-table :: pagination(
+                            ${applications},
+                            ${pageSize},
+                            'applicationTableConfig'
+                    )}">
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script th:inline="javascript">
+
+        window.applicationTableConfig = {
+            endpoint: '/administration/applications/table',
+            searchId: 'applicationSearch',
+            clearSearchId: 'clear-applicationSearch',
+            pageSizeId: 'applicationPageSize',
+            containerId: 'applicationsTableContainer',
+            sort: 'name',
+            direction: 'asc'
+        };
+
+    </script>
+
+</div>
+
+</body>
+
+</html>

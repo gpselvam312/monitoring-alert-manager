@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout(${schedule.name + ' - Schedule Details'}, ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+    <!-- Page Header -->
+
+    <div class="page-header">
+
+        <div class="page-header-left">
+
+            <div class="page-header-icon">
+
+                <i class="bi bi-calendar3"></i>
+
+            </div>
+
+            <div>
+
+                <h1 class="page-title"
+                    th:text="${schedule.name}">
+                    Schedule
+                </h1>
+
+                <p class="page-subtitle"
+                   th:text="${schedule.description ?: 'Schedule details and configuration'}">
+                    Schedule details and configuration
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="page-header-actions">
+
+            <!-- Edit: configuration permission only -->
+
+            <a sec:authorize="hasAuthority('SCHEDULE_CONFIG')"
+               th:href="@{/scheduling/schedules/{id}/edit(id=${schedule.id})}"
+               class="btn btn-primary">
+
+                <i class="bi bi-pencil me-1"></i>
+                Edit
+
+            </a>
+
+
+            <a th:href="@{/scheduling/schedules}"
+               class="btn btn-outline-secondary">
+
+                <i class="bi bi-arrow-left me-1"></i>
+                Back to Schedules
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- Basic Information -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Basic Information
+                </h2>
+
+                <p class="app-card-subtitle">
+                    General schedule details
+                </p>
+
+            </div>
+
+            <i class="bi bi-info-circle app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- Name -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Name
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${schedule.name}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Schedule Type -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Schedule Type
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span class="status-badge status-info">
+
+                                <i class="bi bi-calendar-check"></i>
+
+                                <span th:text="${schedule.type}">
+                                    CRON
+                                </span>
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Description -->
+
+                <div class="col-12">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Description
+                        </div>
+
+                        <div class="detail-value"
+                             th:text="${schedule.description ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Status -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Status
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span th:if="${schedule.enabled}"
+                                  class="status-badge status-healthy">
+
+                                <span class="status-dot"></span>
+                                Enabled
+
+                            </span>
+
+                            <span th:unless="${schedule.enabled}"
+                                  class="status-badge status-disabled">
+
+                                <span class="status-dot"></span>
+                                Disabled
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Timezone -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Timezone
+                        </div>
+
+                        <div class="detail-value detail-value-primary">
+
+                            <i class="bi bi-globe2 me-2 text-secondary"></i>
+
+                            <span th:text="${schedule.timezone ?: '-'}">
+                                -
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Schedule Configuration -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Schedule Configuration
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Trigger configuration for this schedule
+                </p>
+
+            </div>
+
+            <i class="bi bi-clock app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <!-- CRON -->
+
+            <div th:if="${schedule.type != null and schedule.type.name() == 'CRON'}">
+
+                <div class="row g-4">
+
+                    <div class="col-md-8">
+
+                        <div class="detail-item">
+
+                            <div class="detail-label">
+                                Cron Expression
+                            </div>
+
+                            <div class="detail-code"
+                                 th:text="${schedule.cronExpression ?: '-'}">
+                                -
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- FIXED DELAY -->
+
+            <div th:if="${schedule.type != null and schedule.type.name() == 'FIXED_DELAY'}">
+
+                <div class="row g-4">
+
+                    <div class="col-md-6">
+
+                        <div class="detail-item">
+
+                            <div class="detail-label">
+                                Fixed Delay
+                            </div>
+
+                            <div class="detail-value detail-value-with-unit">
+
+                                <span th:text="${schedule.fixedDelaySeconds != null ? schedule.fixedDelaySeconds : '-'}">
+                                    -
+                                </span>
+
+                                <span th:if="${schedule.fixedDelaySeconds != null}">
+                                    seconds
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- FIXED RATE -->
+
+            <div th:if="${schedule.type != null and schedule.type.name() == 'FIXED_RATE'}">
+
+                <div class="row g-4">
+
+                    <div class="col-md-6">
+
+                        <div class="detail-item">
+
+                            <div class="detail-label">
+                                Fixed Rate
+                            </div>
+
+                            <div class="detail-value detail-value-with-unit">
+
+                                <span th:text="${schedule.fixedRateSeconds != null ? schedule.fixedRateSeconds : '-'}">
+                                    -
+                                </span>
+
+                                <span th:if="${schedule.fixedRateSeconds != null}">
+                                    seconds
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Time Window -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Time Window
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Optional execution time restrictions
+                </p>
+
+            </div>
+
+            <i class="bi bi-hourglass-split app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- Start Time -->
+
+                <div class="col-md-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Start Time
+                        </div>
+
+                        <div class="detail-value detail-value-primary">
+
+                            <i class="bi bi-clock me-2 text-secondary"></i>
+
+                            <span th:text="${schedule.startTime ?: '-'}">
+                                -
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- End Time -->
+
+                <div class="col-md-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            End Time
+                        </div>
+
+                        <div class="detail-value detail-value-primary">
+
+                            <i class="bi bi-clock-history me-2 text-secondary"></i>
+
+                            <span th:text="${schedule.endTime ?: '-'}">
+                                -
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Timezone -->
+
+                <div class="col-md-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Timezone
+                        </div>
+
+                        <div class="detail-value detail-value-primary">
+
+                            <i class="bi bi-globe2 me-2 text-secondary"></i>
+
+                            <span th:text="${schedule.timezone ?: '-'}">
+                                -
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Audit Information -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Audit Information
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Creation and modification details
+                </p>
+
+            </div>
+
+            <i class="bi bi-clock-history app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- Created At -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Created At
+                        </div>
+
+                        <div class="detail-value"
+                             th:text="${schedule.createdAt ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Updated At -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Updated At
+                        </div>
+
+                        <div class="detail-value"
+                             th:text="${schedule.updatedAt ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Bottom Actions -->
+
+    <div class="view-page-actions">
+
+        <a th:href="@{/scheduling/schedules}"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left me-1"></i>
+            Back to Schedules
+
+        </a>
+
+
+        <!-- Edit: configuration permission only -->
+
+        <a sec:authorize="hasAuthority('SCHEDULE_CONFIG')"
+           th:href="@{/scheduling/schedules/{id}/edit(id=${schedule.id})}"
+           class="btn btn-primary">
+
+            <i class="bi bi-pencil me-1"></i>
+            Edit Schedule
+
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>
+

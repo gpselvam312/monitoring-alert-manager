@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout(${pageTitle}, ~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+
+<!-- Page Header -->
+<div class="page-header">
+
+    <div>
+
+        <h1 class="page-title"
+            th:text="${pageTitle}">
+            Add Machine
+        </h1>
+
+        <p class="page-subtitle">
+            Configure a server or machine used by monitoring jobs.
+        </p>
+
+    </div>
+
+    <a th:href="@{/monitoring/machines}"
+       class="btn btn-outline-primary">
+
+        <i class="bi bi-arrow-left me-1"></i>
+        Back to Machines
+
+    </a>
+
+</div>
+
+<!-- Configuration Form -->
+<form sec:authorize="hasAuthority('MACHINE_CONFIG')"
+      th:action="@{/monitoring/machines}"
+      th:object="${machine}"
+      method="post">
+
+    <input type="hidden"
+           th:field="*{id}">
+
+    <!-- ================================================= -->
+    <!-- MACHINE INFORMATION                               -->
+    <!-- ================================================= -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h5 class="app-card-title">
+                    Machine Information
+                </h5>
+
+                <p class="app-card-subtitle">
+                    Identify the server and provide its network details.
+                </p>
+
+            </div>
+
+            <i class="bi bi-pc-display app-card-header-icon"></i>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-3">
+
+                <!-- Machine Name -->
+                <div class="col-lg-6">
+
+                    <label for="name"
+                           class="form-label">
+
+                        Machine Name
+                        <span class="text-danger">*</span>
+
+                    </label>
+
+                    <input type="text"
+                           id="name"
+                           th:field="*{name}"
+                           class="form-control"
+                           placeholder="Example: SIT-APP-01"
+                           maxlength="150"
+                           required>
+
+                    <div class="form-text">
+                        Unique name used to identify this machine.
+                    </div>
+
+                </div>
+
+                <!-- Hostname -->
+                <div class="col-lg-6">
+
+                    <label for="hostname"
+                           class="form-label">
+
+                        Hostname
+
+                    </label>
+
+                    <input type="text"
+                           id="hostname"
+                           th:field="*{hostname}"
+                           class="form-control"
+                           placeholder="Example: sit-app-01"
+                           maxlength="255">
+
+                    <div class="form-text">
+                        DNS or system hostname of the machine.
+                    </div>
+
+                </div>
+
+                <!-- IP Address -->
+                <div class="col-lg-6">
+
+                    <label for="ipAddress"
+                           class="form-label">
+
+                        IP Address
+
+                    </label>
+
+                    <input type="text"
+                           id="ipAddress"
+                           th:field="*{ipAddress}"
+                           class="form-control"
+                           placeholder="Example: 10.166.6.100"
+                           maxlength="50">
+
+                </div>
+
+                <!-- Environment -->
+                <div class="col-lg-6">
+
+                    <label for="environment"
+                           class="form-label">
+
+                        Environment
+
+                    </label>
+
+                    <select id="environment"
+                            name="environment"
+                            class="form-select">
+
+                        <option value="">
+                            Select Environment
+                        </option>
+
+                        <option th:each="environment : ${environments}"
+                                th:value="${environment.id}"
+                                th:text="${environment.name}"
+                                th:selected="${machine.environment != null and machine.environment.id == environment.id}">
+                        </option>
+
+                    </select>
+
+                    <div class="form-text">
+                        Environment where this machine is hosted.
+                    </div>
+
+                </div>
+
+                <!-- Description -->
+                <div class="col-12">
+
+                    <label for="description"
+                           class="form-label">
+
+                        Description
+
+                    </label>
+
+                    <textarea id="description"
+                              th:field="*{description}"
+                              class="form-control"
+                              rows="4"
+                              maxlength="500"
+                              placeholder="Enter a description for this machine"></textarea>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- MACHINE STATUS                                    -->
+    <!-- ================================================= -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h5 class="app-card-title">
+                    Machine Status
+                </h5>
+
+                <p class="app-card-subtitle">
+                    Control whether this machine can be used for active monitoring.
+                </p>
+
+            </div>
+
+            <i class="bi bi-toggle-on app-card-header-icon"></i>
+
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="machine-enabled-option">
+
+                <div class="machine-enabled-icon">
+
+                    <i class="bi bi-check-circle"></i>
+
+                </div>
+
+                <div class="machine-enabled-content">
+
+                    <label for="enabled"
+                           class="machine-enabled-title">
+
+                        Enable this machine
+
+                    </label>
+
+                    <div class="machine-enabled-description">
+
+                        Disabled machines cannot be selected for active monitoring.
+
+                    </div>
+
+                </div>
+
+                <div class="form-check form-switch machine-enabled-switch">
+
+                    <input type="checkbox"
+                           id="enabled"
+                           th:field="*{enabled}"
+                           class="form-check-input">
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- ACTIONS                                           -->
+    <!-- ================================================= -->
+
+    <div class="form-actions">
+
+        <a th:href="@{/monitoring/machines}"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-x-lg me-1"></i>
+            Cancel
+
+        </a>
+
+        <button type="submit"
+                class="btn btn-primary">
+
+            <i class="bi bi-check-lg me-1"></i>
+
+            <span th:text="${submitLabel}">
+                Save Machine
+            </span>
+
+        </button>
+
+    </div>
+
+</form>
+
+
+</div>
+
+</body>
+</html>

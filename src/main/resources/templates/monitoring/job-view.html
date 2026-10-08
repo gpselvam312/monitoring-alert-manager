@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout(${job.name + ' - Monitoring Job'}, ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+    <!-- Page Header -->
+
+    <div class="page-header">
+
+        <div class="page-header-left">
+
+            <div class="page-header-icon">
+                <i class="bi bi-activity"></i>
+            </div>
+
+            <div>
+
+                <h1 class="page-title"
+                    th:text="${job.name}">
+                    Monitoring Job
+                </h1>
+
+                <p class="page-subtitle"
+                   th:text="${job.description ?: 'Monitoring job details'}">
+                    Monitoring job details
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="page-header-actions">
+
+            <!-- Run Now: ADMIN / OPERATOR -->
+
+            <form th:action="@{/monitoring/jobs/{id}/run(id=${job.id})}"
+                  method="post"
+                  sec:authorize="hasAuthority('MONITORING_RUN')"
+                  style="display: inline;">
+
+                <button type="submit"
+                        class="btn btn-success">
+
+                    <i class="bi bi-play-fill me-1"></i>
+                    Run Now
+
+                </button>
+
+            </form>
+
+
+            <!-- Edit -->
+
+            <a th:href="@{/monitoring/jobs/{id}/edit(id=${job.id})}"
+               class="btn btn-primary"
+               sec:authorize="hasAuthority('MONITORING_CONFIG')">
+
+                <i class="bi bi-pencil me-1"></i>
+                Edit
+
+            </a>
+
+
+            <!-- Back -->
+
+            <a th:href="@{/monitoring/jobs}"
+               class="btn btn-outline-secondary">
+
+                <i class="bi bi-arrow-left me-1"></i>
+                Back to Jobs
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- Basic Information -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Basic Information
+                </h2>
+
+                <p class="app-card-subtitle">
+                    General monitoring job details
+                </p>
+
+            </div>
+
+            <i class="bi bi-info-circle app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- Job Name -->
+
+                <div class="col-lg-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Job Name
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${job.name}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Monitoring Type -->
+
+                <div class="col-sm-6 col-lg-3">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Monitoring Type
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span class="status-badge status-info">
+
+                                <i class="bi bi-activity"></i>
+
+                                <span th:text="${job.type}">
+                                    -
+                                </span>
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Severity -->
+
+                <div class="col-sm-6 col-lg-3">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Severity
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span th:if="${job.severity != null and job.severity.name() == 'CRITICAL'}"
+                                  class="status-badge status-critical">
+
+                                <span class="status-dot"></span>
+
+                                <span th:text="${job.severity}">
+                                    CRITICAL
+                                </span>
+
+                            </span>
+
+
+                            <span th:if="${job.severity != null and job.severity.name() == 'WARNING'}"
+                                  class="status-badge status-warning">
+
+                                <span class="status-dot"></span>
+
+                                <span th:text="${job.severity}">
+                                    WARNING
+                                </span>
+
+                            </span>
+
+
+                            <span th:if="${job.severity != null and job.severity.name() == 'INFO'}"
+                                  class="status-badge status-info">
+
+                                <span class="status-dot"></span>
+
+                                <span th:text="${job.severity}">
+                                    INFO
+                                </span>
+
+                            </span>
+
+
+                            <span th:if="${job.severity == null}"
+                                  class="detail-value-muted">
+
+                                —
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Status -->
+
+                <div class="col-sm-6 col-lg-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Status
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span th:if="${job.enabled}"
+                                  class="status-badge status-healthy">
+
+                                <span class="status-dot"></span>
+                                Enabled
+
+                            </span>
+
+                            <span th:unless="${job.enabled}"
+                                  class="status-badge status-disabled">
+
+                                <span class="status-dot"></span>
+                                Disabled
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Timeout -->
+
+                <div class="col-sm-6 col-lg-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Timeout
+                        </div>
+
+                        <div class="detail-value detail-value-with-unit">
+
+                            <span th:text="${job.timeoutSeconds}">
+                                -
+                            </span>
+
+                            <span>
+                                seconds
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Recovery -->
+
+                <div class="col-sm-6 col-lg-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Recovery Alert
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span th:if="${job.recoveryEnabled}"
+                                  class="status-badge status-healthy">
+
+                                <span class="status-dot"></span>
+                                Enabled
+
+                            </span>
+
+                            <span th:unless="${job.recoveryEnabled}"
+                                  class="status-badge status-disabled">
+
+                                <span class="status-dot"></span>
+                                Disabled
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Target & Scheduling -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Target &amp; Scheduling
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Application, environment, machine and schedule assigned to this job
+                </p>
+
+            </div>
+
+            <i class="bi bi-diagram-3 app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- Application -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Application
+                        </div>
+
+                        <div th:if="${job.application != null}"
+                             class="detail-value detail-value-primary">
+
+                            <i class="bi bi-box me-2 text-secondary"></i>
+
+                            <span th:text="${job.application.name}">
+                                -
+                            </span>
+
+                        </div>
+
+                        <div th:unless="${job.application != null}"
+                             class="detail-value detail-value-muted">
+
+                            No application assigned
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Environment -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Environment
+                        </div>
+
+                        <div th:if="${job.environment != null}"
+                             class="detail-value detail-value-primary">
+
+                            <i class="bi bi-layers me-2 text-secondary"></i>
+
+                            <span th:text="${job.environment.name}">
+                                -
+                            </span>
+
+                        </div>
+
+                        <div th:unless="${job.environment != null}"
+                             class="detail-value detail-value-muted">
+
+                            No environment assigned
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Machine -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Target Machine
+                        </div>
+
+                        <div th:if="${job.machine != null}"
+                             class="detail-value detail-value-primary">
+
+                            <i class="bi bi-pc-display me-2 text-secondary"></i>
+
+                            <span th:text="${job.machine.name}">
+                                -
+                            </span>
+
+                        </div>
+
+                        <div th:unless="${job.machine != null}"
+                             class="detail-value detail-value-muted">
+
+                            No machine assigned
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Schedule -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Schedule
+                        </div>
+
+                        <div th:if="${job.schedule != null}"
+                             class="detail-value detail-value-primary">
+
+                            <i class="bi bi-calendar3 me-2 text-secondary"></i>
+
+                            <span th:text="${job.schedule.name}">
+                                -
+                            </span>
+
+                        </div>
+
+                        <div th:unless="${job.schedule != null}"
+                             class="detail-value detail-value-muted">
+
+                            No schedule assigned
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Dashboard Configuration -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Dashboard Configuration
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Dashboard display settings for this monitoring job
+                </p>
+
+            </div>
+
+            <i class="bi bi-grid-1x2 app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- Display on Dashboard -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Display on Dashboard
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span th:if="${job.dashboardEnabled}"
+                                  class="status-badge status-healthy">
+
+                                <span class="status-dot"></span>
+                                Enabled
+
+                            </span>
+
+                            <span th:unless="${job.dashboardEnabled}"
+                                  class="status-badge status-disabled">
+
+                                <span class="status-dot"></span>
+                                Disabled
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Dashboard Title -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Dashboard Title
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${job.dashboardTitle ?: job.name}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Dashboard Width -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Dashboard Width
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span th:switch="${job.dashboardWidth}">
+
+                                <span th:case="3">
+                                    Quarter
+                                </span>
+
+                                <span th:case="4">
+                                    One-third
+                                </span>
+
+                                <span th:case="6">
+                                    Half
+                                </span>
+
+                                <span th:case="8">
+                                    Two-thirds
+                                </span>
+
+                                <span th:case="12">
+                                    Full
+                                </span>
+
+                                <span th:case="*"
+                                      th:text="${job.dashboardWidth}">
+                                    -
+                                </span>
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Dashboard Sort Order -->
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Sort Order
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${job.dashboardSortOrder}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Script Configuration -->
+
+    <div th:if="${job.type != null and job.type.name() == 'SCRIPT'}"
+         class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Script Configuration
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Script execution details
+                </p>
+
+            </div>
+
+            <i class="bi bi-terminal app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <div class="col-12">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Script Path
+                        </div>
+
+                        <div class="detail-code"
+                             th:text="${job.scriptPath ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-12">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Working Directory
+                        </div>
+
+                        <div class="detail-code"
+                             th:text="${job.workingDirectory ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-12">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Command Arguments
+                        </div>
+
+                        <div class="detail-code"
+                             th:text="${job.commandArguments ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- API Configuration -->
+
+    <div th:if="${job.type != null and job.type.name() == 'API'}"
+         class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    API Configuration
+                </h2>
+
+                <p class="app-card-subtitle">
+                    HTTP request and response validation
+                </p>
+
+            </div>
+
+            <i class="bi bi-globe2 app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- HTTP Method -->
+
+                <div class="col-md-3">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            HTTP Method
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span class="status-badge status-info"
+                                  th:text="${job.httpMethod ?: '-'}">
+                                -
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- URL -->
+
+                <div class="col-md-9">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            URL
+                        </div>
+
+                        <div class="detail-code"
+                             th:text="${job.url ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Headers -->
+
+                <div class="col-12">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Request Headers
+                        </div>
+
+                        <pre class="detail-code-block"
+                             th:text="${job.requestHeaders ?: '-'}">-</pre>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Request Body -->
+
+                <div class="col-12">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Request Body
+                        </div>
+
+                        <pre class="detail-code-block"
+                             th:text="${job.requestBody ?: '-'}">-</pre>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Expected Status -->
+
+                <div class="col-md-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Expected HTTP Status
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${job.expectedHttpStatus ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Expected Response -->
+
+                <div class="col-md-8">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Expected Response
+                        </div>
+
+                        <div class="detail-code"
+                             th:text="${job.expectedResponse ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Health Check Configuration -->
+
+    <div th:if="${job.type != null and job.type.name() == 'HEALTH_CHECK'}"
+         class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Health Check Configuration
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Target health check details
+                </p>
+
+            </div>
+
+            <i class="bi bi-heart-pulse app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <div class="col-md-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Check Type
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${job.healthCheckType ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-5">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Target Host
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${job.targetHost ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Target Port
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${job.targetPort ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Retry & Recovery -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Retry &amp; Recovery
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Failure handling configuration
+                </p>
+
+            </div>
+
+            <i class="bi bi-arrow-repeat app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <!-- Retry Count -->
+
+                <div class="col-sm-6 col-lg-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Retry Count
+                        </div>
+
+                        <div class="detail-value detail-value-primary"
+                             th:text="${job.retryCount}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Retry Delay -->
+
+                <div class="col-sm-6 col-lg-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Retry Delay
+                        </div>
+
+                        <div class="detail-value detail-value-with-unit">
+
+                            <span th:text="${job.retryDelaySeconds}">
+                                -
+                            </span>
+
+                            <span>
+                                seconds
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Recovery Alert -->
+
+                <div class="col-sm-6 col-lg-4">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Recovery Alert
+                        </div>
+
+                        <div class="detail-value">
+
+                            <span th:if="${job.recoveryEnabled}"
+                                  class="status-badge status-healthy">
+
+                                <span class="status-dot"></span>
+                                Enabled
+
+                            </span>
+
+                            <span th:unless="${job.recoveryEnabled}"
+                                  class="status-badge status-disabled">
+
+                                <span class="status-dot"></span>
+                                Disabled
+
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Audit Information -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Audit Information
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Creation and modification details
+                </p>
+
+            </div>
+
+            <i class="bi bi-clock-history app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body">
+
+            <div class="row g-4">
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Created At
+                        </div>
+
+                        <div class="detail-value"
+                             th:text="${job.createdAt ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Updated At
+                        </div>
+
+                        <div class="detail-value"
+                             th:text="${job.updatedAt ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Created By
+                        </div>
+
+                        <div class="detail-value"
+                             th:text="${job.createdBy ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
+                            Updated By
+                        </div>
+
+                        <div class="detail-value"
+                             th:text="${job.updatedBy ?: '-'}">
+                            -
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Execution History -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+
+            <div>
+
+                <h2 class="app-card-title">
+                    Execution History
+                </h2>
+
+                <p class="app-card-subtitle">
+                    Recent executions of this monitoring job
+                </p>
+
+            </div>
+
+            <i class="bi bi-clock-history app-card-header-icon"></i>
+
+        </div>
+
+
+        <div class="app-card-body p-0"
+             id="executionHistory">
+
+            <div class="p-4 text-muted">
+                Loading execution history...
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Bottom Actions -->
+
+    <div class="view-page-actions">
+
+        <a th:href="@{/monitoring/jobs}"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left me-1"></i>
+            Back to Jobs
+
+        </a>
+
+
+        <a th:href="@{/monitoring/jobs/{id}/edit(id=${job.id})}"
+           class="btn btn-primary"
+           sec:authorize="hasAuthority('MONITORING_CONFIG')">
+
+            <i class="bi bi-pencil me-1"></i>
+            Edit Job
+
+        </a>
+
+    </div>
+
+
+    <!-- Execution Details Modal -->
+
+    <div class="modal fade"
+         id="executionDetailsModal"
+         tabindex="-1"
+         aria-labelledby="executionDetailsModalLabel"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+
+            <div class="modal-content"
+                 id="executionDetailsContent">
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Job View JavaScript -->
+
+    <script th:inline="javascript">
+
+        window.monitoringJobId = /*[[${job.id}]]*/ 0;
+
+
+        window.loadExecutionHistory = function(page, size) {
+
+            const historyContainer =
+                document.getElementById('executionHistory');
+
+            if (!historyContainer) {
+                return;
+            }
+
+            historyContainer.innerHTML = `
+                <div class="p-4 text-muted">
+                    Loading execution history...
+                </div>
+            `;
+
+
+            const url =
+                `/monitoring/jobs/${window.monitoringJobId}/executions?page=${page}&size=${size}`;
+
+
+            fetch(url)
+
+                .then(function(response) {
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            'Unable to load execution history.'
+                        );
+
+                    }
+
+                    return response.text();
+
+                })
+
+                .then(function(html) {
+
+                    historyContainer.innerHTML = html;
+
+                })
+
+                .catch(function(error) {
+
+                    console.error(error);
+
+                    historyContainer.innerHTML = `
+                        <div class="p-4 text-danger">
+                            Unable to load execution history.
+                        </div>
+                    `;
+
+                });
+
+        };
+
+
+        window.changeExecutionPageSize = function(size) {
+
+            window.loadExecutionHistory(0, size);
+
+        };
+
+
+        window.viewExecution = function(executionId) {
+
+            const modalElement =
+                document.getElementById('executionDetailsModal');
+
+            const modalContent =
+                document.getElementById('executionDetailsContent');
+
+
+            if (!modalElement || !modalContent) {
+                return;
+            }
+
+
+            modalContent.innerHTML = `
+                <div class="modal-body p-4 text-muted">
+                    Loading execution details...
+                </div>
+            `;
+
+
+            const modal =
+                bootstrap.Modal.getOrCreateInstance(modalElement);
+
+            modal.show();
+
+
+            const url =
+                `/monitoring/jobs/${window.monitoringJobId}/executions/${executionId}`;
+
+
+            fetch(url)
+
+                .then(function(response) {
+
+                    if (!response.ok) {
+
+                        throw new Error(
+                            'Unable to load execution details.'
+                        );
+
+                    }
+
+                    return response.text();
+
+                })
+
+                .then(function(html) {
+
+                    modalContent.innerHTML = html;
+
+                })
+
+                .catch(function(error) {
+
+                    console.error(error);
+
+                    modalContent.innerHTML = `
+                        <div class="modal-body p-4 text-danger">
+                            Unable to load execution details.
+                        </div>
+                    `;
+
+                });
+
+        };
+
+
+        document.addEventListener("DOMContentLoaded", function() {
+
+            window.loadExecutionHistory(0, 5);
+
+        });
+
+    </script>
+
+</div>
+
+</body>
+
+</html>
+

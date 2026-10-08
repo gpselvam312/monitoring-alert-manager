@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<div
+	th:replace="~{fragments/layout :: layout('Settings', ~{::content})}">
+	<div th:fragment="content">
+		<div
+			class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-4">
+			<div>
+				<h2 class="mb-1">Settings</h2>
+				<p class="text-muted mb-0">Manage application-wide
+					configuration.</p>
+			</div>
+		</div>
+		<form method="post" th:action="@{/administration/settings}">
+			<div class="row g-4">
+				<!-- Application -->
+				<div class="col-12 col-xl-6">
+					<div class="card h-100">
+						<div class="card-header">
+							<h5 class="mb-0">
+								<i class="bi bi-window"></i> Application
+							</h5>
+						</div>
+						<div class="card-body">
+							<div class="mb-3">
+								<label for="applicationName" class="form-label">
+									Application Name </label> <input type="text" class="form-control"
+									id="applicationName" name="applicationName" maxlength="100"
+									required th:value="${applicationName}">
+							</div>
+							<div class="mb-0">
+								<label for="theme" class="form-label"> Theme </label> <select
+									class="form-select" id="theme" name="theme" required>
+									<option value="orange" th:selected="${theme == 'orange'}">
+										Orange</option>
+									<option value="blue" th:selected="${theme == 'blue'}">
+										Blue</option>
+									<option value="green" th:selected="${theme == 'green'}">
+										Green</option>
+									<option value="purple" th:selected="${theme == 'purple'}">
+										Purple</option>
+									<option value="orange-dark" th:selected="${theme == 'orange-dark'}">
+										Orange Dark</option>
+									<option value="blue-dark" th:selected="${theme == 'blue-dark'}">
+										Blue Dark</option>
+								</select>
+								<div class="form-text">The selected theme is applied
+									across the application.</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- Site Maintenance -->
+				<div class="col-12 col-xl-6">
+					<div class="card h-100">
+						<div class="card-header">
+							<h5 class="mb-0">
+								<i class="bi bi-tools"></i> Site Maintenance
+							</h5>
+						</div>
+						<div class="card-body">
+							<div class="form-check form-switch mb-4">
+								<input class="form-check-input" type="checkbox" role="switch"
+									id="siteOffline" name="siteOffline" value="true"
+									th:checked="${siteOffline}"> <label
+									class="form-check-label" for="siteOffline"> Site
+									Offline </label>
+								<div class="form-text">Places the application into
+									maintenance mode.</div>
+							</div>
+							<div class="mb-3">
+								<label for="maintenanceMessage" class="form-label">
+									Maintenance Message </label>
+								<textarea class="form-control" id="maintenanceMessage"
+									name="maintenanceMessage" rows="3" maxlength="500" required
+									th:text="${maintenanceMessage}"> </textarea>
+							</div>
+							<div class="mb-0">
+								<label for="maintenanceBypassIps" class="form-label">
+									Maintenance Bypass IPs </label>
+								<textarea class="form-control" id="maintenanceBypassIps"
+									name="maintenanceBypassIps" rows="3"
+									placeholder='["127.0.0.1"]' th:text="${maintenanceBypassIps}"> </textarea>
+								<div class="form-text">JSON array of IP addresses allowed
+									during maintenance.</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="d-flex justify-content-end mt-4">
+				<button type="submit" class="btn btn-primary">
+					<i class="bi bi-check-lg"></i> Save Settings
+				</button>
+			</div>
+		</form>
+	</div>
+</div>
+</html>

@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('Monitoring Jobs', ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+    <!-- Page header -->
+    <div class="page-header">
+
+        <div>
+            <h1 class="page-title">
+                Monitoring Jobs
+            </h1>
+
+            <p class="page-subtitle">
+                Manage scripts, APIs and health checks.
+            </p>
+        </div>
+
+        <div class="page-header-actions">
+
+            <!-- Create: MONITORING_CONFIG -->
+            <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
+               th:href="@{/monitoring/jobs/new}"
+               class="btn btn-primary">
+
+                <i class="bi bi-plus-lg me-1"></i>
+                Create Monitoring Job
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- Jobs card -->
+    <div class="app-card">
+
+        <div class="app-card-body p-0"
+             id="jobsTableWrapper">
+
+            <!-- Search and page size -->
+            <div th:replace="~{fragments/data-table :: controls(
+                    'jobSearch',
+                    'jobPageSize',
+                    'Search monitoring jobs...',
+                    ${pageSize},
+                    ${search}
+            )}">
+            </div>
+
+
+            <div id="jobsTableContainer"
+                 th:fragment="jobsTable">
+
+                <div th:fragment="jobsTable">
+
+                    <!-- Empty state -->
+                    <div th:if="${jobs.totalElements == 0}"
+                         class="empty-state">
+
+                        <div class="empty-state-icon">
+                            <i class="bi bi-activity"></i>
+                        </div>
+
+                        <!-- No search results -->
+                        <div th:if="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No monitoring jobs match your search
+                            </h6>
+
+                            <p>
+                                Try a different search term or clear the search.
+                            </p>
+
+                        </div>
+
+
+                        <!-- No monitoring jobs at all -->
+                        <div th:unless="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No monitoring jobs configured
+                            </h6>
+
+                            <p>
+                                Create your first monitoring job to start monitoring
+                                applications and infrastructure.
+                            </p>
+
+                            <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
+                               th:href="@{/monitoring/jobs/new}"
+                               class="btn btn-primary">
+
+                                <i class="bi bi-plus-lg me-1"></i>
+                                Create Monitoring Job
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Jobs table -->
+                    <div th:if="${jobs.totalElements > 0}"
+                         class="table-responsive">
+
+                        <table class="table app-table align-middle mb-0">
+
+                            <thead>
+
+                            <tr>
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="name"
+                                            onclick="DataTable.sort(this)">
+
+                                        Name
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="application.name"
+                                            onclick="DataTable.sort(this)">
+
+                                        Application
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="environment.name"
+                                            onclick="DataTable.sort(this)">
+
+                                        Environment
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="machine.name"
+                                            onclick="DataTable.sort(this)">
+
+                                        Machine
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="type"
+                                            onclick="DataTable.sort(this)">
+
+                                        Type
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="severity"
+                                            onclick="DataTable.sort(this)">
+
+                                        Severity
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="schedule.name"
+                                            onclick="DataTable.sort(this)">
+
+                                        Schedule
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="enabled"
+                                            onclick="DataTable.sort(this)">
+
+                                        Status
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th>
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="jobTableConfig"
+                                            data-sort="dashboardEnabled"
+                                            onclick="DataTable.sort(this)">
+
+                                        Dashboard
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
+
+                                    </button>
+                                </th>
+
+
+                                <th class="text-end table-actions-column">
+                                    Actions
+                                </th>
+
+                            </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                            <tr th:each="job : ${jobs.content}">
+
+                                <!-- Name -->
+                                <td>
+
+                                    <div class="table-primary-text"
+                                         th:text="${job.name}">
+
+                                        Monitoring Job
+
+                                    </div>
+
+                                    <div th:if="${job.description != null and !job.description.isBlank()}"
+                                         class="table-secondary-text"
+                                         th:text="${job.description}">
+
+                                        Description
+
+                                    </div>
+
+                                </td>
+
+
+                                <!-- Application -->
+                                <td>
+
+                                    <span th:if="${job.application != null}"
+                                          class="table-value-with-icon">
+
+                                        <i class="bi bi-box"></i>
+
+                                        <span th:text="${job.application.name}">
+                                            Application
+                                        </span>
+
+                                    </span>
+
+                                    <span th:unless="${job.application != null}"
+                                          class="text-muted">
+
+                                        —
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Environment -->
+                                <td>
+
+                                    <span th:if="${job.environment != null}"
+                                          class="table-value-with-icon">
+
+                                        <i class="bi bi-layers"></i>
+
+                                        <span th:text="${job.environment.name}">
+                                            Environment
+                                        </span>
+
+                                    </span>
+
+                                    <span th:unless="${job.environment != null}"
+                                          class="text-muted">
+
+                                        —
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Machine -->
+                                <td>
+
+                                    <span th:if="${job.machine != null}"
+                                          class="table-value-with-icon">
+
+                                        <i class="bi bi-pc-display"></i>
+
+                                        <span th:text="${job.machine.name}">
+                                            Machine
+                                        </span>
+
+                                    </span>
+
+                                    <span th:unless="${job.machine != null}"
+                                          class="text-muted">
+
+                                        —
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Type -->
+                                <td>
+
+                                    <span class="status-badge status-info">
+
+                                        <i class="bi bi-activity"></i>
+
+                                        <span th:text="${job.type}">
+                                            SCRIPT
+                                        </span>
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Severity -->
+                                <td>
+
+                                    <span th:if="${job.severity != null and job.severity.name() == 'INFO'}"
+                                          class="status-badge status-info">
+
+                                        INFO
+
+                                    </span>
+
+                                    <span th:if="${job.severity != null and job.severity.name() == 'WARNING'}"
+                                          class="status-badge status-warning">
+
+                                        WARNING
+
+                                    </span>
+
+                                    <span th:if="${job.severity != null and job.severity.name() == 'CRITICAL'}"
+                                          class="status-badge status-critical">
+
+                                        CRITICAL
+
+                                    </span>
+
+                                    <span th:if="${job.severity == null}"
+                                          class="text-muted">
+
+                                        —
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Schedule -->
+                                <td>
+
+                                    <span th:if="${job.schedule != null}"
+                                          class="table-value-with-icon">
+
+                                        <i class="bi bi-calendar3"></i>
+
+                                        <span th:text="${job.schedule.name}">
+                                            Schedule
+                                        </span>
+
+                                    </span>
+
+                                    <span th:unless="${job.schedule != null}"
+                                          class="text-muted">
+
+                                        —
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Status -->
+                                <td>
+
+                                    <span th:if="${job.enabled}"
+                                          class="status-badge status-healthy">
+
+                                        <span class="status-dot"></span>
+                                        ENABLED
+
+                                    </span>
+
+                                    <span th:unless="${job.enabled}"
+                                          class="status-badge status-disabled">
+
+                                        <span class="status-dot"></span>
+                                        DISABLED
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Dashboard -->
+                                <td>
+
+                                    <span th:if="${job.dashboardEnabled}"
+                                          class="status-badge status-healthy">
+
+                                        <span class="status-dot"></span>
+                                        ENABLED
+
+                                    </span>
+
+                                    <span th:unless="${job.dashboardEnabled}"
+                                          class="status-badge status-disabled">
+
+                                        <span class="status-dot"></span>
+                                        DISABLED
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Actions -->
+                                <td class="text-end table-actions-column">
+
+                                    <!-- Normal text actions -->
+                                    <div class="table-actions table-actions-text">
+
+                                        <!-- View -->
+                                        <a sec:authorize="hasAuthority('MONITORING_VIEW')"
+                                           th:href="@{/monitoring/jobs/{id}(id=${job.id})}"
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="View">
+
+                                            <i class="bi bi-eye"></i>
+
+                                            <span class="action-label">
+                                                View
+                                            </span>
+
+                                        </a>
+
+
+                                        <!-- Edit -->
+                                        <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
+                                           th:href="@{/monitoring/jobs/{id}/edit(id=${job.id})}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Edit">
+
+                                            <i class="bi bi-pencil"></i>
+
+                                            <span class="action-label">
+                                                Edit
+                                            </span>
+
+                                        </a>
+
+
+                                        <!-- Enable / Disable -->
+                                        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
+                                              th:action="@{/monitoring/jobs/{id}/toggle(id=${job.id})}"
+                                              method="post">
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-warning"
+                                                    title="Enable or Disable">
+
+                                                <i th:if="${job.enabled}"
+                                                   class="bi bi-pause-circle">
+                                                </i>
+
+                                                <i th:unless="${job.enabled}"
+                                                   class="bi bi-play-circle">
+                                                </i>
+
+                                                <span class="action-label">
+
+                                                    <span th:if="${job.enabled}">
+                                                        Disable
+                                                    </span>
+
+                                                    <span th:unless="${job.enabled}">
+                                                        Enable
+                                                    </span>
+
+                                                </span>
+
+                                            </button>
+
+                                        </form>
+
+
+                                        <!-- Delete -->
+                                        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
+										      th:action="@{/monitoring/jobs/{id}/delete(id=${job.id})}"
+										      method="post"
+										      data-app-action="delete"
+										      data-app-action-title="Delete Monitoring Job"
+										      data-app-action-message="Are you sure you want to delete this monitoring job?"
+										      data-app-action-description="This action cannot be undone.">
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    title="Delete">
+
+                                                <i class="bi bi-trash"></i>
+
+                                                <span class="action-label">
+                                                    Delete
+                                                </span>
+
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+
+                                    <!-- Compact icon actions -->
+                                    <div class="table-actions table-actions-icons">
+
+                                        <!-- View -->
+                                        <a sec:authorize="hasAuthority('MONITORING_VIEW')"
+                                           th:href="@{/monitoring/jobs/{id}(id=${job.id})}"
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="View"
+                                           aria-label="View">
+
+                                            <i class="bi bi-eye"></i>
+
+                                        </a>
+
+
+                                        <!-- Edit -->
+                                        <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
+                                           th:href="@{/monitoring/jobs/{id}/edit(id=${job.id})}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Edit"
+                                           aria-label="Edit">
+
+                                            <i class="bi bi-pencil"></i>
+
+                                        </a>
+
+
+                                        <!-- Enable / Disable -->
+                                        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
+                                              th:action="@{/monitoring/jobs/{id}/toggle(id=${job.id})}"
+                                              method="post">
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-warning"
+                                                    title="Enable or Disable"
+                                                    aria-label="Enable or Disable">
+
+                                                <i th:if="${job.enabled}"
+                                                   class="bi bi-pause-circle">
+                                                </i>
+
+                                                <i th:unless="${job.enabled}"
+                                                   class="bi bi-play-circle">
+                                                </i>
+
+                                            </button>
+
+                                        </form>
+
+
+                                        <!-- Delete -->
+                                        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
+										      th:action="@{/monitoring/jobs/{id}/delete(id=${job.id})}"
+										      method="post"
+										      data-app-action="delete"
+										      data-app-action-title="Delete Monitoring Job"
+										      data-app-action-message="Are you sure you want to delete this monitoring job?"
+										      data-app-action-description="This action cannot be undone.">
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    title="Delete"
+                                                    aria-label="Delete">
+
+                                                <i class="bi bi-trash"></i>
+
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+                    <!-- Pagination -->
+                    <div th:replace="~{fragments/data-table :: pagination(
+                            ${jobs},
+                            ${pageSize},
+                            'jobTableConfig'
+                    )}">
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script th:inline="javascript">
+
+        window.jobTableConfig = {
+
+            endpoint: '/monitoring/jobs/table',
+
+            searchId: 'jobSearch',
+
+            clearSearchId: 'clear-jobSearch',
+
+            pageSizeId: 'jobPageSize',
+
+            containerId: 'jobsTableContainer',
+
+            sort: 'name',
+
+            direction: 'asc'
+
+        };
+
+    </script>
+
+</div>
+
+</body>
+
+</html>
+

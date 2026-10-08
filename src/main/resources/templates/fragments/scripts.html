@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<body>
+
+<div th:fragment="scripts"
+     xmlns:th="http://www.thymeleaf.org">
+
+    <script th:src="@{/js/data-table.js}"></script>
+    <script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+    <script th:src="@{/js/form-submit-loader.js}"></script>
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            /* =====================================================
+               Data Tables
+               ===================================================== */
+
+            if (window.machineTableConfig) {
+
+                DataTable.init(
+                    "machineTableConfig",
+                    window.machineTableConfig
+                );
+
+            }
+
+            if (window.jobTableConfig) {
+
+                DataTable.init(
+                    "jobTableConfig",
+                    window.jobTableConfig
+                );
+
+            }
+
+            if (window.scheduleTableConfig) {
+
+                DataTable.init(
+                    "scheduleTableConfig",
+                    window.scheduleTableConfig
+                );
+
+            }
+
+            if (window.applicationTableConfig) {
+
+                DataTable.init(
+                    "applicationTableConfig",
+                    window.applicationTableConfig
+                );
+
+            }
+            
+            if (window.environmentTableConfig) {
+
+                DataTable.init(
+                    "environmentTableConfig",
+                    window.environmentTableConfig
+                );
+
+            }
+            
+            if (window.dashboardTabTableConfig) {
+
+                DataTable.init(
+                    "dashboardTabTableConfig",
+                    window.dashboardTabTableConfig
+                );
+
+            }
+
+            if (window.dashboardWidgetTableConfig) {
+
+                DataTable.init(
+                    "dashboardWidgetTableConfig",
+                    window.dashboardWidgetTableConfig
+                );
+
+            }
+
+
+            /* =====================================================
+               Mobile Sidebar
+               ===================================================== */
+
+            const menuButton =
+                document.getElementById("mobileMenuButton");
+
+            const sidebar =
+                document.querySelector(".app-sidebar");
+
+            const overlay =
+                document.getElementById("sidebarOverlay");
+
+            if (menuButton && sidebar && overlay) {
+
+                menuButton.addEventListener(
+                    "click",
+                    function () {
+
+                        sidebar.classList.add("show");
+
+                        overlay.classList.add("show");
+
+                    }
+                );
+
+                overlay.addEventListener(
+                    "click",
+                    function () {
+
+                        sidebar.classList.remove("show");
+
+                        overlay.classList.remove("show");
+
+                    }
+                );
+
+            }
+
+
+            /* =====================================================
+               Common Application Modal
+               ===================================================== */
+
+            const appModalElement =
+                document.getElementById("appModal");
+
+            if (!appModalElement) {
+                return;
+            }
+
+            const appModal =
+                new bootstrap.Modal(appModalElement);
+
+            const titleElement =
+                document.getElementById("appModalTitle");
+
+            const messageElement =
+                document.getElementById("appModalMessage");
+
+            const descriptionElement =
+                document.getElementById("appModalDescription");
+
+            const cancelButton =
+                document.getElementById("appModalCancelButton");
+
+            const cancelTextElement =
+                document.getElementById("appModalCancelText");
+
+            const confirmButton =
+                document.getElementById("appModalConfirmButton");
+
+            const confirmTextElement =
+                document.getElementById("appModalConfirmText");
+
+            const confirmIconElement =
+                document.getElementById("appModalConfirmIcon");
+
+            const bodyIconElement =
+                document.getElementById("appModalBodyIcon");
+
+            let confirmAction = null;
+
+
+            /* =====================================================
+               AppModal
+               ===================================================== */
+
+            window.AppModal = {
+
+                show: function (options) {
+
+                    options = options || {};
+
+
+                    if (titleElement) {
+
+                        titleElement.textContent =
+                            options.title || "Information";
+
+                    }
+
+
+                    if (messageElement) {
+
+                        messageElement.textContent =
+                            options.message || "";
+
+                    }
+
+
+                    if (descriptionElement) {
+
+                        if (options.description) {
+
+                            descriptionElement.textContent =
+                                options.description;
+
+                            descriptionElement.classList.remove(
+                                "d-none"
+                            );
+
+                        } else {
+
+                            descriptionElement.textContent = "";
+
+                            descriptionElement.classList.add(
+                                "d-none"
+                            );
+
+                        }
+
+                    }
+
+
+                    if (cancelButton) {
+
+                        cancelButton.classList.toggle(
+                            "d-none",
+                            options.showCancel === false
+                        );
+
+                    }
+
+
+                    if (cancelTextElement) {
+
+                        cancelTextElement.textContent =
+                            options.cancelText || "Cancel";
+
+                    }
+
+
+                    if (confirmButton) {
+
+                        confirmButton.classList.toggle(
+                            "d-none",
+                            options.showConfirm === false
+                        );
+
+                    }
+
+
+                    if (confirmTextElement) {
+
+                        confirmTextElement.textContent =
+                            options.confirmText || "Continue";
+
+                    }
+
+
+                    if (confirmIconElement) {
+
+                        confirmIconElement.className =
+                            "bi " +
+                            (options.confirmIcon || "bi-check-lg") +
+                            " me-1";
+
+                    }
+
+
+                    if (bodyIconElement) {
+
+                        bodyIconElement.className =
+                            "bi " +
+                            (options.icon || "bi-info-circle");
+
+                    }
+
+
+                    confirmAction =
+                        typeof options.onConfirm === "function"
+                            ? options.onConfirm
+                            : null;
+
+
+                    appModal.show();
+
+                },
+
+
+                hide: function () {
+
+                    confirmAction = null;
+
+                    appModal.hide();
+
+                }
+
+            };
+
+
+            /* =====================================================
+               Confirm Button
+               ===================================================== */
+
+            if (confirmButton) {
+
+                confirmButton.addEventListener(
+                    "click",
+                    function () {
+
+                        const action =
+                            confirmAction;
+
+                        confirmAction = null;
+
+                        appModal.hide();
+
+                        if (action) {
+                            action();
+                        }
+
+                    }
+                );
+
+            }
+
+
+            /* =====================================================
+               Common Delete Confirmation
+               ===================================================== */
+ 
+            document.addEventListener("submit", function (event) {
+
+                const form = event.target.closest(
+                    'form[data-app-action="delete"]'
+                );
+
+                if (!form) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                AppModal.show({
+                    title:
+                        form.dataset.appActionTitle ||
+                        "Delete",
+                    message:
+                        form.dataset.appActionMessage ||
+                        "Are you sure you want to delete this item?",
+                    description:
+                        form.dataset.appActionDescription ||
+                        "This action cannot be undone.",
+                    icon: "bi-trash",
+                    showCancel: true,
+                    cancelText: "Cancel",
+                    showConfirm: true,
+                    confirmText: "Delete",
+                    confirmIcon: "bi-trash",
+                    onConfirm: function () {
+                        FormSubmitLoader.show(form);
+                        form.submit();
+                    }
+                });
+            });
+
+
+            /* =====================================================
+               Normal Form Submit Loader
+               ===================================================== */
+
+            document.addEventListener("submit", function (event) {
+
+                const form = event.target;
+
+                if (!(form instanceof HTMLFormElement)) {
+                    return;
+                }
+
+                /*
+                 * Delete forms are handled by the confirmation
+                 * above and explicitly call the loader after
+                 * confirmation.
+                 */
+                if (
+                    (form.dataset.appAction || "").toLowerCase()
+                    === "delete"
+                ) {
+                    return;
+                }
+
+                /*
+                 * Do not show loader when browser validation fails.
+                 */
+                if (!form.checkValidity()) {
+                    return;
+                }
+
+                FormSubmitLoader.show(form);
+            });
+
+
+
+            /* =====================================================
+               Flash Messages
+               ===================================================== */
+
+            const successMessage =
+                document.querySelector(
+                    ".app-message-success .app-message-text"
+                );
+
+            const errorMessage =
+                document.querySelector(
+                    ".app-message-error .app-message-text"
+                );
+
+
+            if (successMessage) {
+
+                const message =
+                    successMessage.textContent.trim();
+
+                successMessage
+                    .closest(".app-message")
+                    .remove();
+
+                AppModal.show({
+
+                    title: "Success",
+
+                    message: message,
+
+                    icon: "bi-check-circle",
+
+                    showCancel: false,
+
+                    showConfirm: true,
+
+                    confirmText: "OK",
+
+                    confirmIcon: "bi-check-lg"
+
+                });
+
+            } else if (errorMessage) {
+
+                const message =
+                    errorMessage.textContent.trim();
+
+                errorMessage
+                    .closest(".app-message")
+                    .remove();
+
+                AppModal.show({
+
+                    title: "Unable to Delete",
+
+                    message: message,
+
+                    icon: "bi-exclamation-circle",
+
+                    showCancel: false,
+
+                    showConfirm: true,
+
+                    confirmText: "OK",
+
+                    confirmIcon: "bi-check-lg"
+
+                });
+
+            }
+
+        });
+
+
+        /* =========================================================
+           Data Table Responsive Actions
+           ========================================================= */
+
+        window.addEventListener(
+            "resize",
+            function () {
+
+                Object.keys(DataTable.configs)
+                    .forEach(function (name) {
+
+                        DataTable.updateCompactActions(
+                            DataTable.configs[name]
+                        );
+
+                    });
+
+            }
+        );
+
+    </script>
+
+</div>
+
+</body>
+
+</html>

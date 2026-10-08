@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('Schedules', ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+    <!-- Page header -->
+    <div class="page-header">
+
+        <div>
+
+            <h1 class="page-title">
+                Schedules
+            </h1>
+
+            <p class="page-subtitle">
+                Configure when monitoring jobs should execute.
+            </p>
+
+        </div>
+
+        <div class="page-header-actions">
+
+            <a sec:authorize="hasAuthority('SCHEDULE_CONFIG')"
+               th:href="@{/scheduling/schedules/new}"
+               class="btn btn-primary">
+
+                <i class="bi bi-plus-lg me-1"></i>
+                Add Schedule
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- Schedules card -->
+    <div class="app-card">
+
+        <div class="app-card-body p-0"
+             id="schedulesTableWrapper">
+
+            <!-- Search and page size -->
+            <div th:replace="~{fragments/data-table :: controls(
+                    'scheduleSearch',
+                    'schedulePageSize',
+                    'Search schedules...',
+                    ${pageSize},
+                    ${search}
+            )}">
+            </div>
+
+
+            <div id="schedulesTableContainer">
+
+                <div th:fragment="schedulesTable">
+
+                    <!-- Empty state -->
+                    <div th:if="${schedules.totalElements == 0}"
+                         class="empty-state">
+
+                        <div class="empty-state-icon">
+
+                            <i th:if="${search != null and !search.isBlank()}"
+                               class="bi bi-search">
+                            </i>
+
+                            <i th:unless="${search != null and !search.isBlank()}"
+                               class="bi bi-calendar3">
+                            </i>
+
+                        </div>
+
+
+                        <!-- No search results -->
+                        <div th:if="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No schedules match your search
+                            </h6>
+
+                            <p>
+                                Try a different search term or clear the search.
+                            </p>
+
+                        </div>
+
+
+                        <!-- No schedules at all -->
+                        <div th:unless="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No schedules configured
+                            </h6>
+
+                            <p>
+                                Create a schedule and assign it to monitoring jobs.
+                            </p>
+
+                            <a sec:authorize="hasAuthority('SCHEDULE_CONFIG')"
+                               th:href="@{/scheduling/schedules/new}"
+                               class="btn btn-primary">
+
+                                <i class="bi bi-plus-lg me-1"></i>
+                                Add Schedule
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Schedule table -->
+                    <div th:if="${schedules.totalElements > 0}"
+                         class="table-responsive">
+
+                        <table class="table app-table align-middle mb-0">
+
+                            <thead>
+
+                            <tr>
+
+                                <!-- Name -->
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="scheduleTableConfig"
+                                            data-sort="name"
+                                            onclick="DataTable.sort(this)">
+
+                                        Name
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+
+                                <!-- Type -->
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="scheduleTableConfig"
+                                            data-sort="type"
+                                            onclick="DataTable.sort(this)">
+
+                                        Type
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+
+                                <!-- Configuration -->
+                                <th>
+                                    Configuration
+                                </th>
+
+
+                                <!-- Timezone -->
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="scheduleTableConfig"
+                                            data-sort="timezone"
+                                            onclick="DataTable.sort(this)">
+
+                                        Timezone
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+
+                                <!-- Status -->
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="scheduleTableConfig"
+                                            data-sort="enabled"
+                                            onclick="DataTable.sort(this)">
+
+                                        Status
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+
+                                <!-- Actions -->
+                                <th sec:authorize="hasAuthority('SCHEDULE_VIEW')"
+                                    class="text-end table-actions-column">
+
+                                    Actions
+
+                                </th>
+
+                            </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                            <tr th:each="schedule : ${schedules.content}">
+
+                                <!-- Name -->
+                                <td>
+
+                                    <div class="table-primary-text"
+                                         th:text="${schedule.name}">
+
+                                        Schedule Name
+
+                                    </div>
+
+                                    <div th:if="${schedule.description != null and !schedule.description.isBlank()}"
+                                         class="table-secondary-text"
+                                         th:text="${schedule.description}">
+
+                                        Description
+
+                                    </div>
+
+                                </td>
+
+
+                                <!-- Type -->
+                                <td>
+
+                                    <span th:if="${schedule.type.name() == 'CRON'}"
+                                          class="status-badge status-info">
+
+                                        <i class="bi bi-clock"></i>
+                                        CRON
+
+                                    </span>
+
+                                    <span th:if="${schedule.type.name() == 'FIXED_DELAY'}"
+                                          class="status-badge status-info">
+
+                                        <i class="bi bi-hourglass-split"></i>
+                                        FIXED DELAY
+
+                                    </span>
+
+                                    <span th:if="${schedule.type.name() == 'FIXED_RATE'}"
+                                          class="status-badge status-info">
+
+                                        <i class="bi bi-arrow-repeat"></i>
+                                        FIXED RATE
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Configuration -->
+                                <td>
+
+                                    <!-- CRON -->
+                                    <div th:if="${schedule.type.name() == 'CRON'}"
+                                         class="schedule-config">
+
+                                        <span class="schedule-config-label">
+                                            Cron
+                                        </span>
+
+                                        <code th:text="${schedule.cronExpression}">
+                                            0 */5 * * * *
+                                        </code>
+
+                                    </div>
+
+
+                                    <!-- FIXED DELAY -->
+                                    <div th:if="${schedule.type.name() == 'FIXED_DELAY'}"
+                                         class="schedule-config">
+
+                                        <span class="schedule-config-label">
+                                            Delay
+                                        </span>
+
+                                        <span th:text="${schedule.fixedDelaySeconds + ' seconds'}">
+                                            300 seconds
+                                        </span>
+
+                                    </div>
+
+
+                                    <!-- FIXED RATE -->
+                                    <div th:if="${schedule.type.name() == 'FIXED_RATE'}"
+                                         class="schedule-config">
+
+                                        <span class="schedule-config-label">
+                                            Rate
+                                        </span>
+
+                                        <span th:text="${schedule.fixedRateSeconds + ' seconds'}">
+                                            300 seconds
+                                        </span>
+
+                                    </div>
+
+                                </td>
+
+
+                                <!-- Timezone -->
+                                <td>
+
+                                    <span class="table-value-with-icon">
+
+                                        <i class="bi bi-globe2"></i>
+
+                                        <span th:text="${schedule.timezone}">
+                                            Europe/London
+                                        </span>
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Status -->
+                                <td>
+
+                                    <span th:if="${schedule.enabled}"
+                                          class="status-badge status-healthy">
+
+                                        <span class="status-dot"></span>
+                                        ENABLED
+
+                                    </span>
+
+                                    <span th:unless="${schedule.enabled}"
+                                          class="status-badge status-disabled">
+
+                                        <span class="status-dot"></span>
+                                        DISABLED
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Actions -->
+                                <td sec:authorize="hasAuthority('SCHEDULE_VIEW')"
+                                    class="text-end table-actions-column">
+
+                                    <!-- Text actions -->
+                                    <div class="table-actions table-actions-text">
+
+                                        <!-- View -->
+                                        <a th:href="@{/scheduling/schedules/{id}(id=${schedule.id})}"
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="View">
+
+                                            <i class="bi bi-eye"></i>
+
+                                            <span>
+                                                View
+                                            </span>
+
+                                        </a>
+
+
+                                        <th:block sec:authorize="hasAuthority('SCHEDULE_CONFIG')">
+
+                                            <!-- Edit -->
+                                            <a th:href="@{/scheduling/schedules/{id}/edit(id=${schedule.id})}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Edit">
+
+                                                <i class="bi bi-pencil"></i>
+
+                                                <span>
+                                                    Edit
+                                                </span>
+
+                                            </a>
+
+
+                                            <!-- Enable / Disable -->
+                                            <form th:action="@{/scheduling/schedules/{id}/toggle(id=${schedule.id})}"
+                                                  method="post">
+
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-warning"
+                                                        title="Enable or Disable">
+
+                                                    <i th:if="${schedule.enabled}"
+                                                       class="bi bi-pause-circle">
+                                                    </i>
+
+                                                    <i th:unless="${schedule.enabled}"
+                                                       class="bi bi-play-circle">
+                                                    </i>
+
+                                                    <span>
+
+                                                        <span th:if="${schedule.enabled}">
+                                                            Disable
+                                                        </span>
+
+                                                        <span th:unless="${schedule.enabled}">
+                                                            Enable
+                                                        </span>
+
+                                                    </span>
+
+                                                </button>
+
+                                            </form>
+
+
+                                            <!-- Delete -->
+                                            <form th:action="@{/scheduling/schedules/{id}/delete(id=${schedule.id})}"
+											      method="post"
+											      data-app-action="delete"
+											      data-app-action-title="Delete Schedule"
+											      data-app-action-message="Are you sure you want to delete this schedule?"
+											      data-app-action-description="This action cannot be undone.">
+
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-danger"
+                                                        title="Delete">
+
+                                                    <i class="bi bi-trash"></i>
+
+                                                    <span>
+                                                        Delete
+                                                    </span>
+
+                                                </button>
+
+                                            </form>
+
+                                        </th:block>
+
+                                    </div>
+
+
+                                    <!-- Icon actions -->
+                                    <div class="table-actions table-actions-icons">
+
+                                        <!-- View -->
+                                        <a th:href="@{/scheduling/schedules/{id}(id=${schedule.id})}"
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="View"
+                                           aria-label="View">
+
+                                            <i class="bi bi-eye"></i>
+
+                                        </a>
+
+
+                                        <th:block sec:authorize="hasAuthority('SCHEDULE_CONFIG')">
+
+                                            <!-- Edit -->
+                                            <a th:href="@{/scheduling/schedules/{id}/edit(id=${schedule.id})}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Edit"
+                                               aria-label="Edit">
+
+                                                <i class="bi bi-pencil"></i>
+
+                                            </a>
+
+
+                                            <!-- Enable / Disable -->
+                                            <form th:action="@{/scheduling/schedules/{id}/toggle(id=${schedule.id})}"
+                                                  method="post">
+
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-warning"
+                                                        th:title="${schedule.enabled ? 'Disable' : 'Enable'}"
+                                                        th:attr="aria-label=${schedule.enabled ? 'Disable' : 'Enable'}">
+
+                                                    <i th:if="${schedule.enabled}"
+                                                       class="bi bi-pause-circle">
+                                                    </i>
+
+                                                    <i th:unless="${schedule.enabled}"
+                                                       class="bi bi-play-circle">
+                                                    </i>
+
+                                                </button>
+
+                                            </form>
+
+
+                                            <!-- Delete -->
+                                            <form th:action="@{/scheduling/schedules/{id}/delete(id=${schedule.id})}"
+											      method="post"
+											      data-app-action="delete"
+											      data-app-action-title="Delete Schedule"
+											      data-app-action-message="Are you sure you want to delete this schedule?"
+											      data-app-action-description="This action cannot be undone.">
+
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-danger"
+                                                        title="Delete"
+                                                        aria-label="Delete">
+
+                                                    <i class="bi bi-trash"></i>
+
+                                                </button>
+
+                                            </form>
+
+                                        </th:block>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+                    <!-- Pagination -->
+                    <div th:replace="~{fragments/data-table :: pagination(
+                            ${schedules},
+                            ${pageSize},
+                            'scheduleTableConfig'
+                    )}">
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script th:inline="javascript">
+
+        window.scheduleTableConfig = {
+
+            endpoint: '/scheduling/schedules/table',
+
+            searchId: 'scheduleSearch',
+
+            clearSearchId: 'clear-scheduleSearch',
+
+            pageSizeId: 'schedulePageSize',
+
+            containerId: 'schedulesTableContainer',
+
+            sort: 'name',
+
+            direction: 'asc'
+
+        };
+
+    </script>
+
+</div>
+
+</body>
+
+</html>
+

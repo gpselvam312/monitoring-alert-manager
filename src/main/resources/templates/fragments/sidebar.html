@@ -1,0 +1,204 @@
+<aside class="app-sidebar"
+       th:fragment="sidebar"
+       xmlns:th="http://www.thymeleaf.org"
+       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+
+    <div class="sidebar-brand">
+
+        <div class="sidebar-logo">
+            <img th:src="@{/images/logo.png}"
+                 alt="DXC Technology">
+        </div>
+
+		<div class="sidebar-brand-text"
+		     th:text="${applicationName}">
+		    Monitoring Alert Manager
+		</div>
+
+    </div>
+
+    <nav class="sidebar-navigation">
+
+        <!-- Main -->
+        <div class="sidebar-section">
+
+            <div class="sidebar-section-title">
+                Main
+            </div>
+
+            <a th:href="@{/dashboard}"
+               class="sidebar-link"
+               th:classappend="${currentPage == 'dashboard'} ? ' active' : ''">
+
+                <i class="bi bi-grid-1x2"></i>
+                <span>Dashboard</span>
+
+            </a>
+
+        </div>
+
+        <!-- Monitoring -->
+        <div class="sidebar-section">
+
+            <div class="sidebar-section-title">
+                Monitoring
+            </div>
+
+            <a th:href="@{/monitoring/jobs}"
+               class="sidebar-link"
+               th:classappend="${currentPage == 'monitoring-jobs'} ? ' active' : ''">
+
+                <i class="bi bi-activity"></i>
+                <span>Monitoring Jobs</span>
+
+            </a>
+
+            <a th:href="@{/monitoring/machines}"
+               class="sidebar-link"
+               th:classappend="${currentPage == 'machines'} ? ' active' : ''">
+
+                <i class="bi bi-pc-display"></i>
+                <span>Servers / Machines</span>
+
+            </a>
+
+        </div>
+
+        <!-- Scheduling -->
+        <div class="sidebar-section">
+
+            <div class="sidebar-section-title">
+                Scheduling
+            </div>
+
+            <a th:href="@{/scheduling/schedules}"
+               class="sidebar-link"
+               th:classappend="${currentPage == 'schedules'} ? ' active' : ''">
+
+                <i class="bi bi-calendar3"></i>
+                <span>Schedules</span>
+
+            </a>
+
+        </div>
+
+        <!-- Alerts -->
+        <div class="sidebar-section">
+
+            <div class="sidebar-section-title">
+                Alerts
+            </div>
+
+            <a href="#"
+               class="sidebar-link">
+
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>Active Alerts</span>
+
+            </a>
+
+            <a href="#"
+               class="sidebar-link">
+
+                <i class="bi bi-clock-history"></i>
+                <span>Alert History</span>
+
+            </a>
+
+            <a href="#"
+               class="sidebar-link">
+
+                <i class="bi bi-sliders"></i>
+                <span>Alert Rules</span>
+
+            </a>
+
+        </div>
+
+        <!-- Notifications -->
+        <div class="sidebar-section">
+
+            <div class="sidebar-section-title">
+                Notifications
+            </div>
+
+            <a href="#"
+               class="sidebar-link">
+
+                <i class="bi bi-bell"></i>
+                <span>Channels</span>
+
+            </a>
+
+            <a href="#"
+               class="sidebar-link">
+
+                <i class="bi bi-people"></i>
+                <span>Recipients</span>
+
+            </a>
+
+            <a href="#"
+               class="sidebar-link">
+
+                <i class="bi bi-send"></i>
+                <span>Delivery History</span>
+
+            </a>
+
+        </div>
+
+        <!-- Administration -->
+		<div class="sidebar-section">
+		    <div class="sidebar-section-title">Administration</div>
+		
+		    <a th:href="@{/administration/applications}"
+		       class="sidebar-link"
+		       th:classappend="${currentPage == 'applications'} ? ' active' : ''">
+		        <i class="bi bi-box"></i>
+		        <span>Applications</span>
+		    </a>
+		
+		    <a th:href="@{/administration/environments}"
+		       class="sidebar-link"
+		       th:classappend="${currentPage == 'environments'} ? ' active' : ''">
+		        <i class="bi bi-layers"></i>
+		        <span>Environments</span>
+		    </a>
+		    
+		    <a th:href="@{/administration/dashboard}"
+			   class="sidebar-link"
+			   th:classappend="${currentPage == 'dashboard-configuration'} ? ' active' : ''"
+			   sec:authorize="hasAuthority('SYSTEM_CONFIG')">
+			
+			    <i class="bi bi-grid-3x3-gap"></i>
+			    <span>Dashboard Configuration</span>
+			
+			</a>
+			
+			<a th:href="@{/administration/users}"
+			   class="sidebar-link"
+			   th:classappend="${currentPage == 'users'} ? ' active' : ''"
+			   sec:authorize="hasAuthority('USER_CONFIG')">
+			    <i class="bi bi-person-gear"></i>
+			    <span>Users</span>
+			</a>
+		
+		   <a th:href="@{/administration/settings}"
+			   class="sidebar-link"
+			   th:classappend="${currentPage == 'settings'} ? ' active' : ''"
+			   sec:authorize="hasAuthority('SYSTEM_CONFIG')">
+			    <i class="bi bi-gear"></i>
+			    <span>Settings</span>
+			</a>
+		
+		    <a href="#" class="sidebar-link">
+		        <i class="bi bi-journal-text"></i>
+		        <span>Audit Log</span>
+		    </a>
+		</div>
+
+    </nav>
+
+</aside>

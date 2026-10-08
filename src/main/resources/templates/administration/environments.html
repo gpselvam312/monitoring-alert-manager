@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('Environments', ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+    <!-- Page header -->
+
+    <div class="page-header">
+
+        <div>
+
+            <h1 class="page-title">
+                Environments
+            </h1>
+
+            <p class="page-subtitle">
+                Manage environments used by monitoring jobs.
+            </p>
+
+        </div>
+
+        <div class="page-header-actions">
+
+            <a sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+               th:href="@{/administration/environments/new}"
+               class="btn btn-primary">
+
+                <i class="bi bi-plus-lg me-1"></i>
+
+                Add Environment
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- Environments card -->
+
+    <div class="app-card">
+
+        <div class="app-card-body p-0"
+             id="environmentsTableWrapper">
+
+            <!-- Search and page size -->
+
+            <div th:replace="~{fragments/data-table :: controls(
+                    'environmentSearch',
+                    'environmentPageSize',
+                    'Search environments...',
+                    ${pageSize},
+                    ${search}
+            )}">
+            </div>
+
+
+            <div id="environmentsTableContainer">
+
+                <div th:fragment="environmentsTable">
+
+                    <!-- Empty state -->
+
+                    <div th:if="${page.totalElements == 0}"
+                         class="empty-state">
+
+                        <div class="empty-state-icon">
+
+                            <i th:if="${search != null and !search.isBlank()}"
+                               class="bi bi-search">
+                            </i>
+
+                            <i th:unless="${search != null and !search.isBlank()}"
+                               class="bi bi-layers">
+                            </i>
+
+                        </div>
+
+
+                        <!-- No search results -->
+
+                        <div th:if="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No environments match your search
+                            </h6>
+
+                            <p>
+                                Try a different search term or clear the search.
+                            </p>
+
+                        </div>
+
+
+                        <!-- No environments -->
+
+                        <div th:unless="${search != null and !search.isBlank()}">
+
+                            <h6>
+                                No environments configured
+                            </h6>
+
+                            <p>
+                                Add an environment to start configuring monitoring.
+                            </p>
+
+                            <a sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                               th:href="@{/administration/environments/new}"
+                               class="btn btn-primary">
+
+                                <i class="bi bi-plus-lg me-1"></i>
+
+                                Add Environment
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Environment table -->
+
+                    <div th:if="${page.totalElements > 0}"
+                         class="table-responsive">
+
+                        <table class="table app-table align-middle mb-0">
+
+                            <thead>
+
+                            <tr>
+
+                                <!-- Name -->
+
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="environmentTableConfig"
+                                            data-sort="name"
+                                            onclick="DataTable.sort(this)">
+
+                                        Name
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+
+                                <!-- Description -->
+
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="environmentTableConfig"
+                                            data-sort="description"
+                                            onclick="DataTable.sort(this)">
+
+                                        Description
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+
+                                <!-- Status -->
+
+                                <th>
+
+                                    <button type="button"
+                                            class="table-sort"
+                                            data-config="environmentTableConfig"
+                                            data-sort="enabled"
+                                            onclick="DataTable.sort(this)">
+
+                                        Status
+
+                                        <i class="bi bi-caret-up-fill table-sort-icon"
+                                           aria-label="Sort ascending">
+                                        </i>
+
+                                    </button>
+
+                                </th>
+
+
+                                <!-- Actions -->
+
+                                <th sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                    class="text-end table-actions-column">
+
+                                    Actions
+
+                                </th>
+
+                            </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                            <tr th:each="environment : ${page.content}">
+
+                                <!-- Name -->
+
+                                <td>
+
+                                    <div class="table-primary-text"
+                                         th:text="${environment.name}">
+
+                                        Environment
+
+                                    </div>
+
+                                </td>
+
+
+                                <!-- Description -->
+
+                                <td>
+
+                                    <span th:if="${environment.description != null and !environment.description.isBlank()}"
+                                          class="table-secondary-text"
+                                          th:text="${environment.description}">
+
+                                        Description
+
+                                    </span>
+
+                                    <span th:unless="${environment.description != null and !environment.description.isBlank()}"
+                                          class="text-muted">
+
+                                        —
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Status -->
+
+                                <td>
+
+                                    <span th:if="${environment.enabled}"
+                                          class="status-badge status-healthy">
+
+                                        <span class="status-dot"></span>
+
+                                        ENABLED
+
+                                    </span>
+
+                                    <span th:unless="${environment.enabled}"
+                                          class="status-badge status-disabled">
+
+                                        <span class="status-dot"></span>
+
+                                        DISABLED
+
+                                    </span>
+
+                                </td>
+
+
+                                <!-- Actions -->
+
+                                <td sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                    class="text-end table-actions-column">
+
+                                    <!-- Text actions -->
+
+                                    <div class="table-actions table-actions-text">
+
+                                        <!-- Edit -->
+
+                                        <a th:href="@{/administration/environments/{id}/edit(id=${environment.id})}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Edit">
+
+                                            <i class="bi bi-pencil"></i>
+
+                                            <span>Edit</span>
+
+                                        </a>
+
+
+                                        <!-- Enable / Disable -->
+
+                                        <form th:action="@{/administration/environments/{id}/toggle(id=${environment.id})}"
+                                              method="post">
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-warning"
+                                                    th:title="${environment.enabled ? 'Disable' : 'Enable'}">
+
+                                                <i th:if="${environment.enabled}"
+                                                   class="bi bi-pause-circle">
+                                                </i>
+
+                                                <i th:unless="${environment.enabled}"
+                                                   class="bi bi-play-circle">
+                                                </i>
+
+                                                <span th:if="${environment.enabled}">
+                                                    Disable
+                                                </span>
+
+                                                <span th:unless="${environment.enabled}">
+                                                    Enable
+                                                </span>
+
+                                            </button>
+
+                                        </form>
+
+
+                                        <!-- Delete -->
+
+                                        <form method="post"
+                                              th:action="@{/administration/environments/{id}/delete(id=${environment.id})}"
+                                              data-app-action="delete"
+                                              data-app-action-title="Delete Environment"
+                                              data-app-action-message="Are you sure you want to delete this environment?"
+                                              data-app-action-description="This action cannot be undone.">
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    title="Delete">
+
+                                                <i class="bi bi-trash"></i>
+
+                                                <span>Delete</span>
+
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+
+                                    <!-- Icon actions -->
+
+                                    <div class="table-actions table-actions-icons">
+
+                                        <!-- Edit -->
+
+                                        <a th:href="@{/administration/environments/{id}/edit(id=${environment.id})}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Edit"
+                                           aria-label="Edit">
+
+                                            <i class="bi bi-pencil"></i>
+
+                                        </a>
+
+
+                                        <!-- Enable / Disable -->
+
+                                        <form th:action="@{/administration/environments/{id}/toggle(id=${environment.id})}"
+                                              method="post">
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-warning"
+                                                    th:title="${environment.enabled ? 'Disable' : 'Enable'}"
+                                                    th:attr="aria-label=${environment.enabled ? 'Disable' : 'Enable'}">
+
+                                                <i th:if="${environment.enabled}"
+                                                   class="bi bi-pause-circle">
+                                                </i>
+
+                                                <i th:unless="${environment.enabled}"
+                                                   class="bi bi-play-circle">
+                                                </i>
+
+                                            </button>
+
+                                        </form>
+
+
+                                        <!-- Delete -->
+
+                                        <form method="post"
+                                              th:action="@{/administration/environments/{id}/delete(id=${environment.id})}"
+                                              data-app-action="delete"
+                                              data-app-action-title="Delete Environment"
+                                              data-app-action-message="Are you sure you want to delete this environment?"
+                                              data-app-action-description="This action cannot be undone.">
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-danger"
+                                                    title="Delete"
+                                                    aria-label="Delete">
+
+                                                <i class="bi bi-trash"></i>
+
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+                    <!-- Pagination -->
+
+                    <div th:replace="~{fragments/data-table :: pagination(
+                            ${page},
+                            ${pageSize},
+                            'environmentTableConfig'
+                    )}">
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Environment DataTable Configuration -->
+
+    <script th:inline="javascript">
+
+        window.environmentTableConfig = {
+
+            endpoint: '/administration/environments/table',
+
+            searchId: 'environmentSearch',
+
+            clearSearchId: 'clear-environmentSearch',
+
+            pageSizeId: 'environmentPageSize',
+
+            containerId: 'environmentsTableContainer',
+
+            sort: 'name',
+
+            direction: 'asc'
+
+        };
+
+    </script>
+
+</div>
+
+</body>
+
+</html>
+

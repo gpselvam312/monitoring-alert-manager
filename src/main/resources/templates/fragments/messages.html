@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<body>
+
+	<div th:fragment="messages">
+
+
+		<div class="app-message-container">
+
+			<div th:if="${successMessage}"
+				class="app-message app-message-success" role="alert">
+
+				<div class="app-message-icon">
+					<i class="bi bi-check-circle-fill"></i>
+				</div>
+
+				<div class="app-message-content">
+					<div class="app-message-title">Success</div>
+
+					<div class="app-message-text" th:text="${successMessage}">
+						Operation completed successfully.</div>
+				</div>
+
+				<button type="button" class="app-message-close" aria-label="Close"
+					onclick="this.closest('.app-message').remove()">
+					<i class="bi bi-x-lg"></i>
+				</button>
+
+			</div>
+
+			<div th:if="${errorMessage}" class="app-message app-message-error"
+				role="alert">
+
+				<div class="app-message-icon">
+					<i class="bi bi-x-circle-fill"></i>
+				</div>
+
+				<div class="app-message-content">
+					<div class="app-message-title">Error</div>
+
+					<div class="app-message-text" th:text="${errorMessage}">
+						Operation could not be completed.</div>
+				</div>
+
+				<button type="button" class="app-message-close" aria-label="Close"
+					onclick="this.closest('.app-message').remove()">
+					<i class="bi bi-x-lg"></i>
+				</button>
+
+			</div>
+
+			<div th:if="${warningMessage}"
+				class="app-message app-message-warning" role="alert">
+
+				<div class="app-message-icon">
+					<i class="bi bi-exclamation-triangle-fill"></i>
+				</div>
+
+				<div class="app-message-content">
+					<div class="app-message-title">Warning</div>
+
+					<div class="app-message-text" th:text="${warningMessage}">
+						Please review the information.</div>
+				</div>
+
+				<button type="button" class="app-message-close" aria-label="Close"
+					onclick="this.closest('.app-message').remove()">
+					<i class="bi bi-x-lg"></i>
+				</button>
+
+			</div>
+
+			<div th:if="${infoMessage}" class="app-message app-message-info"
+				role="alert">
+
+				<div class="app-message-icon">
+					<i class="bi bi-info-circle-fill"></i>
+				</div>
+
+				<div class="app-message-content">
+					<div class="app-message-title">Information</div>
+
+					<div class="app-message-text" th:text="${infoMessage}">
+						Information message.</div>
+				</div>
+
+				<button type="button" class="app-message-close" aria-label="Close"
+					onclick="this.closest('.app-message').remove()">
+					<i class="bi bi-x-lg"></i>
+				</button>
+
+			</div>
+
+		</div>
+
+
+	</div>
+
+</body>
+</html>

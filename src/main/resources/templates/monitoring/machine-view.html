@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout(${machine.name + ' - Machine Details'}, ~{::content})}">
+
+<body>
+
+<div th:fragment="content">
+
+
+<!-- Page Header -->
+
+<div class="page-header">
+
+    <div class="page-header-left">
+
+        <div class="page-header-icon">
+
+            <i class="bi bi-pc-display"></i>
+
+        </div>
+
+        <div>
+
+            <h1 class="page-title"
+                th:text="${machine.name}">
+                Machine
+            </h1>
+
+            <p class="page-subtitle">
+                Machine details and configuration
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="page-header-actions">
+
+        <!-- Edit: configuration permission only -->
+
+        <a sec:authorize="hasAuthority('MACHINE_CONFIG')"
+           th:href="@{/monitoring/machines/{id}/edit(id=${machine.id})}"
+           class="btn btn-primary">
+
+            <i class="bi bi-pencil me-1"></i>
+            Edit
+
+        </a>
+
+        <a th:href="@{/monitoring/machines}"
+           class="btn btn-outline-secondary">
+
+            <i class="bi bi-arrow-left me-1"></i>
+            Back to Machines
+
+        </a>
+
+    </div>
+
+</div>
+
+
+<!-- Machine Information -->
+
+<div class="app-card mb-4">
+
+    <div class="app-card-header">
+
+        <div>
+
+            <h2 class="app-card-title">
+                Machine Information
+            </h2>
+
+            <p class="app-card-subtitle">
+                Host, environment and configuration details
+            </p>
+
+        </div>
+
+        <i class="bi bi-pc-display app-card-header-icon"></i>
+
+    </div>
+
+    <div class="app-card-body">
+
+        <div class="row g-4">
+
+            <!-- Machine Name -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Machine Name
+                    </div>
+
+                    <div class="detail-value detail-value-primary"
+                         th:text="${machine.name}">
+                        -
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Environment -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Environment
+                    </div>
+
+                    <div class="detail-value">
+
+                        <span th:if="${machine.environment != null}"
+                              class="status-badge status-info">
+
+                            <i class="bi bi-layers"></i>
+
+                            <span th:text="${machine.environment.name}">
+                                -
+                            </span>
+
+                        </span>
+
+                        <span th:unless="${machine.environment != null}"
+                              class="detail-value-muted">
+
+                            -
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Hostname -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Hostname
+                    </div>
+
+                    <div class="detail-value detail-value-primary">
+
+                        <i class="bi bi-hdd-network me-2 text-secondary"></i>
+
+                        <span th:text="${machine.hostname ?: '-'}">
+                            -
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- IP Address -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        IP Address
+                    </div>
+
+                    <div class="detail-value detail-value-primary">
+
+                        <i class="bi bi-globe2 me-2 text-secondary"></i>
+
+                        <span th:text="${machine.ipAddress ?: '-'}">
+                            -
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Description -->
+
+            <div class="col-12">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Description
+                    </div>
+
+                    <div class="detail-value"
+                         th:text="${machine.description ?: '-'}">
+                        -
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Status -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Status
+                    </div>
+
+                    <div class="detail-value">
+
+                        <span th:if="${machine.enabled}"
+                              class="status-badge status-healthy">
+
+                            <span class="status-dot"></span>
+                            Enabled
+
+                        </span>
+
+                        <span th:unless="${machine.enabled}"
+                              class="status-badge status-disabled">
+
+                            <span class="status-dot"></span>
+                            Disabled
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- Audit Information -->
+
+<div class="app-card mb-4">
+
+    <div class="app-card-header">
+
+        <div>
+
+            <h2 class="app-card-title">
+                Audit Information
+            </h2>
+
+            <p class="app-card-subtitle">
+                Creation and modification details
+            </p>
+
+        </div>
+
+        <i class="bi bi-clock-history app-card-header-icon"></i>
+
+    </div>
+
+    <div class="app-card-body">
+
+        <div class="row g-4">
+
+            <!-- Created At -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Created At
+                    </div>
+
+                    <div class="detail-value"
+                         th:text="${machine.createdAt ?: '-'}">
+                        -
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Updated At -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Updated At
+                    </div>
+
+                    <div class="detail-value"
+                         th:text="${machine.updatedAt ?: '-'}">
+                        -
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Created By -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Created By
+                    </div>
+
+                    <div class="detail-value"
+                         th:text="${machine.createdBy ?: '-'}">
+                        -
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Updated By -->
+
+            <div class="col-md-6">
+
+                <div class="detail-item">
+
+                    <div class="detail-label">
+                        Updated By
+                    </div>
+
+                    <div class="detail-value"
+                         th:text="${machine.updatedBy ?: '-'}">
+                        -
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- Bottom Actions -->
+
+<div class="view-page-actions">
+
+    <a th:href="@{/monitoring/machines}"
+       class="btn btn-outline-secondary">
+
+        <i class="bi bi-arrow-left me-1"></i>
+        Back to Machines
+
+    </a>
+
+    <!-- Edit: configuration permission only -->
+
+    <a sec:authorize="hasAuthority('MACHINE_CONFIG')"
+       th:href="@{/monitoring/machines/{id}/edit(id=${machine.id})}"
+       class="btn btn-primary">
+
+        <i class="bi bi-pencil me-1"></i>
+        Edit Machine
+
+    </a>
+
+</div>
+
+
+</div>
+
+</body>
+
+</html>

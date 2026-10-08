@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+
+<body>
+
+<div th:fragment="actionModal">
+
+    <div class="modal fade"
+         id="appActionModal"
+         tabindex="-1"
+         aria-labelledby="appActionModalTitle"
+         aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered">
+
+            <div class="modal-content app-action-modal">
+
+                <!-- Header -->
+
+                <div class="modal-header">
+
+                    <div class="app-action-icon"
+                         id="appActionModalHeaderIcon">
+
+                        <i id="appActionModalHeaderIconElement"
+                           class="bi bi-info-circle">
+                        </i>
+
+                    </div>
+
+                    <div class="flex-grow-1">
+
+                        <h5 class="modal-title"
+                            id="appActionModalTitle">
+                            Action Required
+                        </h5>
+
+                    </div>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close">
+                    </button>
+
+                </div>
+
+                <!-- Body -->
+
+                <div class="modal-body">
+
+                    <div class="app-action-content">
+
+                        <div class="app-action-body-icon"
+                             id="appActionModalBodyIcon">
+
+                            <i id="appActionModalBodyIconElement"
+                               class="bi bi-info-circle">
+                            </i>
+
+                        </div>
+
+                        <div class="flex-grow-1">
+
+                            <p id="appActionModalMessage"
+                               class="app-action-message">
+                                Are you sure you want to continue?
+                            </p>
+
+                            <p id="appActionModalDescription"
+                               class="app-action-description d-none">
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+
+                        <span id="appActionModalCancelText">
+                            Cancel
+                        </span>
+
+                    </button>
+
+                    <button type="button"
+                            id="appActionModalButton"
+                            class="btn btn-primary">
+
+                        <i id="appActionModalButtonIcon"
+                           class="bi bi-check-lg me-1">
+                        </i>
+
+                        <span id="appActionModalButtonText">
+                            Continue
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

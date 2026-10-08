@@ -1,0 +1,223 @@
+<div th:fragment="executionDetails">
+
+    <div class="modal-header execution-details-header">
+        <h5 class="modal-title" id="executionDetailsModalLabel">
+            <i class="bi bi-info-circle me-2"></i>
+            Execution Details
+        </h5>
+
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close">
+        </button>
+    </div>
+
+    <div class="modal-body execution-details-body">
+
+        <!-- Execution Summary -->
+        <div class="execution-summary">
+
+            <div class="execution-info">
+                <div class="execution-label">
+                    Execution ID
+                </div>
+                <div class="execution-value"
+                     th:text="${execution.id}">
+                    -
+                </div>
+            </div>
+
+            <div class="execution-info">
+                <div class="execution-label">
+                    Status
+                </div>
+                <div class="execution-value">
+                    <span th:if="${execution.status.name() == 'SUCCESS'}"
+                          class="badge bg-success">
+                        SUCCESS
+                    </span>
+
+                    <span th:if="${execution.status.name() == 'FAILED'}"
+                          class="badge bg-danger">
+                        FAILED
+                    </span>
+
+                    <span th:if="${execution.status.name() == 'TIMEOUT'}"
+                          class="badge bg-warning text-dark">
+                        TIMEOUT
+                    </span>
+
+                    <span th:if="${execution.status.name() == 'ERROR'}"
+                          class="badge bg-danger">
+                        ERROR
+                    </span>
+
+                    <span th:if="${execution.status.name() == 'RUNNING'}"
+                          class="badge bg-primary">
+                        RUNNING
+                    </span>
+                </div>
+            </div>
+
+            <div class="execution-info">
+                <div class="execution-label">
+                    Attempt
+                </div>
+                <div class="execution-value"
+                     th:text="${execution.attemptNumber}">
+                    -
+                </div>
+            </div>
+
+            <div class="execution-info">
+                <div class="execution-label">
+                    Started
+                </div>
+                <div class="execution-value"
+                     th:text="${@monitoringDateTime.format(execution.startedAt)}">
+                    -
+                </div>
+            </div>
+
+            <div class="execution-info">
+                <div class="execution-label">
+                    Completed
+                </div>
+                <div class="execution-value"
+                     th:text="${@monitoringDateTime.format(execution.completedAt)}">
+                    -
+                </div>
+            </div>
+
+            <div class="execution-info">
+                <div class="execution-label">
+                    Duration
+                </div>
+                <div class="execution-value"
+                     th:text="${execution.durationMs != null ? execution.durationMs + ' ms' : '-'}">
+                    -
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Error -->
+        <div class="execution-error"
+             th:if="${execution.errorMessage != null}">
+
+            <div class="execution-label">
+                Error
+            </div>
+
+            <div class="text-danger execution-details-value"
+                 th:text="${execution.errorMessage}">
+            </div>
+
+        </div>
+
+        <!-- Results -->
+        <div class="execution-section">
+
+            <div class="execution-section-title">
+                Results
+            </div>
+
+            <div class="table-responsive"
+                 th:if="${!results.isEmpty()}">
+
+                <table class="table table-sm table-hover execution-results-table">
+
+                    <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Value</th>
+                        <th>Unit</th>
+                        <th>Message</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+
+                    <tr th:each="result : ${results}">
+
+                        <td th:text="${result.resultType}">
+                            -
+                        </td>
+
+                        <td>
+                            <span th:if="${result.status != null}"
+                                  class="badge"
+                                  th:classappend="${result.status.name() == 'OK'}
+                                      ? ' bg-success'
+                                      : (${result.status.name() == 'WARNING'}
+                                          ? ' bg-warning text-dark'
+                                          : ' bg-danger')"
+                                  th:text="${result.status}">
+                                OK
+                            </span>
+
+                            <span th:if="${result.status == null}"
+                                  class="text-muted">
+                                -
+                            </span>
+                        </td>
+
+                        <td class="execution-details-value"
+                            th:text="${result.value}">
+                            -
+                        </td>
+
+                        <td th:text="${result.unit}">
+                            -
+                        </td>
+
+                        <td class="execution-details-value"
+                            th:text="${result.message}">
+                            -
+                        </td>
+
+                    </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <div class="text-muted"
+                 th:if="${results.isEmpty()}">
+                No results recorded for this execution.
+            </div>
+
+        </div>
+
+        <!-- Raw Output -->
+        <div class="execution-section"
+             th:each="result : ${results}"
+             th:if="${result.rawOutput != null}">
+
+            <div class="execution-section-title">
+                Raw Output
+            </div>
+
+            <pre class="execution-details-raw-output"
+                 th:text="${result.rawOutput}">
+            </pre>
+
+        </div>
+
+    </div>
+
+    <div class="modal-footer execution-details-footer">
+
+        <button type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal">
+            Close
+        </button>
+
+    </div>
+
+</div>

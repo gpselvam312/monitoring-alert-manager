@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head th:replace="~{fragments/head :: head(${pageTitle})}"></head>
+
+<body>
+
+<div class="app-shell">
+
+
+<!-- Sidebar -->
+<div th:replace="~{fragments/sidebar :: sidebar}"></div>
+
+<!-- Mobile Sidebar Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Main Content -->
+<main class="app-main">
+
+    <!-- Header -->
+    <div th:replace="~{fragments/header :: header('User')}"></div>
+    
+    <!-- Page Content -->
+    <div class="app-content">
+
+        <!-- Page Header -->
+        <div class="page-header">
+
+            <div class="page-header-left">
+
+                <div class="page-header-icon">
+                    <i class="bi bi-person-gear"></i>
+                </div>
+
+                <div>
+
+                    <h1 class="page-title"
+                        th:text="${pageTitle}">
+                        Add User
+                    </h1>
+
+                    <p class="page-subtitle">
+                        Configure user account and access role
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="page-header-actions">
+
+                <a th:href="@{/administration/users}"
+                   class="btn btn-outline-secondary">
+
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Back to Users
+
+                </a>
+
+            </div>
+
+        </div>
+
+        <!-- User Form -->
+        <div class="app-card">
+
+            <div class="app-card-header">
+
+                <div>
+
+                    <h2 class="app-card-title">
+                        User Account
+                    </h2>
+
+                    <p class="app-card-subtitle">
+                        Enter the account details and assign an access role
+                    </p>
+
+                </div>
+
+                <i class="bi bi-person-badge app-card-header-icon"></i>
+
+            </div>
+
+            <div class="app-card-body">
+
+                <form th:if="${user.id == null}"
+                      th:action="@{/administration/users/save}"
+                      th:object="${user}"
+                      method="post">
+
+                    <div class="row g-4">
+
+                        <!-- Username -->
+                        <div class="col-md-6">
+
+                            <label for="username"
+                                   class="form-label">
+                                Username
+                            </label>
+
+                            <input type="text"
+                                   id="username"
+                                   th:field="*{username}"
+                                   class="form-control"
+                                   maxlength="100"
+                                   required
+                                   autocomplete="username">
+
+                            <div class="form-text">
+                                Unique username used for login.
+                            </div>
+
+                        </div>
+
+                        <!-- Full Name -->
+                        <div class="col-md-6">
+
+                            <label for="fullName"
+                                   class="form-label">
+                                Full Name
+                            </label>
+
+                            <input type="text"
+                                   id="fullName"
+                                   th:field="*{fullName}"
+                                   class="form-control"
+                                   maxlength="200"
+                                   autocomplete="name">
+
+                        </div>
+
+                        <!-- Email -->
+                        <div class="col-md-6">
+
+                            <label for="email"
+                                   class="form-label">
+                                Email
+                            </label>
+
+                            <input type="email"
+                                   id="email"
+                                   th:field="*{email}"
+                                   class="form-control"
+                                   maxlength="255"
+                                   autocomplete="email">
+
+                        </div>
+
+                        <!-- Password -->
+                        <div class="col-md-6">
+
+                            <label for="password"
+                                   class="form-label">
+                                Password
+                            </label>
+
+                            <input type="password"
+                                   id="password"
+                                   name="password"
+                                   class="form-control"
+                                   required
+                                   autocomplete="new-password">
+
+                            <div class="form-text">
+                                Password will be securely encrypted before storage.
+                            </div>
+
+                        </div>
+
+                        <!-- Role -->
+                        <div class="col-md-6">
+
+                            <label for="roleId"
+                                   class="form-label">
+                                Role
+                            </label>
+
+                            <select id="roleId"
+                                    name="roleId"
+                                    class="form-select"
+                                    required>
+
+                                <option value="">
+                                    Select a role
+                                </option>
+
+                                <option th:each="role : ${roles}"
+                                        th:value="${role.id}"
+                                        th:text="${role.name}">
+                                    ADMIN
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                        <!-- Enabled -->
+                        <div class="col-md-6">
+
+                            <label class="form-label">
+                                Status
+                            </label>
+
+                            <div class="form-check form-switch mt-2">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="enabled"
+                                       th:field="*{enabled}">
+
+                                <label class="form-check-label"
+                                       for="enabled">
+                                    Account Enabled
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="view-page-actions mt-4">
+
+                        <a th:href="@{/administration/users}"
+                           class="btn btn-outline-secondary">
+
+                            <i class="bi bi-x-lg me-1"></i>
+                            Cancel
+
+                        </a>
+
+                        <button type="submit"
+                                class="btn btn-primary">
+
+                            <i class="bi bi-check-lg me-1"></i>
+                            Create User
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+                <!-- Edit Form -->
+                <form th:if="${user.id != null}"
+                      th:action="@{/administration/users/{id}/update(id=${user.id})}"
+                      th:object="${user}"
+                      method="post">
+
+                    <div class="row g-4">
+
+                        <!-- Username -->
+                        <div class="col-md-6">
+
+                            <label for="username"
+                                   class="form-label">
+                                Username
+                            </label>
+
+                            <input type="text"
+                                   id="username"
+                                   th:field="*{username}"
+                                   class="form-control"
+                                   maxlength="100"
+                                   readonly>
+
+                            <div class="form-text">
+                                Username cannot be changed after creation.
+                            </div>
+
+                        </div>
+
+                        <!-- Full Name -->
+                        <div class="col-md-6">
+
+                            <label for="fullName"
+                                   class="form-label">
+                                Full Name
+                            </label>
+
+                            <input type="text"
+                                   id="fullName"
+                                   th:field="*{fullName}"
+                                   class="form-control"
+                                   maxlength="200"
+                                   autocomplete="name">
+
+                        </div>
+
+                        <!-- Email -->
+                        <div class="col-md-6">
+
+                            <label for="email"
+                                   class="form-label">
+                                Email
+                            </label>
+
+                            <input type="email"
+                                   id="email"
+                                   th:field="*{email}"
+                                   class="form-control"
+                                   maxlength="255"
+                                   autocomplete="email">
+
+                        </div>
+
+                        <!-- Password -->
+                        <div class="col-md-6">
+
+                            <label for="password"
+                                   class="form-label">
+                                New Password
+                            </label>
+
+                            <input type="password"
+                                   id="password"
+                                   name="password"
+                                   class="form-control"
+                                   autocomplete="new-password">
+
+                            <div class="form-text">
+                                Leave blank to keep the current password.
+                            </div>
+
+                        </div>
+
+                        <!-- Role -->
+                        <div class="col-md-6">
+
+                            <label for="roleId"
+                                   class="form-label">
+                                Role
+                            </label>
+
+                            <select id="roleId"
+                                    name="roleId"
+                                    class="form-select"
+                                    required>
+
+                                <option th:each="role : ${roles}"
+                                        th:value="${role.id}"
+                                        th:text="${role.name}"
+                                        th:selected="${!#sets.isEmpty(user.roles) and user.roles.iterator().next().id == role.id}">
+                                    ADMIN
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                        <!-- Enabled -->
+                        <div class="col-md-6">
+
+                            <label class="form-label">
+                                Status
+                            </label>
+
+                            <div class="form-check form-switch mt-2">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="enabled"
+                                       th:field="*{enabled}">
+
+                                <label class="form-check-label"
+                                       for="enabled">
+                                    Account Enabled
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="view-page-actions mt-4">
+
+                        <a th:href="@{/administration/users}"
+                           class="btn btn-outline-secondary">
+
+                            <i class="bi bi-x-lg me-1"></i>
+                            Cancel
+
+                        </a>
+
+                        <button type="submit"
+                                class="btn btn-primary">
+
+                            <i class="bi bi-check-lg me-1"></i>
+                            Update User
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+
+</div>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<div th:replace="~{fragments/scripts :: scripts}"></div>
+
+</body>
+
+</html>
