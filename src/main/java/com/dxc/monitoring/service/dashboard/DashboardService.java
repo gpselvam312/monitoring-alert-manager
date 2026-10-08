@@ -143,6 +143,8 @@ public class DashboardService
         definition.setRefreshInterval(widget.getRefreshInterval());
         definition.setRefreshIntervalUnit(widget.getRefreshIntervalUnit());
         definition.setDetailsEnabled(widget.getDetailsEnabled());
+        definition.setDataSourceType(widget.getDataSourceType());
+        definition.setDataSourceId(widget.getDataSourceId());
         definition.setJobRunning(execution != null
                 && execution.getStatus() == MonitoringExecution.ExecutionStatus.RUNNING);
         definition.setRunNowEnabled(canRunNow(widget, job, execution));
