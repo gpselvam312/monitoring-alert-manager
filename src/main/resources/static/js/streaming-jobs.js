@@ -438,7 +438,7 @@
         renderTable();
     });
     lastButton.addEventListener('click', () => {
-        const pageSize = Number(pageSizeSelect.value) || 10;
+        const pageSize = Number(pageSizeSelect.value) || 5;
         page = Math.max(0, Math.ceil(visibleJobs().length / pageSize) - 1);
         renderTable();
     });
