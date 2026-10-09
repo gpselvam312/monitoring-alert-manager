@@ -27,11 +27,11 @@ public interface StreamingJobClaimRepository extends JpaRepository<StreamingJobC
             FROM StreamingJobClaim c
             JOIN FETCH c.monitoringJob j
             LEFT JOIN FETCH j.machine
-            WHERE j.executionMode = com.dxc.monitoring.entity.MonitoringJob.ExecutionMode.STREAMING
-              AND j.enabled = true
+            WHERE j.executionMode = :mode
             ORDER BY j.name
             """)
-    List<StreamingJobClaim> findEnabledStreamingClaims();
+    List<StreamingJobClaim> findEnabledStreamingClaims(
+            @Param("mode") com.dxc.monitoring.entity.MonitoringJob.ExecutionMode mode);
 
     @Modifying
     @Transactional
