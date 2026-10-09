@@ -1409,8 +1409,9 @@
                                           maxlength="10000"
                                           placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
                                 <div class="form-text">
-                                    Optional JSON. Use rowPath to select an array of objects, visibleFields to hide columns,
-                                    labels to rename columns, and order to control column order. Leave as {} to show all fields.
+                                    Optional JSON. For tables use rowPath, visibleFields, labels, order and formats.
+                                    For charts use rowPath, categoryField, valueField and optional seriesField.
+                                    Leave as {} to infer table fields automatically.
                                 </div>
                                 <div class="invalid-feedback">Enter a valid JSON object.</div>
                             </div>
