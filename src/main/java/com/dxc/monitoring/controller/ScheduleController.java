@@ -228,11 +228,8 @@ public class ScheduleController
                 return "Select a supported schedule type.";
         }
 
-        if ((schedule.getStartTime() == null) != (schedule.getEndTime() == null))
-        {
-            return "Start Time and End Time must either both be set or both be empty.";
-        }
-        if (schedule.getStartTime() != null && schedule.getStartTime().equals(schedule.getEndTime()))
+        if (schedule.getStartTime() != null && schedule.getEndTime() != null
+                && schedule.getStartTime().equals(schedule.getEndTime()))
         {
             return "Start Time and End Time cannot be the same.";
         }
