@@ -8,11 +8,15 @@
     const tableWrapper = document.getElementById('streamingJobsTableWrapper');
     const tableBody = document.getElementById('streamingJobsTableBody');
     const searchInput = document.getElementById('streamingJobSearch');
+    const clearSearchButton = document.getElementById('clear-streamingJobSearch');
     const pageSizeSelect = document.getElementById('streamingJobPageSize');
     const pagination = document.getElementById('streamingJobsPagination');
     const pageSummary = document.getElementById('streamingJobsPageSummary');
+    const firstButton = document.getElementById('streamingJobsFirst');
     const previousButton = document.getElementById('streamingJobsPrevious');
     const nextButton = document.getElementById('streamingJobsNext');
+    const lastButton = document.getElementById('streamingJobsLast');
+    const canConfigure = Boolean(document.getElementById('streamingJobsCanConfigure'));
     const count = document.getElementById('streamingJobsCount');
     const details = document.getElementById('streamingJobDetails');
     const selectedName = document.getElementById('selectedStreamingJobName');
@@ -133,16 +137,55 @@
             row.appendChild(textCell((job.maxRuntimeSeconds || 300) + ' sec', 'text-end'));
 
             const actionCell = document.createElement('td');
-            actionCell.className = 'text-end';
+            actionCell.className = 'text-end table-actions-column';
+            const textActions = document.createElement('div');
+            textActions.className = 'table-actions table-actions-text';
             const selectButton = document.createElement('button');
             selectButton.type = 'button';
             selectButton.className = 'btn btn-sm ' + (String(job.id) === String(selectedJobId) ? 'btn-primary' : 'btn-outline-primary');
-            selectButton.textContent = String(job.id) === String(selectedJobId) ? 'Selected' : 'Select';
+            selectButton.innerHTML = '<i class="bi bi-play-circle"></i><span class="ms-1">'
+                + (String(job.id) === String(selectedJobId) ? 'Selected' : 'Select') + '</span>';
             selectButton.addEventListener('click', event => {
                 event.stopPropagation();
                 selectJob(job.id);
             });
-            actionCell.appendChild(selectButton);
+            textActions.appendChild(selectButton);
+            if (canConfigure) {
+                const editLink = document.createElement('a');
+                editLink.className = 'btn btn-sm btn-outline-secondary';
+                editLink.href = '/monitoring/jobs/' + encodeURIComponent(job.id) + '/edit?mode=STREAMING';
+                editLink.title = 'Edit';
+                editLink.setAttribute('aria-label', 'Edit');
+                editLink.innerHTML = '<i class="bi bi-pencil"></i><span class="ms-1">Edit</span>';
+                editLink.addEventListener('click', event => event.stopPropagation());
+                textActions.appendChild(editLink);
+            }
+            actionCell.appendChild(textActions);
+
+            const iconActions = document.createElement('div');
+            iconActions.className = 'table-actions table-actions-icons';
+            const selectIconButton = document.createElement('button');
+            selectIconButton.type = 'button';
+            selectIconButton.className = 'btn btn-sm ' + (String(job.id) === String(selectedJobId) ? 'btn-primary' : 'btn-outline-primary');
+            selectIconButton.title = String(job.id) === String(selectedJobId) ? 'Selected' : 'Select';
+            selectIconButton.setAttribute('aria-label', selectIconButton.title);
+            selectIconButton.innerHTML = '<i class="bi bi-play-circle"></i>';
+            selectIconButton.addEventListener('click', event => {
+                event.stopPropagation();
+                selectJob(job.id);
+            });
+            iconActions.appendChild(selectIconButton);
+            if (canConfigure) {
+                const editIconLink = document.createElement('a');
+                editIconLink.className = 'btn btn-sm btn-outline-secondary';
+                editIconLink.href = '/monitoring/jobs/' + encodeURIComponent(job.id) + '/edit?mode=STREAMING';
+                editIconLink.title = 'Edit';
+                editIconLink.setAttribute('aria-label', 'Edit');
+                editIconLink.innerHTML = '<i class="bi bi-pencil"></i>';
+                editIconLink.addEventListener('click', event => event.stopPropagation());
+                iconActions.appendChild(editIconLink);
+            }
+            actionCell.appendChild(iconActions);
             row.appendChild(actionCell);
 
             row.addEventListener('click', () => selectJob(job.id));
@@ -166,8 +209,10 @@
         pageSummary.textContent = filtered.length
             ? 'Showing ' + (start + 1) + '–' + Math.min(start + pageSize, filtered.length) + ' of ' + filtered.length
             : 'No jobs match your search';
+        firstButton.disabled = page <= 0;
         previousButton.disabled = page <= 0;
         nextButton.disabled = page >= pageCount - 1;
+        lastButton.disabled = page >= pageCount - 1;
         updateSortIndicators();
     }
 
@@ -280,8 +325,18 @@
 
     searchInput.addEventListener('input', () => {
         page = 0;
+        if (clearSearchButton) clearSearchButton.classList.toggle('d-none', searchInput.value.trim() === '');
         renderTable();
     });
+    if (clearSearchButton) {
+        clearSearchButton.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearchButton.classList.add('d-none');
+            page = 0;
+            renderTable();
+            searchInput.focus();
+        });
+    }
     pageSizeSelect.addEventListener('change', () => {
         page = 0;
         renderTable();
@@ -297,6 +352,10 @@
             renderTable();
         });
     });
+    firstButton.addEventListener('click', () => {
+        page = 0;
+        renderTable();
+    });
     previousButton.addEventListener('click', () => {
         if (page > 0) {
             page--;
@@ -305,6 +364,11 @@
     });
     nextButton.addEventListener('click', () => {
         page++;
+        renderTable();
+    });
+    lastButton.addEventListener('click', () => {
+        const pageSize = Number(pageSizeSelect.value) || 10;
+        page = Math.max(0, Math.ceil(visibleJobs().length / pageSize) - 1);
         renderTable();
     });
     document.getElementById('refreshStreamingJobs').addEventListener('click', () => refresh());
