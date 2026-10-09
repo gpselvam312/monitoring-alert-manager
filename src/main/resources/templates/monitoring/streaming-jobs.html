@@ -17,9 +17,6 @@
             <a sec:authorize="hasAuthority('MONITORING_CONFIG')" th:href="@{/monitoring/jobs/new(mode='STREAMING')}" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-1"></i> Create Streaming Job
             </a>
-            <a th:href="@{/monitoring/jobs}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Monitoring Jobs
-            </a>
             <button type="button" class="btn btn-outline-primary" id="refreshStreamingJobs">
                 <i class="bi bi-arrow-clockwise me-1"></i> Refresh
             </button>
@@ -30,14 +27,7 @@
     <span id="streamingJobsCanConfigure" class="d-none" sec:authorize="hasAuthority('MONITORING_CONFIG')" aria-hidden="true"></span>
 
     <section class="app-card mb-4">
-        <div class="app-card-header d-flex align-items-center justify-content-between gap-3 flex-wrap">
-            <div>
-                <div class="app-card-title">Available Streaming Jobs</div>
-                <div class="app-card-subtitle">Search, sort, and page through enabled jobs configured with Execution Mode = Streaming.</div>
-            </div>
-            <span id="streamingJobsCount" class="badge text-bg-secondary">0 jobs</span>
-        </div>
-        <div class="app-card-body">
+        <div class="app-card-body p-0">
             <div th:replace="~{fragments/data-table :: controls(
                     'streamingJobSearch',
                     'streamingJobPageSize',
@@ -65,10 +55,14 @@
                 <table class="table app-table align-middle mb-0" id="streamingJobsTable">
                     <thead>
                     <tr>
-                        <th scope="col"><button type="button" class="table-sort active" data-sort="name">Job Name <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
-                        <th scope="col"><button type="button" class="table-sort" data-sort="description">Description <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
-                        <th scope="col"><button type="button" class="table-sort" data-sort="status">Execution Status <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
-                        <th scope="col" class="text-end"><button type="button" class="table-sort" data-sort="maxRuntimeSeconds">Max Runtime <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort active" data-sort="name">Name <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="application">Application <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="environment">Environment <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="machine">Machine <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="type">Type <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="severity">Severity <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="schedule">Schedule <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="enabled">Status <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
                         <th scope="col" class="text-end table-actions-column">Actions</th>
                     </tr>
                     </thead>
