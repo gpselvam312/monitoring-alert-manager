@@ -1409,8 +1409,9 @@
                                           maxlength="10000"
                                           placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
                                 <div class="form-text">
-                                    Optional JSON. For tables use rowPath, visibleFields, labels, order and formats.
-                                    For charts use rowPath, categoryField, valueField and optional seriesField.
+                                    Optional JSON: tables use rowPath, visibleFields, labels, order and formats;
+                                    charts use rowPath, categoryField, valueField and optional seriesField;
+                                    STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate.
                                     Leave as {} to infer table fields automatically.
                                 </div>
                                 <div class="invalid-feedback">Enter a valid JSON object.</div>
