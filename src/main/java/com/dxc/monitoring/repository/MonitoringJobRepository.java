@@ -23,16 +23,19 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
             LEFT JOIN j.environment e
             LEFT JOIN j.machine m
             LEFT JOIN j.schedule s
-            WHERE
-                LOWER(j.name) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(COALESCE(j.description, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(COALESCE(a.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(COALESCE(e.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(COALESCE(m.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(COALESCE(m.hostname, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(COALESCE(s.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+            WHERE j.executionMode = :executionMode
+                AND (
+                    LOWER(j.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(j.description, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(a.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(e.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(m.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(m.hostname, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(s.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                )
             """)
-    Page<MonitoringJob> findAllForList(@Param("search") String search, Pageable pageable);
+    Page<MonitoringJob> findAllForList(@Param("search") String search,
+            @Param("executionMode") MonitoringJob.ExecutionMode executionMode, Pageable pageable);
 
     @Query("""
             SELECT j
