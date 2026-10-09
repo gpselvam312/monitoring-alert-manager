@@ -471,6 +471,10 @@ public class DashboardService
     public DashboardWidgetResponse getWidgetResponse(Long widgetId)
     {
         DashboardWidget widget = getWidget(widgetId);
+        if (widget.getTab().getEnvironment() == null || !widget.getTab().getEnvironment().isEnabled())
+        {
+            throw new IllegalArgumentException("Dashboard widget is not assigned to an enabled environment.");
+        }
 
         MonitoringExecution execution = null;
         MonitoringResult monitoringResult = null;
