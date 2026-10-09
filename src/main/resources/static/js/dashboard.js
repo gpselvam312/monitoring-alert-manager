@@ -914,26 +914,76 @@
 
 	function renderTableWidget(result)
 	{
-	    const columns =
+	    let columns =
 	        Array.isArray(result.columns)
-	            ? result.columns
+	            ? result.columns.filter(function (column)
+	            {
+	                return column && (column.key || column.label);
+	            })
 	            : [];
 
-	    const rows =
+	    let rows =
 	        Array.isArray(result.rows)
 	            ? result.rows
 	            : [];
 
+	    // Derive headers from returned row keys when a result omits columns.
+	    if (columns.length === 0 && rows.length > 0)
+	    {
+	        const keys = Array.from(new Set(
+	            rows.reduce(function (allKeys, row)
+	            {
+	                return allKeys.concat(
+	                    row && typeof row === "object"
+	                        ? Object.keys(row)
+	                        : []
+	                );
+	            }, [])
+	        ));
+
+	        columns = keys.map(function (key)
+	        {
+	            return {
+	                key: key,
+	                label: key.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+	                    .replace(/^./, function (character) { return character.toUpperCase(); })
+	            };
+	        });
+	    }
+
+	    // Without structured rows, show a summary of the latest monitoring result
+	    // and any metrics. TABLE widgets do not require manual column setup.
 	    if (columns.length === 0)
 	    {
-	        return (
-	            '<div class="dashboard-table-empty">' +
-	                '<i class="bi bi-table"></i>' +
-	                '<span>' +
-	                    'No table columns configured.' +
-	                '</span>' +
-	            '</div>'
-	        );
+	        columns = [
+	            { key: "status", label: "Status" },
+	            { key: "message", label: "Message" },
+	            { key: "value", label: "Value" },
+	            { key: "lastUpdated", label: "Last Updated" }
+	        ];
+
+	        const summaryRow = {
+	            status: getStatusLabel(result.status),
+	            message: result.message || "",
+	            value: result.value ?? "",
+	            lastUpdated: formatLastUpdated(result.lastUpdated)
+	        };
+
+	        if (result.metrics && typeof result.metrics === "object")
+	        {
+	            Object.entries(result.metrics).forEach(function (entry)
+	            {
+	                const key = entry[0];
+	                columns.push({
+	                    key: "metric_" + key,
+	                    label: key.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+	                        .replace(/^./, function (character) { return character.toUpperCase(); })
+	                });
+	                summaryRow["metric_" + key] = entry[1];
+	            });
+	        }
+
+	        rows = [summaryRow];
 	    }
 
 	    const headerHtml =
