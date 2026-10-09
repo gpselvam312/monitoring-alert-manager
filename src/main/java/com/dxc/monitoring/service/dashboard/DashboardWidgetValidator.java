@@ -1,10 +1,16 @@
 package com.dxc.monitoring.service.dashboard;
 
+import java.util.Set;
+
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 public class DashboardWidgetValidator implements ConstraintValidator<ValidDashboardWidget, DashboardWidgetForm>
 {
+    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "CHART", "TEXT");
+    private static final Set<String> CHART_TYPES = Set.of("LINE", "BAR", "PIE", "DONUT");
+    private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB", "MONITORING_RESULT");
+
     @Override
     public boolean isValid(DashboardWidgetForm form, ConstraintValidatorContext context)
     {
@@ -14,10 +20,14 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
         }
 
         boolean valid = true;
-
         context.disableDefaultConstraintViolation();
 
-        // Auto Refresh validation
+        if (!isBlank(form.getWidgetType()) && !WIDGET_TYPES.contains(form.getWidgetType()))
+        {
+            addFieldError(context, "widgetType", "Select a valid widget type.");
+            valid = false;
+        }
+
         if (Boolean.TRUE.equals(form.getAutoRefresh()))
         {
             if (form.getRefreshInterval() == null || form.getRefreshInterval() <= 0)
@@ -27,27 +37,48 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
                 valid = false;
             }
 
-            if (isBlank(form.getRefreshIntervalUnit()))
+            if (isBlank(form.getRefreshIntervalUnit())
+                    || !Set.of("SECONDS", "MINUTES").contains(form.getRefreshIntervalUnit()))
             {
                 addFieldError(context, "refreshIntervalUnit",
-                        "Refresh interval unit is required when auto refresh is enabled.");
+                        "Select a valid refresh interval unit when auto refresh is enabled.");
                 valid = false;
             }
         }
 
-        // Monitoring Job data source validation
-        if ("MONITORING_JOB".equals(form.getDataSourceType()) && form.getDataSourceId() == null)
+        String sourceType = form.getDataSourceType();
+        Long sourceId = form.getDataSourceId();
+
+        if (isBlank(sourceType))
+        {
+            if (sourceId != null)
+            {
+                addFieldError(context, "dataSourceType",
+                        "Select a data source type or clear the selected source.");
+                valid = false;
+            }
+        }
+        else if (!DATA_SOURCE_TYPES.contains(sourceType))
+        {
+            addFieldError(context, "dataSourceType", "Select a valid data source type.");
+            valid = false;
+        }
+        else if (sourceId == null)
         {
             addFieldError(context, "dataSourceId",
-                    "Monitoring job is required when the data source is Monitoring Job.");
+                    sourceType.equals("MONITORING_JOB")
+                            ? "Select a monitoring job for this widget."
+                            : "Select a monitoring result for this widget.");
             valid = false;
         }
 
-        // Chart widget validation
-        if ("CHART".equals(form.getWidgetType()) && isBlank(form.getChartType()))
+        if ("CHART".equals(form.getWidgetType()))
         {
-            addFieldError(context, "chartType", "Chart type is required for chart widgets.");
-            valid = false;
+            if (isBlank(form.getChartType()) || !CHART_TYPES.contains(form.getChartType()))
+            {
+                addFieldError(context, "chartType", "Select a valid chart type for chart widgets.");
+                valid = false;
+            }
         }
 
         return valid;
