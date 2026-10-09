@@ -151,9 +151,14 @@ public class MonitoringJobController
      */
     @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
     @GetMapping("/new")
-    public String createJobForm(Model model)
+    public String createJobForm(@RequestParam(required = false) String mode, Model model)
     {
         MonitoringJob job = new MonitoringJob();
+        boolean streamingContext = "STREAMING".equalsIgnoreCase(mode);
+        if (streamingContext)
+        {
+            job.setExecutionMode(MonitoringJob.ExecutionMode.STREAMING);
+        }
 
         job.setEnabled(true);
         job.setTimeoutSeconds(30);
@@ -172,7 +177,8 @@ public class MonitoringJobController
         model.addAttribute("applications", applicationRepository.findAll());
         model.addAttribute("environments", environmentRepository.findAll());
         model.addAttribute("maxStreamingRuntimeSeconds", configuredMaximumStreamingRuntimeSeconds);
-        model.addAttribute("pageTitle", "Add Monitoring Job");
+        model.addAttribute("executionModeLocked", streamingContext);
+        model.addAttribute("pageTitle", streamingContext ? "Add Streaming Job" : "Add Monitoring Job");
         model.addAttribute("submitLabel", "Save Job");
 
         return "monitoring/job-form";
@@ -185,9 +191,13 @@ public class MonitoringJobController
     @PostMapping
     public String saveJob(@ModelAttribute("job") MonitoringJob job, @RequestParam(required = false) Long applicationId,
             @RequestParam(required = false) Long environmentId, @RequestParam(required = false) Long machineId,
-            @RequestParam(required = false) Long scheduleId, Authentication authentication,
-            RedirectAttributes redirectAttributes)
+            @RequestParam(required = false) Long scheduleId, @RequestParam(required = false) String mode,
+            Authentication authentication, RedirectAttributes redirectAttributes)
     {
+        if ("STREAMING".equalsIgnoreCase(mode))
+        {
+            job.setExecutionMode(MonitoringJob.ExecutionMode.STREAMING);
+        }
         if (job.getExecutionMode() == null)
         {
             job.setExecutionMode(MonitoringJob.ExecutionMode.STANDARD);
@@ -377,9 +387,11 @@ public class MonitoringJobController
      */
     @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
     @GetMapping("/{id}/edit")
-    public String editJobForm(@PathVariable Long id, Model model)
+    public String editJobForm(@PathVariable Long id, @RequestParam(required = false) String mode, Model model)
     {
         MonitoringJob job = monitoringJobService.findById(id);
+        boolean streamingContext = "STREAMING".equalsIgnoreCase(mode)
+                && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING;
 
         model.addAttribute("job", job);
         model.addAttribute("machines", machineRepository.findAll());
@@ -387,7 +399,8 @@ public class MonitoringJobController
         model.addAttribute("applications", applicationRepository.findAll());
         model.addAttribute("environments", environmentRepository.findAll());
         model.addAttribute("maxStreamingRuntimeSeconds", configuredMaximumStreamingRuntimeSeconds);
-        model.addAttribute("pageTitle", "Edit Monitoring Job");
+        model.addAttribute("executionModeLocked", streamingContext);
+        model.addAttribute("pageTitle", streamingContext ? "Edit Streaming Job" : "Edit Monitoring Job");
         model.addAttribute("submitLabel", "Update Job");
 
         return "monitoring/job-form";
