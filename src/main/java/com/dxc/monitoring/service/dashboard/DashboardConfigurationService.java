@@ -13,6 +13,7 @@ import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
+import com.dxc.monitoring.repository.MonitoringResultRepository;
 
 @Service
 public class DashboardConfigurationService
@@ -20,13 +21,17 @@ public class DashboardConfigurationService
     private final DashboardTabRepository dashboardTabRepository;
     private final DashboardWidgetRepository dashboardWidgetRepository;
     private final MonitoringJobRepository monitoringJobRepository;
+    private final MonitoringResultRepository monitoringResultRepository;
 
     public DashboardConfigurationService(DashboardTabRepository dashboardTabRepository,
-            DashboardWidgetRepository dashboardWidgetRepository, MonitoringJobRepository monitoringJobRepository)
+            DashboardWidgetRepository dashboardWidgetRepository,
+            MonitoringJobRepository monitoringJobRepository,
+            MonitoringResultRepository monitoringResultRepository)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringJobRepository = monitoringJobRepository;
+        this.monitoringResultRepository = monitoringResultRepository;
     }
 
     @Transactional(readOnly = true)
@@ -166,6 +171,43 @@ public class DashboardConfigurationService
         if (widget.getDetailsEnabled() == null)
         {
             widget.setDetailsEnabled(false);
+        }
+
+        String dataSourceType = widget.getDataSourceType();
+        Long dataSourceId = widget.getDataSourceId();
+
+        if (dataSourceType == null || dataSourceType.isBlank())
+        {
+            if (dataSourceId != null)
+            {
+                throw new IllegalArgumentException("Select a data source type when a data source ID is provided.");
+            }
+        }
+        else
+        {
+            if (dataSourceId == null)
+            {
+                throw new IllegalArgumentException("A data source ID is required for " + dataSourceType + " widgets.");
+            }
+
+            switch (dataSourceType)
+            {
+                case "MONITORING_JOB" ->
+                {
+                    if (!monitoringJobRepository.existsById(dataSourceId))
+                    {
+                        throw new IllegalArgumentException("Monitoring job not found: " + dataSourceId);
+                    }
+                }
+                case "MONITORING_RESULT" ->
+                {
+                    if (!monitoringResultRepository.existsById(dataSourceId))
+                    {
+                        throw new IllegalArgumentException("Monitoring result not found: " + dataSourceId);
+                    }
+                }
+                default -> throw new IllegalArgumentException("Unsupported dashboard data source type: " + dataSourceType);
+            }
         }
 
         widget.setName(widget.getName().trim());
