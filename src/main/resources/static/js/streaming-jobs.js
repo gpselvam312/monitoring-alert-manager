@@ -220,7 +220,7 @@
             tableBody.appendChild(row);
         }
 
-        count.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs');
+        if (count) count.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs');
         loading.classList.add('d-none');
         const hasJobs = jobs.length > 0;
         const hasMatches = filtered.length > 0;
