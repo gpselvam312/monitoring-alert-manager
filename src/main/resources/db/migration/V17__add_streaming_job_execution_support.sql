@@ -19,7 +19,7 @@ CREATE TABLE ra_fcb.streaming_job_claims (
     owner_instance VARCHAR(200),
     process_id BIGINT,
     remote_pid VARCHAR(100),
-    started_by BIGINT,
+    started_by VARCHAR(200),
     started_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     stop_requested BOOLEAN NOT NULL DEFAULT FALSE,
