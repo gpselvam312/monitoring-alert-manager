@@ -224,7 +224,7 @@
             + (job.message ? ' • ' + job.message : '');
 
         const active = activeStates.has(job.status);
-        if (startButton) startButton.disabled = active || !job.enabled;
+        if (startButton) startButton.disabled = active;
         if (stopButton) stopButton.disabled = !active;
     }
 
