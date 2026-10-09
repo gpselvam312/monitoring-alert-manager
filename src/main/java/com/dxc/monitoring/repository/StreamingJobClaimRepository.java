@@ -94,6 +94,21 @@ public interface StreamingJobClaimRepository extends JpaRepository<StreamingJobC
     @Transactional
     @Query(value = """
             UPDATE ra_fcb.streaming_job_claims
+               SET remote_pid = :remotePid,
+                   heartbeat_at = CURRENT_TIMESTAMP,
+                   updated_at = CURRENT_TIMESTAMP,
+                   version = version + 1
+             WHERE monitoring_job_id = :jobId
+               AND owner_instance_id = :owner
+               AND status IN ('STARTING', 'RUNNING', 'STOPPING')
+            """, nativeQuery = true)
+    int setRemotePid(@Param("jobId") Long jobId, @Param("owner") String owner,
+                     @Param("remotePid") String remotePid);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+            UPDATE ra_fcb.streaming_job_claims
                SET output_buffer = RIGHT(COALESCE(output_buffer, '') || :chunk, 65536),
                    heartbeat_at = CURRENT_TIMESTAMP,
                    updated_at = CURRENT_TIMESTAMP,
