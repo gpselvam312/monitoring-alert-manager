@@ -1,42 +1,117 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{fragments/layout :: layout('Streaming Jobs', ~{::content})}">
 <body>
 <div th:fragment="content">
     <meta name="_csrf" th:content="${_csrf.token}" />
     <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+
     <div class="page-header">
         <div>
             <h1 class="page-title">Streaming Jobs</h1>
-            <p class="page-subtitle">Start long-running scripts on demand. Streaming jobs are never scheduled automatically.</p>
+            <p class="page-subtitle">Select an enabled streaming job to run it on demand and follow its live output. Streaming jobs are never scheduled automatically.</p>
         </div>
         <div class="page-header-actions">
-            <a th:href="@{/monitoring/jobs}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Standard Jobs</a>
-            <button type="button" class="btn btn-outline-primary" id="refreshStreamingJobs"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
+            <a th:href="@{/monitoring/jobs}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Monitoring Jobs
+            </a>
+            <button type="button" class="btn btn-outline-primary" id="refreshStreamingJobs">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </button>
         </div>
     </div>
+
     <div id="streamingJobsError" class="alert alert-danger d-none" role="alert"></div>
-    <div id="streamingJobsLoading" class="dashboard-state"><i class="bi bi-arrow-repeat dashboard-spin"></i><p>Loading streaming jobs…</p></div>
-    <div id="streamingJobsEmpty" class="dashboard-state d-none"><i class="bi bi-terminal"></i><h6>No enabled streaming jobs</h6><p>Configure an enabled monitoring job with execution mode Streaming.</p></div>
-    <div id="streamingJobsList" class="row g-3"></div>
-    <template id="streamingJobCardTemplate">
-        <div class="col-12 col-xl-6">
-            <section class="card h-100">
-                <div class="card-header d-flex align-items-start justify-content-between gap-2">
-                    <div><h5 class="streaming-job-name mb-1"></h5><p class="streaming-job-description text-muted small mb-0"></p></div>
-                    <span class="badge streaming-job-status">IDLE</span>
-                </div>
-                <div class="card-body">
-                    <div class="small text-muted streaming-job-meta mb-3"></div>
-                    <div class="d-flex gap-2 mb-3">
-                        <button sec:authorize="hasAuthority('MONITORING_RUN')" type="button" class="btn btn-primary btn-sm streaming-start"><i class="bi bi-play-fill me-1"></i> Start</button>
-                        <button sec:authorize="hasAuthority('MONITORING_RUN')" type="button" class="btn btn-outline-danger btn-sm streaming-stop"><i class="bi bi-stop-fill me-1"></i> Stop</button>
-                    </div>
-                    <div class="streaming-output bg-dark text-light rounded p-3 small" role="log" aria-live="polite" style="height:240px;overflow:auto;white-space:pre-wrap;font-family:monospace">Waiting for output…</div>
-                </div>
-            </section>
+
+    <section class="app-card mb-4">
+        <div class="app-card-header d-flex align-items-center justify-content-between gap-3 flex-wrap">
+            <div>
+                <div class="app-card-title">Available Streaming Jobs</div>
+                <div class="app-card-subtitle">Search, sort, and page through enabled jobs configured with Execution Mode = Streaming.</div>
+            </div>
+            <span id="streamingJobsCount" class="badge text-bg-secondary">0 jobs</span>
         </div>
-    </template>
+        <div class="app-card-body">
+            <div class="row g-3 align-items-end mb-3">
+                <div class="col-12 col-md-7">
+                    <label for="streamingJobSearch" class="form-label">Search jobs</label>
+                    <input id="streamingJobSearch" type="search" class="form-control" placeholder="Search by job name, description or status">
+                </div>
+                <div class="col-12 col-md-3">
+                    <label for="streamingJobPageSize" class="form-label">Rows per page</label>
+                    <select id="streamingJobPageSize" class="form-select">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="streamingJobsLoading" class="dashboard-state">
+                <i class="bi bi-arrow-repeat dashboard-spin"></i>
+                <p>Loading streaming jobs…</p>
+            </div>
+            <div id="streamingJobsEmpty" class="dashboard-state d-none">
+                <i class="bi bi-terminal"></i>
+                <h6>No enabled streaming jobs</h6>
+                <p>Create or enable a monitoring job with Execution Mode set to Streaming.</p>
+            </div>
+
+            <div id="streamingJobsTableWrapper" class="table-responsive d-none">
+                <table class="table app-table align-middle mb-0" id="streamingJobsTable">
+                    <thead>
+                    <tr>
+                        <th scope="col"><button type="button" class="table-sort active" data-sort="name">Job Name <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="description">Description <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col"><button type="button" class="table-sort" data-sort="status">Execution Status <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col" class="text-end"><button type="button" class="table-sort" data-sort="maxRuntimeSeconds">Max Runtime <i class="bi bi-arrow-down-up table-sort-icon"></i></button></th>
+                        <th scope="col" class="text-end">Action</th>
+                    </tr>
+                    </thead>
+                    <tbody id="streamingJobsTableBody"></tbody>
+                </table>
+            </div>
+
+            <div id="streamingJobsPagination" class="d-flex align-items-center justify-content-between gap-3 flex-wrap mt-3 d-none">
+                <span id="streamingJobsPageSummary" class="text-muted small"></span>
+                <div class="btn-group" role="group" aria-label="Streaming jobs pagination">
+                    <button type="button" id="streamingJobsPrevious" class="btn btn-outline-secondary btn-sm">Previous</button>
+                    <button type="button" id="streamingJobsNext" class="btn btn-outline-secondary btn-sm">Next</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="streamingJobDetails" class="app-card d-none" aria-live="polite">
+        <div class="app-card-header d-flex align-items-start justify-content-between gap-3 flex-wrap">
+            <div>
+                <div class="app-card-title" id="selectedStreamingJobName">Streaming Job</div>
+                <div class="app-card-subtitle" id="selectedStreamingJobDescription"></div>
+            </div>
+            <span id="selectedStreamingJobStatus" class="badge text-bg-secondary">IDLE</span>
+        </div>
+        <div class="app-card-body">
+            <div id="selectedStreamingJobMeta" class="small text-muted mb-3"></div>
+            <div class="d-flex gap-2 flex-wrap mb-3">
+                <button sec:authorize="hasAuthority('MONITORING_RUN')" type="button" id="startStreamingJob" class="btn btn-primary">
+                    <i class="bi bi-play-fill me-1"></i> Run
+                </button>
+                <button sec:authorize="hasAuthority('MONITORING_RUN')" type="button" id="stopStreamingJob" class="btn btn-outline-danger">
+                    <i class="bi bi-stop-fill me-1"></i> Stop
+                </button>
+                <button type="button" id="clearStreamingOutput" class="btn btn-outline-secondary">
+                    <i class="bi bi-eraser me-1"></i> Clear Output
+                </button>
+            </div>
+            <div class="form-label">Live output</div>
+            <pre id="selectedStreamingJobOutput" class="bg-dark text-light rounded p-3 small mb-0" role="log" aria-live="polite" style="height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-family:monospace">Select a streaming job to view its status and output.</pre>
+            <p class="form-text mb-0 mt-2">The process runs on the server independently of this browser tab. Re-selecting a running job reconnects to its output stream.</p>
+        </div>
+    </section>
+
     <script th:src="@{/js/streaming-jobs.js}"></script>
 </div>
 </body>
