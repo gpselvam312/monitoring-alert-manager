@@ -44,8 +44,8 @@
       th:object="${job}"
       method="post">
 
-    <input type="hidden"
-           th:field="*{id}">
+    <input type="hidden" th:field="*{id}">
+    <input type="hidden" th:if="${executionModeLocked}" th:field="*{executionMode}">
 
 
     <!-- ================================================== -->
@@ -435,11 +435,15 @@
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <label for="executionMode" class="form-label">Execution Mode</label>
-                    <select id="executionMode" th:field="*{executionMode}" class="form-select" required>
+                    <select id="executionMode" th:field="*{executionMode}" class="form-select" required
+                            th:disabled="${executionModeLocked}">
                         <option value="STANDARD">Standard — scheduled or manual execution</option>
                         <option value="STREAMING">Streaming — on-demand, continuous output</option>
                     </select>
-                    <div class="form-text">
+                    <div class="form-text" th:if="${executionModeLocked}">
+                        Execution Mode is fixed to Streaming because this form was opened from the Streaming Jobs page.
+                    </div>
+                    <div class="form-text" th:unless="${executionModeLocked}">
                         Streaming jobs are Script jobs and cannot have a schedule. They start only from the Streaming Jobs page.
                     </div>
                 </div>
