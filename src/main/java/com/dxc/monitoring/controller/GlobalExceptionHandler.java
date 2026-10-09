@@ -1,6 +1,5 @@
 package com.dxc.monitoring.controller;
 
-import java.io.IOException;
 import java.net.URI;
 import java.util.Locale;
 
@@ -21,7 +20,7 @@ public class GlobalExceptionHandler
 
     @ExceptionHandler(NoResourceFoundException.class)
     public void handleMissingStaticResource(NoResourceFoundException exception, HttpServletRequest request,
-            HttpServletResponse response) throws IOException
+            HttpServletResponse response)
     {
         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
         if (!"/favicon.ico".equals(request.getRequestURI()))
