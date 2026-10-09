@@ -716,10 +716,7 @@
 				    return;
 				}
 
-	            const data =
-	                Array.isArray(result.data)
-	                    ? result.data
-	                    : [];
+	            const data = getConfiguredChartData(result, widget);
 
 	            if (data.length === 0)
 	            {
@@ -974,6 +971,36 @@
 
         return [];
     }
+
+    function getConfiguredChartData(result, widget)
+    {
+        if (Array.isArray(result.data) && result.data.length > 0)
+        {
+            return result.data;
+        }
+
+        const config = parseWidgetFieldConfig(widget);
+        const categoryField = config.categoryField || config.labelField;
+        const valueField = config.valueField;
+        if (!categoryField || !valueField)
+        {
+            return [];
+        }
+
+        return getConfiguredTableRows(result, config).map(function (row)
+        {
+            return {
+                label: getJsonPath(row, categoryField),
+                value: getJsonPath(row, valueField),
+                series: config.seriesField ? getJsonPath(row, config.seriesField) : undefined
+            };
+        }).filter(function (point)
+        {
+            return point.label !== null && point.label !== undefined
+                && point.value !== null && point.value !== undefined;
+        });
+    }
+
 
     function formatTableValue(value, format)
     {
@@ -1427,10 +1454,7 @@
          */
 		else if (widgetType === "CHART")
 		{
-            const chartData =
-                Array.isArray(result.data)
-                    ? result.data
-                    : [];
+            const chartData = getConfiguredChartData(result, widget);
 
 
             if (chartData.length === 0)
