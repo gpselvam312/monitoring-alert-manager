@@ -148,11 +148,11 @@ public class ScriptExecutor implements MonitoringExecutor
         return result;
     }
 
-    private void normalizeResult(MonitoringExecutionResult result, String output, OffsetDateTime startedAt)
+    private void normalizeResult(MonitoringExecutionResult result, String output, OffsetDateTime startedAt, String parserConfigJson)
     {
         MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
                 output, result.getExecutionStatus(), result.getResultStatus(), result.getMessage(),
-                startedAt, OffsetDateTime.now());
+                startedAt, OffsetDateTime.now(), parserConfigJson);
         result.setResultData(normalized.json());
         result.setResultType(normalized.resultType());
         result.setResultStatus(normalized.resultStatus());
