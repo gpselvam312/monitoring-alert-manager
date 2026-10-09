@@ -56,6 +56,8 @@ public class StreamingJobService
     private int sshPort;
     @Value("${monitoring.streaming.node-id:${HOSTNAME:localhost}}")
     private String nodeId;
+    @Value("${monitoring.streaming.node-id:${HOSTNAME:localhost}}")
+    private String nodeId;
 
     public StreamingJobService(MonitoringJobRepository jobRepository, UserRepository userRepository,
             JdbcTemplate jdbcTemplate)
@@ -274,8 +276,11 @@ public class StreamingJobService
         if (sshUser == null || sshUser.isBlank())
             throw new IllegalStateException("Set MONITORING_STREAMING_SSH_USER to enable remote streaming jobs.");
         String logPath = "/tmp/monitoring-stream-" + job.getId() + "-" + System.currentTimeMillis() + ".log";
-        String remoteCommand = "mkdir -p /tmp; nohup bash -lc " + shellQuote(buildScriptCommand(job))
-                + " > " + shellQuote(logPath) + " 2>&1 < /dev/null & echo $!";
+        String exitPath = logPath + ".exit";
+        String remoteScript = buildScriptCommand(job) + "; rc=$?; printf '%s' \"$rc\" > "
+                + shellQuote(exitPath) + "; exit \"$rc\"";
+        String remoteCommand = "mkdir -p /tmp; rm -f " + shellQuote(exitPath) + "; nohup bash -lc "
+                + shellQuote(remoteScript) + " > " + shellQuote(logPath) + " 2>&1 < /dev/null & echo $!";
         Process launcher = new ProcessBuilder(sshCommand(host, remoteCommand)).redirectErrorStream(true).start();
         if (!launcher.waitFor(15, TimeUnit.SECONDS))
         {
@@ -295,8 +300,10 @@ public class StreamingJobService
         updateClaimStatus(job.getId(), "RUNNING");
         appendOutput(job.getId(), "Remote process started on " + host + " (PID " + context.pid + ").");
 
-        Process tail = new ProcessBuilder(sshCommand(host, "tail -n +1 -F " + shellQuote(logPath)))
-                .redirectErrorStream(true).start();
+        String tailCommand = "tail -n +1 -F " + shellQuote(logPath) + " & tail_pid=$!; "
+                + "while kill -0 " + context.pid + " 2>/dev/null; do sleep 1; done; sleep 0.5; "
+                + "kill \"$tail_pid\" 2>/dev/null || true; wait \"$tail_pid\" 2>/dev/null || true";
+        Process tail = new ProcessBuilder(sshCommand(host, tailCommand)).redirectErrorStream(true).start();
         context.outputProcess = tail;
         scheduler.execute(() -> readLines(job.getId(), tail));
         scheduler.execute(() -> waitForExit(job.getId(), context, tail));
@@ -310,16 +317,23 @@ public class StreamingJobService
             if (context.stopping.get()) return;
             if (context.remote)
             {
-                // Loss of the output SSH connection is not proof the remote process ended.
-                jdbcTemplate.update("""
-                        UPDATE ra_fcb.streaming_job_claims SET status='RECOVERY_REQUIRED',
-                            updated_at=CURRENT_TIMESTAMP,
-                            terminal_message='Remote output connection ended; remote process state must be verified.'
-                        WHERE monitoring_job_id=? AND status='RUNNING'
-                        """, jobId);
-                publishState(jobId, "RECOVERY_REQUIRED");
-                appendOutput(jobId, "Remote output connection ended (exit " + exit
-                        + "); process state requires verification.");
+                Integer remoteExit = readRemoteExitCode(context);
+                if (remoteExit == null)
+                {
+                    jdbcTemplate.update("""
+                            UPDATE ra_fcb.streaming_job_claims SET status='RECOVERY_REQUIRED',
+                                updated_at=CURRENT_TIMESTAMP,
+                                terminal_message='Remote process exit could not be confirmed.'
+                            WHERE monitoring_job_id=? AND status='RUNNING'
+                            """, jobId);
+                    publishState(jobId, "RECOVERY_REQUIRED");
+                    appendOutput(jobId, "Remote output connection ended without a confirmed process exit; recovery is required.");
+                }
+                else
+                {
+                    stopInternal(jobId, remoteExit == 0 ? "COMPLETED" : "FAILED",
+                            remoteExit == 0 ? "Remote process completed." : "Remote process exited with code " + remoteExit + ".");
+                }
             }
             else stopInternal(jobId, exit == 0 ? "COMPLETED" : "FAILED",
                     exit == 0 ? "Process completed." : "Process exited with code " + exit + ".");
@@ -438,6 +452,26 @@ public class StreamingJobService
         catch (Exception exception) { return false; }
     }
 
+    private Integer readRemoteExitCode(RunContext context)
+    {
+        try
+        {
+            Process process = new ProcessBuilder(sshCommand(context.host,
+                    "cat " + shellQuote(context.remoteLogPath + ".exit"))).redirectErrorStream(true).start();
+            if (!process.waitFor(10, TimeUnit.SECONDS))
+            {
+                process.destroyForcibly();
+                return null;
+            }
+            String code = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            return process.exitValue() == 0 && code.matches("-?\\d+") ? Integer.valueOf(code) : null;
+        }
+        catch (Exception exception)
+        {
+            return null;
+        }
+    }
+
     private List<String> sshCommand(String host, String remoteCommand)
     {
         List<String> command = new ArrayList<>(List.of("ssh", "-p", Integer.toString(sshPort),
@@ -457,8 +491,8 @@ public class StreamingJobService
                 if (!argument.isBlank()) parts.add(shellQuote(argument));
         String command = String.join(" ", parts);
         return job.getWorkingDirectory() == null || job.getWorkingDirectory().isBlank()
-                ? "exec " + command
-                : "cd " + shellQuote(job.getWorkingDirectory()) + " && exec " + command;
+                ? command
+                : "cd " + shellQuote(job.getWorkingDirectory()) + " && " + command;
     }
 
     private String shellQuote(String value) { return "'" + value.replace("'", "'\\''") + "'"; }
