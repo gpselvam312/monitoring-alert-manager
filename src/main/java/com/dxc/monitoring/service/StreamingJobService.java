@@ -56,8 +56,6 @@ public class StreamingJobService
     private int sshPort;
     @Value("${monitoring.streaming.node-id:${HOSTNAME:localhost}}")
     private String nodeId;
-    @Value("${monitoring.streaming.node-id:${HOSTNAME:localhost}}")
-    private String nodeId;
 
     public StreamingJobService(MonitoringJobRepository jobRepository, UserRepository userRepository,
             JdbcTemplate jdbcTemplate)
