@@ -209,16 +209,17 @@ public class MonitoringJobController
         {
             validationError = "Streaming execution currently supports Script monitoring jobs only.";
         }
-        else if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING && scheduleId != null)
-        {
-            validationError = "Streaming jobs are on-demand only. Remove the schedule before saving.";
-        }
-
         if (validationError != null)
         {
             redirectAttributes.addFlashAttribute("errorMessage", validationError);
             return job.getId() == null ? "redirect:/monitoring/jobs/new"
                     : "redirect:/monitoring/jobs/" + job.getId() + "/edit";
+        }
+
+        // Streaming jobs are on-demand only; clear any schedule when converting a job.
+        if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING)
+        {
+            scheduleId = null;
         }
 
         User currentUser = userRepository.findByUsername(authentication.getName()).orElseThrow(
