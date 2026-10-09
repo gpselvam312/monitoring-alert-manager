@@ -1,6 +1,7 @@
 package com.dxc.monitoring.service.dashboard;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,9 @@ import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.MonitoringResultRepository;
 
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+
 @Service
 public class DashboardConfigurationService
 {
@@ -26,14 +30,16 @@ public class DashboardConfigurationService
     private final DashboardWidgetRepository dashboardWidgetRepository;
     private final MonitoringJobRepository monitoringJobRepository;
     private final MonitoringResultRepository monitoringResultRepository;
+    private final ObjectMapper objectMapper;
 
     public DashboardConfigurationService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
             MonitoringJobRepository monitoringJobRepository, MonitoringResultRepository monitoringResultRepository,
-            EnvironmentRepository environmentRepository)
+            EnvironmentRepository environmentRepository, ObjectMapper objectMapper)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.environmentRepository = environmentRepository;
+        this.objectMapper = objectMapper;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringJobRepository = monitoringJobRepository;
         this.monitoringResultRepository = monitoringResultRepository;
@@ -234,6 +240,22 @@ public class DashboardConfigurationService
             }
         }
 
+        String fieldConfigJson = widget.getFieldConfigJson();
+        if (fieldConfigJson == null || fieldConfigJson.isBlank())
+        {
+            fieldConfigJson = "{}";
+        }
+
+        try
+        {
+            objectMapper.readValue(fieldConfigJson, new TypeReference<Map<String, Object>>() {});
+        }
+        catch (Exception exception)
+        {
+            throw new IllegalArgumentException("Widget field configuration must be a valid JSON object.");
+        }
+
+        widget.setFieldConfigJson(fieldConfigJson);
         widget.setName(widget.getName().trim());
 
     }
@@ -312,6 +334,7 @@ public class DashboardConfigurationService
         form.setEnabled(widget.getEnabled());
         form.setDataSourceType(widget.getDataSourceType());
         form.setDataSourceId(widget.getDataSourceId());
+        form.setFieldConfigJson(widget.getFieldConfigJson());
 
         // Convert legacy widgets that referenced one stored result into a live job source.
         if ("MONITORING_RESULT".equals(form.getDataSourceType()) && form.getDataSourceId() != null)
@@ -368,6 +391,7 @@ public class DashboardConfigurationService
         widget.setDataSourceType(form.getDataSourceType() == null || form.getDataSourceType().isBlank() ? null
                 : form.getDataSourceType().trim());
         widget.setDataSourceId(form.getDataSourceId());
+        widget.setFieldConfigJson(form.getFieldConfigJson());
         widget.setAutoRefresh(form.getAutoRefresh());
         widget.setRefreshInterval(form.getRefreshInterval());
         widget.setRefreshIntervalUnit(form.getRefreshIntervalUnit());
