@@ -17,6 +17,10 @@ public class DashboardTab
     @Column(nullable = false, length = 100)
     private String name;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "environment_id")
+    private Environment environment;
+
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
@@ -56,6 +60,16 @@ public class DashboardTab
     public void setName(String name)
     {
         this.name = name;
+    }
+
+    public Environment getEnvironment()
+    {
+        return environment;
+    }
+
+    public void setEnvironment(Environment environment)
+    {
+        this.environment = environment;
     }
 
     public Integer getSortOrder()
