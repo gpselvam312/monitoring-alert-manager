@@ -92,6 +92,8 @@ public class StreamingJobService
             throw new IllegalStateException("Only enabled streaming jobs can be started here.");
         if (!job.isManualRunEnabled())
             throw new IllegalStateException("Manual execution is disabled for this job.");
+        if (job.getType() != MonitoringJob.MonitorType.SCRIPT)
+            throw new IllegalStateException("Streaming execution currently supports SCRIPT monitoring jobs only.");
         if (job.getScriptPath() == null || job.getScriptPath().isBlank())
             throw new IllegalStateException("A script path is required for a streaming job.");
 
