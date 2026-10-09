@@ -1719,7 +1719,7 @@
                             widget.dataSourceId ?? '';
 
                         syncDashboardWidgetDataSourceFields(false);
-                        syncDashboardWidgetChartFields(false);
+                        syncDashboardWidgetChartFields(true);
                         syncDashboardWidgetRefreshFields(false);
 
                         document.getElementById('dashboardWidgetSortOrder').value =
@@ -1803,7 +1803,7 @@
                 document.getElementById('dashboardWidgetChartType');
 
             syncDashboardWidgetDataSourceFields(false);
-            syncDashboardWidgetChartFields(false);
+            syncDashboardWidgetChartFields(true);
             syncDashboardWidgetRefreshFields(false);
 
             interval.required = autoRefresh;
@@ -1835,7 +1835,7 @@
                 .classList.remove('was-validated');
 
             syncDashboardWidgetDataSourceFields(false);
-            syncDashboardWidgetChartFields(false);
+            syncDashboardWidgetChartFields(true);
             syncDashboardWidgetRefreshFields(false);
 
             document
