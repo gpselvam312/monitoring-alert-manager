@@ -76,6 +76,12 @@ public class DashboardController
 
         MonitoringJob job = monitoringJobService.findById(widget.getDataSourceId());
 
+        if (widget.getTab().getEnvironment() == null || job.getEnvironment() == null
+                || !widget.getTab().getEnvironment().getId().equals(job.getEnvironment().getId()))
+        {
+            throw new IllegalStateException("The monitoring job does not belong to this dashboard environment.");
+        }
+
         if (!job.isManualRunEnabled())
         {
             throw new IllegalStateException("Manual execution is disabled for this monitoring job.");
