@@ -11,19 +11,22 @@ import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.service.executor.MonitoringExecutionResult;
 import com.dxc.monitoring.service.executor.MonitoringExecutor;
 import com.dxc.monitoring.service.executor.MonitoringExecutorFactory;
+import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
 
 @Service
 public class MonitoringExecutionManager
 {
     private final MonitoringExecutorFactory executorFactory;
     private final MonitoringExecutionService executionService;
+    private final MonitoringResultNormalizer resultNormalizer;
     private final ConcurrentHashMap<Long, ReentrantLock> jobLocks = new ConcurrentHashMap<>();
 
     public MonitoringExecutionManager(MonitoringExecutorFactory executorFactory,
-            MonitoringExecutionService executionService)
+            MonitoringExecutionService executionService, MonitoringResultNormalizer resultNormalizer)
     {
         this.executorFactory = executorFactory;
         this.executionService = executionService;
+        this.resultNormalizer = resultNormalizer;
     }
 
     @Transactional
@@ -60,9 +63,20 @@ public class MonitoringExecutionManager
                 execution = executionService.completeExecution(execution, result.getExecutionStatus());
                 if (job.isStoreResult())
                 {
+                    if (result.getResultData() == null || result.getResultData().isBlank())
+                    {
+                        MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
+                                result.getRawOutput(), result.getExecutionStatus(), result.getResultStatus(),
+                                result.getMessage(), execution.getStartedAt(), java.time.OffsetDateTime.now());
+                        result.setResultData(normalized.json());
+                        result.setResultType(normalized.resultType());
+                        result.setResultStatus(normalized.resultStatus());
+                        result.setMessage(normalized.message());
+                    }
+
+                    String resultData = resultNormalizer.attachExecutionId(result.getResultData(), execution.getId());
                     executionService.saveResult(execution, result.getResultType(), result.getResultStatus(),
-                            result.getValue(), result.getUnit(), result.getMessage(), result.getResultData(),
-                            result.getRawOutput());
+                            result.getValue(), result.getUnit(), result.getMessage(), resultData, result.getRawOutput());
                 }
                 return execution;
             }
