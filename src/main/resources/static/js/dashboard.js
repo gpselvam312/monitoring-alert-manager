@@ -72,6 +72,7 @@
      */
     const dashboardCharts = new Map();
     let dateRangeEventsBound = false;
+    let dateRangeInitialized = false;
 
 
     /*
@@ -934,6 +935,164 @@
             return {};
         }
     }
+
+    function localDateString(date)
+    {
+        return date.getFullYear() + "-" +
+            String(date.getMonth() + 1).padStart(2, "0") + "-" +
+            String(date.getDate()).padStart(2, "0");
+    }
+
+    function updateDateRangePreset()
+    {
+        if (!dateRangePreset || !dateRangeFrom || !dateRangeTo) return;
+
+        const custom = dateRangePreset.value === "custom";
+        dateRangeFromGroup.classList.toggle("d-none", !custom);
+        dateRangeToGroup.classList.toggle("d-none", !custom);
+        if (custom) return;
+
+        const today = new Date();
+        const from = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        if (dateRangePreset.value === "7days") from.setDate(from.getDate() - 6);
+        if (dateRangePreset.value === "30days") from.setDate(from.getDate() - 29);
+
+        dateRangeFrom.value = localDateString(from);
+        dateRangeTo.value = localDateString(today);
+    }
+
+    function widgetSupportsDateRange(widget)
+    {
+        const config = parseWidgetFieldConfig(widget);
+        return Boolean(config.dateRange && config.dateRange.enabled === true);
+    }
+
+    function configureDateRangeControls()
+    {
+        if (!dateRangeContainer || !dateRangePreset) return;
+
+        const enabled = dashboardData.some(function (tab)
+        {
+            return Array.isArray(tab.widgets) && tab.widgets.some(function (response)
+            {
+                return widgetSupportsDateRange(response && response.widget);
+            });
+        });
+
+        dateRangeContainer.classList.toggle("d-none", !enabled);
+        if (!enabled) return;
+
+        if (!dateRangeInitialized)
+        {
+            dateRangePreset.value = "today";
+            updateDateRangePreset();
+            dateRangeInitialized = true;
+        }
+
+        if (!dateRangeEventsBound)
+        {
+            dateRangePreset.addEventListener("change", updateDateRangePreset);
+            dateRangeApplyButton.addEventListener("click", applyDashboardDateRange);
+            dateRangeEventsBound = true;
+        }
+    }
+
+    async function applyDashboardDateRange()
+    {
+        if (!dateRangeFrom.value || !dateRangeTo.value)
+        {
+            dateRangeMessage.textContent = "Select both a start date and an end date.";
+            return;
+        }
+
+        const startDate = dateRangeFrom.value;
+        const endDate = dateRangeTo.value;
+        if (startDate > endDate)
+        {
+            dateRangeMessage.textContent = "Start date must be on or before end date.";
+            return;
+        }
+
+        const activeButton = tabsElement.querySelector(".dashboard-tab.active");
+        const activeTabId = activeButton ? activeButton.dataset.tabId : null;
+        const activeTab = dashboardData.find(function (tab)
+        {
+            return String(tab.id) === String(activeTabId);
+        });
+
+        if (!activeTab)
+        {
+            dateRangeMessage.textContent = "Select an environment tab first.";
+            return;
+        }
+
+        const widgets = Array.isArray(activeTab.widgets) ? activeTab.widgets : [];
+        const uniqueJobs = new Map();
+        widgets.forEach(function (response)
+        {
+            const widget = response && response.widget;
+            if (widget && widgetSupportsDateRange(widget)
+                    && widget.dataSourceType === "MONITORING_JOB"
+                    && widget.dataSourceId !== null && widget.dataSourceId !== undefined)
+            {
+                uniqueJobs.set(String(widget.dataSourceId), response);
+            }
+        });
+
+        if (uniqueJobs.size === 0)
+        {
+            dateRangeMessage.textContent = "No date-range-enabled API widgets are configured for this environment.";
+            return;
+        }
+
+        dateRangeApplyButton.disabled = true;
+        dateRangeMessage.textContent = "Fetching results for " + startDate + " through " + endDate + "...";
+
+        try
+        {
+            await Promise.all(Array.from(uniqueJobs.values()).map(async function (response)
+            {
+                const widgetId = response.widget.id;
+                const url = "/api/dashboard/widgets/" + encodeURIComponent(widgetId) +
+                    "/run?startDate=" + encodeURIComponent(startDate) +
+                    "&endDate=" + encodeURIComponent(endDate);
+                const result = await fetch(url, {
+                    method: "POST",
+                    headers: { "Accept": "application/json" },
+                    cache: "no-store"
+                });
+
+                if (!result.ok)
+                {
+                    let message = "Unable to fetch date-range results.";
+                    try
+                    {
+                        const errorBody = await result.json();
+                        if (errorBody.message) message = errorBody.message;
+                    }
+                    catch (ignored)
+                    {
+                        // Keep the generic message.
+                    }
+                    throw new Error(message);
+                }
+            }));
+
+            await loadDashboard(activeTabId);
+            dateRangeMessage.textContent = "Results updated for " + startDate + " through " + endDate + ".";
+        }
+        catch (error)
+        {
+            dateRangeMessage.textContent = error && error.message
+                ? error.message
+                : "Unable to fetch date-range results.";
+        }
+        finally
+        {
+            dateRangeApplyButton.disabled = false;
+        }
+    }
+
 
     function getJsonPath(source, path)
     {
