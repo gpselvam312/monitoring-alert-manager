@@ -88,7 +88,7 @@ public class ScriptExecutor implements MonitoringExecutor
                 String stdout = readOutput(stdoutFuture);
                 String stderr = readOutput(stderrFuture);
                 result.setRawOutput(combineOutput(stdout, stderr));
-                normalizeResult(result, stdout, startedAt);
+                normalizeResult(result, stdout, startedAt, job.getResultParserConfig());
                 return result;
             }
 
@@ -122,7 +122,7 @@ public class ScriptExecutor implements MonitoringExecutor
                 result.setMessage("Script completed successfully.");
             }
 
-            normalizeResult(result, stdout, startedAt);
+            normalizeResult(result, stdout, startedAt, job.getResultParserConfig());
         }
         catch (InterruptedException exception)
         {
@@ -133,7 +133,7 @@ public class ScriptExecutor implements MonitoringExecutor
             result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
             result.setMessage("Script execution was interrupted.");
             result.setErrorMessage(exception.getMessage());
-            normalizeResult(result, exception.getMessage(), startedAt);
+            normalizeResult(result, exception.getMessage(), startedAt, job.getResultParserConfig());
         }
         catch (IOException | ExecutionException | TimeoutException exception)
         {
@@ -143,7 +143,7 @@ public class ScriptExecutor implements MonitoringExecutor
             result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
             result.setMessage("Unable to execute or collect output from the monitoring script.");
             result.setErrorMessage(exception.getMessage());
-            normalizeResult(result, exception.getMessage(), startedAt);
+            normalizeResult(result, exception.getMessage(), startedAt, job.getResultParserConfig());
         }
         return result;
     }
