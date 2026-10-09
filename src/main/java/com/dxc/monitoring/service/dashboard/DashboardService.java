@@ -513,6 +513,30 @@ public class DashboardService
         return createWidgetResponse(widget, job, execution, monitoringResult);
     }
 
+    public boolean isDateRangeEnabled(DashboardWidget widget)
+    {
+        if (widget == null || widget.getFieldConfigJson() == null || widget.getFieldConfigJson().isBlank())
+        {
+            return false;
+        }
+
+        try
+        {
+            Map<String, Object> config = objectMapper.readValue(
+                    widget.getFieldConfigJson(), new TypeReference<Map<String, Object>>() {});
+            Object dateRange = config.get("dateRange");
+            if (dateRange instanceof Map<?, ?> dateRangeConfig)
+            {
+                return Boolean.TRUE.equals(dateRangeConfig.get("enabled"));
+            }
+        }
+        catch (Exception ignored)
+        {
+            // Invalid widget configuration is treated as disabled.
+        }
+        return false;
+    }
+
     @Transactional(readOnly = true)
     public DashboardWidget getWidget(Long widgetId)
     {
