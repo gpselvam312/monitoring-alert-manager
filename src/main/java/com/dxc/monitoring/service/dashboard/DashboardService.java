@@ -51,7 +51,9 @@ public class DashboardService
     @Transactional(readOnly = true)
     public List<DashboardTabResponse> getDashboard()
     {
-        List<DashboardTab> tabs = dashboardTabRepository.findAllByEnabledTrueOrderBySortOrderAsc();
+        List<DashboardTab> tabs = dashboardTabRepository.findAllByEnabledTrueOrderBySortOrderAsc().stream()
+                .filter(tab -> tab.getEnvironment() != null)
+                .toList();
         List<DashboardWidget> widgets =
             dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc();
 
@@ -113,6 +115,8 @@ public class DashboardService
             DashboardTabResponse response = new DashboardTabResponse();
             response.setId(tab.getId());
             response.setName(tab.getName());
+            response.setEnvironmentId(tab.getEnvironment().getId());
+            response.setEnvironmentName(tab.getEnvironment().getName());
             response.setSortOrder(tab.getSortOrder());
             tabResponses.put(tab.getId(), response);
         }
