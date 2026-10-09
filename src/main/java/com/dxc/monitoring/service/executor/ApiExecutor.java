@@ -1,12 +1,17 @@
 package com.dxc.monitoring.service.executor;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
@@ -33,6 +38,13 @@ public class ApiExecutor implements MonitoringExecutor
     @Override
     public MonitoringExecutionResult execute(MonitoringJob job)
     {
+        return execute(job, Map.of());
+    }
+
+    @Override
+    public MonitoringExecutionResult execute(MonitoringJob job, Map<String, String> runtimeParameters)
+    {
+        Map<String, String> parameters = runtimeParameters == null ? Map.of() : runtimeParameters;
         MonitoringExecutionResult result = new MonitoringExecutionResult();
         result.setResultType(MonitoringResult.ResultType.TEXT);
         OffsetDateTime startedAt = OffsetDateTime.now();
@@ -50,7 +62,7 @@ public class ApiExecutor implements MonitoringExecutor
             String method = job.getHttpMethod() == null || job.getHttpMethod().isBlank()
                     ? "GET" : job.getHttpMethod().trim().toUpperCase(Locale.ROOT);
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(job.getUrl().trim()))
+                    .uri(URI.create(resolveTemplate(job.getUrl().trim(), parameters)))
                     .timeout(Duration.ofSeconds(timeoutSeconds));
 
             String headers = job.getRequestHeaders();
@@ -64,7 +76,7 @@ public class ApiExecutor implements MonitoringExecutor
                         String name = line.substring(0, separator).trim();
                         String value = line.substring(separator + 1).trim();
                         if (!name.isEmpty())
-                            builder.header(name, value);
+                            builder.header(name, resolveTemplate(value, parameters));
                     }
                 }
             }
@@ -73,7 +85,7 @@ public class ApiExecutor implements MonitoringExecutor
             if ("GET".equals(method) || "HEAD".equals(method))
                 builder.method(method, HttpRequest.BodyPublishers.noBody());
             else
-                builder.method(method, HttpRequest.BodyPublishers.ofString(body == null ? "" : body));
+                builder.method(method, HttpRequest.BodyPublishers.ofString(resolveTemplate(body == null ? "" : body, parameters)));
 
             HttpResponse<String> response = client.send(builder.build(),
                     HttpResponse.BodyHandlers.ofString());
@@ -121,6 +133,25 @@ public class ApiExecutor implements MonitoringExecutor
             failed(result, "Unable to complete API monitoring request.", exception.getMessage(), startedAt);
         }
         return result;
+    }
+
+    private String resolveTemplate(String value, Map<String, String> parameters)
+    {
+        Matcher matcher = Pattern.compile("\\{\\{([A-Za-z][A-Za-z0-9_]*)\\}\\}").matcher(value);
+        StringBuffer resolved = new StringBuffer();
+        while (matcher.find())
+        {
+            String parameterName = matcher.group(1);
+            String parameterValue = parameters.get(parameterName);
+            if (parameterValue == null)
+            {
+                throw new IllegalArgumentException("Missing runtime API parameter: " + parameterName);
+            }
+            matcher.appendReplacement(resolved,
+                    Matcher.quoteReplacement(URLEncoder.encode(parameterValue, StandardCharsets.UTF_8)));
+        }
+        matcher.appendTail(resolved);
+        return resolved.toString();
     }
 
     private void failed(MonitoringExecutionResult result, String message, String error, OffsetDateTime startedAt)
