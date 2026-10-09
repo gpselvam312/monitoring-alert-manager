@@ -1685,6 +1685,9 @@
                         document.getElementById('dashboardWidgetDetailsEnabled').checked =
                             widget.detailsEnabled === true;
 
+                        document.getElementById('dashboardWidgetFieldConfigJson').value =
+                            widget.fieldConfigJson || '{}';
+
                         document.getElementById('dashboardWidgetRefreshInterval').value =
                             widget.refreshInterval ?? '';
 
