@@ -53,8 +53,8 @@ public class DashboardConfigurationController
 
     @PostMapping("/tabs/save")
     public String saveTab(@RequestParam(required = false) Long id, @RequestParam String name,
-            @RequestParam(defaultValue = "0") Integer sortOrder, @RequestParam(defaultValue = "true") Boolean enabled,
-            RedirectAttributes redirectAttributes)
+            @RequestParam Long environmentId, @RequestParam(defaultValue = "0") Integer sortOrder,
+            @RequestParam(defaultValue = "true") Boolean enabled, RedirectAttributes redirectAttributes)
     {
         DashboardTab tab;
 
@@ -67,6 +67,7 @@ public class DashboardConfigurationController
         }
 
         tab.setName(name.trim());
+        tab.setEnvironment(dashboardConfigurationService.findEnvironmentById(environmentId));
         tab.setSortOrder(sortOrder);
         tab.setEnabled(enabled);
 
@@ -290,6 +291,7 @@ public class DashboardConfigurationController
         model.addAttribute("currentPage", "dashboard-configuration");
         model.addAttribute("tabs", tabs);
         model.addAttribute("dashboardTabs", dashboardTabs);
+        model.addAttribute("environments", dashboardConfigurationService.findEnabledEnvironments());
         model.addAttribute("selectedTab", selectedTab);
         model.addAttribute("widgets", widgets);
         model.addAttribute("monitoringJobs", dashboardConfigurationService.findDashboardMonitoringJobs());
