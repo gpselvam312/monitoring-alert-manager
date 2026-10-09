@@ -1330,24 +1330,18 @@
 
 
                             <div class="col-md-6">
-
-                                <label for="dashboardWidgetDataSourceType" class="form-label">
-                                    Data Source
-                                </label>
-
+                                <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
                                 <select class="form-select"
                                         id="dashboardWidgetDataSourceType"
                                         th:field="*{dataSourceType}"
                                         th:classappend="${#fields.hasErrors('dataSourceType')} ? ' is-invalid' : ''">
                                     <option value="">No data source</option>
                                     <option value="MONITORING_JOB">Monitoring Job</option>
-                                    <option value="MONITORING_RESULT">Monitoring Result</option>
                                 </select>
                                 <div class="invalid-feedback"
                                      th:if="${#fields.hasErrors('dataSourceType')}"
                                      th:errors="*{dataSourceType}">Select a valid data source.</div>
-                                <div class="form-text">Choose whether this widget reads a job's latest execution or one stored result.</div>
-
+                                <div class="form-text">Select a job to show its latest monitoring result.</div>
                             </div>
 
                             <div class="col-md-6" id="dashboardWidgetJobSourceGroup">
@@ -1366,92 +1360,34 @@
                                 <div class="invalid-feedback"
                                      th:if="${#fields.hasErrors('dataSourceId')}"
                                      th:errors="*{dataSourceId}">Select a monitoring job.</div>
-                                <div class="form-text">Used when Data Source is Monitoring Job.</div>
                             </div>
 
-                            <div class="col-md-6 d-none" id="dashboardWidgetResultSourceGroup">
-                                <label for="dashboardWidgetResultSourceId" class="form-label">
-                                    Monitoring Result <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-select"
-                                        id="dashboardWidgetResultSourceId"
-                                        th:field="*{dataSourceId}"
-                                        th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
-                                    <option value="">Select monitoring result</option>
-                                    <option th:each="result : ${monitoringResults}"
-                                            th:value="${result.id}"
-                                            th:text="|#${result.id} · ${result.execution.monitoringJob.name} · ${result.resultType} · ${#temporals.format(result.createdAt, 'yyyy-MM-dd HH:mm')}|">Monitoring Result</option>
-                                </select>
-                                <div class="invalid-feedback"
-                                     th:if="${#fields.hasErrors('dataSourceId')}"
-                                     th:errors="*{dataSourceId}">Select a monitoring result.</div>
-                                <div class="form-text">Used when Data Source is Monitoring Result.</div>
+                            <div class="col-12">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   th:field="*{enabled}" id="dashboardWidgetEnabled">
+                                            <label class="form-check-label" for="dashboardWidgetEnabled">Enabled</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   th:field="*{detailsEnabled}" id="dashboardWidgetDetailsEnabled">
+                                            <label class="form-check-label" for="dashboardWidgetDetailsEnabled">Details Enabled</label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-
 
                             <div class="col-md-4">
-
                                 <div class="form-check mt-4">
-
-                                    <input class="form-check-input"
-								       type="checkbox"
-								       th:field="*{enabled}"
-								       id="dashboardWidgetEnabled">
-
-                                    <label class="form-check-label"
-                                           for="dashboardWidgetEnabled">
-
-                                        Enabled
-
-                                    </label>
-
+                                    <input class="form-check-input" type="checkbox"
+                                           th:field="*{autoRefresh}" id="dashboardWidgetAutoRefresh">
+                                    <label class="form-check-label" for="dashboardWidgetAutoRefresh">Auto Refresh</label>
                                 </div>
-
                             </div>
-
-
-                            <div class="col-md-4">
-
-                                <div class="form-check mt-4">
-
-                                    <input class="form-check-input"
-									       type="checkbox"
-									       th:field="*{autoRefresh}"
-									       id="dashboardWidgetAutoRefresh">
-
-                                    <label class="form-check-label"
-                                           for="dashboardWidgetAutoRefresh">
-
-                                        Auto Refresh
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-
-
-                            <div class="col-md-4">
-
-                                <div class="form-check">
-
-                                    <input class="form-check-input"
-									       type="checkbox"
-									       th:field="*{detailsEnabled}"
-									       id="dashboardWidgetDetailsEnabled">
-
-                                    <label class="form-check-label"
-                                           for="dashboardWidgetDetailsEnabled">
-
-                                        Details Enabled
-
-                                    </label>
-
-                                </div>
-
-                            </div>
-
 
                             <div class="col-md-4"
                                  id="dashboardWidgetRefreshIntervalGroup">
@@ -1567,34 +1503,16 @@
         function syncDashboardWidgetDataSourceFields(clearSelection) {
             const sourceType = document.getElementById('dashboardWidgetDataSourceType').value;
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
-            const resultGroup = document.getElementById('dashboardWidgetResultSourceGroup');
             const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
-            const resultSelect = document.getElementById('dashboardWidgetResultSourceId');
-
-            if (clearSelection) {
-                jobSelect.value = '';
-                resultSelect.value = '';
-            }
-
             const useJob = sourceType === 'MONITORING_JOB';
-            const useResult = sourceType === 'MONITORING_RESULT';
+
+            if (clearSelection || !useJob) {
+                jobSelect.value = '';
+            }
 
             jobGroup.classList.toggle('d-none', !useJob);
-            resultGroup.classList.toggle('d-none', !useResult);
-
             jobSelect.disabled = !useJob;
-            resultSelect.disabled = !useResult;
             jobSelect.required = useJob;
-            resultSelect.required = useResult;
-
-            if (useJob) {
-                resultSelect.value = '';
-            } else if (useResult) {
-                jobSelect.value = '';
-            } else {
-                jobSelect.value = '';
-                resultSelect.value = '';
-            }
         }
 
         function syncDashboardWidgetChartFields(clearNonChartValue) {
