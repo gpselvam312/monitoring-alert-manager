@@ -31,7 +31,7 @@ public class StreamingJobController
     public String page(Model model)
     {
         model.addAttribute("currentPage", "streaming-jobs");
-        model.addAttribute("pageSize", 10);
+        model.addAttribute("pageSize", 5);
         model.addAttribute("search", "");
         return "monitoring/streaming-jobs";
     }
