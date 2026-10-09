@@ -2,8 +2,6 @@ package com.dxc.monitoring.service;
 
 import java.time.Duration;
 import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
@@ -109,8 +107,7 @@ public class MonitoringSchedulerService
             return null;
         }
 
-        ZoneId zoneId = ZoneId.of(schedule.getTimezone());
-        return new CronTrigger(schedule.getCronExpression().trim(), zoneId);
+        return new CronTrigger(schedule.getCronExpression().trim());
     }
 
     private Trigger createPeriodicTrigger(Schedule schedule, boolean fixedRate)
@@ -169,8 +166,7 @@ public class MonitoringSchedulerService
             return true;
         }
 
-        ZoneId zoneId = ZoneId.of(schedule.getTimezone());
-        LocalTime now = ZonedDateTime.now(zoneId).toLocalTime();
+        LocalTime now = LocalTime.now();
 
         if (start != null && end != null)
         {
