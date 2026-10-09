@@ -29,6 +29,18 @@ public class ScheduleService
     }
 
     @Transactional(readOnly = true)
+    public boolean nameExists(String name)
+    {
+        return scheduleRepository.existsByNameIgnoreCase(name);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean nameExistsForAnotherSchedule(String name, Long id)
+    {
+        return scheduleRepository.existsByNameIgnoreCaseAndIdNot(name, id);
+    }
+
+    @Transactional(readOnly = true)
     public Schedule findById(Long id)
     {
         return scheduleRepository.findById(id)
