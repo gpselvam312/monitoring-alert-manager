@@ -282,6 +282,12 @@ public class DashboardConfigurationService
             {
                 throw new IllegalArgumentException("Date-range filtering is supported only for API monitoring jobs.");
             }
+            if (sourceJob.getUrl() == null || !sourceJob.getUrl().contains("{{startDate}}")
+                    || !sourceJob.getUrl().contains("{{endDate}}"))
+            {
+                throw new IllegalArgumentException(
+                        "The API URL must include both {{startDate}} and {{endDate}} placeholders.");
+            }
         }
 
         widget.setFieldConfigJson(fieldConfigJson);
