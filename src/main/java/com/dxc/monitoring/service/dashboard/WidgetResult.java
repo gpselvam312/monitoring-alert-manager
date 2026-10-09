@@ -24,6 +24,9 @@ public class WidgetResult
 
     private Map<String, Object> details = new LinkedHashMap<>();
 
+    /** Complete normalized JSON result, retained for generic widget rendering. */
+    private Object payload;
+
     private LocalDateTime lastUpdated;
 
     public WidgetStatus getStatus()
@@ -104,6 +107,16 @@ public class WidgetResult
     public void setDetails(Map<String, Object> details)
     {
         this.details = details;
+    }
+
+    public Object getPayload()
+    {
+        return payload;
+    }
+
+    public void setPayload(Object payload)
+    {
+        this.payload = payload;
     }
 
     public LocalDateTime getLastUpdated()
