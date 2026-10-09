@@ -1,6 +1,6 @@
--- Streaming execution metadata and cross-instance claim state.
--- Streaming output is transient and is deleted when a run ends; it is not stored
--- in monitoring_results or exposed as standard monitoring history.
+-- Streaming job execution mode and durable cross-instance claim state.
+-- Streaming output is intentionally transient in application memory; it is not
+-- written to monitoring_results or the standard monitoring execution history.
 
 ALTER TABLE ra_fcb.monitoring_jobs
     ADD COLUMN execution_mode VARCHAR(20) NOT NULL DEFAULT 'STANDARD',
@@ -13,40 +13,34 @@ ALTER TABLE ra_fcb.monitoring_jobs
         CHECK (max_streaming_runtime_seconds > 0);
 
 CREATE TABLE ra_fcb.streaming_job_claims (
-    job_id BIGINT PRIMARY KEY
+    monitoring_job_id BIGINT PRIMARY KEY
         REFERENCES ra_fcb.monitoring_jobs(id) ON DELETE CASCADE,
-    state VARCHAR(30) NOT NULL DEFAULT 'IDLE',
-    owner_instance VARCHAR(200),
-    process_id BIGINT,
-    remote_pid VARCHAR(100),
-    started_by VARCHAR(200),
+    status VARCHAR(30) NOT NULL DEFAULT 'IDLE',
+    started_by BIGINT,
+    claim_owner VARCHAR(200),
     started_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    stop_requested BOOLEAN NOT NULL DEFAULT FALSE,
-    exit_code INTEGER,
-    error_message TEXT,
-    run_token UUID,
-    CONSTRAINT chk_streaming_job_claim_state CHECK (
-        state IN ('IDLE', 'STARTING', 'RUNNING', 'STOPPING',
-                  'RECOVERY_REQUIRED', 'COMPLETED', 'FAILED',
-                  'TIMED_OUT', 'STOPPED')
+    heartbeat_at TIMESTAMPTZ,
+    process_id BIGINT,
+    process_host VARCHAR(255),
+    process_marker TEXT,
+    remote_log_path TEXT,
+    terminal_message TEXT,
+    CONSTRAINT chk_streaming_job_claim_status CHECK (
+        status IN ('IDLE', 'STARTING', 'RUNNING', 'STOPPING',
+                   'RECOVERY_REQUIRED', 'COMPLETED', 'FAILED',
+                   'TIMED_OUT', 'STOPPED')
     )
 );
 
-CREATE TABLE ra_fcb.streaming_job_output_chunks (
-    job_id BIGINT NOT NULL
-        REFERENCES ra_fcb.streaming_job_claims(job_id) ON DELETE CASCADE,
-    sequence_no BIGSERIAL NOT NULL,
-    output_text TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (job_id, sequence_no)
-);
+CREATE INDEX idx_streaming_job_claims_status
+    ON ra_fcb.streaming_job_claims(status);
 
-CREATE INDEX idx_streaming_output_job_sequence
-    ON ra_fcb.streaming_job_output_chunks(job_id, sequence_no);
+CREATE INDEX idx_streaming_job_claims_owner
+    ON ra_fcb.streaming_job_claims(claim_owner);
 
--- Create an IDLE claim row for every existing job so claim updates can be atomic.
-INSERT INTO ra_fcb.streaming_job_claims (job_id, state)
+-- Pre-create claim rows so start can atomically claim an existing job.
+INSERT INTO ra_fcb.streaming_job_claims (monitoring_job_id, status)
 SELECT id, 'IDLE'
 FROM ra_fcb.monitoring_jobs
-ON CONFLICT (job_id) DO NOTHING;
+ON CONFLICT (monitoring_job_id) DO NOTHING;
