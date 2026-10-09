@@ -48,7 +48,7 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
     @EntityGraph(attributePaths = { "application", "environment", "machine", "schedule" })
     List<MonitoringJob> findByScheduleId(Long scheduleId);
 
-    java.util.List<MonitoringJob> findByExecutionModeAndEnabledTrueOrderByNameAsc(
+    java.util.List<MonitoringJob> findByExecutionModeOrderByNameAsc(
             MonitoringJob.ExecutionMode executionMode);
 
     boolean existsByApplicationId(Long applicationId);
