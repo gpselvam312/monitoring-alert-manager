@@ -1402,6 +1402,19 @@
                                 </div>
                             </div>
 
+                            <div class="col-12">
+                                <label for="dashboardWidgetFieldConfigJson" class="form-label">JSON Field / Column Configuration</label>
+                                <textarea class="form-control font-monospace" rows="5"
+                                          th:field="*{fieldConfigJson}" id="dashboardWidgetFieldConfigJson"
+                                          maxlength="10000"
+                                          placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
+                                <div class="form-text">
+                                    Optional JSON. Use rowPath to select an array of objects, visibleFields to hide columns,
+                                    labels to rename columns, and order to control column order. Leave as {} to show all fields.
+                                </div>
+                                <div class="invalid-feedback">Enter a valid JSON object.</div>
+                            </div>
+
                             <div class="col-md-4">
                                 <div class="form-check mt-4">
                                     <input class="form-check-input" type="checkbox"
