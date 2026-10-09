@@ -55,12 +55,34 @@ public class DashboardService
         List<DashboardWidget> widgets =
             dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc();
 
-        List<Long> jobIds = widgets.stream()
-                .filter(widget -> "MONITORING_JOB".equals(widget.getDataSourceType()))
+        // Keep legacy result-backed widgets working, but resolve them to the owning job
+        // so the dashboard always displays the latest execution rather than a frozen result.
+        List<Long> resultIds = widgets.stream()
+                .filter(widget -> "MONITORING_RESULT".equals(widget.getDataSourceType()))
                 .map(DashboardWidget::getDataSourceId)
                 .filter(id -> id != null)
                 .distinct()
                 .toList();
+        Map<Long, MonitoringResult> sourceResults = new HashMap<>();
+        if (!resultIds.isEmpty())
+        {
+            monitoringResultRepository.findAllById(resultIds)
+                    .forEach(result -> sourceResults.put(result.getId(), result));
+        }
+
+        List<Long> configuredJobIds = new ArrayList<>();
+        widgets.stream()
+                .filter(widget -> "MONITORING_JOB".equals(widget.getDataSourceType()))
+                .map(DashboardWidget::getDataSourceId)
+                .filter(id -> id != null)
+                .forEach(configuredJobIds::add);
+        sourceResults.values().stream()
+                .filter(result -> result.getExecution() != null
+                        && result.getExecution().getMonitoringJob() != null)
+                .map(result -> result.getExecution().getMonitoringJob().getId())
+                .filter(id -> id != null)
+                .forEach(configuredJobIds::add);
+        List<Long> jobIds = configuredJobIds.stream().distinct().toList();
 
         Map<Long, MonitoringExecution> latestExecutions = new HashMap<>();
         Map<Long, MonitoringJob> jobs = new HashMap<>();
@@ -82,20 +104,6 @@ public class DashboardService
             // Repository ordering puts the newest result for each execution first.
             monitoringResultRepository.findByExecutionIds(executionIds).forEach(result ->
                     latestResults.putIfAbsent(result.getExecution().getId(), result));
-        }
-
-        // MONITORING_RESULT data sources refer to a MonitoringResult ID, not a job ID.
-        List<Long> resultIds = widgets.stream()
-                .filter(widget -> "MONITORING_RESULT".equals(widget.getDataSourceType()))
-                .map(DashboardWidget::getDataSourceId)
-                .filter(id -> id != null)
-                .distinct()
-                .toList();
-        Map<Long, MonitoringResult> sourceResults = new HashMap<>();
-        if (!resultIds.isEmpty())
-        {
-            monitoringResultRepository.findAllById(resultIds)
-                    .forEach(result -> sourceResults.put(result.getId(), result));
         }
 
         Map<Long, DashboardTabResponse> tabResponses = new HashMap<>();
@@ -124,9 +132,14 @@ public class DashboardService
 
             if ("MONITORING_RESULT".equals(widget.getDataSourceType()))
             {
-                result = widget.getDataSourceId() == null ? null : sourceResults.get(widget.getDataSourceId());
-                execution = result == null ? null : result.getExecution();
-                job = execution == null ? null : execution.getMonitoringJob();
+                MonitoringResult configuredResult =
+                        widget.getDataSourceId() == null ? null : sourceResults.get(widget.getDataSourceId());
+                Long sourceJobId = configuredResult == null || configuredResult.getExecution() == null
+                        || configuredResult.getExecution().getMonitoringJob() == null
+                                ? null : configuredResult.getExecution().getMonitoringJob().getId();
+                job = sourceJobId == null ? null : jobs.get(sourceJobId);
+                execution = sourceJobId == null ? null : latestExecutions.get(sourceJobId);
+                result = execution == null ? null : latestResults.get(execution.getId());
             }
             else if ("MONITORING_JOB".equals(widget.getDataSourceType()))
             {
@@ -349,27 +362,34 @@ public class DashboardService
         MonitoringJob job = null;
 
         if (widget.getDataSourceId() != null
-                && "MONITORING_RESULT".equals(widget.getDataSourceType()))
+                && ("MONITORING_RESULT".equals(widget.getDataSourceType())
+                        || "MONITORING_JOB".equals(widget.getDataSourceType())))
         {
-            monitoringResult = monitoringResultRepository.findById(widget.getDataSourceId()).orElse(null);
-            execution = monitoringResult == null ? null : monitoringResult.getExecution();
-            job = execution == null ? null : execution.getMonitoringJob();
-        }
-        else if (widget.getDataSourceId() != null
-                && "MONITORING_JOB".equals(widget.getDataSourceType()))
-        {
-            job = monitoringJobRepository.findById(widget.getDataSourceId()).orElse(null);
-            List<MonitoringExecution> executions =
-                    monitoringExecutionRepository.findLatestByMonitoringJobIds(List.of(widget.getDataSourceId()));
+            Long sourceJobId = widget.getDataSourceId();
 
-            if (!executions.isEmpty())
+            if ("MONITORING_RESULT".equals(widget.getDataSourceType()))
             {
-                execution = executions.get(0);
-                List<MonitoringResult> results =
-                        monitoringResultRepository.findByExecutionIds(List.of(execution.getId()));
-                if (!results.isEmpty())
+                MonitoringResult legacyResult = monitoringResultRepository.findById(widget.getDataSourceId()).orElse(null);
+                sourceJobId = legacyResult == null || legacyResult.getExecution() == null
+                        || legacyResult.getExecution().getMonitoringJob() == null
+                                ? null : legacyResult.getExecution().getMonitoringJob().getId();
+            }
+
+            if (sourceJobId != null)
+            {
+                job = monitoringJobRepository.findById(sourceJobId).orElse(null);
+                List<MonitoringExecution> executions =
+                        monitoringExecutionRepository.findLatestByMonitoringJobIds(List.of(sourceJobId));
+
+                if (!executions.isEmpty())
                 {
-                    monitoringResult = results.get(0);
+                    execution = executions.get(0);
+                    List<MonitoringResult> results =
+                            monitoringResultRepository.findByExecutionIds(List.of(execution.getId()));
+                    if (!results.isEmpty())
+                    {
+                        monitoringResult = results.get(0);
+                    }
                 }
             }
         }
