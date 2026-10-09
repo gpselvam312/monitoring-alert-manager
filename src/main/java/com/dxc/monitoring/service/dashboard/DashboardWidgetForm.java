@@ -3,6 +3,7 @@ package com.dxc.monitoring.service.dashboard;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 @ValidDashboardWidget
 public class DashboardWidgetForm
@@ -13,8 +14,10 @@ public class DashboardWidgetForm
     private Long tabId;
 
     @NotBlank(message = "Widget name is required.")
+    @Size(max = 150, message = "Widget name must be 150 characters or fewer.")
     private String name;
 
+    @Size(max = 500, message = "Description must be 500 characters or fewer.")
     private String description;
 
     @NotBlank(message = "Widget type is required.")
@@ -22,6 +25,7 @@ public class DashboardWidgetForm
 
     private String chartType;
 
+    @Size(max = 100, message = "Icon must be 100 characters or fewer.")
     private String icon;
 
     @NotBlank(message = "Widget size is required.")
