@@ -496,8 +496,8 @@
                                               th:action="@{/monitoring/jobs/{id}/toggle(id=${job.id})}"
                                               method="post">
                                             <button type="submit" class="btn btn-sm btn-outline-warning"
-                                                    th:title="${job.enabled} ? 'Disable' : 'Enable'"
-                                                    th:attr="aria-label=${job.enabled} ? 'Disable' : 'Enable'">
+                                                    th:title="${job.enabled ? 'Disable' : 'Enable'}"
+                                                    th:attr="aria-label=${job.enabled ? 'Disable' : 'Enable'}">
                                                 <i th:if="${job.enabled}" class="bi bi-pause-circle"></i>
                                                 <i th:unless="${job.enabled}" class="bi bi-play-circle"></i>
                                                 <span class="action-label ms-1" th:text="${job.enabled} ? 'Disable' : 'Enable'">Disable</span>
