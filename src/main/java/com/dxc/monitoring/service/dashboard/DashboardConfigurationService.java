@@ -231,9 +231,14 @@ public class DashboardConfigurationService
             {
                 case "MONITORING_JOB" ->
                 {
-                    if (!monitoringJobRepository.existsById(dataSourceId))
+                    MonitoringJob sourceJob = monitoringJobRepository.findById(dataSourceId)
+                            .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found: " + dataSourceId));
+
+                    if (widget.getTab().getEnvironment() == null || sourceJob.getEnvironment() == null
+                            || !widget.getTab().getEnvironment().getId().equals(sourceJob.getEnvironment().getId()))
                     {
-                        throw new IllegalArgumentException("Monitoring job not found: " + dataSourceId);
+                        throw new IllegalArgumentException(
+                                "The monitoring job must belong to the same environment as the dashboard tab.");
                     }
                 }
                 default -> throw new IllegalArgumentException("Unsupported dashboard data source type: " + dataSourceType);
