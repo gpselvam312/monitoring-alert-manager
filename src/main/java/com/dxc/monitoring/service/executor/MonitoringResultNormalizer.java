@@ -79,6 +79,10 @@ public class MonitoringResultNormalizer
                 resultStatus = parsedStatus;
                 envelope.put("status", contractStatus(parsedStatus));
             }
+            else if (sourceStatus != null && "UNKNOWN".equalsIgnoreCase(String.valueOf(sourceStatus)))
+            {
+                envelope.put("status", "UNKNOWN");
+            }
             else
             {
                 envelope.put("status", contractStatus(fallbackStatus));
