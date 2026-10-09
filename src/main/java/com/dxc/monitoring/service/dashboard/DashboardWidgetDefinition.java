@@ -27,6 +27,8 @@ public class DashboardWidgetDefinition
 
     private Long dataSourceId;
 
+    private String fieldConfigJson;
+
     private Boolean autoRefresh;
 
     private Integer refreshInterval;
@@ -157,6 +159,16 @@ public class DashboardWidgetDefinition
     public void setDataSourceId(Long dataSourceId)
     {
         this.dataSourceId = dataSourceId;
+    }
+
+    public String getFieldConfigJson()
+    {
+        return fieldConfigJson;
+    }
+
+    public void setFieldConfigJson(String fieldConfigJson)
+    {
+        this.fieldConfigJson = fieldConfigJson;
     }
 
     public Boolean getAutoRefresh()
