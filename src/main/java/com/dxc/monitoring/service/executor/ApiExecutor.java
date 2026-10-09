@@ -117,7 +117,7 @@ public class ApiExecutor implements MonitoringExecutor
 
             MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
                     responseBody, result.getExecutionStatus(), result.getResultStatus(), result.getMessage(),
-                    startedAt, OffsetDateTime.now());
+                    startedAt, OffsetDateTime.now(), job.getResultParserConfig());
             result.setResultData(normalized.json());
             result.setResultType(normalized.resultType());
             result.setResultStatus(normalized.resultStatus());
@@ -165,7 +165,7 @@ public class ApiExecutor implements MonitoringExecutor
 
         MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
                 error == null ? message : error, result.getExecutionStatus(), result.getResultStatus(),
-                result.getMessage(), startedAt, OffsetDateTime.now());
+                result.getMessage(), startedAt, OffsetDateTime.now(), job.getResultParserConfig());
         result.setResultData(normalized.json());
         result.setResultType(normalized.resultType());
     }
