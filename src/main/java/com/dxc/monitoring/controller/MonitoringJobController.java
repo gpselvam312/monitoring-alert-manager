@@ -198,8 +198,9 @@ public class MonitoringJobController
         }
 
         String validationError = null;
-        if (job.getMaxStreamingRuntimeSeconds() < 1
-                || job.getMaxStreamingRuntimeSeconds() > configuredMaximumStreamingRuntimeSeconds)
+        if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
+                && (job.getMaxStreamingRuntimeSeconds() < 1
+                    || job.getMaxStreamingRuntimeSeconds() > configuredMaximumStreamingRuntimeSeconds))
         {
             validationError = "Maximum streaming runtime must be between 1 and "
                     + configuredMaximumStreamingRuntimeSeconds + " seconds.";
