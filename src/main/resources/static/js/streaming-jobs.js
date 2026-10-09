@@ -111,7 +111,7 @@
 
     function renderTable() {
         const filtered = visibleJobs();
-        const pageSize = Number(pageSizeSelect.value) || 25;
+        const pageSize = Number(pageSizeSelect.value) || 5;
         const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
         page = Math.min(page, pageCount - 1);
         const start = page * pageSize;
