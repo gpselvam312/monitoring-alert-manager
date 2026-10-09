@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unable to Complete Request</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/css/bootstrap-icons.min.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <style>
+        body { min-height: 100vh; background: var(--app-bg, #f4f6f9); }
+        .error-overlay {
+            position: fixed; inset: 0; display: flex; align-items: center;
+            justify-content: center; padding: 1rem; background: rgba(15, 23, 42, .48);
+        }
+        .error-dialog { width: 100%; max-width: 520px; border-radius: 1rem; background: var(--bs-body-bg, #fff);
+            box-shadow: 0 1rem 3rem rgba(0,0,0,.2); overflow: hidden; }
+        .error-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
+        .error-body { display: flex; gap: 1rem; align-items: flex-start; padding: 1.5rem; }
+        .error-icon { font-size: 1.75rem; color: #dc3545; }
+        .error-actions { display: flex; justify-content: flex-end; gap: .75rem; padding: 0 1.5rem 1.5rem; }
+    </style>
+</head>
+<body>
+    <div class="error-overlay" role="alertdialog" aria-modal="true" aria-labelledby="errorTitle">
+        <section class="error-dialog">
+            <header class="error-header">
+                <h1 class="h5 mb-0" id="errorTitle">Something went wrong</h1>
+            </header>
+            <div class="error-body">
+                <i class="bi bi-exclamation-triangle-fill error-icon" aria-hidden="true"></i>
+                <div>
+                    <p class="mb-2">We couldn't complete your request.</p>
+                    <p class="text-secondary mb-0">Your request may not have been saved. Please try again in a moment. If the problem continues, contact support.</p>
+                </div>
+            </div>
+            <footer class="error-actions">
+                <button type="button" class="btn btn-outline-secondary" onclick="if (history.length > 1) { history.back(); } else { window.location.href = '/'; }">Go back</button>
+                <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+            </footer>
+        </section>
+    </div>
+</body>
+</html>
