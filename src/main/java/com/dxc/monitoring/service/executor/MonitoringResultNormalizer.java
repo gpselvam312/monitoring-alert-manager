@@ -192,6 +192,68 @@ public class MonitoringResultNormalizer
         }
     }
 
+    public void validateParserConfig(String parserConfigJson)
+    {
+        if (parserConfigJson == null || parserConfigJson.isBlank())
+        {
+            return;
+        }
+
+        Map<String, Object> config;
+        try
+        {
+            config = objectMapper.readValue(parserConfigJson, new TypeReference<Map<String, Object>>() {});
+        }
+        catch (Exception exception)
+        {
+            throw new IllegalArgumentException("Result parser configuration must be a valid JSON object.");
+        }
+        if (config == null)
+        {
+            throw new IllegalArgumentException("Result parser configuration must be a JSON object.");
+        }
+
+        String type = String.valueOf(config.getOrDefault("type", "AUTO")).trim().toUpperCase(Locale.ROOT);
+        if (!List.of("AUTO", "JSON", "DELIMITED", "KEY_VALUE", "REGEX").contains(type))
+        {
+            throw new IllegalArgumentException("Unsupported result parser type: " + type);
+        }
+        if ("DELIMITED".equals(type)
+                && (!(config.get("delimiter") instanceof String delimiter) || delimiter.isEmpty()))
+        {
+            throw new IllegalArgumentException("Delimited parser requires a non-empty delimiter.");
+        }
+        if ("KEY_VALUE".equals(type)
+                && config.containsKey("separator")
+                && (!(config.get("separator") instanceof String separator) || separator.isEmpty()))
+        {
+            throw new IllegalArgumentException("Key-value parser separator must not be empty.");
+        }
+        if ("REGEX".equals(type))
+        {
+            if (!(config.get("fields") instanceof List<?> fields) || fields.isEmpty())
+            {
+                throw new IllegalArgumentException("Regex parser requires a non-empty fields array.");
+            }
+            for (Object fieldObject : fields)
+            {
+                if (!(fieldObject instanceof Map<?, ?> field)
+                        || field.get("key") == null || field.get("pattern") == null)
+                {
+                    throw new IllegalArgumentException("Each regex field requires key and pattern.");
+                }
+                try
+                {
+                    Pattern.compile(String.valueOf(field.get("pattern")), Pattern.MULTILINE);
+                }
+                catch (Exception exception)
+                {
+                    throw new IllegalArgumentException("Invalid regex pattern for field: " + field.get("key"));
+                }
+            }
+        }
+    }
+
     private Map<String, Object> parseParserConfig(String parserConfigJson)
     {
         if (parserConfigJson == null || parserConfigJson.isBlank())
