@@ -912,229 +912,208 @@
      * ------------------------------------------------------------
      */
 
-	function renderTableWidget(result)
-	{
-	    let columns =
-	        Array.isArray(result.columns)
-	            ? result.columns.filter(function (column)
-	            {
-	                return column && (column.key || column.label);
-	            })
-	            : [];
-
-	    let rows =
-	        Array.isArray(result.rows)
-	            ? result.rows
-	            : [];
-
-	    // Derive headers from returned row keys when a result omits columns.
-	    if (columns.length === 0 && rows.length > 0)
-	    {
-	        const keys = Array.from(new Set(
-	            rows.reduce(function (allKeys, row)
-	            {
-	                return allKeys.concat(
-	                    row && typeof row === "object"
-	                        ? Object.keys(row)
-	                        : []
-	                );
-	            }, [])
-	        ));
-
-	        columns = keys.map(function (key)
-	        {
-	            return {
-	                key: key,
-	                label: key.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-	                    .replace(/^./, function (character) { return character.toUpperCase(); })
-	            };
-	        });
-	    }
-
-	    // Without structured rows, show a summary of the latest monitoring result
-	    // and any metrics. TABLE widgets do not require manual column setup.
-	    if (columns.length === 0)
-	    {
-	        columns = [
-	            { key: "status", label: "Status" },
-	            { key: "message", label: "Message" },
-	            { key: "value", label: "Value" },
-	            { key: "lastUpdated", label: "Last Updated" }
-	        ];
-
-	        const summaryRow = {
-	            status: getStatusLabel(result.status),
-	            message: result.message || "",
-	            value: result.value ?? "",
-	            lastUpdated: formatLastUpdated(result.lastUpdated)
-	        };
-
-	        if (result.metrics && typeof result.metrics === "object")
-	        {
-	            Object.entries(result.metrics).forEach(function (entry)
-	            {
-	                const key = entry[0];
-	                columns.push({
-	                    key: "metric_" + key,
-	                    label: key.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-	                        .replace(/^./, function (character) { return character.toUpperCase(); })
-	                });
-	                summaryRow["metric_" + key] = entry[1];
-	            });
-	        }
-
-	        rows = [summaryRow];
-	    }
-
-	    const headerHtml =
-	        columns.map(function (column, index)
-	        {
-	            return (
-	                '<th scope="col"' +
-	                    ' class="dashboard-table-sortable"' +
-	                    ' data-column-index="' +
-	                        index +
-	                    '"' +
-	                    ' data-column-key="' +
-	                        escapeHtml(column.key || "") +
-	                    '"' +
-	                    '>' +
-	                    '<span class="dashboard-table-header-content">' +
-	                        '<span>' +
-	                            escapeHtml(
-	                                column.label ||
-	                                column.key ||
-	                                ""
-	                            ) +
-	                        '</span>' +
-	                        '<i class="bi bi-arrow-down-up dashboard-table-sort-icon"></i>' +
-	                    '</span>' +
-	                '</th>'
-	            );
-	        }).join("");
-
-	    const bodyHtml =
-	        rows.length
-	            ? rows.map(function (row)
-	            {
-	                return (
-	                    '<tr>' +
-	                        columns.map(function (column)
-	                        {
-	                            const value =
-	                                row[column.key];
-
-	                            return (
-	                                '<td>' +
-	                                    escapeHtml(
-	                                        value === null ||
-	                                        value === undefined
-	                                            ? ""
-	                                            : value
-	                                    ) +
-	                                '</td>'
-	                            );
-	                        }).join("") +
-	                    '</tr>'
-	                );
-	            }).join("")
-	            : (
-	                '<tr>' +
-	                    '<td colspan="' +
-	                        columns.length +
-	                    '">' +
-	                        'No data available.' +
-	                    '</td>' +
-	                '</tr>'
-	            );
-
-	    return (
-	        '<div class="dashboard-table-wrapper">' +
-	            '<table class="table dashboard-table mb-0">' +
-	                '<thead>' +
-	                    '<tr>' +
-	                        headerHtml +
-	                    '</tr>' +
-	                '</thead>' +
-	                '<tbody>' +
-	                    bodyHtml +
-	                '</tbody>' +
-	            '</table>' +
-	        '</div>'
-	    );
-	}
-
 	
-	function renderStatusWidget(result)
-	{
-	    const value =
-	        result.value !== null &&
-	        result.value !== undefined
-	            ? result.value
-	            : "";
+    function parseWidgetFieldConfig(widget)
+    {
+        if (!widget || !widget.fieldConfigJson) return {};
+        try
+        {
+            const config = JSON.parse(widget.fieldConfigJson);
+            return config && typeof config === "object" && !Array.isArray(config) ? config : {};
+        }
+        catch (exception)
+        {
+            console.warn("Invalid widget field configuration", exception);
+            return {};
+        }
+    }
 
-	    const message =
-	        result.message || "";
+    function getJsonPath(source, path)
+    {
+        if (source === null || source === undefined || !path) return undefined;
+        const normalizedPath = String(path).replace(/^\$\.?/, "");
+        if (!normalizedPath) return source;
+        return normalizedPath.split(".").reduce(function (current, part)
+        {
+            if (current === null || current === undefined) return undefined;
+            if (Array.isArray(current) && /^\d+$/.test(part)) return current[Number(part)];
+            return current[part];
+        }, source);
+    }
 
-	    let metricsHtml = "";
+    function isObjectRow(value)
+    {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+    }
 
-	    if (
-	        result.metrics &&
-	        typeof result.metrics === "object"
-	    )
-	    {
-	        const metricEntries =
-	            Object.entries(result.metrics);
+    function getConfiguredTableRows(result, config)
+    {
+        const existingRows = Array.isArray(result.rows) ? result.rows : [];
+        if (existingRows.length > 0) return existingRows;
 
-	        if (metricEntries.length > 0)
-	        {
-	            metricsHtml =
-	                '<div class="dashboard-status-metrics">' +
-	                    metricEntries.map(
-	                        function (entry)
-	                        {
-	                            return (
-	                                '<div class="dashboard-status-metric">' +
-	                                    '<span class="dashboard-status-metric-label">' +
-	                                        escapeHtml(entry[0]) +
-	                                    '</span>' +
-	                                    '<span class="dashboard-status-metric-value">' +
-	                                        escapeHtml(entry[1]) +
-	                                    '</span>' +
-	                                '</div>'
-	                            );
-	                        }
-	                    ).join("") +
-	                '</div>';
-	        }
-	    }
+        const payload = result.payload;
+        if (!payload || typeof payload !== "object") return [];
 
-	    return (
-	        '<div class="dashboard-status-content">' +
-	            (
-	                value !== ""
-	                    ? (
-	                        '<div class="dashboard-status-value">' +
-	                            escapeHtml(value) +
-	                        '</div>'
-	                    )
-	                    : ""
-	            ) +
-	            (
-	                message
-	                    ? (
-	                        '<div class="dashboard-status-message">' +
-	                            escapeHtml(message) +
-	                        '</div>'
-	                    )
-	                    : ""
-	            ) +
-	            metricsHtml +
-	        '</div>'
-	    );
-	}
-	
-	function renderStatWidget(result)
+        if (config.rowPath)
+        {
+            const configuredRows = getJsonPath(payload, config.rowPath);
+            return Array.isArray(configuredRows) ? configuredRows.filter(isObjectRow) : [];
+        }
+
+        const data = Object.prototype.hasOwnProperty.call(payload, "data") ? payload.data : payload;
+        if (Array.isArray(data)) return data.filter(isObjectRow);
+
+        if (isObjectRow(data))
+        {
+            const arrays = Object.values(data).filter(function (value)
+            {
+                return Array.isArray(value) && value.some(isObjectRow);
+            });
+            if (arrays.length > 0) return arrays[0].filter(isObjectRow);
+        }
+
+        return [];
+    }
+
+    function formatTableValue(value, format)
+    {
+        if (value === null || value === undefined) return "";
+        if (!format) return typeof value === "object" ? JSON.stringify(value) : value;
+
+        const normalizedFormat = String(format).toLowerCase();
+        if (normalizedFormat === "percentage" && Number.isFinite(Number(value)))
+            return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
+        if (normalizedFormat === "number" && Number.isFinite(Number(value)))
+            return Number(value).toLocaleString();
+        if (normalizedFormat === "datetime") return formatLastUpdated(value);
+        if (normalizedFormat === "duration" && Number.isFinite(Number(value)))
+        {
+            const seconds = Math.max(0, Math.floor(Number(value)));
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const remainingSeconds = seconds % 60;
+            return [hours, minutes, remainingSeconds]
+                .map(function (part) { return String(part).padStart(2, "0"); })
+                .join(":");
+        }
+        return typeof value === "object" ? JSON.stringify(value) : value;
+    }
+
+    function renderTableWidget(result, widget)
+    {
+        const config = parseWidgetFieldConfig(widget);
+        let columns = Array.isArray(result.columns)
+            ? result.columns.filter(function (column)
+                {
+                    return column && (column.key || column.label);
+                }).map(function (column) { return Object.assign({}, column); })
+            : [];
+
+        let rows = getConfiguredTableRows(result, config);
+
+        if (columns.length === 0 && rows.length > 0)
+        {
+            const keys = Array.from(new Set(rows.reduce(function (allKeys, row)
+            {
+                return allKeys.concat(Object.keys(row));
+            }, [])));
+            columns = keys.map(function (key)
+            {
+                return {
+                    key: key,
+                    label: key.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                        .replace(/^./, function (character) { return character.toUpperCase(); })
+                };
+            });
+        }
+
+        if (columns.length === 0)
+        {
+            columns = [
+                { key: "status", label: "Status" },
+                { key: "message", label: "Message" },
+                { key: "value", label: "Value" },
+                { key: "lastUpdated", label: "Last Updated" }
+            ];
+            const summaryRow = {
+                status: getStatusLabel(result.status),
+                message: result.message || "",
+                value: result.value ?? "",
+                lastUpdated: formatLastUpdated(result.lastUpdated)
+            };
+            if (result.metrics && typeof result.metrics === "object")
+            {
+                Object.entries(result.metrics).forEach(function (entry)
+                {
+                    const key = entry[0];
+                    columns.push({
+                        key: "metric_" + key,
+                        label: key.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                            .replace(/^./, function (character) { return character.toUpperCase(); })
+                    });
+                    summaryRow["metric_" + key] = entry[1];
+                });
+            }
+            rows = [summaryRow];
+        }
+
+        const visibleFields = Array.isArray(config.visibleFields) ? config.visibleFields.map(String) : [];
+        if (visibleFields.length > 0)
+        {
+            columns = columns.filter(function (column) { return visibleFields.includes(String(column.key)); });
+        }
+
+        if (Array.isArray(config.order) && config.order.length > 0)
+        {
+            const order = config.order.map(String);
+            columns.sort(function (left, right)
+            {
+                const leftIndex = order.indexOf(String(left.key));
+                const rightIndex = order.indexOf(String(right.key));
+                if (leftIndex < 0 && rightIndex < 0) return 0;
+                if (leftIndex < 0) return 1;
+                if (rightIndex < 0) return -1;
+                return leftIndex - rightIndex;
+            });
+        }
+
+        const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+        const formats = config.formats && typeof config.formats === "object" ? config.formats : {};
+        columns = columns.map(function (column)
+        {
+            return Object.assign({}, column, { label: labels[column.key] || column.label || column.key });
+        });
+
+        if (columns.length === 0)
+            return '<div class="text-muted small p-3">No columns match the configured visible fields.</div>';
+
+        const headerHtml = columns.map(function (column, index)
+        {
+            return '<th scope="col" class="dashboard-table-sortable" data-column-index="' +
+                index + '" data-column-key="' + escapeHtml(column.key || "") +
+                '"><span class="dashboard-table-header-content"><span>' +
+                escapeHtml(column.label || column.key || "") +
+                '</span><i class="bi bi-arrow-down-up dashboard-table-sort-icon"></i></span></th>';
+        }).join("");
+
+        const bodyHtml = rows.length
+            ? rows.map(function (row)
+                {
+                    return '<tr>' + columns.map(function (column)
+                    {
+                        const value = Object.prototype.hasOwnProperty.call(row, column.key)
+                            ? row[column.key]
+                            : getJsonPath(row, column.key);
+                        return '<td>' + escapeHtml(formatTableValue(value, formats[column.key])) + '</td>';
+                    }).join("") + '</tr>';
+                }).join("")
+            : '<tr><td colspan="' + columns.length + '">No data available.</td></tr>';
+
+        return '<div class="dashboard-table-wrapper"><table class="table dashboard-table mb-0">' +
+            '<thead><tr>' + headerHtml + '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>';
+    }
+
+    function renderStatWidget(result)
 	{
 	    const value =
 	        result.value !== null &&
@@ -1439,7 +1418,7 @@
         else if (widgetType === "TABLE")
         {
             widgetContentHtml =
-                renderTableWidget(result);
+                renderTableWidget(result, widget);
         }
 
 
