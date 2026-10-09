@@ -217,11 +217,9 @@ public class MonitoringJobController
                     : "redirect:/monitoring/jobs/" + job.getId() + "/edit";
         }
 
-        // Streaming jobs are on-demand only; clear any schedule when converting a job.
-        if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING)
-        {
-            scheduleId = null;
-        }
+        // Streaming jobs are on-demand only; do not persist a schedule for them.
+        Long resolvedScheduleId = job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
+                ? null : scheduleId;
 
         User currentUser = userRepository.findByUsername(authentication.getName()).orElseThrow(
                 () -> new IllegalArgumentException("Logged-in user not found: " + authentication.getName()));
@@ -283,10 +281,10 @@ public class MonitoringJobController
             }
 
             // Schedule
-            if (scheduleId != null)
+            if (resolvedScheduleId != null)
             {
-                existingJob.setSchedule(scheduleRepository.findById(scheduleId)
-                        .orElseThrow(() -> new IllegalArgumentException("Schedule not found: " + scheduleId)));
+                existingJob.setSchedule(scheduleRepository.findById(resolvedScheduleId)
+                        .orElseThrow(() -> new IllegalArgumentException("Schedule not found: " + resolvedScheduleId)));
             } else
             {
                 existingJob.setSchedule(null);
@@ -330,10 +328,10 @@ public class MonitoringJobController
             }
 
             // Schedule
-            if (scheduleId != null)
+            if (resolvedScheduleId != null)
             {
-                job.setSchedule(scheduleRepository.findById(scheduleId)
-                        .orElseThrow(() -> new IllegalArgumentException("Schedule not found: " + scheduleId)));
+                job.setSchedule(scheduleRepository.findById(resolvedScheduleId)
+                        .orElseThrow(() -> new IllegalArgumentException("Schedule not found: " + resolvedScheduleId)));
             }
 
             // Application
