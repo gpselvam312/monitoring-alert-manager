@@ -72,6 +72,37 @@
     <div id="dashboardContainer"
          class="d-none">
 
+        <!-- Optional date range for API-backed widgets -->
+        <div id="dashboardDateRange" class="app-card mb-3 d-none">
+            <div class="app-card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="dashboardDateRangePreset" class="form-label">Reporting Period</label>
+                        <select id="dashboardDateRangePreset" class="form-select">
+                            <option value="today">Today</option>
+                            <option value="7days">Last 7 days</option>
+                            <option value="30days">Last 30 days</option>
+                            <option value="custom">Custom date range</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" id="dashboardDateRangeFromGroup">
+                        <label for="dashboardDateRangeFrom" class="form-label">From date</label>
+                        <input type="date" id="dashboardDateRangeFrom" class="form-control">
+                    </div>
+                    <div class="col-md-3" id="dashboardDateRangeToGroup">
+                        <label for="dashboardDateRangeTo" class="form-label">To date</label>
+                        <input type="date" id="dashboardDateRangeTo" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" id="dashboardDateRangeApply" class="btn btn-primary">
+                            Apply
+                        </button>
+                    </div>
+                </div>
+                <div id="dashboardDateRangeMessage" class="small text-muted mt-2" aria-live="polite"></div>
+            </div>
+        </div>
+
         <!-- Tabs and Dashboard Actions -->
 		<div class="dashboard-tab-toolbar">
 		
