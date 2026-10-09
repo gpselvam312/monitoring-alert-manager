@@ -133,7 +133,12 @@ public class StreamingJobService
 
         try
         {
-            Process process = new ProcessBuilder(buildCommand(job)).redirectErrorStream(true).start();
+            ProcessBuilder processBuilder = new ProcessBuilder(buildCommand(job)).redirectErrorStream(true);
+            if (!isRemote(job) && job.getWorkingDirectory() != null && !job.getWorkingDirectory().isBlank())
+            {
+                processBuilder.directory(new java.io.File(job.getWorkingDirectory()));
+            }
+            Process process = processBuilder.start();
             localProcesses.put(jobId, process);
             OffsetDateTime processStartedAt = process.toHandle().info().startInstant()
                     .map(instant -> OffsetDateTime.ofInstant(instant, ZoneOffset.UTC)).orElse(null);
