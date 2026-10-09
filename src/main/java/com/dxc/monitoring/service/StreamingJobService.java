@@ -178,6 +178,11 @@ public class StreamingJobService
 
     public SseEmitter subscribe(Long jobId)
     {
+        MonitoringJob job = jobRepository.findByIdForDetails(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found: " + jobId));
+        if (!job.isEnabled() || job.getExecutionMode() != MonitoringJob.ExecutionMode.STREAMING)
+            throw new IllegalArgumentException("Only enabled streaming jobs expose a live output stream.");
+
         SseEmitter emitter = new SseEmitter(0L);
         Set<SseEmitter> listeners = emitters.computeIfAbsent(jobId, ignored -> new CopyOnWriteArraySet<>());
         listeners.add(emitter);
@@ -344,8 +349,19 @@ public class StreamingJobService
                 }
                 else
                 {
-                    stopInternal(jobId, remoteExit == 0 ? "COMPLETED" : "FAILED",
-                            remoteExit == 0 ? "Remote process completed." : "Remote process exited with code " + remoteExit + ".");
+                    // The remote process has already exited. Do not try to kill its PID;
+                    // finalize directly so a normal exit is not mistaken for failed recovery.
+                    if (context.stopping.compareAndSet(false, true))
+                    {
+                        String terminalStatus = remoteExit == 0 ? "COMPLETED" : "FAILED";
+                        String terminalMessage = remoteExit == 0 ? "Remote process completed."
+                                : "Remote process exited with code " + remoteExit + ".";
+                        finishClaim(jobId, terminalStatus, terminalMessage);
+                        appendOutput(jobId, terminalMessage);
+                        activeRuns.remove(jobId, context);
+                        if (context.timeoutTask != null) context.timeoutTask.cancel(false);
+                        if (context.heartbeatTask != null) context.heartbeatTask.cancel(false);
+                    }
                 }
             }
             else stopInternal(jobId, exit == 0 ? "COMPLETED" : "FAILED",
