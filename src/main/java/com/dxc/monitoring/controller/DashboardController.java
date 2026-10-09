@@ -93,6 +93,11 @@ public class DashboardController
         }
 
         boolean hasDateRange = startDate != null || endDate != null;
+        if (!hasDateRange && dashboardService.isDateRangeEnabled(widget))
+        {
+            throw new IllegalArgumentException("Select a date range and use Apply for this API widget.");
+        }
+
         if (hasDateRange)
         {
             if (startDate == null || endDate == null)
