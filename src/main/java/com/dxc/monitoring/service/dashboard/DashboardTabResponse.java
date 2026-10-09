@@ -9,6 +9,10 @@ public class DashboardTabResponse
 
     private String name;
 
+    private Long environmentId;
+
+    private String environmentName;
+
     private Integer sortOrder;
 
     private List<DashboardWidgetResponse> widgets = new ArrayList<>();
@@ -31,6 +35,26 @@ public class DashboardTabResponse
     public void setName(String name)
     {
         this.name = name;
+    }
+
+    public Long getEnvironmentId()
+    {
+        return environmentId;
+    }
+
+    public void setEnvironmentId(Long environmentId)
+    {
+        this.environmentId = environmentId;
+    }
+
+    public String getEnvironmentName()
+    {
+        return environmentName;
+    }
+
+    public void setEnvironmentName(String environmentName)
+    {
+        this.environmentName = environmentName;
     }
 
     public Integer getSortOrder()
