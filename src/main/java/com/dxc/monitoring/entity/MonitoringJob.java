@@ -23,6 +23,13 @@ public class MonitoringJob
     @Column(name = "job_type", nullable = false, length = 30)
     private MonitorType type;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "execution_mode", nullable = false, length = 20)
+    private ExecutionMode executionMode = ExecutionMode.STANDARD;
+
+    @Column(name = "max_streaming_runtime_seconds", nullable = false)
+    private Integer maxStreamingRuntimeSeconds = 300;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "machine_id")
     private Machine machine;
@@ -137,6 +144,11 @@ public class MonitoringJob
         INFO, WARNING, CRITICAL
     }
 
+    public enum ExecutionMode
+    {
+        STANDARD, STREAMING
+    }
+
     @PrePersist
     protected void onCreate()
     {
@@ -189,6 +201,26 @@ public class MonitoringJob
     public void setType(MonitorType type)
     {
         this.type = type;
+    }
+
+    public ExecutionMode getExecutionMode()
+    {
+        return executionMode;
+    }
+
+    public void setExecutionMode(ExecutionMode executionMode)
+    {
+        this.executionMode = executionMode == null ? ExecutionMode.STANDARD : executionMode;
+    }
+
+    public Integer getMaxStreamingRuntimeSeconds()
+    {
+        return maxStreamingRuntimeSeconds;
+    }
+
+    public void setMaxStreamingRuntimeSeconds(Integer maxStreamingRuntimeSeconds)
+    {
+        this.maxStreamingRuntimeSeconds = maxStreamingRuntimeSeconds;
     }
 
     public Machine getMachine()
