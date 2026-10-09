@@ -307,12 +307,14 @@
         if (changed) {
             outputLines = [];
             const job = selectedJob();
-            if (job && job.enabled) {
+            if (job && job.enabled && activeStates.has(job.status)) {
                 output.textContent = 'Connecting to streaming output…';
                 connectOutput(jobId);
             } else {
                 closeEventSource();
-                output.textContent = 'This streaming job is disabled. Enable it before running or viewing live output.';
+                output.textContent = job && !job.enabled
+                    ? 'This streaming job is disabled. Enable it before running or viewing live output.'
+                    : 'This job is not running. Click Run to start it.';
             }
         }
         renderTable();
