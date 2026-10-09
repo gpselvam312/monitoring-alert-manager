@@ -500,7 +500,7 @@
                                                     th:attr="aria-label=${job.enabled ? 'Disable' : 'Enable'}">
                                                 <i th:if="${job.enabled}" class="bi bi-pause-circle"></i>
                                                 <i th:unless="${job.enabled}" class="bi bi-play-circle"></i>
-                                                <span class="action-label ms-1" th:text="${job.enabled} ? 'Disable' : 'Enable'">Disable</span>
+                                                <span class="action-label ms-1" th:text="${job.enabled ? 'Disable' : 'Enable'}">Disable</span>
                                             </button>
                                         </form>
                                         <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
