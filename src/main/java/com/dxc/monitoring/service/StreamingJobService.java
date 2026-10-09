@@ -132,9 +132,6 @@ public class StreamingJobService
         }
 
         appendOutput(jobId, "Starting streaming job: " + job.getName());
-        context.timeoutTask = scheduler.schedule(() -> stopInternal(jobId, "TIMED_OUT",
-                "Maximum runtime of " + runtime + " seconds reached."), runtime, TimeUnit.SECONDS);
-        context.heartbeatTask = scheduler.scheduleAtFixedRate(() -> heartbeat(jobId), 10, 10, TimeUnit.SECONDS);
         scheduler.execute(() -> launch(job, context));
     }
 
@@ -247,7 +244,16 @@ public class StreamingJobService
         catch (Exception exception)
         {
             appendOutput(job.getId(), "Unable to start streaming process: " + safeMessage(exception));
-            stopInternal(job.getId(), "FAILED", safeMessage(exception));
+            if (!context.remote && context.process == null && context.pid == null)
+            {
+                context.stopping.set(true);
+                finishClaim(job.getId(), "FAILED", safeMessage(exception));
+                activeRuns.remove(job.getId(), context);
+            }
+            else
+            {
+                stopInternal(job.getId(), "FAILED", safeMessage(exception));
+            }
         }
     }
 
@@ -264,6 +270,7 @@ public class StreamingJobService
         context.marker = job.getScriptPath();
         persistProcess(job.getId(), context);
         updateClaimStatus(job.getId(), "RUNNING");
+        activateRuntime(job.getId(), context);
         appendOutput(job.getId(), "Process started locally (PID " + context.pid + ").");
         scheduler.execute(() -> readLines(job.getId(), process));
         scheduler.execute(() -> waitForExit(job.getId(), context, process));
@@ -277,6 +284,11 @@ public class StreamingJobService
         String exitPath = logPath + ".exit";
         String remoteScript = buildScriptCommand(job) + "; rc=$?; printf '%s' \"$rc\" > "
                 + shellQuote(exitPath) + "; exit \"$rc\"";
+        context.remote = true;
+        context.host = host;
+        context.marker = job.getScriptPath();
+        context.remoteLogPath = logPath;
+        persistProcess(job.getId(), context);
         String remoteCommand = "mkdir -p /tmp; rm -f " + shellQuote(exitPath) + "; nohup bash -lc "
                 + shellQuote(remoteScript) + " > " + shellQuote(logPath) + " 2>&1 < /dev/null & echo $!";
         Process launcher = new ProcessBuilder(sshCommand(host, remoteCommand)).redirectErrorStream(true).start();
@@ -296,6 +308,7 @@ public class StreamingJobService
         context.remoteLogPath = logPath;
         persistProcess(job.getId(), context);
         updateClaimStatus(job.getId(), "RUNNING");
+        activateRuntime(job.getId(), context);
         appendOutput(job.getId(), "Remote process started on " + host + " (PID " + context.pid + ").");
 
         String tailCommand = "tail -n +1 -F " + shellQuote(logPath) + " & tail_pid=$!; "
@@ -521,6 +534,14 @@ public class StreamingJobService
                     heartbeat_at=CURRENT_TIMESTAMP, terminal_message=? WHERE monitoring_job_id=?
                 """, status, message, jobId);
         publishState(jobId, status);
+    }
+
+    private void activateRuntime(Long jobId, RunContext context)
+    {
+        context.timeoutTask = scheduler.schedule(() -> stopInternal(jobId, "TIMED_OUT",
+                "Maximum runtime of " + context.runtimeSeconds + " seconds reached."),
+                context.runtimeSeconds, TimeUnit.SECONDS);
+        context.heartbeatTask = scheduler.scheduleAtFixedRate(() -> heartbeat(jobId), 10, 10, TimeUnit.SECONDS);
     }
 
     private void heartbeat(Long jobId)
