@@ -17,7 +17,7 @@ public interface MonitoringResultRepository extends JpaRepository<MonitoringResu
             SELECT r
             FROM MonitoringResult r
             WHERE r.execution.id IN :executionIds
-            ORDER BY r.execution.id
+            ORDER BY r.execution.id, r.createdAt DESC, r.id DESC
             """)
     List<MonitoringResult> findByExecutionIds(@Param("executionIds") List<Long> executionIds);
 }
