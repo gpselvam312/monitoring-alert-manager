@@ -1196,13 +1196,15 @@
             '<thead><tr>' + headerHtml + '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>';
     }
 
-    function renderStatWidget(result)
+    function renderStatWidget(result, widget)
 	{
-	    const value =
-	        result.value !== null &&
-	        result.value !== undefined
-	            ? result.value
-	            : "";
+	    const config = parseWidgetFieldConfig(widget);
+	    const configuredValue = config.valueField
+	        ? getJsonPath(result.payload || {}, config.valueField)
+	        : undefined;
+	    const value = configuredValue !== undefined && configuredValue !== null
+	        ? configuredValue
+	        : (result.value !== null && result.value !== undefined ? result.value : "");
 
 	    const message =
 	        result.message || "";
@@ -1214,8 +1216,16 @@
 	        typeof result.metrics === "object"
 	    )
 	    {
-	        const metricEntries =
+	        let metricEntries =
 	            Object.entries(result.metrics);
+
+	        if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
+	        {
+	            metricEntries = metricEntries.filter(function (entry)
+	            {
+	                return config.visibleFields.includes(entry[0]);
+	            });
+	        }
 
 	        if (metricEntries.length > 0)
 	        {
@@ -1471,12 +1481,12 @@
 		if (isStat)
 		{
 		    widgetContentHtml =
-		        renderStatWidget(result);
+		        renderStatWidget(result, widget);
 		}				
 		else if (widgetType === "STATUS")
 		{
 		    widgetContentHtml =
-		        renderStatusWidget(result);
+		        renderStatusWidget(result, widget);
 		}
 		else if (widgetType === "TEXT")
 		{
