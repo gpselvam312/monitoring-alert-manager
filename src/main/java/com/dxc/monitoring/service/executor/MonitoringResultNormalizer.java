@@ -220,6 +220,7 @@ public class MonitoringResultNormalizer
 
         boolean headerRow = !Boolean.FALSE.equals(config.get("headerRow"));
         boolean ignoreBlankLines = !Boolean.FALSE.equals(config.get("ignoreBlankLines"));
+        boolean trim = !Boolean.FALSE.equals(config.get("trim"));
         String commentPrefix = config.get("commentPrefix") instanceof String prefix ? prefix : "";
         List<String[]> records = new ArrayList<>();
         for (String line : source.split("\\R"))
@@ -230,7 +231,7 @@ public class MonitoringResultNormalizer
                 continue;
             }
             String[] fields = line.split(Pattern.quote(delimiter), -1);
-            if (Boolean.TRUE.equals(config.get("trim")))
+            if (trim)
             {
                 for (int i = 0; i < fields.length; i++)
                 {
