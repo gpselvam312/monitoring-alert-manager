@@ -24,6 +24,7 @@
     </div>
 
     <div id="streamingJobsError" class="alert alert-danger d-none" role="alert"></div>
+    <span id="streamingJobsCanView" class="d-none" sec:authorize="hasAuthority('MONITORING_VIEW')" aria-hidden="true"></span>
     <span id="streamingJobsCanConfigure" class="d-none" sec:authorize="hasAuthority('MONITORING_CONFIG')" aria-hidden="true"></span>
 
     <section class="app-card mb-4">
