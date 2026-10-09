@@ -199,6 +199,10 @@ public class MonitoringJobController
         job.setExecutionMode("STREAMING".equalsIgnoreCase(mode)
                 ? MonitoringJob.ExecutionMode.STREAMING
                 : MonitoringJob.ExecutionMode.STANDARD);
+        if (job.getResultParserConfig() == null || job.getResultParserConfig().isBlank())
+        {
+            job.setResultParserConfig("{}");
+        }
         if (job.getMaxStreamingRuntimeSeconds() == null)
         {
             job.setMaxStreamingRuntimeSeconds(300);
@@ -274,6 +278,7 @@ public class MonitoringJobController
             existingJob.setRequestBody(job.getRequestBody());
             existingJob.setExpectedHttpStatus(job.getExpectedHttpStatus());
             existingJob.setExpectedResponse(job.getExpectedResponse());
+            existingJob.setResultParserConfig(job.getResultParserConfig());
 
             // Health check configuration
             existingJob.setHealthCheckType(job.getHealthCheckType());
