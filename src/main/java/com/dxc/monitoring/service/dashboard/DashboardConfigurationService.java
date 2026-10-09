@@ -253,7 +253,12 @@ public class DashboardConfigurationService
 
         try
         {
-            objectMapper.readValue(fieldConfigJson, new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> parsedConfig =
+                    objectMapper.readValue(fieldConfigJson, new TypeReference<Map<String, Object>>() {});
+            if (parsedConfig == null)
+            {
+                throw new IllegalArgumentException("Widget field configuration must be a JSON object.");
+            }
         }
         catch (Exception exception)
         {
