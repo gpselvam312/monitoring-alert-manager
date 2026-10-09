@@ -251,10 +251,11 @@ public class DashboardConfigurationService
             fieldConfigJson = "{}";
         }
 
+        Map<String, Object> parsedConfig;
         try
         {
-            Map<String, Object> parsedConfig =
-                    objectMapper.readValue(fieldConfigJson, new TypeReference<Map<String, Object>>() {});
+            parsedConfig = objectMapper.readValue(
+                    fieldConfigJson, new TypeReference<Map<String, Object>>() {});
             if (parsedConfig == null)
             {
                 throw new IllegalArgumentException("Widget field configuration must be a JSON object.");
@@ -263,6 +264,24 @@ public class DashboardConfigurationService
         catch (Exception exception)
         {
             throw new IllegalArgumentException("Widget field configuration must be a valid JSON object.");
+        }
+
+        Object dateRange = parsedConfig.get("dateRange");
+        if (dateRange instanceof Map<?, ?> dateRangeConfig
+                && Boolean.TRUE.equals(dateRangeConfig.get("enabled")))
+        {
+            if (!"MONITORING_JOB".equals(widget.getDataSourceType()) || widget.getDataSourceId() == null)
+            {
+                throw new IllegalArgumentException("Date-range filtering requires an API monitoring job.");
+            }
+
+            MonitoringJob sourceJob = monitoringJobRepository.findById(widget.getDataSourceId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Monitoring job not found: " + widget.getDataSourceId()));
+            if (sourceJob.getType() != MonitoringJob.MonitorType.API)
+            {
+                throw new IllegalArgumentException("Date-range filtering is supported only for API monitoring jobs.");
+            }
         }
 
         widget.setFieldConfigJson(fieldConfigJson);
