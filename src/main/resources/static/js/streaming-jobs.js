@@ -214,6 +214,9 @@
         nextButton.disabled = page >= pageCount - 1;
         lastButton.disabled = page >= pageCount - 1;
         updateSortIndicators();
+        if (window.DataTable) {
+            window.DataTable.updateCompactActions({ containerId: 'streamingJobsTableWrapper' });
+        }
     }
 
     function updateSortIndicators() {
