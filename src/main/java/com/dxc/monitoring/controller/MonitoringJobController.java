@@ -195,14 +195,10 @@ public class MonitoringJobController
             @RequestParam(required = false) Long scheduleId, @RequestParam(required = false) String mode,
             Authentication authentication, RedirectAttributes redirectAttributes)
     {
-        if ("STREAMING".equalsIgnoreCase(mode))
-        {
-            job.setExecutionMode(MonitoringJob.ExecutionMode.STREAMING);
-        }
-        if (job.getExecutionMode() == null)
-        {
-            job.setExecutionMode(MonitoringJob.ExecutionMode.STANDARD);
-        }
+        // The form context determines the mode; never trust a disabled client-side control.
+        job.setExecutionMode("STREAMING".equalsIgnoreCase(mode)
+                ? MonitoringJob.ExecutionMode.STREAMING
+                : MonitoringJob.ExecutionMode.STANDARD);
         if (job.getMaxStreamingRuntimeSeconds() == null)
         {
             job.setMaxStreamingRuntimeSeconds(300);
