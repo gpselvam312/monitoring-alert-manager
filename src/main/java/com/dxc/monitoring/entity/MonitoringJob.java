@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "monitoring_jobs", schema = "ra_fcb")
 public class MonitoringJob
@@ -110,6 +113,10 @@ public class MonitoringJob
 
     @Column(name = "expected_response", columnDefinition = "text")
     private String expectedResponse;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "result_parser_config", nullable = false, columnDefinition = "jsonb")
+    private String resultParserConfig = "{}";
 
     // Health check configuration
 
@@ -451,6 +458,16 @@ public class MonitoringJob
     public void setExpectedHttpStatus(Integer expectedHttpStatus)
     {
         this.expectedHttpStatus = expectedHttpStatus;
+    }
+
+    public String getResultParserConfig()
+    {
+        return resultParserConfig;
+    }
+
+    public void setResultParserConfig(String resultParserConfig)
+    {
+        this.resultParserConfig = resultParserConfig;
     }
 
     public String getExpectedResponse()
