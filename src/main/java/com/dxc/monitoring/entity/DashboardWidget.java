@@ -3,6 +3,9 @@ package com.dxc.monitoring.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Table(name = "dashboard_widgets", schema = "ra_fcb")
 public class DashboardWidget
@@ -45,6 +48,10 @@ public class DashboardWidget
 
     @Column(name = "data_source_id")
     private Long dataSourceId;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "field_config", nullable = false, columnDefinition = "jsonb")
+    private String fieldConfigJson = "{}";
 
     @Column(name = "auto_refresh", nullable = false)
     private Boolean autoRefresh = false;
@@ -191,6 +198,16 @@ public class DashboardWidget
     public void setDataSourceId(Long dataSourceId)
     {
         this.dataSourceId = dataSourceId;
+    }
+
+    public String getFieldConfigJson()
+    {
+        return fieldConfigJson;
+    }
+
+    public void setFieldConfigJson(String fieldConfigJson)
+    {
+        this.fieldConfigJson = fieldConfigJson;
     }
 
     public Boolean getAutoRefresh()
