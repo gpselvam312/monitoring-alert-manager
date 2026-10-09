@@ -532,7 +532,7 @@
     <!-- SCRIPT CONFIGURATION -->
     <!-- ================================================== -->
 
-    <div class="app-card mb-4">
+    <div class="app-card mb-4" id="scriptConfiguration">
 
         <div class="app-card-header">
 
@@ -619,7 +619,7 @@
     <!-- API CONFIGURATION -->
     <!-- ================================================== -->
 
-    <div class="app-card mb-4">
+    <div class="app-card mb-4" id="apiConfiguration">
 
         <div class="app-card-header">
 
@@ -780,7 +780,7 @@
     <!-- HEALTH CHECK CONFIGURATION -->
     <!-- ================================================== -->
 
-    <div class="app-card mb-4">
+    <div class="app-card mb-4" id="healthCheckConfiguration">
 
         <div class="app-card-header">
 
@@ -1049,106 +1049,154 @@
 <!-- Monitoring Job Machine Filtering -->
 
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const form = document.querySelector("form");
+    const environmentSelect = document.getElementById("environmentId");
+    const machineSelect = document.getElementById("machineId");
+    const typeSelect = document.getElementById("type");
+    const executionMode = document.getElementById("executionMode");
+    const scheduleSelect = document.getElementById("scheduleId");
+    const maxRuntime = document.getElementById("maxStreamingRuntimeSeconds");
 
-    document.addEventListener("DOMContentLoaded", function () {
-        const form = document.querySelector("form");
-        const environmentSelect = document.getElementById("environmentId");
-        const machineSelect = document.getElementById("machineId");
+    const sections = {
+        SCRIPT: {
+            container: document.getElementById("scriptConfiguration"),
+            fields: ["scriptPath", "workingDirectory", "commandArguments"]
+        },
+        API: {
+            container: document.getElementById("apiConfiguration"),
+            fields: ["httpMethod", "url", "requestHeaders", "requestBody", "expectedHttpStatus", "expectedResponse"]
+        },
+        HEALTH_CHECK: {
+            container: document.getElementById("healthCheckConfiguration"),
+            fields: ["healthCheckType", "targetHost", "targetPort"]
+        }
+    };
 
-        if (environmentSelect && machineSelect) {
-            const allMachineOptions = Array.from(
-                machineSelect.querySelectorAll("option[data-environment]")
-            );
+    function field(id) { return document.getElementById(id); }
+    function clearField(element) {
+        if (!element) return;
+        if (element.type === "checkbox") element.checked = false;
+        else element.value = "";
+        element.setCustomValidity("");
+    }
+    function setRequired(element, required) {
+        if (element) {
+            element.required = required;
+            element.setAttribute("aria-required", required ? "true" : "false");
+        }
+    }
+    function setSectionActive(section, active) {
+        if (!section) return;
+        if (section.container) section.container.classList.toggle("d-none", !active);
+        section.fields.forEach(function (id) {
+            const element = field(id);
+            if (!element) return;
+            element.disabled = !active;
+            if (!active) {
+                setRequired(element, false);
+                clearField(element);
+            }
+        });
+    }
 
-            function filterMachines() {
-                const selectedEnvironment = environmentSelect.value;
-                const currentMachineId = machineSelect.value;
-                machineSelect.innerHTML = "";
-
-                const defaultOption = document.createElement("option");
-                defaultOption.value = "";
-                defaultOption.textContent = "-- Select Machine --";
-                machineSelect.appendChild(defaultOption);
-
-                if (!selectedEnvironment) return;
-
-                allMachineOptions.forEach(function (option) {
-                    if (option.getAttribute("data-environment") === selectedEnvironment) {
-                        const newOption = option.cloneNode(true);
-                        machineSelect.appendChild(newOption);
-                        if (newOption.value === currentMachineId) newOption.selected = true;
-                    }
+    function updateTypeSections(clearInactive) {
+        const type = typeSelect ? typeSelect.value : "";
+        Object.keys(sections).forEach(function (key) {
+            const section = sections[key];
+            const active = key === type;
+            if (!active && clearInactive) setSectionActive(section, false);
+            else {
+                if (section.container) section.container.classList.toggle("d-none", !active);
+                section.fields.forEach(function (id) {
+                    const element = field(id);
+                    if (element) element.disabled = !active;
                 });
             }
-
-            environmentSelect.addEventListener("change", function () {
-                machineSelect.value = "";
-                filterMachines();
-            });
-            filterMachines();
-        }
-
-        if (!form) return;
-
-        const typeSelect = document.getElementById("type");
-        const executionMode = document.getElementById("executionMode");
-        const scriptPath = document.getElementById("scriptPath");
-        const httpMethod = document.getElementById("httpMethod");
-        const url = document.getElementById("url");
-        const healthCheckType = document.getElementById("healthCheckType");
-        const targetHost = document.getElementById("targetHost");
-        const targetPort = document.getElementById("targetPort");
-        const timeoutSeconds = document.getElementById("timeoutSeconds");
-        const maxRuntime = document.getElementById("maxStreamingRuntimeSeconds");
-        const expectedHttpStatus = document.getElementById("expectedHttpStatus");
-
-        function setRequired(field, required) {
-            if (field) {
-                field.required = required;
-                field.setAttribute("aria-required", required ? "true" : "false");
-            }
-        }
-
-        function updateValidationRules() {
-            const type = typeSelect ? typeSelect.value : "";
-            const mode = executionMode ? executionMode.value : "STANDARD";
-            const streaming = mode === "STREAMING";
-            const healthType = healthCheckType ? healthCheckType.value : "";
-
-            setRequired(scriptPath, type === "SCRIPT");
-            setRequired(httpMethod, type === "API");
-            setRequired(url, type === "API");
-            setRequired(healthCheckType, type === "HEALTH_CHECK");
-            setRequired(targetHost, type === "HEALTH_CHECK");
-            setRequired(targetPort, type === "HEALTH_CHECK" && ["TCP", "HTTP"].includes(healthType));
-            setRequired(timeoutSeconds, true);
-            setRequired(maxRuntime, streaming);
-
-            if (targetPort) {
-                targetPort.min = "1";
-                targetPort.max = "65535";
-            }
-            if (expectedHttpStatus) {
-                expectedHttpStatus.min = "100";
-                expectedHttpStatus.max = "599";
-            }
-        }
-
-        [typeSelect, executionMode, healthCheckType].forEach(function (field) {
-            if (field) field.addEventListener("change", updateValidationRules);
         });
 
+        setRequired(field("scriptPath"), type === "SCRIPT");
+        setRequired(field("httpMethod"), type === "API");
+        setRequired(field("url"), type === "API");
+        setRequired(field("healthCheckType"), type === "HEALTH_CHECK");
+        setRequired(field("targetHost"), type === "HEALTH_CHECK");
+
+        const healthType = field("healthCheckType") ? field("healthCheckType").value : "";
+        setRequired(field("targetPort"), type === "HEALTH_CHECK" && ["TCP", "HTTP"].includes(healthType));
+
+        const streaming = executionMode && executionMode.value === "STREAMING";
+        if (streaming && type !== "SCRIPT" && typeSelect) {
+            typeSelect.value = "SCRIPT";
+            updateTypeSections(true);
+            return;
+        }
+
+        if (typeSelect) {
+            Array.from(typeSelect.options).forEach(function (option) {
+                if (option.value) option.disabled = streaming && option.value !== "SCRIPT";
+            });
+        }
+
+        if (scheduleSelect) {
+            scheduleSelect.disabled = !!streaming;
+            if (streaming) scheduleSelect.value = "";
+        }
+        if (maxRuntime) {
+            maxRuntime.disabled = !streaming;
+            maxRuntime.required = !!streaming;
+            maxRuntime.setAttribute("aria-required", streaming ? "true" : "false");
+        }
+
+        const port = field("targetPort");
+        if (port) { port.min = "1"; port.max = "65535"; }
+        const status = field("expectedHttpStatus");
+        if (status) { status.min = "100"; status.max = "599"; }
+    }
+
+    if (environmentSelect && machineSelect) {
+        const allMachineOptions = Array.from(machineSelect.querySelectorAll("option[data-environment]"));
+        function filterMachines() {
+            const selectedEnvironment = environmentSelect.value;
+            const currentMachineId = machineSelect.value;
+            machineSelect.innerHTML = "";
+            const defaultOption = document.createElement("option");
+            defaultOption.value = "";
+            defaultOption.textContent = "-- Select Machine --";
+            machineSelect.appendChild(defaultOption);
+            if (!selectedEnvironment) return;
+            allMachineOptions.forEach(function (option) {
+                if (option.getAttribute("data-environment") === selectedEnvironment) {
+                    const clone = option.cloneNode(true);
+                    machineSelect.appendChild(clone);
+                    if (clone.value === currentMachineId) clone.selected = true;
+                }
+            });
+        }
+        environmentSelect.addEventListener("change", function () {
+            machineSelect.value = "";
+            filterMachines();
+        });
+        filterMachines();
+    }
+
+    if (typeSelect) typeSelect.addEventListener("change", function () { updateTypeSections(true); });
+    if (executionMode) executionMode.addEventListener("change", function () { updateTypeSections(true); });
+    if (field("healthCheckType")) field("healthCheckType").addEventListener("change", function () {
+        setRequired(field("targetPort"), typeSelect && typeSelect.value === "HEALTH_CHECK" && ["TCP", "HTTP"].includes(this.value));
+        if (this.value === "PING") clearField(field("targetPort"));
+    });
+
+    if (form) {
         form.addEventListener("submit", function (event) {
-            updateValidationRules();
+            updateTypeSections(false);
             if (!form.checkValidity()) {
                 event.preventDefault();
                 form.reportValidity();
             }
         });
-
-        updateValidationRules();
-    });
-
+    }
+    updateTypeSections(false);
+});
 </script>
 
 
