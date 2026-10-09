@@ -1086,7 +1086,18 @@
         const visibleFields = Array.isArray(config.visibleFields) ? config.visibleFields.map(String) : [];
         if (visibleFields.length > 0)
         {
-            columns = columns.filter(function (column) { return visibleFields.includes(String(column.key)); });
+            const availableColumns = new Map(columns.map(function (column)
+            {
+                return [String(column.key), column];
+            }));
+            columns = visibleFields.map(function (field)
+            {
+                return availableColumns.get(field) || {
+                    key: field,
+                    label: field.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                        .replace(/^./, function (character) { return character.toUpperCase(); })
+                };
+            });
         }
 
         if (Array.isArray(config.order) && config.order.length > 0)
