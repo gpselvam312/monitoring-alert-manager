@@ -8,6 +8,12 @@
 
 <div th:fragment="content">
 
+    <div class="d-flex justify-content-end mb-3">
+        <a sec:authorize="hasAuthority('MONITORING_VIEW')" th:href="@{/monitoring/streaming-jobs}" class="btn btn-outline-primary">
+            <i class="bi bi-terminal me-1"></i> Streaming Jobs
+        </a>
+    </div>
+
     <!-- Page header -->
     <div class="page-header">
 

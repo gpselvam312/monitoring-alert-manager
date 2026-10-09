@@ -104,7 +104,7 @@ public class StreamingJobService
         // This single PostgreSQL statement is the cross-instance atomic claim. Active or
         // recovery-required claims cannot be replaced, regardless of heartbeat age.
         int claimed = jdbcTemplate.update("""
-                INSERT INTO ra_fcb.streaming_job_claims
+                INSERT INTO ra_fcb.streaming_job_claims AS existing
                     (monitoring_job_id, status, started_by, started_at, updated_at, heartbeat_at, terminal_message)
                 VALUES (?, 'STARTING', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
                 ON CONFLICT (monitoring_job_id) DO UPDATE SET
@@ -112,7 +112,7 @@ public class StreamingJobService
                     started_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP,
                     heartbeat_at=CURRENT_TIMESTAMP, process_id=NULL, process_host=NULL,
                     process_marker=NULL, remote_log_path=NULL, terminal_message=NULL
-                WHERE ra_fcb.streaming_job_claims.status IN ('IDLE','COMPLETED','STOPPED','FAILED','TIMED_OUT')
+                WHERE existing.status IN ('IDLE','COMPLETED','STOPPED','FAILED','TIMED_OUT')
                 """, jobId, userId);
         if (claimed != 1)
             throw new IllegalStateException("This job is already running or requires recovery.");
@@ -281,7 +281,7 @@ public class StreamingJobService
         updateClaimStatus(job.getId(), "RUNNING");
         appendOutput(job.getId(), "Remote process started on " + host + " (PID " + context.pid + ").");
 
-        Process tail = new ProcessBuilder(sshCommand(host, "tail -n 0 -F " + shellQuote(logPath)))
+        Process tail = new ProcessBuilder(sshCommand(host, "tail -n +1 -F " + shellQuote(logPath)))
                 .redirectErrorStream(true).start();
         context.outputProcess = tail;
         scheduler.execute(() -> readLines(job.getId(), tail));

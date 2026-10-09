@@ -49,7 +49,7 @@ public class MonitoringJobController
     private static final Map<String, String> JOB_SORT_FIELDS =
         Map.of("name", "name", "application.name", "application.name", "environment.name", "environment.name",
                 "machine.name", "machine.name", "type", "type", "severity", "severity", "schedule.name",
-                "schedule.name", "enabled", "enabled", "dashboardEnabled", "dashboardEnabled");
+                "schedule.name", "enabled", "enabled");
 
     public MonitoringJobController(MonitoringJobService monitoringJobService, MachineRepository machineRepository,
             ScheduleRepository scheduleRepository, UserRepository userRepository,
@@ -159,6 +159,8 @@ public class MonitoringJobController
         job.setStoreResult(true);
         job.setManualRunEnabled(true);
         job.setAllowConcurrentExecution(false);
+        job.setExecutionMode(MonitoringJob.ExecutionMode.STANDARD);
+        job.setMaxStreamingRuntimeSeconds(300);
 
         model.addAttribute("job", job);
         model.addAttribute("machines", machineRepository.findAll());
@@ -202,6 +204,8 @@ public class MonitoringJobController
             existingJob.setStoreResult(job.isStoreResult());
             existingJob.setManualRunEnabled(job.isManualRunEnabled());
             existingJob.setAllowConcurrentExecution(job.isAllowConcurrentExecution());
+            existingJob.setExecutionMode(job.getExecutionMode());
+            existingJob.setMaxStreamingRuntimeSeconds(job.getMaxStreamingRuntimeSeconds());
 
             // Monitoring configuration
             existingJob.setTimeoutSeconds(job.getTimeoutSeconds());
@@ -382,6 +386,11 @@ public class MonitoringJobController
     public String runNow(@PathVariable Long id)
     {
         MonitoringJob job = monitoringJobService.findById(id);
+
+        if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING)
+        {
+            throw new IllegalStateException("Streaming jobs must be started from the Streaming Jobs page.");
+        }
 
         if (!job.isManualRunEnabled())
         {

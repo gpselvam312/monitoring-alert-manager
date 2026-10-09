@@ -12,7 +12,10 @@
     function hideError() { error.classList.add('d-none'); }
     async function request(url, options = {}) {
         const response = await fetch(url, { credentials: 'same-origin', ...options,
-            headers: { 'Accept': 'application/json', ...(options.headers || {}) } });
+            headers: { 'Accept': 'application/json',
+                [document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN']:
+                    document.querySelector('meta[name="_csrf"]')?.content || '',
+                ...(options.headers || {}) } });
         if (!response.ok) throw new Error((await response.text()) || ('Request failed with HTTP ' + response.status));
         return response.json();
     }
