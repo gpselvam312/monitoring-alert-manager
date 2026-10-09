@@ -55,8 +55,7 @@
             </div>
 
 
-            <div id="jobsTableContainer"
-                 th:fragment="jobsTable">
+            <div id="jobsTableContainer">
 
                 <div th:fragment="jobsTable">
 
@@ -479,41 +478,59 @@
 
                                 <!-- Actions -->
                                 <td class="text-end table-actions-column">
-                                    <div class="table-actions">
+                                    <div class="table-actions table-actions-text">
                                         <a sec:authorize="hasAuthority('MONITORING_VIEW')"
                                            th:href="@{/monitoring/jobs/{id}(id=${job.id})}"
-                                           class="btn btn-sm btn-outline-secondary"
-                                           title="View" aria-label="View">
-                                            <i class="bi bi-eye"></i><span class="action-label ms-1">View</span>
+                                           class="btn btn-sm btn-outline-secondary" title="View" aria-label="View">
+                                            <i class="bi bi-eye"></i><span class="ms-1">View</span>
                                         </a>
                                         <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                            th:href="@{/monitoring/jobs/{id}/edit(id=${job.id})}"
-                                           class="btn btn-sm btn-outline-primary"
-                                           title="Edit" aria-label="Edit">
-                                            <i class="bi bi-pencil"></i><span class="action-label ms-1">Edit</span>
+                                           class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit">
+                                            <i class="bi bi-pencil"></i><span class="ms-1">Edit</span>
                                         </a>
                                         <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
-                                              th:action="@{/monitoring/jobs/{id}/toggle(id=${job.id})}"
-                                              method="post">
+                                              th:action="@{/monitoring/jobs/{id}/toggle(id=${job.id})}" method="post">
                                             <button type="submit" class="btn btn-sm btn-outline-warning"
                                                     th:title="${job.enabled ? 'Disable' : 'Enable'}"
                                                     th:attr="aria-label=${job.enabled ? 'Disable' : 'Enable'}">
                                                 <i th:if="${job.enabled}" class="bi bi-pause-circle"></i>
                                                 <i th:unless="${job.enabled}" class="bi bi-play-circle"></i>
-                                                <span class="action-label ms-1" th:text="${job.enabled ? 'Disable' : 'Enable'}">Disable</span>
+                                                <span class="ms-1" th:text="${job.enabled ? 'Disable' : 'Enable'}">Disable</span>
                                             </button>
                                         </form>
                                         <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
-                                              th:action="@{/monitoring/jobs/{id}/delete(id=${job.id})}"
-                                              method="post"
-                                              data-app-action="delete"
-                                              data-app-action-title="Delete Monitoring Job"
+                                              th:action="@{/monitoring/jobs/{id}/delete(id=${job.id})}" method="post"
+                                              data-app-action="delete" data-app-action-title="Delete Monitoring Job"
                                               data-app-action-message="Are you sure you want to delete this monitoring job?"
                                               data-app-action-description="This action cannot be undone.">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                    title="Delete" aria-label="Delete">
-                                                <i class="bi bi-trash"></i><span class="action-label ms-1">Delete</span>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete">
+                                                <i class="bi bi-trash"></i><span class="ms-1">Delete</span>
                                             </button>
+                                        </form>
+                                    </div>
+                                    <div class="table-actions table-actions-icons">
+                                        <a sec:authorize="hasAuthority('MONITORING_VIEW')"
+                                           th:href="@{/monitoring/jobs/{id}(id=${job.id})}"
+                                           class="btn btn-sm btn-outline-secondary" title="View" aria-label="View"><i class="bi bi-eye"></i></a>
+                                        <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
+                                           th:href="@{/monitoring/jobs/{id}/edit(id=${job.id})}"
+                                           class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
+                                              th:action="@{/monitoring/jobs/{id}/toggle(id=${job.id})}" method="post">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                    th:title="${job.enabled ? 'Disable' : 'Enable'}"
+                                                    th:attr="aria-label=${job.enabled ? 'Disable' : 'Enable'}">
+                                                <i th:if="${job.enabled}" class="bi bi-pause-circle"></i>
+                                                <i th:unless="${job.enabled}" class="bi bi-play-circle"></i>
+                                            </button>
+                                        </form>
+                                        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
+                                              th:action="@{/monitoring/jobs/{id}/delete(id=${job.id})}" method="post"
+                                              data-app-action="delete" data-app-action-title="Delete Monitoring Job"
+                                              data-app-action-message="Are you sure you want to delete this monitoring job?"
+                                              data-app-action-description="This action cannot be undone.">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                                         </form>
                                     </div>
                                 </td>
