@@ -27,7 +27,7 @@ public class ScheduleController
 
     private final ScheduleService scheduleService;
     private static final Map<String, String> SCHEDULE_SORT_FIELDS =
-        Map.of("name", "name", "type", "type", "timezone", "timezone", "enabled", "enabled");
+        Map.of("name", "name", "type", "type", "enabled", "enabled");
 
     public ScheduleController(ScheduleService scheduleService)
     {
@@ -103,7 +103,6 @@ public class ScheduleController
     {
         Schedule schedule = new Schedule();
         schedule.setEnabled(true);
-        schedule.setTimezone(java.time.ZoneId.systemDefault().getId());
 
         model.addAttribute("schedule", schedule);
         model.addAttribute("pageTitle", "Add Schedule");
@@ -128,7 +127,6 @@ public class ScheduleController
             existingSchedule.setFixedRateSeconds(schedule.getFixedRateSeconds());
             existingSchedule.setStartTime(schedule.getStartTime());
             existingSchedule.setEndTime(schedule.getEndTime());
-            existingSchedule.setTimezone(schedule.getTimezone());
             existingSchedule.setEnabled(schedule.isEnabled());
 
             scheduleService.save(existingSchedule);
