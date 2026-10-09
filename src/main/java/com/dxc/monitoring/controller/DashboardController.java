@@ -1,6 +1,9 @@
 package com.dxc.monitoring.controller;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -65,7 +68,9 @@ public class DashboardController
     @ResponseBody
     @PostMapping("/api/dashboard/widgets/{id}/run")
     @PreAuthorize("hasAuthority('MONITORING_RUN')")
-    public ResponseEntity<DashboardWidgetResponse> runWidget(@PathVariable Long id)
+    public ResponseEntity<DashboardWidgetResponse> runWidget(@PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String startDate,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String endDate)
     {
         DashboardWidget widget = dashboardService.getWidget(id);
 
@@ -87,7 +92,38 @@ public class DashboardController
             throw new IllegalStateException("Manual execution is disabled for this monitoring job.");
         }
 
-        monitoringExecutionManager.execute(job);
+        boolean hasDateRange = startDate != null || endDate != null;
+        if (hasDateRange)
+        {
+            if (startDate == null || endDate == null)
+            {
+                throw new IllegalArgumentException("Both startDate and endDate are required.");
+            }
+            if (job.getType() != MonitoringJob.MonitorType.API || !dashboardService.isDateRangeEnabled(widget))
+            {
+                throw new IllegalArgumentException("Date-range execution is not enabled for this API widget.");
+            }
+
+            try
+            {
+                LocalDate start = LocalDate.parse(startDate);
+                LocalDate end = LocalDate.parse(endDate);
+                if (start.isAfter(end))
+                {
+                    throw new IllegalArgumentException("Start date must be on or before end date.");
+                }
+            }
+            catch (DateTimeParseException exception)
+            {
+                throw new IllegalArgumentException("Dates must use YYYY-MM-DD format.");
+            }
+
+            monitoringExecutionManager.execute(job, Map.of("startDate", startDate, "endDate", endDate));
+        }
+        else
+        {
+            monitoringExecutionManager.execute(job);
+        }
 
         return ResponseEntity.ok(dashboardService.getWidgetResponse(id));
     }
