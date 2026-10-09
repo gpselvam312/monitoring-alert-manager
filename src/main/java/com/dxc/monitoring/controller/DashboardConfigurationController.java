@@ -113,7 +113,17 @@ public class DashboardConfigurationController
 
         boolean creating = form.getId() == null;
 
-        dashboardConfigurationService.saveWidget(form);
+        try
+        {
+            dashboardConfigurationService.saveWidget(form);
+        }
+        catch (IllegalArgumentException exception)
+        {
+            populateDashboardConfigurationModel(model, form.getTabId(), "", "", 0, 5, 0, 5);
+            model.addAttribute("dashboardWidgetSaveError", exception.getMessage());
+            model.addAttribute("dashboardWidgetValidationFailed", true);
+            return "administration/dashboard-configuration";
+        }
 
         redirectAttributes.addFlashAttribute("successMessage",
                 creating ? "Dashboard widget created successfully." : "Dashboard widget updated successfully.");
