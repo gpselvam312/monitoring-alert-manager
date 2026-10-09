@@ -45,7 +45,8 @@
       method="post">
 
     <input type="hidden" th:field="*{id}">
-    <input type="hidden" name="executionMode" th:value="${job.executionMode}" th:if="${executionModeLocked}">
+    <input type="hidden" name="executionMode" value="STREAMING" th:if="${executionModeLocked}">
+    <input type="hidden" name="executionMode" value="STANDARD" th:unless="${executionModeLocked}">
     <input type="hidden" name="mode" value="STREAMING" th:if="${executionModeLocked}">
 
 
@@ -415,118 +416,6 @@
 
     </div>
 
-
-    <!-- ================================================== -->
-    <!-- EXECUTION CONTROLS -->
-    <!-- ================================================== -->
-
-    <div class="app-card mb-4">
-
-        <div class="app-card-header">
-            <div>
-                <div class="app-card-title">Execution Controls</div>
-                <div class="app-card-subtitle">
-                    Configure standard or on-demand streaming execution, result retention and manual-run behavior.
-                </div>
-            </div>
-        </div>
-
-        <div class="app-card-body">
-
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <label for="executionMode" class="form-label">Execution Mode</label>
-                    <select id="executionMode" th:field="*{executionMode}" class="form-select" required
-                            th:disabled="${executionModeLocked}">
-                        <option value="STANDARD">Standard — scheduled or manual execution</option>
-                        <option value="STREAMING">Streaming — on-demand, continuous output</option>
-                    </select>
-                    <div class="form-text" th:if="${executionModeLocked}">
-                        Execution Mode is fixed to Streaming because this form was opened from the Streaming Jobs page.
-                    </div>
-                    <div class="form-text" th:unless="${executionModeLocked}">
-                        Streaming jobs are Script jobs and cannot have a schedule. They start only from the Streaming Jobs page.
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <label for="maxStreamingRuntimeSeconds" class="form-label">Maximum Streaming Runtime</label>
-                    <div class="input-group">
-                        <input type="number" id="maxStreamingRuntimeSeconds"
-                               th:field="*{maxStreamingRuntimeSeconds}" class="form-control"
-                               min="1" th:attr="max=${maxStreamingRuntimeSeconds}" required>
-                        <span class="input-group-text">seconds</span>
-                    </div>
-                    <div class="form-text">
-                        Applies to streaming jobs only. The configured system maximum is
-                        <span th:text="${maxStreamingRuntimeSeconds}">86400</span> seconds.
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4">
-
-                <div class="col-md-4">
-                    <div class="machine-enabled-option">
-                        <div class="machine-enabled-icon">
-                            <i class="bi bi-database-check"></i>
-                        </div>
-                        <div class="machine-enabled-content">
-                            <label for="storeResult" class="machine-enabled-title">
-                                Store Detailed Result
-                            </label>
-                            <div class="machine-enabled-description">
-                                Store detailed monitoring result data for dashboard details and history.
-                            </div>
-                        </div>
-                        <div class="machine-enabled-switch">
-                            <input type="checkbox" id="storeResult" th:field="*{storeResult}" class="form-check-input">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="machine-enabled-option">
-                        <div class="machine-enabled-icon">
-                            <i class="bi bi-play-circle"></i>
-                        </div>
-                        <div class="machine-enabled-content">
-                            <label for="manualRunEnabled" class="machine-enabled-title">
-                                Allow Manual Run
-                            </label>
-                            <div class="machine-enabled-description">
-                                Allow users with monitoring run permission to execute this job immediately.
-                            </div>
-                        </div>
-                        <div class="machine-enabled-switch">
-                            <input type="checkbox" id="manualRunEnabled" th:field="*{manualRunEnabled}" class="form-check-input">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="machine-enabled-option">
-                        <div class="machine-enabled-icon">
-                            <i class="bi bi-layers"></i>
-                        </div>
-                        <div class="machine-enabled-content">
-                            <label for="allowConcurrentExecution" class="machine-enabled-title">
-                                Allow Concurrent Runs
-                            </label>
-                            <div class="machine-enabled-description">
-                                Allow a new execution while another execution of this job is running.
-                            </div>
-                        </div>
-                        <div class="machine-enabled-switch">
-                            <input type="checkbox" id="allowConcurrentExecution"
-                                   th:field="*{allowConcurrentExecution}" class="form-check-input">
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-        </div>
-    </div>
 
     <!-- ================================================== -->
     <!-- SCRIPT CONFIGURATION -->
@@ -1017,6 +906,120 @@
         </div>
 
     </div>
+
+
+    <!-- ================================================== -->
+    <!-- EXECUTION CONTROLS -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4">
+
+        <div class="app-card-header">
+            <div>
+                <div class="app-card-title">Execution Controls</div>
+                <div class="app-card-subtitle">
+                    Configure execution behavior, result retention and manual-run behavior.
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card-body">
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <label for="executionMode" class="form-label">Execution Mode</label>
+                    <select id="executionMode" th:field="*{executionMode}" class="form-select" required disabled>
+                        <option value="STANDARD">Standard — scheduled or manual execution</option>
+                        <option value="STREAMING">Streaming — on-demand, continuous output</option>
+                    </select>
+                    <div class="form-text" th:if="${executionModeLocked}">
+                        Execution Mode is fixed to Streaming because this form was opened from the Streaming Jobs page.
+                    </div>
+                    <div class="form-text" th:unless="${executionModeLocked}">
+                        Monitoring jobs always use Standard execution. Use the Streaming Jobs page to configure on-demand streaming jobs.
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label for="maxStreamingRuntimeSeconds" class="form-label">Maximum Streaming Runtime</label>
+                    <div class="input-group">
+                        <input type="number" id="maxStreamingRuntimeSeconds"
+                               th:field="*{maxStreamingRuntimeSeconds}" class="form-control"
+                               min="1" th:attr="max=${maxStreamingRuntimeSeconds}" required
+                               th:disabled="${!executionModeLocked}">
+                        <span class="input-group-text">seconds</span>
+                    </div>
+                    <div class="form-text">
+                        Applies to streaming jobs only. The configured system maximum is
+                        <span th:text="${maxStreamingRuntimeSeconds}">86400</span> seconds.
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+
+                <div class="col-md-4">
+                    <div class="machine-enabled-option">
+                        <div class="machine-enabled-icon">
+                            <i class="bi bi-database-check"></i>
+                        </div>
+                        <div class="machine-enabled-content">
+                            <label for="storeResult" class="machine-enabled-title">
+                                Store Detailed Result
+                            </label>
+                            <div class="machine-enabled-description">
+                                Store detailed monitoring result data for dashboard details and history.
+                            </div>
+                        </div>
+                        <div class="machine-enabled-switch">
+                            <input type="checkbox" id="storeResult" th:field="*{storeResult}" class="form-check-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="machine-enabled-option">
+                        <div class="machine-enabled-icon">
+                            <i class="bi bi-play-circle"></i>
+                        </div>
+                        <div class="machine-enabled-content">
+                            <label for="manualRunEnabled" class="machine-enabled-title">
+                                Allow Manual Run
+                            </label>
+                            <div class="machine-enabled-description">
+                                Allow users with monitoring run permission to execute this job immediately.
+                            </div>
+                        </div>
+                        <div class="machine-enabled-switch">
+                            <input type="checkbox" id="manualRunEnabled" th:field="*{manualRunEnabled}" class="form-check-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="machine-enabled-option">
+                        <div class="machine-enabled-icon">
+                            <i class="bi bi-layers"></i>
+                        </div>
+                        <div class="machine-enabled-content">
+                            <label for="allowConcurrentExecution" class="machine-enabled-title">
+                                Allow Concurrent Runs
+                            </label>
+                            <div class="machine-enabled-description">
+                                Allow a new execution while another execution of this job is running.
+                            </div>
+                        </div>
+                        <div class="machine-enabled-switch">
+                            <input type="checkbox" id="allowConcurrentExecution"
+                                   th:field="*{allowConcurrentExecution}" class="form-check-input">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
 
 
     <!-- ================================================== -->
