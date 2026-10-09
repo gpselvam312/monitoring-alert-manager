@@ -1,6 +1,7 @@
 package com.dxc.monitoring.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +45,7 @@ public class MonitoringJobService
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
     public String delete(Long id)
     {
         MonitoringJob job = monitoringJobRepository.findById(id)
