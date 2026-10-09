@@ -13,6 +13,8 @@ public interface MonitoringResultRepository extends JpaRepository<MonitoringResu
 
     List<MonitoringResult> findAllByExecutionId(Long executionId);
 
+    List<MonitoringResult> findAllByOrderByCreatedAtDescIdDesc();
+
     @Query("""
             SELECT r
             FROM MonitoringResult r
