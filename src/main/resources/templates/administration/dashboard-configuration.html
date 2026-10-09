@@ -1355,7 +1355,6 @@
                                 </label>
                                 <select class="form-select"
                                         id="dashboardWidgetJobSourceId"
-                                        name="dataSourceId"
                                         th:field="*{dataSourceId}"
                                         th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
                                     <option value="">Select monitoring job</option>
@@ -1375,7 +1374,6 @@
                                 </label>
                                 <select class="form-select"
                                         id="dashboardWidgetResultSourceId"
-                                        name="dataSourceId"
                                         th:field="*{dataSourceId}"
                                         th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
                                     <option value="">Select monitoring result</option>
@@ -1565,6 +1563,88 @@
             /*[[${selectedTab != null ? selectedTab.id : null}]]*/ null;
 
 
+        function syncDashboardWidgetDataSourceFields(clearSelection) {
+            const sourceType = document.getElementById('dashboardWidgetDataSourceType').value;
+            const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
+            const resultGroup = document.getElementById('dashboardWidgetResultSourceGroup');
+            const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
+            const resultSelect = document.getElementById('dashboardWidgetResultSourceId');
+
+            if (clearSelection) {
+                jobSelect.value = '';
+                resultSelect.value = '';
+            }
+
+            const useJob = sourceType === 'MONITORING_JOB';
+            const useResult = sourceType === 'MONITORING_RESULT';
+
+            jobGroup.classList.toggle('d-none', !useJob);
+            resultGroup.classList.toggle('d-none', !useResult);
+
+            jobSelect.disabled = !useJob;
+            resultSelect.disabled = !useResult;
+            jobSelect.required = useJob;
+            resultSelect.required = useResult;
+
+            if (useJob) {
+                resultSelect.value = '';
+            } else if (useResult) {
+                jobSelect.value = '';
+            } else {
+                jobSelect.value = '';
+                resultSelect.value = '';
+            }
+        }
+
+        function syncDashboardWidgetChartFields(clearNonChartValue) {
+            const widgetType = document.getElementById('dashboardWidgetType').value;
+            const chartGroup = document.getElementById('dashboardWidgetChartTypeGroup');
+            const chartType = document.getElementById('dashboardWidgetChartType');
+            const isChart = widgetType === 'CHART';
+
+            chartGroup.classList.toggle('d-none', !isChart);
+            chartType.required = isChart;
+
+            if (!isChart && clearNonChartValue) {
+                chartType.value = '';
+            }
+        }
+
+        function syncDashboardWidgetRefreshFields(clearDisabledValues) {
+            const enabled = document.getElementById('dashboardWidgetAutoRefresh').checked;
+            const interval = document.getElementById('dashboardWidgetRefreshInterval');
+            const unit = document.getElementById('dashboardWidgetRefreshIntervalUnit');
+
+            document.getElementById('dashboardWidgetRefreshIntervalGroup').classList.toggle('d-none', !enabled);
+            document.getElementById('dashboardWidgetRefreshUnitGroup').classList.toggle('d-none', !enabled);
+            interval.required = enabled;
+            unit.required = enabled;
+
+            if (!enabled && clearDisabledValues) {
+                interval.value = '';
+                unit.value = '';
+            }
+        }
+
+        document.getElementById('dashboardWidgetDataSourceType')
+            .addEventListener('change', function () {
+                syncDashboardWidgetDataSourceFields(true);
+            });
+
+        document.getElementById('dashboardWidgetType')
+            .addEventListener('change', function () {
+                syncDashboardWidgetChartFields(true);
+            });
+
+        document.getElementById('dashboardWidgetAutoRefresh')
+            .addEventListener('change', function () {
+                syncDashboardWidgetRefreshFields(true);
+            });
+
+        syncDashboardWidgetDataSourceFields(false);
+        syncDashboardWidgetChartFields(false);
+        syncDashboardWidgetRefreshFields(false);
+
         window.DashboardConfig = {
 
             editTab: function (button) {
@@ -1631,8 +1711,15 @@
                         document.getElementById('dashboardWidgetDataSourceType').value =
                             widget.dataSourceType ?? '';
 
-                        document.getElementById('dashboardWidgetDataSourceId').value =
+                        document.getElementById('dashboardWidgetJobSourceId').value =
                             widget.dataSourceId ?? '';
+
+                        document.getElementById('dashboardWidgetResultSourceId').value =
+                            widget.dataSourceId ?? '';
+
+                        syncDashboardWidgetDataSourceFields(false);
+                        syncDashboardWidgetChartFields(false);
+                        syncDashboardWidgetRefreshFields(false);
 
                         document.getElementById('dashboardWidgetSortOrder').value =
                             widget.sortOrder ?? 0;
@@ -1658,8 +1745,6 @@
                         document.getElementById('dashboardWidgetRefreshIntervalUnit').required =
                             widget.autoRefresh === true;
 
-                        document.getElementById('dashboardWidgetDataSourceId').required =
-                            widget.dataSourceType === 'MONITORING_JOB';
 
                         document.getElementById('dashboardWidgetModalTitle').textContent =
                             'Edit Dashboard Widget';
@@ -1716,19 +1801,13 @@
             const chartType =
                 document.getElementById('dashboardWidgetChartType');
 
-            const dataSourceType =
-                document.getElementById('dashboardWidgetDataSourceType');
-
-            const dataSourceId =
-                document.getElementById('dashboardWidgetDataSourceId');
+            syncDashboardWidgetDataSourceFields(false);
+            syncDashboardWidgetChartFields(false);
+            syncDashboardWidgetRefreshFields(false);
 
             interval.required = autoRefresh;
             unit.required = autoRefresh;
-
             chartType.required = widgetType.value === 'CHART';
-
-            dataSourceId.required =
-                dataSourceType.value === 'MONITORING_JOB';
 
             if (!this.checkValidity()) {
                 event.preventDefault();
@@ -1739,52 +1818,7 @@
         });
 
 
-        document
-            .getElementById('dashboardWidgetAutoRefresh')
-            .addEventListener('change', function () {
 
-                const interval =
-                    document.getElementById(
-                        'dashboardWidgetRefreshInterval'
-                    );
-
-                const unit =
-                    document.getElementById(
-                        'dashboardWidgetRefreshIntervalUnit'
-                    );
-
-                interval.required = this.checked;
-                unit.required = this.checked;
-
-                if (!this.checked) {
-
-                    interval.value = '';
-                    unit.value = '';
-
-                }
-
-            });
-
-
-        document
-            .getElementById('dashboardWidgetDataSourceType')
-            .addEventListener('change', function () {
-
-                const jobSelect =
-                    document.getElementById(
-                        'dashboardWidgetDataSourceId'
-                    );
-
-                jobSelect.required =
-                    this.value === 'MONITORING_JOB';
-
-                if (this.value !== 'MONITORING_JOB') {
-
-                    jobSelect.value = '';
-
-                }
-
-            });
 
 
         document
@@ -1798,6 +1832,10 @@
             document
                 .getElementById('dashboardWidgetForm')
                 .classList.remove('was-validated');
+
+            syncDashboardWidgetDataSourceFields(false);
+            syncDashboardWidgetChartFields(false);
+            syncDashboardWidgetRefreshFields(false);
 
             document
                 .getElementById('dashboardWidgetModalTitle')
