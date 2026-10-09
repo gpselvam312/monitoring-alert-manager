@@ -1131,6 +1131,7 @@
 								       th:field="*{name}"
 								       th:classappend="${#fields.hasErrors('name')} ? ' is-invalid' : ''"
 								       id="dashboardWidgetName"
+								       maxlength="150"
 								       required>
 								<div class="invalid-feedback"
 								     th:if="${#fields.hasErrors('name')}"
@@ -1379,7 +1380,7 @@
                                     <option value="">Select monitoring result</option>
                                     <option th:each="result : ${monitoringResults}"
                                             th:value="${result.id}"
-                                            th:text="|Result #${result.id} · ${result.resultType} · ${result.execution.monitoringJob.name}|">Monitoring Result</option>
+                                            th:text="|#${result.id} · ${result.execution.monitoringJob.name} · ${result.resultType} · ${#temporals.format(result.createdAt, 'yyyy-MM-dd HH:mm')}|">Monitoring Result</option>
                                 </select>
                                 <div class="invalid-feedback"
                                      th:if="${#fields.hasErrors('dataSourceId')}"
@@ -1642,7 +1643,7 @@
             });
 
         syncDashboardWidgetDataSourceFields(false);
-        syncDashboardWidgetChartFields(false);
+        syncDashboardWidgetChartFields(true);
         syncDashboardWidgetRefreshFields(false);
 
         window.DashboardConfig = {
