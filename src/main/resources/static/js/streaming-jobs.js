@@ -87,16 +87,16 @@
     }
 
     function getSortValue(job, key) {
-        if (key === 'maxRuntimeSeconds') return Number(job.maxRuntimeSeconds || 0);
-        if (key === 'description') return (job.description || '').toLocaleLowerCase();
-        if (key === 'status') return (job.status || 'IDLE').toLocaleLowerCase();
-        return (job.name || '').toLocaleLowerCase();
+        if (key === 'enabled') return job.enabled ? 1 : 0;
+        const value = job[key];
+        return value == null ? '' : String(value).toLocaleLowerCase();
     }
 
     function visibleJobs() {
         const query = searchInput.value.trim().toLocaleLowerCase();
         return jobs.filter(job => !query || [
-            job.name, job.description, job.status, job.maxRuntimeSeconds
+            job.name, job.application, job.environment, job.machine, job.type, job.severity, job.schedule,
+            job.enabled ? 'enabled' : 'disabled', job.status, job.description
         ].some(value => value != null && String(value).toLocaleLowerCase().includes(query)))
         .sort((a, b) => {
             const left = getSortValue(a, sortKey);
@@ -130,11 +130,31 @@
             name.textContent = job.name || ('Job #' + job.id);
             nameCell.appendChild(name);
             row.appendChild(nameCell);
-            row.appendChild(textCell(job.description));
-            const statusCell = document.createElement('td');
-            statusCell.appendChild(statusBadge(job.status || 'IDLE'));
-            row.appendChild(statusCell);
-            row.appendChild(textCell((job.maxRuntimeSeconds || 300) + ' sec', 'text-end'));
+            row.appendChild(textCell(job.application));
+            row.appendChild(textCell(job.environment));
+            row.appendChild(textCell(job.machine));
+            row.appendChild(textCell(job.type));
+            const severityCell = document.createElement('td');
+            if (job.severity) {
+                const severityBadge = document.createElement('span');
+                severityBadge.className = 'status-badge ' + (job.severity === 'CRITICAL' ? 'status-critical'
+                    : job.severity === 'WARNING' ? 'status-warning' : 'status-info');
+                severityBadge.textContent = job.severity;
+                severityCell.appendChild(severityBadge);
+            } else {
+                severityCell.textContent = '—';
+            }
+            row.appendChild(severityCell);
+            row.appendChild(textCell(job.schedule));
+            const enabledCell = document.createElement('td');
+            const enabledBadge = document.createElement('span');
+            enabledBadge.className = 'status-badge ' + (job.enabled ? 'status-healthy' : 'status-disabled');
+            const statusDot = document.createElement('span');
+            statusDot.className = 'status-dot';
+            enabledBadge.appendChild(statusDot);
+            enabledBadge.appendChild(document.createTextNode(job.enabled ? ' ENABLED' : ' DISABLED'));
+            enabledCell.appendChild(enabledBadge);
+            row.appendChild(enabledCell);
 
             const actionCell = document.createElement('td');
             actionCell.className = 'text-end table-actions-column';
@@ -143,6 +163,7 @@
             const selectButton = document.createElement('button');
             selectButton.type = 'button';
             selectButton.className = 'btn btn-sm ' + (String(job.id) === String(selectedJobId) ? 'btn-primary' : 'btn-outline-primary');
+            selectButton.disabled = !job.enabled;
             selectButton.innerHTML = '<i class="bi bi-play-circle"></i><span class="ms-1">'
                 + (String(job.id) === String(selectedJobId) ? 'Selected' : 'Select') + '</span>';
             selectButton.addEventListener('click', event => {
@@ -167,6 +188,7 @@
             const selectIconButton = document.createElement('button');
             selectIconButton.type = 'button';
             selectIconButton.className = 'btn btn-sm ' + (String(job.id) === String(selectedJobId) ? 'btn-primary' : 'btn-outline-primary');
+            selectIconButton.disabled = !job.enabled;
             selectIconButton.title = String(job.id) === String(selectedJobId) ? 'Selected' : 'Select';
             selectIconButton.setAttribute('aria-label', selectIconButton.title);
             selectIconButton.innerHTML = '<i class="bi bi-play-circle"></i>';
