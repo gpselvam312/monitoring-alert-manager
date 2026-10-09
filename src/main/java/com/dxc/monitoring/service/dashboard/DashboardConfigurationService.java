@@ -199,13 +199,6 @@ public class DashboardConfigurationService
                         throw new IllegalArgumentException("Monitoring job not found: " + dataSourceId);
                     }
                 }
-                case "MONITORING_RESULT" ->
-                {
-                    if (!monitoringResultRepository.existsById(dataSourceId))
-                    {
-                        throw new IllegalArgumentException("Monitoring result not found: " + dataSourceId);
-                    }
-                }
                 default -> throw new IllegalArgumentException("Unsupported dashboard data source type: " + dataSourceType);
             }
         }
@@ -240,12 +233,6 @@ public class DashboardConfigurationService
     public List<MonitoringJob> findDashboardMonitoringJobs()
     {
         return monitoringJobRepository.findAll();
-    }
-
-    @Transactional(readOnly = true)
-    public List<MonitoringResult> findDashboardMonitoringResults()
-    {
-        return monitoringResultRepository.findAllByOrderByCreatedAtDescIdDesc();
     }
 
     @Transactional(readOnly = true)
@@ -294,6 +281,25 @@ public class DashboardConfigurationService
         form.setEnabled(widget.getEnabled());
         form.setDataSourceType(widget.getDataSourceType());
         form.setDataSourceId(widget.getDataSourceId());
+
+        // Convert legacy widgets that referenced one stored result into a live job source.
+        if ("MONITORING_RESULT".equals(form.getDataSourceType()) && form.getDataSourceId() != null)
+        {
+            MonitoringResult legacyResult =
+                    monitoringResultRepository.findById(form.getDataSourceId()).orElse(null);
+            if (legacyResult != null && legacyResult.getExecution() != null
+                    && legacyResult.getExecution().getMonitoringJob() != null)
+            {
+                form.setDataSourceType("MONITORING_JOB");
+                form.setDataSourceId(legacyResult.getExecution().getMonitoringJob().getId());
+            }
+            else
+            {
+                form.setDataSourceType(null);
+                form.setDataSourceId(null);
+            }
+        }
+
         form.setAutoRefresh(widget.getAutoRefresh());
         form.setRefreshInterval(widget.getRefreshInterval());
         form.setRefreshIntervalUnit(widget.getRefreshIntervalUnit());
