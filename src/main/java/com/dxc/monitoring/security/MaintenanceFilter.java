@@ -7,6 +7,8 @@ import java.util.List;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -21,6 +23,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class MaintenanceFilter extends OncePerRequestFilter
 {
+    private static final Logger log = LoggerFactory.getLogger(MaintenanceFilter.class);
     private static final String MAINTENANCE_PATH = "/maintenance";
 
     private final SystemSettingService systemSettingService;
@@ -36,13 +39,29 @@ public class MaintenanceFilter extends OncePerRequestFilter
     {
         String requestUri = request.getRequestURI();
 
-        if (isExcludedPath(requestUri) || !systemSettingService.isSiteOffline() || isBypassIp(request))
+        if (isExcludedPath(requestUri))
         {
             filterChain.doFilter(request, response);
             return;
         }
 
-        response.sendRedirect(request.getContextPath() + MAINTENANCE_PATH);
+        try
+        {
+            if (!systemSettingService.isSiteOffline() || isBypassIp(request))
+            {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            response.sendRedirect(request.getContextPath() + MAINTENANCE_PATH);
+        }
+        catch (RuntimeException exception)
+        {
+            // Maintenance status must not prevent the common error handler from handling a database outage.
+            log.warn("Could not read maintenance settings; allowing request to continue to normal error handling: {}",
+                    exception.getClass().getSimpleName());
+            filterChain.doFilter(request, response);
+        }
     }
 
     private boolean isExcludedPath(String requestUri)
