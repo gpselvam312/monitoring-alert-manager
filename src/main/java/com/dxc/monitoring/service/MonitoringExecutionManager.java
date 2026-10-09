@@ -1,5 +1,6 @@
 package com.dxc.monitoring.service;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -32,6 +33,12 @@ public class MonitoringExecutionManager
     @Transactional
     public MonitoringExecution execute(MonitoringJob job)
     {
+        return execute(job, Map.of());
+    }
+
+    @Transactional
+    public MonitoringExecution execute(MonitoringJob job, Map<String, String> runtimeParameters)
+    {
         if (job == null || job.getId() == null)
             throw new IllegalArgumentException("Monitoring job is required.");
 
@@ -56,7 +63,7 @@ public class MonitoringExecutionManager
             MonitoringExecution execution = executionService.startExecution(job, 1);
             try
             {
-                MonitoringExecutionResult result = executor.execute(job);
+                MonitoringExecutionResult result = executor.execute(job, runtimeParameters == null ? Map.of() : runtimeParameters);
                 if (result.getErrorMessage() != null)
                     execution.setErrorMessage(result.getErrorMessage());
 
