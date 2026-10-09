@@ -2,6 +2,8 @@ package com.dxc.monitoring.controller;
 
 import java.util.Map;
 
+import org.springframework.scheduling.support.CronExpression;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -113,8 +115,18 @@ public class ScheduleController
 
     @PostMapping
     @PreAuthorize("hasAuthority('SCHEDULE_CONFIG')")
-    public String saveSchedule(@ModelAttribute("schedule") Schedule schedule)
+    public String saveSchedule(@ModelAttribute("schedule") Schedule schedule, Model model)
     {
+        String validationError = validateSchedule(schedule);
+        if (validationError != null)
+        {
+            model.addAttribute("pageTitle", schedule.getId() == null ? "Add Schedule" : "Edit Schedule");
+            model.addAttribute("submitLabel", schedule.getId() == null ? "Save Schedule" : "Update Schedule");
+            model.addAttribute("formError", validationError);
+            model.addAttribute("currentPage", "schedules");
+            return "scheduling/schedule-form";
+        }
+
         if (schedule.getId() != null)
         {
             Schedule existingSchedule = scheduleService.findById(schedule.getId());
@@ -136,6 +148,102 @@ public class ScheduleController
         }
 
         return "redirect:/scheduling/schedules";
+    }
+
+    private String validateSchedule(Schedule schedule)
+    {
+        String name = schedule.getName() == null ? "" : schedule.getName().trim();
+        schedule.setName(name);
+
+        if (name.isEmpty())
+        {
+            return "Schedule name is required.";
+        }
+        if (name.length() > 100)
+        {
+            return "Schedule name must be 100 characters or fewer.";
+        }
+        if (schedule.getDescription() != null && schedule.getDescription().length() > 500)
+        {
+            return "Description must be 500 characters or fewer.";
+        }
+
+        boolean duplicateName = schedule.getId() == null
+                ? scheduleService.nameExists(name)
+                : scheduleService.nameExistsForAnotherSchedule(name, schedule.getId());
+        if (duplicateName)
+        {
+            return "A schedule with this name already exists.";
+        }
+
+        if (schedule.getType() == null)
+        {
+            return "Select a schedule type.";
+        }
+
+        String cron = schedule.getCronExpression() == null ? "" : schedule.getCronExpression().trim();
+        schedule.setCronExpression(cron.isEmpty() ? null : cron);
+
+        switch (schedule.getType())
+        {
+            case CRON:
+                if (cron.isEmpty())
+                {
+                    return "Cron Expression is required for a Cron schedule.";
+                }
+                if (schedule.getFixedDelaySeconds() != null || schedule.getFixedRateSeconds() != null)
+                {
+                    return "A Cron schedule must not contain Fixed Delay or Fixed Rate settings.";
+                }
+                try
+                {
+                    CronExpression.parse(cron);
+                }
+                catch (IllegalArgumentException exception)
+                {
+                    return "Enter a valid Spring cron expression (second minute hour day-of-month month day-of-week).";
+                }
+                break;
+            case FIXED_DELAY:
+                if (schedule.getFixedDelaySeconds() == null || schedule.getFixedDelaySeconds() < 1)
+                {
+                    return "Fixed Delay must be at least 1 second.";
+                }
+                if (!cron.isEmpty() || schedule.getFixedRateSeconds() != null)
+                {
+                    return "A Fixed Delay schedule must not contain Cron or Fixed Rate settings.";
+                }
+                break;
+            case FIXED_RATE:
+                if (schedule.getFixedRateSeconds() == null || schedule.getFixedRateSeconds() < 1)
+                {
+                    return "Fixed Rate must be at least 1 second.";
+                }
+                if (!cron.isEmpty() || schedule.getFixedDelaySeconds() != null)
+                {
+                    return "A Fixed Rate schedule must not contain Cron or Fixed Delay settings.";
+                }
+                break;
+            default:
+                return "Select a supported schedule type.";
+        }
+
+        if ((schedule.getStartTime() == null) != (schedule.getEndTime() == null))
+        {
+            return "Start Time and End Time must either both be set or both be empty.";
+        }
+        if (schedule.getStartTime() != null && schedule.getStartTime().equals(schedule.getEndTime()))
+        {
+            return "Start Time and End Time cannot be the same.";
+        }
+
+        if (schedule.getDescription() != null)
+        {
+            String description = schedule.getDescription().trim();
+            schedule.setDescription(description.isEmpty() ? null : description);
+        }
+
+        return null;
     }
 
     @GetMapping("/{id}")
