@@ -52,7 +52,7 @@ public class DashboardService
     public List<DashboardTabResponse> getDashboard()
     {
         List<DashboardTab> tabs = dashboardTabRepository.findAllByEnabledTrueOrderBySortOrderAsc().stream()
-                .filter(tab -> tab.getEnvironment() != null)
+                .filter(tab -> tab.getEnvironment() != null && tab.getEnvironment().isEnabled())
                 .toList();
         List<DashboardWidget> widgets =
             dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc();
