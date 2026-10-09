@@ -1196,6 +1196,54 @@
             '<thead><tr>' + headerHtml + '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>';
     }
 
+    function renderStatusWidget(result, widget)
+    {
+        const config = parseWidgetFieldConfig(widget);
+        const configuredValue = config.valueField
+            ? getJsonPath(result.payload || {}, config.valueField)
+            : undefined;
+        const value = configuredValue !== undefined && configuredValue !== null
+            ? configuredValue
+            : (result.value !== null && result.value !== undefined ? result.value : "");
+        const message = result.message || "";
+        const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+
+        let metricsHtml = "";
+        if (result.metrics && typeof result.metrics === "object")
+        {
+            let metricEntries = Object.entries(result.metrics);
+            if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
+            {
+                metricEntries = metricEntries.filter(function (entry)
+                {
+                    return config.visibleFields.includes(entry[0]);
+                });
+            }
+
+            if (metricEntries.length > 0)
+            {
+                metricsHtml = '<div class="dashboard-status-metrics">' +
+                    metricEntries.map(function (entry)
+                    {
+                        return '<div class="dashboard-status-metric">' +
+                            '<span class="dashboard-status-metric-label">' +
+                                escapeHtml(labels[entry[0]] || entry[0]) +
+                            '</span><span class="dashboard-status-metric-value">' +
+                                escapeHtml(entry[1]) +
+                            '</span></div>';
+                    }).join("") +
+                    '</div>';
+            }
+        }
+
+        return '<div class="dashboard-status-content">' +
+            (value !== "" ? '<div class="dashboard-status-value">' + escapeHtml(value) + '</div>' : "") +
+            (message ? '<div class="dashboard-status-message">' + escapeHtml(message) + '</div>' : "") +
+            metricsHtml +
+            '</div>';
+    }
+
+
     function renderStatWidget(result, widget)
 	{
 	    const config = parseWidgetFieldConfig(widget);
