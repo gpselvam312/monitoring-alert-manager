@@ -210,7 +210,7 @@ public class StreamingJobService
     @EventListener(ApplicationReadyEvent.class)
     public void recoverActiveClaimsOnStartup()
     {
-        for (StreamingJobClaim claim : claimRepository.findEnabledStreamingClaims())
+        for (StreamingJobClaim claim : claimRepository.findEnabledStreamingClaims(MonitoringJob.ExecutionMode.STREAMING))
         {
             if (claim.getStatus().isActive())
             {
