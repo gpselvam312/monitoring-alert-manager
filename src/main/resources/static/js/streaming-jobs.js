@@ -338,6 +338,11 @@
         try {
             await request('/api/streaming-jobs/' + encodeURIComponent(job.id) + '/' + action, { method: 'POST' });
             await refresh(false);
+            const refreshedJob = selectedJob();
+            if (action === 'start' && refreshedJob && activeStates.has(refreshedJob.status)) {
+                output.textContent = 'Connecting to streaming output…';
+                connectOutput(refreshedJob.id);
+            }
         } catch (e) {
             showError(e.message);
             await refresh(false);
