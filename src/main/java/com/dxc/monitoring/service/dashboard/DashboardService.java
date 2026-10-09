@@ -170,9 +170,14 @@ public class DashboardService
 
         result.setStatus(mapExecutionStatus(execution.getStatus(), monitoringResult));
         result.setMessage(monitoringResult != null ? monitoringResult.getMessage() : execution.getErrorMessage());
-        result.setLastUpdated(execution.getCompletedAt() != null
-                ? execution.getCompletedAt()
-                : execution.getStartedAt());
+        if (execution.getCompletedAt() != null)
+        {
+            result.setLastUpdated(execution.getCompletedAt().toLocalDateTime());
+        }
+        else if (execution.getStartedAt() != null)
+        {
+            result.setLastUpdated(execution.getStartedAt().toLocalDateTime());
+        }
 
         if (monitoringResult != null)
         {
