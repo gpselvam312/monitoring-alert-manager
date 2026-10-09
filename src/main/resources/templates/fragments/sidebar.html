@@ -54,6 +54,16 @@
 
             </a>
 
+            <a th:href="@{/monitoring/streaming-jobs}"
+               class="sidebar-link"
+               th:classappend="${currentPage == 'streaming-jobs'} ? ' active' : ''"
+               sec:authorize="hasAuthority('MONITORING_VIEW')">
+
+                <i class="bi bi-terminal"></i>
+                <span>Streaming Jobs</span>
+
+            </a>
+
             <a th:href="@{/monitoring/machines}"
                class="sidebar-link"
                th:classappend="${currentPage == 'machines'} ? ' active' : ''">
