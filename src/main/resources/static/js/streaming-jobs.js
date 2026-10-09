@@ -4,6 +4,7 @@
     const error = document.getElementById('streamingJobsError');
     const loading = document.getElementById('streamingJobsLoading');
     const empty = document.getElementById('streamingJobsEmpty');
+    const noResults = document.getElementById('streamingJobsNoResults');
     const tableWrapper = document.getElementById('streamingJobsTableWrapper');
     const tableBody = document.getElementById('streamingJobsTableBody');
     const searchInput = document.getElementById('streamingJobSearch');
@@ -157,9 +158,11 @@
         count.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs');
         loading.classList.add('d-none');
         const hasJobs = jobs.length > 0;
+        const hasMatches = filtered.length > 0;
         empty.classList.toggle('d-none', hasJobs);
-        tableWrapper.classList.toggle('d-none', !hasJobs);
-        pagination.classList.toggle('d-none', !hasJobs || filtered.length === 0);
+        noResults.classList.toggle('d-none', !hasJobs || hasMatches);
+        tableWrapper.classList.toggle('d-none', !hasMatches);
+        pagination.classList.toggle('d-none', !hasMatches);
         pageSummary.textContent = filtered.length
             ? 'Showing ' + (start + 1) + '–' + Math.min(start + pageSize, filtered.length) + ' of ' + filtered.length
             : 'No jobs match your search';
