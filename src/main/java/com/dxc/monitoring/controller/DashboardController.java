@@ -109,6 +109,12 @@ public class DashboardController
             {
                 throw new IllegalArgumentException("Date-range execution is not enabled for this API widget.");
             }
+            if (job.getUrl() == null || !job.getUrl().contains("{{startDate}}")
+                    || !job.getUrl().contains("{{endDate}}"))
+            {
+                throw new IllegalArgumentException(
+                        "The API URL must include both {{startDate}} and {{endDate}} placeholders.");
+            }
 
             try
             {
