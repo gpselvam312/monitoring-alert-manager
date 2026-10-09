@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -45,6 +46,9 @@ public class MonitoringJobController
     private final EnvironmentRepository environmentRepository;
     private final MonitoringExecutionManager monitoringExecutionManager;
     private final MonitoringExecutionService monitoringExecutionService;
+
+    @Value("${monitoring.streaming.max-runtime-seconds:86400}")
+    private int configuredMaximumStreamingRuntimeSeconds;
 
     private static final Map<String, String> JOB_SORT_FIELDS =
         Map.of("name", "name", "application.name", "application.name", "environment.name", "environment.name",
@@ -167,6 +171,7 @@ public class MonitoringJobController
         model.addAttribute("schedules", scheduleRepository.findAll());
         model.addAttribute("applications", applicationRepository.findAll());
         model.addAttribute("environments", environmentRepository.findAll());
+        model.addAttribute("maxStreamingRuntimeSeconds", configuredMaximumStreamingRuntimeSeconds);
         model.addAttribute("pageTitle", "Add Monitoring Job");
         model.addAttribute("submitLabel", "Save Job");
 
@@ -180,9 +185,41 @@ public class MonitoringJobController
     @PostMapping
     public String saveJob(@ModelAttribute("job") MonitoringJob job, @RequestParam(required = false) Long applicationId,
             @RequestParam(required = false) Long environmentId, @RequestParam(required = false) Long machineId,
-            @RequestParam(required = false) Long scheduleId, Authentication authentication)
+            @RequestParam(required = false) Long scheduleId, Authentication authentication,
+            RedirectAttributes redirectAttributes)
     {
-        System.out.println("DEBUG MonitoringJob POST - id = " + job.getId() + ", name = " + job.getName());
+        if (job.getExecutionMode() == null)
+        {
+            job.setExecutionMode(MonitoringJob.ExecutionMode.STANDARD);
+        }
+        if (job.getMaxStreamingRuntimeSeconds() == null)
+        {
+            job.setMaxStreamingRuntimeSeconds(300);
+        }
+
+        String validationError = null;
+        if (job.getMaxStreamingRuntimeSeconds() < 1
+                || job.getMaxStreamingRuntimeSeconds() > configuredMaximumStreamingRuntimeSeconds)
+        {
+            validationError = "Maximum streaming runtime must be between 1 and "
+                    + configuredMaximumStreamingRuntimeSeconds + " seconds.";
+        }
+        else if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
+                && job.getType() != MonitoringJob.MonitorType.SCRIPT)
+        {
+            validationError = "Streaming execution currently supports Script monitoring jobs only.";
+        }
+        else if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING && scheduleId != null)
+        {
+            validationError = "Streaming jobs are on-demand only. Remove the schedule before saving.";
+        }
+
+        if (validationError != null)
+        {
+            redirectAttributes.addFlashAttribute("errorMessage", validationError);
+            return job.getId() == null ? "redirect:/monitoring/jobs/new"
+                    : "redirect:/monitoring/jobs/" + job.getId() + "/edit";
+        }
 
         User currentUser = userRepository.findByUsername(authentication.getName()).orElseThrow(
                 () -> new IllegalArgumentException("Logged-in user not found: " + authentication.getName()));
@@ -349,6 +386,7 @@ public class MonitoringJobController
         model.addAttribute("schedules", scheduleRepository.findAll());
         model.addAttribute("applications", applicationRepository.findAll());
         model.addAttribute("environments", environmentRepository.findAll());
+        model.addAttribute("maxStreamingRuntimeSeconds", configuredMaximumStreamingRuntimeSeconds);
         model.addAttribute("pageTitle", "Edit Monitoring Job");
         model.addAttribute("submitLabel", "Update Job");
 
