@@ -40,4 +40,3 @@ monitoring:
     ssh-key-path: ${MONITORING_STREAMING_SSH_KEY_PATH:}
     ssh-port: ${MONITORING_STREAMING_SSH_PORT:22}
     node-id: ${MONITORING_STREAMING_NODE_ID:${HOSTNAME:localhost}}
-    node-id: ${MONITORING_STREAMING_NODE_ID:${HOSTNAME:localhost}}
