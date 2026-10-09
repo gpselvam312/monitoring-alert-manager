@@ -178,10 +178,10 @@ public class DashboardService
             result.setStatus(WidgetStatus.GRAY);
             result.setMessage("Configured monitoring job was not found.");
         }
-        else if ("MONITORING_RESULT".equals(widget.getDataSourceType()) && monitoringResult == null)
+        else if ("MONITORING_RESULT".equals(widget.getDataSourceType()) && job == null)
         {
             result.setStatus(WidgetStatus.GRAY);
-            result.setMessage("Configured monitoring result was not found.");
+            result.setMessage("Configured monitoring job was not found.");
         }
 
         DashboardWidgetResponse response = new DashboardWidgetResponse();
