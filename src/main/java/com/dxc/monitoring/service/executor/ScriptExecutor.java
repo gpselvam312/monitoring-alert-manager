@@ -3,6 +3,7 @@ package com.dxc.monitoring.service.executor;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -19,6 +20,13 @@ import com.dxc.monitoring.entity.MonitoringResult;
 @Component
 public class ScriptExecutor implements MonitoringExecutor
 {
+    private final MonitoringResultNormalizer resultNormalizer;
+
+    public ScriptExecutor(MonitoringResultNormalizer resultNormalizer)
+    {
+        this.resultNormalizer = resultNormalizer;
+    }
+
     @Override
     public MonitoringJob.MonitorType getType()
     {
@@ -30,23 +38,36 @@ public class ScriptExecutor implements MonitoringExecutor
     {
         MonitoringExecutionResult result = new MonitoringExecutionResult();
         result.setResultType(MonitoringResult.ResultType.TEXT);
+        OffsetDateTime startedAt = OffsetDateTime.now();
         Process process = null;
 
         try
         {
-            ProcessBuilder builder = new ProcessBuilder(buildCommand(job)).redirectErrorStream(true);
+            ProcessBuilder builder = new ProcessBuilder(buildCommand(job));
             if (job.getWorkingDirectory() != null && !job.getWorkingDirectory().isBlank())
                 builder.directory(new File(job.getWorkingDirectory()));
 
             process = builder.start();
             Process runningProcess = process;
 
-            // Drain output while the process runs to avoid filling the OS pipe and deadlocking.
-            CompletableFuture<byte[]> outputFuture = CompletableFuture.supplyAsync(() ->
+            // Drain stdout and stderr independently so scripts can emit machine-readable JSON
+            // on stdout while keeping diagnostics on stderr.
+            CompletableFuture<byte[]> stdoutFuture = CompletableFuture.supplyAsync(() ->
             {
                 try
                 {
                     return runningProcess.getInputStream().readAllBytes();
+                }
+                catch (IOException exception)
+                {
+                    throw new java.util.concurrent.CompletionException(exception);
+                }
+            });
+            CompletableFuture<byte[]> stderrFuture = CompletableFuture.supplyAsync(() ->
+            {
+                try
+                {
+                    return runningProcess.getErrorStream().readAllBytes();
                 }
                 catch (IOException exception)
                 {
@@ -64,16 +85,21 @@ public class ScriptExecutor implements MonitoringExecutor
                 result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
                 result.setMessage("Script execution timed out after " + timeoutSeconds + " seconds.");
                 result.setErrorMessage("Script execution timed out.");
-                result.setRawOutput(readOutput(outputFuture));
+                String stdout = readOutput(stdoutFuture);
+                String stderr = readOutput(stderrFuture);
+                result.setRawOutput(combineOutput(stdout, stderr));
+                normalizeResult(result, stdout, startedAt);
                 return result;
             }
 
-            String output = new String(outputFuture.get(5, TimeUnit.SECONDS), StandardCharsets.UTF_8);
-            result.setRawOutput(output);
+            String stdout = new String(stdoutFuture.get(5, TimeUnit.SECONDS), StandardCharsets.UTF_8);
+            String stderr = new String(stderrFuture.get(5, TimeUnit.SECONDS), StandardCharsets.UTF_8);
+            String combinedOutput = combineOutput(stdout, stderr);
+            result.setRawOutput(combinedOutput);
             int exitCode = process.exitValue();
 
             String expected = job.getExpectedResult();
-            boolean expectedMatches = expected == null || expected.isBlank() || output.contains(expected);
+            boolean expectedMatches = expected == null || expected.isBlank() || combinedOutput.contains(expected);
             boolean success = exitCode == 0 && expectedMatches;
 
             result.setExecutionStatus(success ? MonitoringExecution.ExecutionStatus.SUCCESS
@@ -95,6 +121,8 @@ public class ScriptExecutor implements MonitoringExecutor
             {
                 result.setMessage("Script completed successfully.");
             }
+
+            normalizeResult(result, stdout, startedAt);
         }
         catch (InterruptedException exception)
         {
@@ -105,6 +133,7 @@ public class ScriptExecutor implements MonitoringExecutor
             result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
             result.setMessage("Script execution was interrupted.");
             result.setErrorMessage(exception.getMessage());
+            normalizeResult(result, exception.getMessage(), startedAt);
         }
         catch (IOException | ExecutionException | TimeoutException exception)
         {
@@ -114,8 +143,33 @@ public class ScriptExecutor implements MonitoringExecutor
             result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
             result.setMessage("Unable to execute or collect output from the monitoring script.");
             result.setErrorMessage(exception.getMessage());
+            normalizeResult(result, exception.getMessage(), startedAt);
         }
         return result;
+    }
+
+    private void normalizeResult(MonitoringExecutionResult result, String output, OffsetDateTime startedAt)
+    {
+        MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
+                output, result.getExecutionStatus(), result.getResultStatus(), result.getMessage(),
+                startedAt, OffsetDateTime.now());
+        result.setResultData(normalized.json());
+        result.setResultType(normalized.resultType());
+        result.setResultStatus(normalized.resultStatus());
+        result.setMessage(normalized.message());
+    }
+
+    private String combineOutput(String stdout, String stderr)
+    {
+        if (stderr == null || stderr.isBlank())
+        {
+            return stdout == null ? "" : stdout;
+        }
+        if (stdout == null || stdout.isBlank())
+        {
+            return "[stderr]\n" + stderr;
+        }
+        return stdout + "\n[stderr]\n" + stderr;
     }
 
     private String readOutput(CompletableFuture<byte[]> outputFuture)
