@@ -1012,27 +1012,6 @@
     </div>
 
 
-    <!-- Execution behavior -->
-    <div class="card mb-4">
-        <div class="card-header"><strong>Execution behavior</strong></div>
-        <div class="card-body row g-3">
-            <div class="col-md-6">
-                <label for="executionMode" class="form-label">Execution mode</label>
-                <select id="executionMode" th:field="*{executionMode}" class="form-select">
-                    <option value="STANDARD">Standard (scheduled/manual)</option>
-                    <option value="STREAMING">Streaming (on-demand only)</option>
-                </select>
-                <div class="form-text">Streaming jobs are never scheduled and do not save monitoring results/history.</div>
-            </div>
-            <div class="col-md-6">
-                <label for="maxStreamingRuntimeSeconds" class="form-label">Maximum streaming runtime (seconds)</label>
-                <input id="maxStreamingRuntimeSeconds" type="number" min="1" max="86400"
-                       th:field="*{maxStreamingRuntimeSeconds}" class="form-control" required />
-                <div class="form-text">Default is 300 seconds (5 minutes). Server-side timeout is enforced independently of the browser.</div>
-            </div>
-        </div>
-    </div>
-
     <!-- ================================================== -->
     <!-- FORM ACTIONS -->
     <!-- ================================================== -->
