@@ -9,7 +9,7 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
 {
     private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "CHART", "TEXT");
     private static final Set<String> CHART_TYPES = Set.of("LINE", "BAR", "PIE", "DONUT");
-    private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB", "MONITORING_RESULT");
+    private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB");
 
     @Override
     public boolean isValid(DashboardWidgetForm form, ConstraintValidatorContext context)
@@ -65,10 +65,7 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
         }
         else if (sourceId == null)
         {
-            addFieldError(context, "dataSourceId",
-                    sourceType.equals("MONITORING_JOB")
-                            ? "Select a monitoring job for this widget."
-                            : "Select a monitoring result for this widget.");
+            addFieldError(context, "dataSourceId", "Select a monitoring job for this widget.");
             valid = false;
         }
 
