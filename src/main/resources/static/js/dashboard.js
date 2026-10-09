@@ -1028,7 +1028,7 @@
     function renderTableWidget(result, widget)
     {
         const config = parseWidgetFieldConfig(widget);
-        let columns = Array.isArray(result.columns)
+        let columns = !config.rowPath && Array.isArray(result.columns)
             ? result.columns.filter(function (column)
                 {
                     return column && (column.key || column.label);
