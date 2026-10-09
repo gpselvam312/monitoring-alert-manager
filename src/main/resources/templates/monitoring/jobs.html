@@ -8,12 +8,6 @@
 
 <div th:fragment="content">
 
-    <div class="d-flex justify-content-end mb-3">
-        <a sec:authorize="hasAuthority('MONITORING_VIEW')" th:href="@{/monitoring/streaming-jobs}" class="btn btn-outline-primary">
-            <i class="bi bi-terminal me-1"></i> Streaming Jobs
-        </a>
-    </div>
-
     <!-- Page header -->
     <div class="page-header">
 
@@ -485,172 +479,43 @@
 
                                 <!-- Actions -->
                                 <td class="text-end table-actions-column">
-
-                                    <!-- Normal text actions -->
-                                    <div class="table-actions table-actions-text">
-
-                                        <!-- View -->
+                                    <div class="table-actions">
                                         <a sec:authorize="hasAuthority('MONITORING_VIEW')"
                                            th:href="@{/monitoring/jobs/{id}(id=${job.id})}"
                                            class="btn btn-sm btn-outline-secondary"
-                                           title="View">
-
-                                            <i class="bi bi-eye"></i>
-
-                                            <span class="action-label">
-                                                View
-                                            </span>
-
+                                           title="View" aria-label="View">
+                                            <i class="bi bi-eye"></i><span class="action-label ms-1">View</span>
                                         </a>
-
-
-                                        <!-- Edit -->
                                         <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                            th:href="@{/monitoring/jobs/{id}/edit(id=${job.id})}"
                                            class="btn btn-sm btn-outline-primary"
-                                           title="Edit">
-
-                                            <i class="bi bi-pencil"></i>
-
-                                            <span class="action-label">
-                                                Edit
-                                            </span>
-
+                                           title="Edit" aria-label="Edit">
+                                            <i class="bi bi-pencil"></i><span class="action-label ms-1">Edit</span>
                                         </a>
-
-
-                                        <!-- Enable / Disable -->
                                         <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                               th:action="@{/monitoring/jobs/{id}/toggle(id=${job.id})}"
                                               method="post">
-
-                                            <button type="submit"
-                                                    class="btn btn-sm btn-outline-warning"
-                                                    title="Enable or Disable">
-
-                                                <i th:if="${job.enabled}"
-                                                   class="bi bi-pause-circle">
-                                                </i>
-
-                                                <i th:unless="${job.enabled}"
-                                                   class="bi bi-play-circle">
-                                                </i>
-
-                                                <span class="action-label">
-
-                                                    <span th:if="${job.enabled}">
-                                                        Disable
-                                                    </span>
-
-                                                    <span th:unless="${job.enabled}">
-                                                        Enable
-                                                    </span>
-
-                                                </span>
-
+                                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                    th:title="${job.enabled} ? 'Disable' : 'Enable'"
+                                                    th:attr="aria-label=${job.enabled} ? 'Disable' : 'Enable'">
+                                                <i th:if="${job.enabled}" class="bi bi-pause-circle"></i>
+                                                <i th:unless="${job.enabled}" class="bi bi-play-circle"></i>
+                                                <span class="action-label ms-1" th:text="${job.enabled} ? 'Disable' : 'Enable'">Disable</span>
                                             </button>
-
                                         </form>
-
-
-                                        <!-- Delete -->
                                         <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
-										      th:action="@{/monitoring/jobs/{id}/delete(id=${job.id})}"
-										      method="post"
-										      data-app-action="delete"
-										      data-app-action-title="Delete Monitoring Job"
-										      data-app-action-message="Are you sure you want to delete this monitoring job?"
-										      data-app-action-description="This action cannot be undone.">
-
-                                            <button type="submit"
-                                                    class="btn btn-sm btn-outline-danger"
-                                                    title="Delete">
-
-                                                <i class="bi bi-trash"></i>
-
-                                                <span class="action-label">
-                                                    Delete
-                                                </span>
-
+                                              th:action="@{/monitoring/jobs/{id}/delete(id=${job.id})}"
+                                              method="post"
+                                              data-app-action="delete"
+                                              data-app-action-title="Delete Monitoring Job"
+                                              data-app-action-message="Are you sure you want to delete this monitoring job?"
+                                              data-app-action-description="This action cannot be undone.">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    title="Delete" aria-label="Delete">
+                                                <i class="bi bi-trash"></i><span class="action-label ms-1">Delete</span>
                                             </button>
-
                                         </form>
-
                                     </div>
-
-
-                                    <!-- Compact icon actions -->
-                                    <div class="table-actions table-actions-icons">
-
-                                        <!-- View -->
-                                        <a sec:authorize="hasAuthority('MONITORING_VIEW')"
-                                           th:href="@{/monitoring/jobs/{id}(id=${job.id})}"
-                                           class="btn btn-sm btn-outline-secondary"
-                                           title="View"
-                                           aria-label="View">
-
-                                            <i class="bi bi-eye"></i>
-
-                                        </a>
-
-
-                                        <!-- Edit -->
-                                        <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
-                                           th:href="@{/monitoring/jobs/{id}/edit(id=${job.id})}"
-                                           class="btn btn-sm btn-outline-primary"
-                                           title="Edit"
-                                           aria-label="Edit">
-
-                                            <i class="bi bi-pencil"></i>
-
-                                        </a>
-
-
-                                        <!-- Enable / Disable -->
-                                        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
-                                              th:action="@{/monitoring/jobs/{id}/toggle(id=${job.id})}"
-                                              method="post">
-
-                                            <button type="submit"
-                                                    class="btn btn-sm btn-outline-warning"
-                                                    title="Enable or Disable"
-                                                    aria-label="Enable or Disable">
-
-                                                <i th:if="${job.enabled}"
-                                                   class="bi bi-pause-circle">
-                                                </i>
-
-                                                <i th:unless="${job.enabled}"
-                                                   class="bi bi-play-circle">
-                                                </i>
-
-                                            </button>
-
-                                        </form>
-
-
-                                        <!-- Delete -->
-                                        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
-										      th:action="@{/monitoring/jobs/{id}/delete(id=${job.id})}"
-										      method="post"
-										      data-app-action="delete"
-										      data-app-action-title="Delete Monitoring Job"
-										      data-app-action-message="Are you sure you want to delete this monitoring job?"
-										      data-app-action-description="This action cannot be undone.">
-
-                                            <button type="submit"
-                                                    class="btn btn-sm btn-outline-danger"
-                                                    title="Delete"
-                                                    aria-label="Delete">
-
-                                                <i class="bi bi-trash"></i>
-
-                                            </button>
-
-                                        </form>
-
-                                    </div>
-
                                 </td>
 
                             </tr>
