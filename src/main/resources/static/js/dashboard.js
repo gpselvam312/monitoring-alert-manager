@@ -1454,7 +1454,7 @@
 	                            return (
 	                                '<div class="dashboard-stat-metric">' +
 	                                    '<span class="dashboard-stat-metric-label">' +
-	                                        escapeHtml(entry[0]) +
+	                                        escapeHtml((config.labels && config.labels[entry[0]]) || entry[0]) +
 	                                    '</span>' +
 	                                    '<span class="dashboard-stat-metric-value">' +
 	                                        escapeHtml(entry[1]) +
