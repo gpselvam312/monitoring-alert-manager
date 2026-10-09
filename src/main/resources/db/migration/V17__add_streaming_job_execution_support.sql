@@ -1,6 +1,6 @@
--- Streaming job execution mode and durable cross-instance claim state.
--- Streaming output is intentionally transient in application memory; it is not
--- written to monitoring_results or the standard monitoring execution history.
+-- Streaming execution mode and durable cross-instance claim state.
+-- Streaming output is transient in application memory; it is not persisted as
+-- monitoring_results or standard monitoring execution history.
 
 ALTER TABLE ra_fcb.monitoring_jobs
     ADD COLUMN execution_mode VARCHAR(20) NOT NULL DEFAULT 'STANDARD',
@@ -39,7 +39,7 @@ CREATE INDEX idx_streaming_job_claims_status
 CREATE INDEX idx_streaming_job_claims_owner
     ON ra_fcb.streaming_job_claims(claim_owner);
 
--- Pre-create claim rows so start can atomically claim an existing job.
+-- Seed claim rows for existing jobs. New jobs are initialized on first use.
 INSERT INTO ra_fcb.streaming_job_claims (monitoring_job_id, status)
 SELECT id, 'IDLE'
 FROM ra_fcb.monitoring_jobs
