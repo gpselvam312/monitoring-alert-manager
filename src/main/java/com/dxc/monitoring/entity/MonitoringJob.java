@@ -46,6 +46,13 @@ public class MonitoringJob
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "execution_mode", nullable = false, length = 20)
+    private ExecutionMode executionMode = ExecutionMode.STANDARD;
+
+    @Column(name = "max_streaming_runtime_seconds", nullable = false)
+    private Integer maxStreamingRuntimeSeconds = 300;
+
     @Column(name = "store_result", nullable = false)
     private boolean storeResult = true;
 
@@ -126,6 +133,11 @@ public class MonitoringJob
 
     @Column(name = "updated_by")
     private Long updatedBy;
+
+    public enum ExecutionMode
+    {
+        STANDARD, STREAMING
+    }
 
     public enum MonitorType
     {
@@ -309,6 +321,26 @@ public class MonitoringJob
     public void setRecoveryEnabled(boolean recoveryEnabled)
     {
         this.recoveryEnabled = recoveryEnabled;
+    }
+
+    public ExecutionMode getExecutionMode()
+    {
+        return executionMode;
+    }
+
+    public void setExecutionMode(ExecutionMode executionMode)
+    {
+        this.executionMode = executionMode == null ? ExecutionMode.STANDARD : executionMode;
+    }
+
+    public Integer getMaxStreamingRuntimeSeconds()
+    {
+        return maxStreamingRuntimeSeconds;
+    }
+
+    public void setMaxStreamingRuntimeSeconds(Integer maxStreamingRuntimeSeconds)
+    {
+        this.maxStreamingRuntimeSeconds = maxStreamingRuntimeSeconds;
     }
 
     public boolean isStoreResult()

@@ -153,6 +153,7 @@ public class MonitoringSchedulerService
     {
         return job != null
                 && job.isEnabled()
+                && job.getExecutionMode() == MonitoringJob.ExecutionMode.STANDARD
                 && job.getSchedule() != null
                 && job.getSchedule().isEnabled()
                 && job.getSchedule().getType() != null;

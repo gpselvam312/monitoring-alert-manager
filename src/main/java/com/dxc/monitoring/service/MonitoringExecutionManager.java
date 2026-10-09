@@ -36,6 +36,11 @@ public class MonitoringExecutionManager
             throw new IllegalArgumentException("Monitoring job is required.");
         }
 
+        if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING)
+        {
+            throw new IllegalStateException("Streaming jobs must be started from the Streaming Jobs page.");
+        }
+
         if (!job.isEnabled())
         {
             throw new IllegalStateException("Monitoring job is disabled.");
