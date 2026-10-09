@@ -425,12 +425,38 @@
             <div>
                 <div class="app-card-title">Execution Controls</div>
                 <div class="app-card-subtitle">
-                    Control result retention and manual execution behavior.
+                    Configure standard or on-demand streaming execution, result retention and manual-run behavior.
                 </div>
             </div>
         </div>
 
         <div class="app-card-body">
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <label for="executionMode" class="form-label">Execution Mode</label>
+                    <select id="executionMode" th:field="*{executionMode}" class="form-select" required>
+                        <option value="STANDARD">Standard — scheduled or manual execution</option>
+                        <option value="STREAMING">Streaming — on-demand, continuous output</option>
+                    </select>
+                    <div class="form-text">
+                        Streaming jobs are Script jobs and cannot have a schedule. They start only from the Streaming Jobs page.
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label for="maxStreamingRuntimeSeconds" class="form-label">Maximum Streaming Runtime</label>
+                    <div class="input-group">
+                        <input type="number" id="maxStreamingRuntimeSeconds"
+                               th:field="*{maxStreamingRuntimeSeconds}" class="form-control"
+                               min="1" th:attr="max=${maxStreamingRuntimeSeconds}" required>
+                        <span class="input-group-text">seconds</span>
+                    </div>
+                    <div class="form-text">
+                        Applies to streaming jobs only. The configured system maximum is
+                        <span th:text="${maxStreamingRuntimeSeconds}">86400</span> seconds.
+                    </div>
+                </div>
+            </div>
 
             <div class="row g-4">
 
