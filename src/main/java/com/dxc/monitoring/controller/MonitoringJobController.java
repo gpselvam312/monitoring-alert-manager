@@ -454,11 +454,14 @@ public class MonitoringJobController
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
-    public String viewJob(@PathVariable Long id, Model model)
+    public String viewJob(@PathVariable Long id, @RequestParam(required = false) String mode, Model model)
     {
         MonitoringJob job = monitoringJobService.findById(id);
+        boolean streamingContext = "STREAMING".equalsIgnoreCase(mode)
+                && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING;
 
         model.addAttribute("job", job);
+        model.addAttribute("streamingContext", streamingContext);
 
         return "monitoring/job-view";
     }
