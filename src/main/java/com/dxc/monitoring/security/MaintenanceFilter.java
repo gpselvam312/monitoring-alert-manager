@@ -45,23 +45,31 @@ public class MaintenanceFilter extends OncePerRequestFilter
             return;
         }
 
+        boolean siteOffline;
+        boolean bypassIp = false;
         try
         {
-            if (!systemSettingService.isSiteOffline() || isBypassIp(request))
+            siteOffline = systemSettingService.isSiteOffline();
+            if (siteOffline)
             {
-                filterChain.doFilter(request, response);
-                return;
+                bypassIp = isBypassIp(request);
             }
-
-            response.sendRedirect(request.getContextPath() + MAINTENANCE_PATH);
         }
         catch (RuntimeException exception)
         {
             // Maintenance status must not prevent the common error handler from handling a database outage.
             log.warn("Could not read maintenance settings; allowing request to continue to normal error handling: {}",
                     exception.getClass().getSimpleName());
-            filterChain.doFilter(request, response);
+            siteOffline = false;
         }
+
+        if (!siteOffline || bypassIp)
+        {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        response.sendRedirect(request.getContextPath() + MAINTENANCE_PATH);
     }
 
     private boolean isExcludedPath(String requestUri)
