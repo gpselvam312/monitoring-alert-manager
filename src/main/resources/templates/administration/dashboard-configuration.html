@@ -1635,7 +1635,6 @@
 
                         syncDashboardWidgetDataSourceFields(false);
                         syncDashboardWidgetChartFields(true);
-                        syncDashboardWidgetRefreshFields(false);
 
                         document.getElementById('dashboardWidgetSortOrder').value =
                             widget.sortOrder ?? 0;
@@ -1654,6 +1653,8 @@
 
                         document.getElementById('dashboardWidgetRefreshIntervalUnit').value =
                             widget.refreshIntervalUnit ?? '';
+
+                        syncDashboardWidgetRefreshFields(false);
 
                         document.getElementById('dashboardWidgetRefreshInterval').required =
                             widget.autoRefresh === true;
