@@ -283,6 +283,7 @@ public class DashboardConfigurationController
         model.addAttribute("selectedTab", selectedTab);
         model.addAttribute("widgets", widgets);
         model.addAttribute("monitoringJobs", dashboardConfigurationService.findDashboardMonitoringJobs());
+        model.addAttribute("monitoringResults", dashboardConfigurationService.findDashboardMonitoringResults());
         model.addAttribute("tabSearch", tabSearch);
         model.addAttribute("widgetSearch", widgetSearch);
         model.addAttribute("widgetPage", widgetPage);
