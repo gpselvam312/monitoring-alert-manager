@@ -1148,6 +1148,8 @@ document.addEventListener("DOMContentLoaded", function () {
             maxRuntime.disabled = !streaming;
             maxRuntime.required = !!streaming;
             maxRuntime.setAttribute("aria-required", streaming ? "true" : "false");
+            // Standard monitoring jobs do not use this setting; do not display the entity default.
+            if (!streaming) maxRuntime.value = "";
         }
 
         const port = field("targetPort");
