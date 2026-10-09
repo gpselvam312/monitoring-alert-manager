@@ -95,14 +95,6 @@ public class DashboardConfigurationService
             throw new IllegalArgumentException("Dashboard tab environment is required.");
         }
 
-        dashboardTabRepository.findByEnvironment_Id(tab.getEnvironment().getId()).ifPresent(existingTab -> {
-            if (tab.getId() == null || !existingTab.getId().equals(tab.getId()))
-            {
-                throw new IllegalArgumentException("A dashboard tab already exists for environment: "
-                        + tab.getEnvironment().getName());
-            }
-        });
-
         if (tab.getSortOrder() == null || tab.getSortOrder() < 0)
         {
             tab.setSortOrder(0);
