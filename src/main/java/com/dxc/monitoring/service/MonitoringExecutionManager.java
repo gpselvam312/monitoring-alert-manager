@@ -74,7 +74,7 @@ public class MonitoringExecutionManager
                     {
                         MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
                                 result.getRawOutput(), result.getExecutionStatus(), result.getResultStatus(),
-                                result.getMessage(), execution.getStartedAt(), java.time.OffsetDateTime.now());
+                                result.getMessage(), execution.getStartedAt(), java.time.OffsetDateTime.now(), job.getResultParserConfig());
                         result.setResultData(normalized.json());
                         result.setResultType(normalized.resultType());
                         result.setResultStatus(normalized.resultStatus());
