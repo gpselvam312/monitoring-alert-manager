@@ -178,6 +178,13 @@ public class DashboardService
     private DashboardWidgetResponse createWidgetResponse(DashboardWidget widget,
             MonitoringJob job, MonitoringExecution execution, MonitoringResult monitoringResult)
     {
+        boolean environmentMismatch = job != null && !isEnvironmentCompatible(widget, job);
+        if (environmentMismatch)
+        {
+            execution = null;
+            monitoringResult = null;
+        }
+
         DashboardWidgetDefinition definition = new DashboardWidgetDefinition();
         definition.setId(widget.getId());
         definition.setName(widget.getName());
@@ -202,7 +209,12 @@ public class DashboardService
 
         WidgetResult result = createResult(execution, monitoringResult);
 
-        if (("MONITORING_JOB".equals(widget.getDataSourceType())
+        if (environmentMismatch)
+        {
+            result.setStatus(WidgetStatus.GRAY);
+            result.setMessage("Configured monitoring job belongs to a different environment.");
+        }
+        else if (("MONITORING_JOB".equals(widget.getDataSourceType())
                 || "MONITORING_RESULT".equals(widget.getDataSourceType()))
                 && widget.getDataSourceId() == null)
         {
@@ -260,7 +272,7 @@ public class DashboardService
     private boolean canRunNow(DashboardWidget widget, MonitoringJob job, MonitoringExecution execution)
     {
         if (!"MONITORING_JOB".equals(widget.getDataSourceType()) || job == null || !job.isManualRunEnabled()
-                || !job.isEnabled())
+                || !job.isEnabled() || !isEnvironmentCompatible(widget, job))
         {
             return false;
         }
@@ -277,6 +289,13 @@ public class DashboardService
         return job.isAllowConcurrentExecution()
                 || execution == null
                 || execution.getStatus() != MonitoringExecution.ExecutionStatus.RUNNING;
+    }
+
+    private boolean isEnvironmentCompatible(DashboardWidget widget, MonitoringJob job)
+    {
+        return widget.getTab().getEnvironment() != null
+                && job.getEnvironment() != null
+                && widget.getTab().getEnvironment().getId().equals(job.getEnvironment().getId());
     }
 
     private WidgetStatus mapExecutionStatus(MonitoringExecution.ExecutionStatus executionStatus,
