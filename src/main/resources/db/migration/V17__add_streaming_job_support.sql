@@ -21,41 +21,37 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
+-- The streaming service uses these fields for atomic cross-instance claims and
+-- process recovery. Output remains in a bounded in-memory buffer, not in history.
 CREATE TABLE IF NOT EXISTS ra_fcb.streaming_job_claims (
     id BIGSERIAL PRIMARY KEY,
     monitoring_job_id BIGINT NOT NULL UNIQUE
         REFERENCES ra_fcb.monitoring_jobs(id) ON DELETE CASCADE,
-    execution_id BIGINT
-        REFERENCES ra_fcb.monitoring_executions(id) ON DELETE SET NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'IDLE',
-    owner_instance_id VARCHAR(100),
-    process_id BIGINT,
-    process_start_time TIMESTAMP WITH TIME ZONE,
-    remote_pid VARCHAR(100),
-    started_by VARCHAR(100),
+    started_by BIGINT,
+    claim_owner VARCHAR(255),
     started_at TIMESTAMP WITH TIME ZONE,
-    heartbeat_at TIMESTAMP WITH TIME ZONE,
-    deadline_at TIMESTAMP WITH TIME ZONE,
-    finished_at TIMESTAMP WITH TIME ZONE,
-    exit_code INTEGER,
-    error_message TEXT,
-    output_buffer TEXT NOT NULL DEFAULT '',
-    version BIGINT NOT NULL DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    heartbeat_at TIMESTAMP WITH TIME ZONE,
+    process_id BIGINT,
+    process_host VARCHAR(255),
+    process_marker TEXT,
+    remote_log_path TEXT,
+    terminal_message TEXT,
     CONSTRAINT chk_streaming_job_claim_status
         CHECK (status IN ('IDLE', 'STARTING', 'RUNNING', 'STOPPING',
-                          'COMPLETED', 'FAILED', 'TIMED_OUT', 'STOPPED',
+                          'COMPLETED', 'STOPPED', 'FAILED', 'TIMED_OUT',
                           'RECOVERY_REQUIRED'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_streaming_job_claims_status
     ON ra_fcb.streaming_job_claims(status);
 
-CREATE INDEX IF NOT EXISTS idx_streaming_job_claims_deadline
-    ON ra_fcb.streaming_job_claims(deadline_at);
+CREATE INDEX IF NOT EXISTS idx_streaming_job_claims_heartbeat
+    ON ra_fcb.streaming_job_claims(heartbeat_at);
 
 INSERT INTO ra_fcb.streaming_job_claims (monitoring_job_id)
 SELECT id
 FROM ra_fcb.monitoring_jobs
+WHERE execution_mode = 'STREAMING'
 ON CONFLICT (monitoring_job_id) DO NOTHING;
