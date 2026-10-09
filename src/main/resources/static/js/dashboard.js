@@ -45,6 +45,15 @@
     const retryButton =
         document.getElementById("dashboardRetryButton");
 
+    const dateRangeContainer = document.getElementById("dashboardDateRange");
+    const dateRangePreset = document.getElementById("dashboardDateRangePreset");
+    const dateRangeFrom = document.getElementById("dashboardDateRangeFrom");
+    const dateRangeTo = document.getElementById("dashboardDateRangeTo");
+    const dateRangeFromGroup = document.getElementById("dashboardDateRangeFromGroup");
+    const dateRangeToGroup = document.getElementById("dashboardDateRangeToGroup");
+    const dateRangeApplyButton = document.getElementById("dashboardDateRangeApply");
+    const dateRangeMessage = document.getElementById("dashboardDateRangeMessage");
+
 
     /*
      * ------------------------------------------------------------
@@ -62,6 +71,7 @@
      * Value = Chart.js instance
      */
     const dashboardCharts = new Map();
+    let dateRangeEventsBound = false;
 
 
     /*
@@ -1740,7 +1750,7 @@
      * ------------------------------------------------------------
      */
 
-    function renderTabs()
+    function renderTabs(preferredTabId)
     {
         /*
          * Destroy existing charts before replacing
@@ -1753,6 +1763,9 @@
 
         contentElement.innerHTML = "";
 
+
+        const hasPreferredTab = preferredTabId !== undefined && preferredTabId !== null
+            && dashboardData.some(function (tab) { return String(tab.id) === String(preferredTabId); });
 
         dashboardData.forEach(
             function (tab, index)
@@ -1767,8 +1780,9 @@
                     tab.id;
 
 
-                const active =
-                    index === 0;
+                const active = hasPreferredTab
+                    ? String(tab.id) === String(preferredTabId)
+                    : index === 0;
 
 
                 const tabButton =
@@ -2446,7 +2460,7 @@
      * ------------------------------------------------------------
      */
 
-    async function loadDashboard()
+    async function loadDashboard(preferredTabId)
     {
         clearAutoRefreshTimers();
         showState("loading");
@@ -2495,6 +2509,7 @@
             {
                 dashboardData = [];
 
+                if (dateRangeContainer) dateRangeContainer.classList.add("d-none");
 
                 destroyDashboardCharts();
 
@@ -2505,11 +2520,10 @@
             }
 
 
-            dashboardData =
-                data;
+            dashboardData = data;
 
-
-            renderTabs();
+            configureDateRangeControls();
+            renderTabs(preferredTabId);
 
 			showState("content");
         }
