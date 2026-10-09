@@ -81,7 +81,8 @@ public class DashboardController
 
         MonitoringJob job = monitoringJobService.findById(widget.getDataSourceId());
 
-        if (widget.getTab().getEnvironment() == null || job.getEnvironment() == null
+        if (widget.getTab().getEnvironment() == null || !widget.getTab().getEnvironment().isEnabled()
+                || job.getEnvironment() == null
                 || !widget.getTab().getEnvironment().getId().equals(job.getEnvironment().getId()))
         {
             throw new IllegalStateException("The monitoring job does not belong to this dashboard environment.");
