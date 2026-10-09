@@ -54,6 +54,8 @@ public class StreamingJobService
     private String sshKeyPath;
     @Value("${monitoring.streaming.ssh-port:22}")
     private int sshPort;
+    @Value("${monitoring.streaming.node-id:${HOSTNAME:localhost}}")
+    private String nodeId;
 
     public StreamingJobService(MonitoringJobRepository jobRepository, UserRepository userRepository,
             JdbcTemplate jdbcTemplate)
@@ -105,15 +107,15 @@ public class StreamingJobService
         // recovery-required claims cannot be replaced, regardless of heartbeat age.
         int claimed = jdbcTemplate.update("""
                 INSERT INTO ra_fcb.streaming_job_claims AS existing
-                    (monitoring_job_id, status, started_by, started_at, updated_at, heartbeat_at, terminal_message)
-                VALUES (?, 'STARTING', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
+                    (monitoring_job_id, status, started_by, claim_owner, started_at, updated_at, heartbeat_at, terminal_message)
+                VALUES (?, 'STARTING', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
                 ON CONFLICT (monitoring_job_id) DO UPDATE SET
-                    status='STARTING', started_by=EXCLUDED.started_by,
+                    status='STARTING', started_by=EXCLUDED.started_by, claim_owner=EXCLUDED.claim_owner,
                     started_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP,
                     heartbeat_at=CURRENT_TIMESTAMP, process_id=NULL, process_host=NULL,
                     process_marker=NULL, remote_log_path=NULL, terminal_message=NULL
                 WHERE existing.status IN ('IDLE','COMPLETED','STOPPED','FAILED','TIMED_OUT')
-                """, jobId, userId);
+                """, jobId, userId, nodeId);
         if (claimed != 1)
             throw new IllegalStateException("This job is already running or requires recovery.");
 
@@ -208,13 +210,25 @@ public class StreamingJobService
     {
         // Never release a claim just because its heartbeat is stale. The stop/recovery action
         // verifies the recorded PID and leaves uncertain processes blocked.
+        List<Long> interrupted = jdbcTemplate.queryForList("""
+                SELECT monitoring_job_id FROM ra_fcb.streaming_job_claims
+                WHERE claim_owner=? AND status IN ('STARTING','RUNNING','STOPPING')
+                """, Long.class, nodeId);
         jdbcTemplate.update("""
                 UPDATE ra_fcb.streaming_job_claims
                 SET status='RECOVERY_REQUIRED', updated_at=CURRENT_TIMESTAMP,
                     terminal_message=COALESCE(terminal_message,
-                        'Application restarted; verify and terminate the prior process before another run.')
-                WHERE status IN ('STARTING','RUNNING','STOPPING')
-                """);
+                        'Application restarted; verifying the prior process before allowing another run.')
+                WHERE claim_owner=? AND status IN ('STARTING','RUNNING','STOPPING')
+                """, nodeId);
+        for (Long jobId : interrupted)
+        {
+            ClaimRow claim = readClaim(jobId);
+            if (claim != null && terminatePersistedProcess(claim))
+                finishClaim(jobId, "STOPPED", "Prior process was confirmed stopped during application recovery.");
+            else
+                appendOutput(jobId, "Recovery could not verify process termination; this job remains blocked.");
+        }
     }
 
     private void launch(MonitoringJob job, RunContext context)
@@ -246,7 +260,7 @@ public class StreamingJobService
         context.process = process;
         context.remote = false;
         context.pid = process.pid();
-        context.host = "LOCAL";
+        context.host = nodeId;
         context.marker = job.getScriptPath();
         persistProcess(job.getId(), context);
         updateClaimStatus(job.getId(), "RUNNING");
@@ -383,7 +397,7 @@ public class StreamingJobService
         if (claim.processId == null) return false;
         String host = claim.processHost == null ? "LOCAL" : claim.processHost;
         String marker = claim.processMarker == null ? "" : claim.processMarker;
-        if (host.equals("LOCAL"))
+        if (host.equals(nodeId))
         {
             ProcessHandle handle = ProcessHandle.of(claim.processId).orElse(null);
             if (handle == null || !handle.isAlive()) return true;
@@ -408,7 +422,7 @@ public class StreamingJobService
 
     private boolean terminateRemote(String host, Long pid, String marker)
     {
-        if (pid == null || host == null || host.equals("LOCAL")) return true;
+        if (pid == null || host == null || host.equals("LOCAL")) return false;
         if (marker == null || marker.isBlank()) return false;
         String command = "args=$(ps -p " + pid + " -o args= 2>/dev/null) || exit 0; "
                 + "printf '%s' \"$args\" | grep -F -- " + shellQuote(marker) + " >/dev/null || exit 42; "

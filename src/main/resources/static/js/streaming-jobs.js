@@ -55,8 +55,11 @@
             status.classList.add(['RUNNING','STARTING','STOPPING','RECOVERY_REQUIRED'].includes(job.status) ? 'bg-warning' :
                 (job.status === 'COMPLETED' || job.status === 'STOPPED' ? 'bg-success' :
                     (job.status === 'FAILED' || job.status === 'TIMED_OUT' ? 'bg-danger' : 'bg-secondary')));
+            const elapsed = job.startedAt ? Math.max(0, Math.floor((Date.now() - new Date(job.startedAt).getTime()) / 1000)) : 0;
+            const remaining = Math.max(0, (job.maxRuntimeSeconds || 300) - elapsed);
             meta.textContent = 'Maximum runtime: ' + job.maxRuntimeSeconds + 's'
                 + (job.startedAt ? ' • Started: ' + new Date(job.startedAt).toLocaleString() : '')
+                + (['STARTING','RUNNING','STOPPING','RECOVERY_REQUIRED'].includes(job.status) ? ' • Elapsed: ' + elapsed + 's • Remaining: ' + remaining + 's' : '')
                 + (job.startedBy ? ' • Started by user #' + job.startedBy : '')
                 + (job.message ? ' • ' + job.message : '');
             const active = ['STARTING','RUNNING','STOPPING','RECOVERY_REQUIRED'].includes(job.status);

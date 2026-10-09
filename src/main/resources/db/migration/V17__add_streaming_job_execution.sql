@@ -17,6 +17,7 @@ CREATE TABLE ra_fcb.streaming_job_claims (
         CHECK (status IN ('IDLE', 'STARTING', 'RUNNING', 'STOPPING', 'RECOVERY_REQUIRED',
                           'COMPLETED', 'STOPPED', 'FAILED', 'TIMED_OUT')),
     started_by BIGINT REFERENCES ra_fcb.users(id) ON DELETE SET NULL,
+    claim_owner VARCHAR(255),
     started_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     heartbeat_at TIMESTAMP WITH TIME ZONE,
