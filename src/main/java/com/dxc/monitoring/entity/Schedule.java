@@ -48,9 +48,6 @@ public class Schedule
     @Column(name = "end_time")
     private LocalTime endTime;
 
-    @Column(nullable = false, length = 100)
-    private String timezone;
-
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -167,16 +164,6 @@ public class Schedule
     public void setEndTime(LocalTime endTime)
     {
         this.endTime = endTime;
-    }
-
-    public String getTimezone()
-    {
-        return timezone;
-    }
-
-    public void setTimezone(String timezone)
-    {
-        this.timezone = timezone;
     }
 
     public boolean isEnabled()
