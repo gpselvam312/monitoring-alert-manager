@@ -3,6 +3,7 @@ package com.dxc.monitoring.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,7 @@ import com.dxc.monitoring.entity.DashboardTab;
 @Repository
 public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long>
 {
+    @EntityGraph(attributePaths = { "environment" })
     List<DashboardTab> findAllByEnabledTrueOrderBySortOrderAsc();
 
     List<DashboardTab> findAllByOrderBySortOrderAsc();
