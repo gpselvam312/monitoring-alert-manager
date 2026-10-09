@@ -945,17 +945,16 @@
 
     function getConfiguredTableRows(result, config)
     {
-        const existingRows = Array.isArray(result.rows) ? result.rows : [];
-        if (existingRows.length > 0) return existingRows;
-
         const payload = result.payload;
-        if (!payload || typeof payload !== "object") return [];
-
         if (config.rowPath)
         {
             const configuredRows = getJsonPath(payload, config.rowPath);
             return Array.isArray(configuredRows) ? configuredRows.filter(isObjectRow) : [];
         }
+
+        const existingRows = Array.isArray(result.rows) ? result.rows : [];
+        if (existingRows.length > 0) return existingRows;
+        if (!payload || typeof payload !== "object") return [];
 
         const data = Object.prototype.hasOwnProperty.call(payload, "data") ? payload.data : payload;
         if (Array.isArray(data)) return data.filter(isObjectRow);
