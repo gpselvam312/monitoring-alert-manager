@@ -666,6 +666,40 @@
 
 
     <!-- ================================================== -->
+    <!-- RESULT PARSER CONFIGURATION -->
+    <!-- ================================================== -->
+
+    <div class="app-card mb-4" id="resultParserConfiguration">
+
+        <div class="app-card-header">
+            <div>
+                <div class="app-card-title">Result Parser Configuration</div>
+                <div class="app-card-subtitle">
+                    Optional parser for legacy script or API output. JSON output is detected automatically by default.
+                </div>
+            </div>
+        </div>
+
+        <div class="app-card-body">
+            <label for="resultParserConfig" class="form-label">Parser JSON</label>
+            <textarea id="resultParserConfig"
+                      th:field="*{resultParserConfig}"
+                      class="form-control form-control-code"
+                      rows="5"
+                      maxlength="10000"
+                      placeholder='{"type":"DELIMITED","delimiter":"|","headerRow":true}'></textarea>
+            <div class="form-text">
+                Supported types: AUTO, DELIMITED, KEY_VALUE and REGEX. Examples:
+                DELIMITED uses delimiter/headerRow; KEY_VALUE uses separator/ignorePrefixes;
+                REGEX uses fields with key, pattern, group and optional type (string, number, integer or percentage).
+                Leave as {} for automatic JSON detection and plain-text fallback.
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- ================================================== -->
     <!-- HEALTH CHECK CONFIGURATION -->
     <!-- ================================================== -->
 
