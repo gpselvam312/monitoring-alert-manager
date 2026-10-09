@@ -13,7 +13,6 @@ import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
-import com.dxc.monitoring.repository.MonitoringResultRepository;
 
 @Service
 public class DashboardConfigurationService
@@ -21,17 +20,14 @@ public class DashboardConfigurationService
     private final DashboardTabRepository dashboardTabRepository;
     private final DashboardWidgetRepository dashboardWidgetRepository;
     private final MonitoringJobRepository monitoringJobRepository;
-    private final MonitoringResultRepository monitoringResultRepository;
 
     public DashboardConfigurationService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
-            MonitoringJobRepository monitoringJobRepository,
-            MonitoringResultRepository monitoringResultRepository)
+            MonitoringJobRepository monitoringJobRepository)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringJobRepository = monitoringJobRepository;
-        this.monitoringResultRepository = monitoringResultRepository;
     }
 
     @Transactional(readOnly = true)
@@ -201,9 +197,9 @@ public class DashboardConfigurationService
                 }
                 case "MONITORING_RESULT" ->
                 {
-                    if (!monitoringResultRepository.existsById(dataSourceId))
+                    if (!monitoringJobRepository.existsById(dataSourceId))
                     {
-                        throw new IllegalArgumentException("Monitoring result not found: " + dataSourceId);
+                        throw new IllegalArgumentException("Monitoring job not found: " + dataSourceId);
                     }
                 }
                 default -> throw new IllegalArgumentException("Unsupported dashboard data source type: " + dataSourceType);
