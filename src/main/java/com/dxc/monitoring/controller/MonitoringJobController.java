@@ -1,5 +1,6 @@
 package com.dxc.monitoring.controller;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -207,15 +208,17 @@ public class MonitoringJobController
             job.setMaxStreamingRuntimeSeconds(300);
         }
 
-        String validationError = null;
-        if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
+        String validationError = validateJobConfiguration(job, applicationId, environmentId);
+        if (validationError == null
+                && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
                 && (job.getMaxStreamingRuntimeSeconds() < 1
                     || job.getMaxStreamingRuntimeSeconds() > configuredMaximumStreamingRuntimeSeconds))
         {
             validationError = "Maximum streaming runtime must be between 1 and "
                     + configuredMaximumStreamingRuntimeSeconds + " seconds.";
         }
-        else if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
+        else if (validationError == null
+                && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
                 && job.getType() != MonitoringJob.MonitorType.SCRIPT)
         {
             validationError = "Streaming execution currently supports Script monitoring jobs only.";
@@ -369,6 +372,85 @@ public class MonitoringJobController
         return "STREAMING".equalsIgnoreCase(mode)
                 ? "redirect:/monitoring/streaming-jobs"
                 : "redirect:/monitoring/jobs";
+    }
+
+    private String validateJobConfiguration(MonitoringJob job, Long applicationId, Long environmentId)
+    {
+        if (job.getName() == null || job.getName().isBlank())
+            return "Job name is required.";
+        if (job.getName().trim().length() > 150)
+            return "Job name must not exceed 150 characters.";
+        if (job.getDescription() != null && job.getDescription().length() > 500)
+            return "Description must not exceed 500 characters.";
+        if (job.getSeverity() == null)
+            return "Severity is required.";
+        if (applicationId == null)
+            return "Select an application.";
+        if (environmentId == null)
+            return "Select an environment.";
+        if (job.getType() == null)
+            return "Select a monitoring type.";
+        if (job.getTimeoutSeconds() == null || job.getTimeoutSeconds() < 1)
+            return "Timeout must be at least 1 second.";
+        if (job.getRetryCount() == null || job.getRetryCount() < 0)
+            return "Retry count must be zero or greater.";
+        if (job.getRetryDelaySeconds() == null || job.getRetryDelaySeconds() < 0)
+            return "Retry delay must be zero or greater.";
+        if (job.getExpectedHttpStatus() != null
+                && (job.getExpectedHttpStatus() < 100 || job.getExpectedHttpStatus() > 599))
+            return "Expected HTTP status must be between 100 and 599.";
+
+        if (job.getType() == MonitoringJob.MonitorType.SCRIPT)
+        {
+            if (job.getScriptPath() == null || job.getScriptPath().isBlank())
+                return "Script path is required for Script monitoring jobs.";
+            if (job.getScriptPath().trim().length() > 1000)
+                return "Script path must not exceed 1000 characters.";
+            if (job.getWorkingDirectory() != null && job.getWorkingDirectory().length() > 1000)
+                return "Working directory must not exceed 1000 characters.";
+        }
+        else if (job.getType() == MonitoringJob.MonitorType.API)
+        {
+            if (job.getHttpMethod() == null || job.getHttpMethod().isBlank())
+                return "Select an HTTP method for API monitoring.";
+            String method = job.getHttpMethod().trim().toUpperCase(java.util.Locale.ROOT);
+            if (!java.util.Set.of("GET", "POST", "PUT", "DELETE").contains(method))
+                return "HTTP method must be GET, POST, PUT or DELETE.";
+            if (job.getUrl() == null || job.getUrl().isBlank())
+                return "URL is required for API monitoring.";
+            if (job.getUrl().trim().length() > 2000)
+                return "URL must not exceed 2000 characters.";
+            try
+            {
+                URI uri = URI.create(job.getUrl().trim());
+                if (uri.getHost() == null || uri.getHost().isBlank()
+                        || uri.getScheme() == null
+                        || !("http".equalsIgnoreCase(uri.getScheme())
+                                || "https".equalsIgnoreCase(uri.getScheme())))
+                    return "Enter a valid HTTP or HTTPS URL.";
+            }
+            catch (IllegalArgumentException exception)
+            {
+                return "Enter a valid HTTP or HTTPS URL.";
+            }
+        }
+        else if (job.getType() == MonitoringJob.MonitorType.HEALTH_CHECK)
+        {
+            if (job.getHealthCheckType() == null || job.getHealthCheckType().isBlank())
+                return "Select a health check type.";
+            String checkType = job.getHealthCheckType().trim().toUpperCase(java.util.Locale.ROOT);
+            if (!java.util.Set.of("TCP", "HTTP", "PING").contains(checkType))
+                return "Health check type must be TCP, HTTP or PING.";
+            if (job.getTargetHost() == null || job.getTargetHost().isBlank())
+                return "Target host is required for health checks.";
+            if (job.getTargetHost().trim().length() > 255)
+                return "Target host must not exceed 255 characters.";
+            if (("TCP".equals(checkType) || "HTTP".equals(checkType))
+                    && (job.getTargetPort() == null || job.getTargetPort() < 1 || job.getTargetPort() > 65535))
+                return "Target port must be between 1 and 65535 for TCP and HTTP health checks.";
+        }
+
+        return null;
     }
 
     /*
