@@ -155,6 +155,22 @@ public interface StreamingJobClaimRepository extends JpaRepository<StreamingJobC
     @Transactional
     @Query(value = """
             UPDATE ra_fcb.streaming_job_claims
+               SET status = :status,
+                   finished_at = CURRENT_TIMESTAMP,
+                   heartbeat_at = CURRENT_TIMESTAMP,
+                   error_message = :reason,
+                   updated_at = CURRENT_TIMESTAMP,
+                   version = version + 1
+             WHERE monitoring_job_id = :jobId
+               AND status IN ('STARTING', 'RUNNING', 'STOPPING', 'RECOVERY_REQUIRED')
+            """, nativeQuery = true)
+    int finishRecovery(@Param("jobId") Long jobId, @Param("status") String status,
+                       @Param("reason") String reason);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+            UPDATE ra_fcb.streaming_job_claims
                SET status = 'RECOVERY_REQUIRED',
                    error_message = :reason,
                    updated_at = CURRENT_TIMESTAMP,
