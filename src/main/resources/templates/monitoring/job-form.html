@@ -1049,100 +1049,103 @@
 <script>
 
     document.addEventListener("DOMContentLoaded", function () {
+        const form = document.querySelector('form[th\\:object="\\$\\{job\\}"]')
+            || document.querySelector("form");
+        const environmentSelect = document.getElementById("environmentId");
+        const machineSelect = document.getElementById("machineId");
 
-        const environmentSelect =
-            document.getElementById("environmentId");
-
-        const machineSelect =
-            document.getElementById("machineId");
-
-        if (!environmentSelect || !machineSelect) {
-            return;
-        }
-
-        const allMachineOptions =
-            Array.from(
-                machineSelect.querySelectorAll(
-                    "option[data-environment]"
-                )
+        if (environmentSelect && machineSelect) {
+            const allMachineOptions = Array.from(
+                machineSelect.querySelectorAll("option[data-environment]")
             );
 
-        function filterMachines() {
+            function filterMachines() {
+                const selectedEnvironment = environmentSelect.value;
+                const currentMachineId = machineSelect.value;
+                machineSelect.innerHTML = "";
 
-            const selectedEnvironment =
-                environmentSelect
-                    .options[environmentSelect.selectedIndex]
-                    ?.text.trim();
+                const defaultOption = document.createElement("option");
+                defaultOption.value = "";
+                defaultOption.textContent = "-- Select Machine --";
+                machineSelect.appendChild(defaultOption);
 
-            const currentMachineId =
-                machineSelect.value;
+                if (!selectedEnvironment) return;
 
-            machineSelect.innerHTML = "";
-
-            const defaultOption =
-                document.createElement("option");
-
-            defaultOption.value = "";
-            defaultOption.textContent =
-                "-- Select Machine --";
-
-            machineSelect.appendChild(defaultOption);
-
-            if (!selectedEnvironment ||
-                selectedEnvironment === "-- Select Environment --") {
-
-                return;
+                allMachineOptions.forEach(function (option) {
+                    if (option.getAttribute("data-environment") === selectedEnvironment) {
+                        const newOption = option.cloneNode(true);
+                        machineSelect.appendChild(newOption);
+                        if (newOption.value === currentMachineId) newOption.selected = true;
+                    }
+                });
             }
 
-            allMachineOptions.forEach(function (option) {
-
-                const machineEnvironment =
-                    option.getAttribute(
-                        "data-environment"
-                    );
-
-                if (machineEnvironment === selectedEnvironment) {
-
-                    const newOption =
-                        option.cloneNode(true);
-
-                    machineSelect.appendChild(
-                        newOption
-                    );
-
-                    if (newOption.value === currentMachineId) {
-                        newOption.selected = true;
-                    }
-
-                }
-
+            environmentSelect.addEventListener("change", function () {
+                machineSelect.value = "";
+                filterMachines();
             });
-
+            filterMachines();
         }
 
-        environmentSelect.addEventListener(
-            "change",
-            function () {
+        if (!form) return;
 
-                /*
-                 * Environment changed, so clear the currently
-                 * selected machine and show only matching machines.
-                 */
+        const typeSelect = document.getElementById("type");
+        const executionMode = document.getElementById("executionMode");
+        const scriptPath = document.getElementById("scriptPath");
+        const httpMethod = document.getElementById("httpMethod");
+        const url = document.getElementById("url");
+        const healthCheckType = document.getElementById("healthCheckType");
+        const targetHost = document.getElementById("targetHost");
+        const targetPort = document.getElementById("targetPort");
+        const timeoutSeconds = document.getElementById("timeoutSeconds");
+        const maxRuntime = document.getElementById("maxStreamingRuntimeSeconds");
+        const expectedHttpStatus = document.getElementById("expectedHttpStatus");
 
-                machineSelect.value = "";
-
-                filterMachines();
-
+        function setRequired(field, required) {
+            if (field) {
+                field.required = required;
+                field.setAttribute("aria-required", required ? "true" : "false");
             }
-        );
+        }
 
-        /*
-         * Initial filtering is important when editing
-         * an existing monitoring job.
-         */
+        function updateValidationRules() {
+            const type = typeSelect ? typeSelect.value : "";
+            const mode = executionMode ? executionMode.value : "STANDARD";
+            const streaming = mode === "STREAMING";
+            const healthType = healthCheckType ? healthCheckType.value : "";
 
-        filterMachines();
+            setRequired(scriptPath, type === "SCRIPT");
+            setRequired(httpMethod, type === "API");
+            setRequired(url, type === "API");
+            setRequired(healthCheckType, type === "HEALTH_CHECK");
+            setRequired(targetHost, type === "HEALTH_CHECK");
+            setRequired(targetPort, type === "HEALTH_CHECK" && ["TCP", "HTTP"].includes(healthType));
+            setRequired(timeoutSeconds, true);
+            setRequired(maxRuntime, streaming);
 
+            if (targetPort) {
+                targetPort.min = "1";
+                targetPort.max = "65535";
+            }
+            if (expectedHttpStatus) {
+                expectedHttpStatus.min = "100";
+                expectedHttpStatus.max = "599";
+            }
+        }
+
+        [typeSelect, executionMode, healthCheckType].forEach(function (field) {
+            if (field) field.addEventListener("change", updateValidationRules);
+        });
+
+        form.addEventListener("submit", function (event) {
+            updateValidationRules();
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                form.reportValidity();
+            }
+        });
+
+        updateValidationRules();
     });
 
 </script>
