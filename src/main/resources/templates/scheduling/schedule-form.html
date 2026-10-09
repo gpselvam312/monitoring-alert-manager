@@ -545,10 +545,7 @@
         endInput.setCustomValidity('');
         const start = startInput.value;
         const end = endInput.value;
-        if (Boolean(start) !== Boolean(end)) {
-            const message = 'Provide both Start Time and End Time, or leave both empty.';
-            (start ? startInput : endInput).setCustomValidity(message);
-        } else if (start && end && start === end) {
+        if (start && end && start === end) {
             const message = 'Start Time and End Time cannot be the same.';
             startInput.setCustomValidity(message);
             endInput.setCustomValidity(message);
@@ -556,8 +553,8 @@
     }
 
     typeSelect.addEventListener('change', updateScheduleType);
-    startInput.addEventListener('change', validateTimeWindow);
-    endInput.addEventListener('change', validateTimeWindow);
+    startInput.addEventListener('input', validateTimeWindow);
+    endInput.addEventListener('input', validateTimeWindow);
     form.addEventListener('submit', validateTimeWindow);
     updateScheduleType();
 })();
