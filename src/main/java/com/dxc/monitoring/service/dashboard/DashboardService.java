@@ -272,7 +272,7 @@ public class DashboardService
     private boolean canRunNow(DashboardWidget widget, MonitoringJob job, MonitoringExecution execution)
     {
         if (!"MONITORING_JOB".equals(widget.getDataSourceType()) || job == null || !job.isManualRunEnabled()
-                || !job.isEnabled() || !isEnvironmentCompatible(widget, job))
+                || !job.isEnabled() || !isEnvironmentCompatible(widget, job) || isDateRangeEnabled(widget))
         {
             return false;
         }
