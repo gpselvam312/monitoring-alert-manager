@@ -8,10 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.DashboardTab;
+import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.DashboardWidget;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.MonitoringResult;
 import com.dxc.monitoring.repository.DashboardTabRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.MonitoringResultRepository;
@@ -20,15 +22,18 @@ import com.dxc.monitoring.repository.MonitoringResultRepository;
 public class DashboardConfigurationService
 {
     private final DashboardTabRepository dashboardTabRepository;
+    private final EnvironmentRepository environmentRepository;
     private final DashboardWidgetRepository dashboardWidgetRepository;
     private final MonitoringJobRepository monitoringJobRepository;
     private final MonitoringResultRepository monitoringResultRepository;
 
     public DashboardConfigurationService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
-            MonitoringJobRepository monitoringJobRepository, MonitoringResultRepository monitoringResultRepository)
+            MonitoringJobRepository monitoringJobRepository, MonitoringResultRepository monitoringResultRepository,
+            EnvironmentRepository environmentRepository)
     {
         this.dashboardTabRepository = dashboardTabRepository;
+        this.environmentRepository = environmentRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringJobRepository = monitoringJobRepository;
         this.monitoringResultRepository = monitoringResultRepository;
@@ -38,6 +43,19 @@ public class DashboardConfigurationService
     public List<DashboardTab> findAllTabs()
     {
         return dashboardTabRepository.findAllByOrderBySortOrderAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Environment> findEnabledEnvironments()
+    {
+        return environmentRepository.findByEnabledTrueOrderByName();
+    }
+
+    @Transactional(readOnly = true)
+    public Environment findEnvironmentById(Long id)
+    {
+        return environmentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Environment not found: " + id));
     }
 
     @Transactional(readOnly = true)
@@ -65,6 +83,19 @@ public class DashboardConfigurationService
         });
 
         tab.setName(name);
+
+        if (tab.getEnvironment() == null || tab.getEnvironment().getId() == null)
+        {
+            throw new IllegalArgumentException("Dashboard tab environment is required.");
+        }
+
+        dashboardTabRepository.findByEnvironment_Id(tab.getEnvironment().getId()).ifPresent(existingTab -> {
+            if (tab.getId() == null || !existingTab.getId().equals(tab.getId()))
+            {
+                throw new IllegalArgumentException("A dashboard tab already exists for environment: "
+                        + tab.getEnvironment().getName());
+            }
+        });
 
         if (tab.getSortOrder() == null || tab.getSortOrder() < 0)
         {
