@@ -297,7 +297,7 @@
             + (job.message ? ' • ' + job.message : '');
 
         const active = activeStates.has(job.status);
-        if (startButton) startButton.disabled = active;
+        if (startButton) startButton.disabled = !job.enabled || !job.manualRunEnabled || active;
         if (stopButton) stopButton.disabled = !active;
     }
 
@@ -306,8 +306,14 @@
         selectedJobId = jobId;
         if (changed) {
             outputLines = [];
-            output.textContent = 'Connecting to streaming output…';
-            connectOutput(jobId);
+            const job = selectedJob();
+            if (job && job.enabled) {
+                output.textContent = 'Connecting to streaming output…';
+                connectOutput(jobId);
+            } else {
+                closeEventSource();
+                output.textContent = 'This streaming job is disabled. Enable it before running or viewing live output.';
+            }
         }
         renderTable();
         updateDetails(selectedJob());
@@ -316,6 +322,14 @@
     async function runAction(action) {
         const job = selectedJob();
         if (!job) return;
+        if (!job.enabled) {
+            showError('This streaming job is disabled. Enable it before running.');
+            return;
+        }
+        if (action === 'start' && !job.manualRunEnabled) {
+            showError('Manual execution is disabled for this job.');
+            return;
+        }
         hideError();
         if (startButton) startButton.disabled = true;
         if (stopButton) stopButton.disabled = true;
