@@ -16,6 +16,7 @@
     const previousButton = document.getElementById('streamingJobsPrevious');
     const nextButton = document.getElementById('streamingJobsNext');
     const lastButton = document.getElementById('streamingJobsLast');
+    const canView = Boolean(document.getElementById('streamingJobsCanView'));
     const canConfigure = Boolean(document.getElementById('streamingJobsCanConfigure'));
     const count = document.getElementById('streamingJobsCount');
     const details = document.getElementById('streamingJobDetails');
@@ -37,6 +38,7 @@
     let eventSource = null;
     let refreshTimer = null;
     let outputLines = [];
+    let pageLeaving = false;
 
     function showError(message) {
         error.textContent = message || 'Unable to complete the streaming job request.';
@@ -171,6 +173,16 @@
                 selectJob(job.id);
             });
             textActions.appendChild(selectButton);
+            if (canView) {
+                const viewLink = document.createElement('a');
+                viewLink.className = 'btn btn-sm btn-outline-secondary';
+                viewLink.href = '/monitoring/jobs/' + encodeURIComponent(job.id) + '?mode=STREAMING';
+                viewLink.title = 'View';
+                viewLink.setAttribute('aria-label', 'View');
+                viewLink.innerHTML = '<i class="bi bi-eye"></i><span class="ms-1">View</span>';
+                viewLink.addEventListener('click', event => event.stopPropagation());
+                textActions.appendChild(viewLink);
+            }
             if (canConfigure) {
                 const editLink = document.createElement('a');
                 editLink.className = 'btn btn-sm btn-outline-secondary';
@@ -197,6 +209,16 @@
                 selectJob(job.id);
             });
             iconActions.appendChild(selectIconButton);
+            if (canView) {
+                const viewIconLink = document.createElement('a');
+                viewIconLink.className = 'btn btn-sm btn-outline-secondary';
+                viewIconLink.href = '/monitoring/jobs/' + encodeURIComponent(job.id) + '?mode=STREAMING';
+                viewIconLink.title = 'View';
+                viewIconLink.setAttribute('aria-label', 'View');
+                viewIconLink.innerHTML = '<i class="bi bi-eye"></i>';
+                viewIconLink.addEventListener('click', event => event.stopPropagation());
+                iconActions.appendChild(viewIconLink);
+            }
             if (canConfigure) {
                 const editIconLink = document.createElement('a');
                 editIconLink.className = 'btn btn-sm btn-outline-secondary';
@@ -344,8 +366,10 @@
                 connectOutput(refreshedJob.id);
             }
         } catch (e) {
-            showError(e.message);
-            await refresh(false);
+            if (!pageLeaving) {
+                showError(e.message);
+                await refresh(false);
+            }
         }
     }
 
@@ -365,7 +389,8 @@
             updateDetails(selectedJob());
         } catch (e) {
             loading.classList.add('d-none');
-            showError(e.message);
+            // Navigating away can cancel an in-flight fetch; that is not a user-facing error.
+            if (!pageLeaving) showError(e.message);
         }
     }
 
@@ -433,6 +458,7 @@
         if (!document.hidden) refresh(false);
     }, 5000);
     window.addEventListener('beforeunload', () => {
+        pageLeaving = true;
         window.clearInterval(refreshTimer);
         closeEventSource();
     });
