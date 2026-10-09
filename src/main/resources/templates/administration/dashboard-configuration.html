@@ -1107,9 +1107,11 @@
 
                     <div class="modal-body">
 
+                        <div th:if="${dashboardWidgetSaveError != null}"
+                             class="alert alert-danger" role="alert"
+                             th:text="${dashboardWidgetSaveError}">Unable to save widget.</div>
                         <div id="dashboardWidgetValidationMessage"
-                             class="alert alert-danger d-none">
-                        </div>
+                             class="alert alert-danger d-none" role="alert"></div>
 
 
                         <div class="row g-3">
@@ -1298,7 +1300,7 @@
                             </div>
 
 
-                          <div class="col-md-4">
+                          <div class="col-md-4" id="dashboardWidgetChartTypeGroup">
 							
 							    <label for="dashboardWidgetChartType"
 							           class="form-label">
@@ -1328,59 +1330,63 @@
 
                             <div class="col-md-6">
 
-                                <label for="dashboardWidgetDataSourceType"
-                                       class="form-label">
-
+                                <label for="dashboardWidgetDataSourceType" class="form-label">
                                     Data Source
-
                                 </label>
 
                                 <select class="form-select"
-							        id="dashboardWidgetDataSourceType"
-							        th:field="*{dataSourceType}">
-
-                                    <option value="">
-                                        No data source
-                                    </option>
-
-                                    <option value="MONITORING_RESULT">
-                                        Monitoring Result
-                                    </option>
-
-                                    <option value="MONITORING_JOB">
-                                        Monitoring Job
-                                    </option>
-
+                                        id="dashboardWidgetDataSourceType"
+                                        th:field="*{dataSourceType}"
+                                        th:classappend="${#fields.hasErrors('dataSourceType')} ? ' is-invalid' : ''">
+                                    <option value="">No data source</option>
+                                    <option value="MONITORING_JOB">Monitoring Job</option>
+                                    <option value="MONITORING_RESULT">Monitoring Result</option>
                                 </select>
+                                <div class="invalid-feedback"
+                                     th:if="${#fields.hasErrors('dataSourceType')}"
+                                     th:errors="*{dataSourceType}">Select a valid data source.</div>
+                                <div class="form-text">Choose whether this widget reads a job's latest execution or one stored result.</div>
 
                             </div>
 
-
-                            <div class="col-md-6">
-
-                                <label for="dashboardWidgetDataSourceId"
-                                       class="form-label">
-
-                                    Monitoring Job
-
+                            <div class="col-md-6" id="dashboardWidgetJobSourceGroup">
+                                <label for="dashboardWidgetJobSourceId" class="form-label">
+                                    Monitoring Job <span class="text-danger">*</span>
                                 </label>
-
                                 <select class="form-select"
-							        id="dashboardWidgetDataSourceId"
-							        th:field="*{dataSourceId}">
-
-                                    <option value="">
-                                        Select monitoring job
-                                    </option>
-
+                                        id="dashboardWidgetJobSourceId"
+                                        name="dataSourceId"
+                                        th:field="*{dataSourceId}"
+                                        th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
+                                    <option value="">Select monitoring job</option>
                                     <option th:each="job : ${monitoringJobs}"
                                             th:value="${job.id}"
-                                            th:text="${job.name}">
-                                        Monitoring Job
-                                    </option>
-
+                                            th:text="${job.name}">Monitoring Job</option>
                                 </select>
+                                <div class="invalid-feedback"
+                                     th:if="${#fields.hasErrors('dataSourceId')}"
+                                     th:errors="*{dataSourceId}">Select a monitoring job.</div>
+                                <div class="form-text">Used when Data Source is Monitoring Job.</div>
+                            </div>
 
+                            <div class="col-md-6 d-none" id="dashboardWidgetResultSourceGroup">
+                                <label for="dashboardWidgetResultSourceId" class="form-label">
+                                    Monitoring Result <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select"
+                                        id="dashboardWidgetResultSourceId"
+                                        name="dataSourceId"
+                                        th:field="*{dataSourceId}"
+                                        th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
+                                    <option value="">Select monitoring result</option>
+                                    <option th:each="result : ${monitoringResults}"
+                                            th:value="${result.id}"
+                                            th:text="|Result #${result.id} · ${result.resultType} · ${result.execution.monitoringJob.name}|">Monitoring Result</option>
+                                </select>
+                                <div class="invalid-feedback"
+                                     th:if="${#fields.hasErrors('dataSourceId')}"
+                                     th:errors="*{dataSourceId}">Select a monitoring result.</div>
+                                <div class="form-text">Used when Data Source is Monitoring Result.</div>
                             </div>
 
 
