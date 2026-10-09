@@ -266,7 +266,7 @@ public class StreamingJobService
 
     private void launchLocal(MonitoringJob job, RunContext context) throws IOException
     {
-        ProcessBuilder builder = new ProcessBuilder("bash", "-lc", buildScriptCommand(job)).redirectErrorStream(true);
+        ProcessBuilder builder = new ProcessBuilder("setsid", "bash", "-lc", buildScriptCommand(job)).redirectErrorStream(true);
         if (job.getWorkingDirectory() != null && !job.getWorkingDirectory().isBlank())
             builder.directory(new java.io.File(job.getWorkingDirectory()));
         Process process = builder.start();
@@ -296,7 +296,7 @@ public class StreamingJobService
         context.marker = job.getScriptPath();
         context.remoteLogPath = logPath;
         persistProcess(job.getId(), context);
-        String remoteCommand = "mkdir -p /tmp; rm -f " + shellQuote(exitPath) + "; nohup bash -lc "
+        String remoteCommand = "mkdir -p /tmp; rm -f " + shellQuote(exitPath) + "; nohup setsid bash -lc "
                 + shellQuote(remoteScript) + " > " + shellQuote(logPath) + " 2>&1 < /dev/null & echo $!";
         Process launcher = new ProcessBuilder(sshCommand(host, remoteCommand)).redirectErrorStream(true).start();
         if (!launcher.waitFor(15, TimeUnit.SECONDS))
@@ -396,6 +396,8 @@ public class StreamingJobService
                     """, jobId);
             publishState(jobId, "RECOVERY_REQUIRED");
             appendOutput(jobId, "Termination could not be confirmed; job remains blocked for recovery.");
+            // Allow an authorized user or a later timeout/recovery attempt to retry termination.
+            context.stopping.set(false);
             return;
         }
         finishClaim(jobId, terminalStatus, message);
@@ -421,16 +423,16 @@ public class StreamingJobService
                 return terminated;
             }
             Process process = context.process;
-            if (process == null) return false;
-            process.descendants().forEach(ProcessHandle::destroy);
-            process.destroy();
-            if (!process.waitFor(STOP_GRACE_SECONDS, TimeUnit.SECONDS))
+            if (process == null || context.pid == null) return false;
+            boolean terminated = terminateLocalProcessGroup(context.pid, context.marker, false);
+            if (context.outputProcess != null && context.outputProcess.isAlive())
             {
-                process.descendants().forEach(ProcessHandle::destroyForcibly);
-                process.destroyForcibly();
-                process.waitFor(STOP_GRACE_SECONDS, TimeUnit.SECONDS);
+                context.outputProcess.destroy();
+                if (!context.outputProcess.waitFor(STOP_GRACE_SECONDS, TimeUnit.SECONDS))
+                    context.outputProcess.destroyForcibly();
             }
-            return !process.isAlive() && (context.outputProcess == null || !context.outputProcess.isAlive());
+            return terminated && !process.isAlive()
+                    && (context.outputProcess == null || !context.outputProcess.isAlive());
         }
         catch (Exception exception) { return false; }
     }
@@ -442,37 +444,49 @@ public class StreamingJobService
         String marker = claim.processMarker == null ? "" : claim.processMarker;
         if (host.equals(nodeId))
         {
-            ProcessHandle handle = ProcessHandle.of(claim.processId).orElse(null);
-            if (handle == null || !handle.isAlive()) return true;
-            String command = handle.info().commandLine().orElse("");
-            if (marker.isBlank() || !command.contains(marker)) return false;
-            handle.descendants().forEach(ProcessHandle::destroy);
-            handle.destroy();
-            try
-            {
-                Thread.sleep(STOP_GRACE_SECONDS * 1000);
-                if (handle.isAlive())
-                {
-                    handle.descendants().forEach(ProcessHandle::destroyForcibly);
-                    handle.destroyForcibly();
-                }
-                return !handle.isAlive();
-            }
-            catch (InterruptedException exception) { Thread.currentThread().interrupt(); return false; }
+            return terminateLocalProcessGroup(claim.processId, marker, true);
         }
         return terminateRemote(host, claim.processId, marker);
+    }
+
+    private boolean terminateLocalProcessGroup(Long pid, String marker, boolean requireMarker)
+    {
+        if (pid == null) return false;
+        String groupArguments = "ps -eo pgid=,args= | awk '$1 == " + pid
+                + " { $1 = \"\"; sub(/^ /, \"\"); print }'";
+        String command = "group_args=$(" + groupArguments + "); "
+                + "if [ -z \"$group_args\" ]; then exit 0; fi; "
+                + (requireMarker
+                        ? "printf '%s' \"$group_args\" | grep -F -- " + shellQuote(marker == null ? "" : marker)
+                                + " >/dev/null || exit 42; "
+                        : "")
+                + "kill -TERM -- -" + pid + " 2>/dev/null || true; "
+                + "for i in 1 2 3 4 5; do "
+                + "ps -eo pgid= | awk '$1 == " + pid + " { found=1 } END { exit !found }' || exit 0; sleep 1; done; "
+                + "kill -KILL -- -" + pid + " 2>/dev/null || true; "
+                + "ps -eo pgid= | awk '$1 == " + pid + " { found=1 } END { exit !found }' && exit 43 || exit 0";
+        try
+        {
+            Process process = new ProcessBuilder("bash", "-lc", command).redirectErrorStream(true).start();
+            return process.waitFor(15, TimeUnit.SECONDS) && process.exitValue() == 0;
+        }
+        catch (Exception exception) { return false; }
     }
 
     private boolean terminateRemote(String host, Long pid, String marker)
     {
         if (pid == null || host == null || host.equals("LOCAL")) return false;
         if (marker == null || marker.isBlank()) return false;
-        String command = "args=$(ps -p " + pid + " -o args= 2>/dev/null) || exit 0; "
-                + "printf '%s' \"$args\" | grep -F -- " + shellQuote(marker) + " >/dev/null || exit 42; "
-                + "pkill -TERM -P " + pid + " 2>/dev/null || true; kill -TERM " + pid + " 2>/dev/null || true; "
-                + "for i in 1 2 3 4 5; do kill -0 " + pid + " 2>/dev/null || exit 0; sleep 1; done; "
-                + "pkill -KILL -P " + pid + " 2>/dev/null || true; kill -KILL " + pid + " 2>/dev/null || true; "
-                + "kill -0 " + pid + " 2>/dev/null && exit 43 || exit 0";
+        String groupArguments = "ps -eo pgid=,args= | awk '$1 == " + pid
+                + " { $1 = \"\"; sub(/^ /, \"\"); print }'";
+        String command = "group_args=$(" + groupArguments + "); "
+                + "if [ -z \"$group_args\" ]; then exit 0; fi; "
+                + "printf '%s' \"$group_args\" | grep -F -- " + shellQuote(marker) + " >/dev/null || exit 42; "
+                + "kill -TERM -- -" + pid + " 2>/dev/null || true; "
+                + "for i in 1 2 3 4 5; do "
+                + "ps -eo pgid= | awk '$1 == " + pid + " { found=1 } END { exit !found }' || exit 0; sleep 1; done; "
+                + "kill -KILL -- -" + pid + " 2>/dev/null || true; "
+                + "ps -eo pgid= | awk '$1 == " + pid + " { found=1 } END { exit !found }' && exit 43 || exit 0";
         try
         {
             Process process = new ProcessBuilder(sshCommand(host, command)).redirectErrorStream(true).start();
