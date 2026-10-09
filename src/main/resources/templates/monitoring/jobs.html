@@ -235,23 +235,6 @@
 
                                     </button>
                                 </th>
-
-
-                                <th>
-                                    <button type="button"
-                                            class="table-sort"
-                                            data-config="jobTableConfig"
-                                            data-sort="dashboardEnabled"
-                                            onclick="DataTable.sort(this)">
-
-                                        Dashboard
-
-                                        <i class="bi bi-caret-up-fill table-sort-icon"></i>
-
-                                    </button>
-                                </th>
-
-
                                 <th class="text-end table-actions-column">
                                     Actions
                                 </th>
@@ -453,29 +436,6 @@
 
                                 </td>
 
-
-                                <!-- Dashboard -->
-                                <td>
-
-                                    <span th:if="${job.dashboardEnabled}"
-                                          class="status-badge status-healthy">
-
-                                        <span class="status-dot"></span>
-                                        ENABLED
-
-                                    </span>
-
-                                    <span th:unless="${job.dashboardEnabled}"
-                                          class="status-badge status-disabled">
-
-                                        <span class="status-dot"></span>
-                                        DISABLED
-
-                                    </span>
-
-                                </td>
-
-
                                 <!-- Actions -->
                                 <td class="text-end table-actions-column">
                                     <div class="table-actions table-actions-text">
@@ -580,6 +540,13 @@
             direction: 'asc'
 
         };
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.DataTable) {
+                window.DataTable.init('jobTableConfig', window.jobTableConfig);
+                window.DataTable.updateCompactActions(window.jobTableConfig);
+            }
+        });
 
     </script>
 
