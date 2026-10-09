@@ -1412,7 +1412,8 @@
                                     Optional JSON: tables use rowPath, visibleFields, labels, order and formats;
                                     charts use rowPath, categoryField, valueField and optional seriesField;
                                     STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate.
-                                    Leave as {} to infer table fields automatically.
+                                    For date-filtered API jobs add "dateRange":{"enabled":true} and use {{startDate}}/{{endDate}}
+                                    placeholders in the API URL or request body. Leave as {} to infer table fields automatically.
                                 </div>
                                 <div class="invalid-feedback">Enter a valid JSON object.</div>
                             </div>
