@@ -45,7 +45,7 @@
       method="post">
 
     <input type="hidden" th:field="*{id}">
-    <input type="hidden" th:if="${executionModeLocked}" th:field="*{executionMode}">
+    <input type="hidden" name="executionMode" th:value="${job.executionMode}" th:if="${executionModeLocked}">
     <input type="hidden" name="mode" value="STREAMING" th:if="${executionModeLocked}">
 
 
