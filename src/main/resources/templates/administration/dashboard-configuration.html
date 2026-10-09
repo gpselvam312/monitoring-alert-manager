@@ -140,6 +140,8 @@
                                 </th>
 
 
+                                <th>Environment</th>
+
                                 <th>
 
                                     <button type="button"
@@ -205,6 +207,11 @@
 
 
                                 <td>
+                                    <span class="table-secondary-text"
+                                          th:text="${tab.environment != null ? tab.environment.name : 'Unassigned'}">Unassigned</span>
+                                </td>
+
+                                <td>
 
                                     <span class="table-secondary-text"
                                           th:text="${tab.sortOrder}">
@@ -245,6 +252,7 @@
                                                 class="btn btn-sm btn-outline-primary"
                                                 th:attr="data-id=${tab.id},
                                                          data-name=${tab.name},
+                                                         data-environment-id=${tab.environment != null ? tab.environment.id : ''},
                                                          data-sort-order=${tab.sortOrder}"
                                                 onclick="DashboardConfig.editTab(this)">
 
@@ -993,6 +1001,19 @@
 
 
                         <div class="mb-3">
+                            <label for="dashboardTabEnvironment" class="form-label">
+                                Environment <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="dashboardTabEnvironment" name="environmentId" required>
+                                <option value="">Select environment</option>
+                                <option th:each="environment : ${environments}"
+                                        th:value="${environment.id}"
+                                        th:text="${environment.name}">PROD</option>
+                            </select>
+                            <div class="invalid-feedback">Select an environment for this dashboard tab.</div>
+                        </div>
+
+                        <div class="mb-3">
 
                             <label for="dashboardTabSortOrder"
                                    class="form-label">
@@ -1573,6 +1594,9 @@
 
                 document.getElementById('dashboardTabName').value =
                     button.dataset.name;
+
+                document.getElementById('dashboardTabEnvironment').value =
+                    button.dataset.environmentId || '';
 
                 document.getElementById('dashboardTabSortOrder').value =
                     button.dataset.sortOrder;
