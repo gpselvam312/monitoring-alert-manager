@@ -74,7 +74,6 @@ public class ApiExecutor implements MonitoringExecutor
             result.setValue(Integer.toString(statusCode));
             result.setUnit("HTTP status");
             result.setRawOutput(responseBody);
-            result.setResultData(responseBody);
 
             int expectedStatus = job.getExpectedHttpStatus() == null ? 200 : job.getExpectedHttpStatus();
             boolean statusMatches = statusCode == expectedStatus;
