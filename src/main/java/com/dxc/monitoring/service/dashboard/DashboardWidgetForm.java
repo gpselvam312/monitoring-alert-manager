@@ -41,6 +41,9 @@ public class DashboardWidgetForm
 
     private Long dataSourceId;
 
+    @Size(max = 10000, message = "Widget field configuration must be 10000 characters or fewer.")
+    private String fieldConfigJson = "{}";
+
     private Boolean autoRefresh;
 
     @Min(value = 1, message = "Refresh interval must be greater than zero.")
@@ -168,6 +171,16 @@ public class DashboardWidgetForm
     public void setDataSourceId(Long dataSourceId)
     {
         this.dataSourceId = dataSourceId;
+    }
+
+    public String getFieldConfigJson()
+    {
+        return fieldConfigJson;
+    }
+
+    public void setFieldConfigJson(String fieldConfigJson)
+    {
+        this.fieldConfigJson = fieldConfigJson;
     }
 
     public Boolean getAutoRefresh()
