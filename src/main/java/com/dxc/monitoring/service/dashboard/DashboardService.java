@@ -195,6 +195,7 @@ public class DashboardService
         definition.setDetailsEnabled(widget.getDetailsEnabled());
         definition.setDataSourceType(widget.getDataSourceType());
         definition.setDataSourceId(widget.getDataSourceId());
+        definition.setFieldConfigJson(widget.getFieldConfigJson());
         definition.setJobRunning(execution != null
                 && execution.getStatus() == MonitoringExecution.ExecutionStatus.RUNNING);
         definition.setRunNowEnabled(canRunNow(widget, job, execution));
@@ -313,36 +314,104 @@ public class DashboardService
 
         try
         {
-            Map<String, Object> data = objectMapper.readValue(resultData, new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> root =
+                    objectMapper.readValue(resultData, new TypeReference<Map<String, Object>>() {});
+            result.setPayload(root);
 
-            if (data.containsKey("metrics"))
+            Object envelopeMessage = root.get("message");
+            if ((result.getMessage() == null || result.getMessage().isBlank()) && envelopeMessage != null)
             {
-                result.setMetrics(objectMapper.convertValue(data.get("metrics"),
-                        new TypeReference<Map<String, Object>>() {}));
+                result.setMessage(String.valueOf(envelopeMessage));
             }
 
-            if (data.containsKey("columns"))
+            Object rawStatus = root.get("status");
+            if (rawStatus != null)
             {
-                result.setColumns(objectMapper.convertValue(data.get("columns"),
-                        new TypeReference<List<WidgetColumn>>() {}));
+                switch (String.valueOf(rawStatus).trim().toUpperCase())
+                {
+                    case "SUCCESS", "OK", "GREEN", "HEALTHY" -> result.setStatus(WidgetStatus.GREEN);
+                    case "WARNING", "YELLOW" -> result.setStatus(WidgetStatus.YELLOW);
+                    case "FAILURE", "FAILED", "RED", "CRITICAL" -> result.setStatus(WidgetStatus.RED);
+                    case "UNKNOWN", "GRAY" -> result.setStatus(WidgetStatus.GRAY);
+                    default -> { }
+                }
             }
 
-            if (data.containsKey("rows"))
+            // Support both the existing result JSON shape and the versioned envelope.
+            Object payloadData = root.containsKey("data") ? root.get("data") : root;
+            if (payloadData instanceof Map<?, ?> payloadMap)
             {
-                result.setRows(objectMapper.convertValue(data.get("rows"),
-                        new TypeReference<List<Map<String, Object>>>() {}));
-            }
+                Map<String, Object> data = objectMapper.convertValue(
+                        payloadMap, new TypeReference<Map<String, Object>>() {});
 
-            if (data.containsKey("data"))
+                if (data.containsKey("metrics"))
+                {
+                    result.setMetrics(objectMapper.convertValue(data.get("metrics"),
+                            new TypeReference<Map<String, Object>>() {}));
+                }
+
+                if (data.containsKey("columns"))
+                {
+                    result.setColumns(objectMapper.convertValue(data.get("columns"),
+                            new TypeReference<List<WidgetColumn>>() {}));
+                }
+
+                if (data.containsKey("rows"))
+                {
+                    result.setRows(objectMapper.convertValue(data.get("rows"),
+                            new TypeReference<List<Map<String, Object>>>() {}));
+                }
+
+                if (data.containsKey("details"))
+                {
+                    result.setDetails(objectMapper.convertValue(data.get("details"),
+                            new TypeReference<Map<String, Object>>() {}));
+                }
+
+                Object chartData = data.get("data");
+                if (chartData instanceof List<?> chartPoints
+                        && chartPoints.stream().allMatch(point -> point instanceof Map<?, ?> pointMap
+                                && pointMap.containsKey("label") && pointMap.containsKey("value")))
+                {
+                    result.setData(objectMapper.convertValue(chartData,
+                            new TypeReference<List<WidgetDataPoint>>() {}));
+                }
+            }
+            else if (payloadData instanceof List<?> chartPoints
+                    && chartPoints.stream().allMatch(point -> point instanceof Map<?, ?> pointMap
+                            && pointMap.containsKey("label") && pointMap.containsKey("value")))
             {
-                result.setData(objectMapper.convertValue(data.get("data"),
+                result.setData(objectMapper.convertValue(payloadData,
                         new TypeReference<List<WidgetDataPoint>>() {}));
             }
 
-            if (data.containsKey("details"))
+            // Legacy result JSON stored these fields at the root.
+            if (root.containsKey("metrics"))
             {
-                result.setDetails(objectMapper.convertValue(data.get("details"),
+                result.setMetrics(objectMapper.convertValue(root.get("metrics"),
                         new TypeReference<Map<String, Object>>() {}));
+            }
+            if (root.containsKey("columns"))
+            {
+                result.setColumns(objectMapper.convertValue(root.get("columns"),
+                        new TypeReference<List<WidgetColumn>>() {}));
+            }
+            if (root.containsKey("rows"))
+            {
+                result.setRows(objectMapper.convertValue(root.get("rows"),
+                        new TypeReference<List<Map<String, Object>>>() {}));
+            }
+            if (root.containsKey("details"))
+            {
+                result.setDetails(objectMapper.convertValue(root.get("details"),
+                        new TypeReference<Map<String, Object>>() {}));
+            }
+            if (root.containsKey("data") && root.get("data") instanceof List<?> chartPoints
+                    && chartPoints.stream().allMatch(point -> point instanceof Map<?, ?> pointMap
+                            && pointMap.containsKey("label") && pointMap.containsKey("value")))
+            {
+                result.setData(objectMapper.convertValue(root.get("data"),
+                        new TypeReference<List<WidgetDataPoint>>() {}));
             }
         }
         catch (Exception exception)
@@ -350,7 +419,7 @@ public class DashboardService
             result.setStatus(WidgetStatus.GRAY);
             if (result.getMessage() == null || result.getMessage().isBlank())
             {
-                result.setMessage("Unable to read widget result");
+                result.setMessage("Unable to read widget result JSON.");
             }
         }
     }
