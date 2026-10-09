@@ -67,13 +67,20 @@ public class StreamingJobService
 
     public List<StreamingJobView> listJobs()
     {
-        List<MonitoringJob> jobs = jobRepository.findByExecutionModeAndEnabledTrueOrderByNameAsc(
+        List<MonitoringJob> jobs = jobRepository.findByExecutionModeOrderByNameAsc(
                 MonitoringJob.ExecutionMode.STREAMING);
         List<StreamingJobView> views = new ArrayList<>();
         for (MonitoringJob job : jobs)
         {
             ClaimRow claim = readClaim(job.getId());
             views.add(new StreamingJobView(job.getId(), job.getName(), job.getDescription(),
+                    job.getApplication() == null ? null : job.getApplication().getName(),
+                    job.getEnvironment() == null ? null : job.getEnvironment().getName(),
+                    job.getMachine() == null ? null : job.getMachine().getName(),
+                    job.getType() == null ? null : job.getType().name(),
+                    job.getSeverity() == null ? null : job.getSeverity().name(),
+                    job.getSchedule() == null ? null : job.getSchedule().getName(),
+                    job.isEnabled(), job.isManualRunEnabled(),
                     claim == null ? "IDLE" : claim.status,
                     claim == null ? null : claim.startedBy,
                     claim == null ? null : claim.startedAt,
@@ -642,8 +649,10 @@ public class StreamingJobService
         scheduler.shutdownNow();
     }
 
-    public record StreamingJobView(Long id, String name, String description, String status, Long startedBy,
-            OffsetDateTime startedAt, Long processId, Integer maxRuntimeSeconds, String message) {}
+    public record StreamingJobView(Long id, String name, String description, String application, String environment,
+            String machine, String type, String severity, String schedule, boolean enabled, boolean manualRunEnabled,
+            String status, Long startedBy, OffsetDateTime startedAt, Long processId, Integer maxRuntimeSeconds,
+            String message) {}
     private record ClaimRow(String status, Long startedBy, OffsetDateTime startedAt, Long processId,
             String processHost, String processMarker, String remoteLogPath, String terminalMessage) {}
     private static final class RunContext
