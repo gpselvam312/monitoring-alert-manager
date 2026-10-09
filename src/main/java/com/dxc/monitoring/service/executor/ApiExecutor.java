@@ -126,11 +126,11 @@ public class ApiExecutor implements MonitoringExecutor
         catch (InterruptedException exception)
         {
             Thread.currentThread().interrupt();
-            failed(result, "API request was interrupted.", exception.getMessage(), startedAt);
+            failed(result, "API request was interrupted.", exception.getMessage(), startedAt, job.getResultParserConfig());
         }
         catch (Exception exception)
         {
-            failed(result, "Unable to complete API monitoring request.", exception.getMessage(), startedAt);
+            failed(result, "Unable to complete API monitoring request.", exception.getMessage(), startedAt, job.getResultParserConfig());
         }
         return result;
     }
@@ -154,7 +154,8 @@ public class ApiExecutor implements MonitoringExecutor
         return resolved.toString();
     }
 
-    private void failed(MonitoringExecutionResult result, String message, String error, OffsetDateTime startedAt)
+    private void failed(MonitoringExecutionResult result, String message, String error, OffsetDateTime startedAt,
+            String parserConfigJson)
     {
         result.setExecutionStatus(MonitoringExecution.ExecutionStatus.ERROR);
         result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
@@ -165,7 +166,7 @@ public class ApiExecutor implements MonitoringExecutor
 
         MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
                 error == null ? message : error, result.getExecutionStatus(), result.getResultStatus(),
-                result.getMessage(), startedAt, OffsetDateTime.now(), job.getResultParserConfig());
+                result.getMessage(), startedAt, OffsetDateTime.now(), parserConfigJson);
         result.setResultData(normalized.json());
         result.setResultType(normalized.resultType());
     }
