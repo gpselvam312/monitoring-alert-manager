@@ -5,6 +5,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.Locale;
 
 import org.springframework.stereotype.Component;
@@ -16,6 +17,13 @@ import com.dxc.monitoring.entity.MonitoringResult;
 @Component
 public class ApiExecutor implements MonitoringExecutor
 {
+    private final MonitoringResultNormalizer resultNormalizer;
+
+    public ApiExecutor(MonitoringResultNormalizer resultNormalizer)
+    {
+        this.resultNormalizer = resultNormalizer;
+    }
+
     @Override
     public MonitoringJob.MonitorType getType()
     {
@@ -27,6 +35,7 @@ public class ApiExecutor implements MonitoringExecutor
     {
         MonitoringExecutionResult result = new MonitoringExecutionResult();
         result.setResultType(MonitoringResult.ResultType.TEXT);
+        OffsetDateTime startedAt = OffsetDateTime.now();
         try
         {
             if (job.getUrl() == null || job.getUrl().isBlank())
@@ -93,20 +102,28 @@ public class ApiExecutor implements MonitoringExecutor
                             + (bodyMatches ? "" : "; expected response text was not found") + ").");
             if (!success)
                 result.setErrorMessage(result.getMessage());
+
+            MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
+                    responseBody, result.getExecutionStatus(), result.getResultStatus(), result.getMessage(),
+                    startedAt, OffsetDateTime.now());
+            result.setResultData(normalized.json());
+            result.setResultType(normalized.resultType());
+            result.setResultStatus(normalized.resultStatus());
+            result.setMessage(normalized.message());
         }
         catch (InterruptedException exception)
         {
             Thread.currentThread().interrupt();
-            failed(result, "API request was interrupted.", exception.getMessage());
+            failed(result, "API request was interrupted.", exception.getMessage(), startedAt);
         }
         catch (Exception exception)
         {
-            failed(result, "Unable to complete API monitoring request.", exception.getMessage());
+            failed(result, "Unable to complete API monitoring request.", exception.getMessage(), startedAt);
         }
         return result;
     }
 
-    private static void failed(MonitoringExecutionResult result, String message, String error)
+    private void failed(MonitoringExecutionResult result, String message, String error, OffsetDateTime startedAt)
     {
         result.setExecutionStatus(MonitoringExecution.ExecutionStatus.ERROR);
         result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
@@ -114,5 +131,11 @@ public class ApiExecutor implements MonitoringExecutor
         result.setErrorMessage(error);
         if (error != null)
             result.setRawOutput(error);
+
+        MonitoringResultNormalizer.NormalizedResult normalized = resultNormalizer.normalize(
+                error == null ? message : error, result.getExecutionStatus(), result.getResultStatus(),
+                result.getMessage(), startedAt, OffsetDateTime.now());
+        result.setResultData(normalized.json());
+        result.setResultType(normalized.resultType());
     }
 }
