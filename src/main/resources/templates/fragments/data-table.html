@@ -129,5 +129,18 @@
 
 </div>
 
+
+<div th:fragment="clientPagination(summaryId, firstId, previousId, nextId, lastId)">
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2 p-3 border-top">
+        <div class="text-muted small" th:id="${summaryId}"></div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Table pagination">
+            <button type="button" class="btn btn-outline-secondary" th:id="${firstId}">First</button>
+            <button type="button" class="btn btn-outline-secondary" th:id="${previousId}">Previous</button>
+            <button type="button" class="btn btn-outline-secondary" th:id="${nextId}">Next</button>
+            <button type="button" class="btn btn-outline-secondary" th:id="${lastId}">Last</button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
