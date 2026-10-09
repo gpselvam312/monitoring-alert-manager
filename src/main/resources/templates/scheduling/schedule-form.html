@@ -39,6 +39,8 @@
       th:object="${schedule}"
       method="post">
 
+    <div th:if="${formError}" class="alert alert-danger" role="alert" th:text="${formError}"></div>
+
     <input type="hidden"
            th:field="*{id}">
 
@@ -507,6 +509,59 @@
 
 </form>
 
+<script>
+(() => {
+    'use strict';
+
+    const typeSelect = document.getElementById('scheduleType');
+    const sections = {
+        CRON: document.getElementById('cronConfig'),
+        FIXED_DELAY: document.getElementById('fixedDelayConfig'),
+        FIXED_RATE: document.getElementById('fixedRateConfig')
+    };
+    const cronInput = document.getElementById('cronExpression');
+    const delayInput = document.getElementById('fixedDelaySeconds');
+    const rateInput = document.getElementById('fixedRateSeconds');
+    const startInput = document.getElementById('startTime');
+    const endInput = document.getElementById('endTime');
+    const form = typeSelect.closest('form');
+
+    function updateScheduleType() {
+        const selectedType = typeSelect.value;
+        Object.entries(sections).forEach(([type, section]) => {
+            const active = type === selectedType;
+            section.classList.toggle('d-none', !active);
+            const input = type === 'CRON' ? cronInput
+                : type === 'FIXED_DELAY' ? delayInput : rateInput;
+            input.disabled = !active;
+            input.required = active;
+            if (!active) input.value = '';
+        });
+        validateTimeWindow();
+    }
+
+    function validateTimeWindow() {
+        startInput.setCustomValidity('');
+        endInput.setCustomValidity('');
+        const start = startInput.value;
+        const end = endInput.value;
+        if (Boolean(start) !== Boolean(end)) {
+            const message = 'Provide both Start Time and End Time, or leave both empty.';
+            (start ? startInput : endInput).setCustomValidity(message);
+        } else if (start && end && start === end) {
+            const message = 'Start Time and End Time cannot be the same.';
+            startInput.setCustomValidity(message);
+            endInput.setCustomValidity(message);
+        }
+    }
+
+    typeSelect.addEventListener('change', updateScheduleType);
+    startInput.addEventListener('change', validateTimeWindow);
+    endInput.addEventListener('change', validateTimeWindow);
+    form.addEventListener('submit', validateTimeWindow);
+    updateScheduleType();
+})();
+</script>
 
 </div>
 
