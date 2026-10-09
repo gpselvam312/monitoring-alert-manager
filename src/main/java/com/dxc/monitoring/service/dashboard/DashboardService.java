@@ -349,6 +349,30 @@ public class DashboardService
                     result.setMetrics(objectMapper.convertValue(data.get("metrics"),
                             new TypeReference<Map<String, Object>>() {}));
                 }
+                else
+                {
+                    Map<String, Object> scalarMetrics = new java.util.LinkedHashMap<>();
+                    data.forEach((key, value) -> {
+                        if (value == null || value instanceof String || value instanceof Number
+                                || value instanceof Boolean)
+                        {
+                            scalarMetrics.put(key, value);
+                        }
+                    });
+                    if (!scalarMetrics.isEmpty())
+                    {
+                        result.setMetrics(scalarMetrics);
+                    }
+                }
+
+                if (data.containsKey("value") && result.getValue() == null)
+                {
+                    Object value = data.get("value");
+                    if (value != null)
+                    {
+                        result.setValue(String.valueOf(value));
+                    }
+                }
 
                 if (data.containsKey("columns"))
                 {
