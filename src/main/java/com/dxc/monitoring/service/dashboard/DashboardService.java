@@ -185,6 +185,24 @@ public class DashboardService
 
         WidgetResult result = createResult(execution, monitoringResult);
 
+        if (("MONITORING_JOB".equals(widget.getDataSourceType())
+                || "MONITORING_RESULT".equals(widget.getDataSourceType()))
+                && widget.getDataSourceId() == null)
+        {
+            result.setStatus(WidgetStatus.GRAY);
+            result.setMessage("Dashboard data source is not configured.");
+        }
+        else if ("MONITORING_JOB".equals(widget.getDataSourceType()) && job == null)
+        {
+            result.setStatus(WidgetStatus.GRAY);
+            result.setMessage("Configured monitoring job was not found.");
+        }
+        else if ("MONITORING_RESULT".equals(widget.getDataSourceType()) && monitoringResult == null)
+        {
+            result.setStatus(WidgetStatus.GRAY);
+            result.setMessage("Configured monitoring result was not found.");
+        }
+
         DashboardWidgetResponse response = new DashboardWidgetResponse();
         response.setWidget(definition);
         response.setResult(result);
