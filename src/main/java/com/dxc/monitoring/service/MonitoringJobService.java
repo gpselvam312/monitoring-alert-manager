@@ -26,7 +26,7 @@ public class MonitoringJobService
     @Transactional(readOnly = true)
     public Page<MonitoringJob> findAll(String search, Pageable pageable)
     {
-        return monitoringJobRepository.findAllForList(search, pageable);
+        return monitoringJobRepository.findAllForList(search, MonitoringJob.ExecutionMode.STANDARD, pageable);
     }
 
     @Transactional(readOnly = true)
