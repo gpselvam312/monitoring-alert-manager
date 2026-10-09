@@ -971,6 +971,52 @@
         return [];
     }
 
+    function renderTextWidget(result, widget)
+    {
+        const config = parseWidgetFieldConfig(widget);
+        const payload = result.payload || {};
+        const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+
+        if (typeof config.textTemplate === "string" && config.textTemplate.trim())
+        {
+            const rendered = config.textTemplate.replace(/\{\{\s*([^}]+?)\s*\}\}/g, function (_, path)
+            {
+                const value = getJsonPath(payload, path.trim());
+                if (value === null || value === undefined) return "";
+                return typeof value === "object" ? JSON.stringify(value) : String(value);
+            });
+            return '<div class="dashboard-text-content">' +
+                '<div class="dashboard-text-message">' + escapeHtml(rendered).replace(/\n/g, "<br>") +
+                '</div></div>';
+        }
+
+        if (Array.isArray(config.textFields) && config.textFields.length > 0)
+        {
+            const fieldsHtml = config.textFields.map(function (path)
+            {
+                const value = getJsonPath(payload, path);
+                const label = labels[path] || path;
+                return '<div class="dashboard-status-metric">' +
+                    '<span class="dashboard-status-metric-label">' + escapeHtml(label) + '</span>' +
+                    '<span class="dashboard-status-metric-value">' +
+                    escapeHtml(value === null || value === undefined
+                        ? ""
+                        : (typeof value === "object" ? JSON.stringify(value) : value)) +
+                    '</span></div>';
+            }).join("");
+
+            return '<div class="dashboard-text-content dashboard-status-metrics">' + fieldsHtml + '</div>';
+        }
+
+        const message = result.message || "";
+        return '<div class="dashboard-text-content">' +
+            (message
+                ? '<div class="dashboard-text-message">' + escapeHtml(message) + '</div>'
+                : '<div class="dashboard-text-empty">No text available.</div>') +
+            '</div>';
+    }
+
+
     function getConfiguredChartData(result, widget)
     {
         if (Array.isArray(result.data) && result.data.length > 0)
@@ -1434,18 +1480,7 @@
 		}
 		else if (widgetType === "TEXT")
 		{
-		    widgetContentHtml =
-		        '<div class="dashboard-text-content">' +
-		            (
-		                message
-		                    ? '<div class="dashboard-text-message">' +
-		                        escapeHtml(message) +
-		                      '</div>'
-		                    : '<div class="dashboard-text-empty">' +
-		                        'No text available.' +
-		                      '</div>'
-		            ) +
-		        '</div>';
+		    widgetContentHtml = renderTextWidget(result, widget);
 		}
 
         /*
