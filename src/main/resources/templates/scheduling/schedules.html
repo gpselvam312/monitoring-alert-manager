@@ -172,27 +172,7 @@
                                 </th>
 
 
-                                <!-- Timezone -->
-                                <th>
-
-                                    <button type="button"
-                                            class="table-sort"
-                                            data-config="scheduleTableConfig"
-                                            data-sort="timezone"
-                                            onclick="DataTable.sort(this)">
-
-                                        Timezone
-
-                                        <i class="bi bi-caret-up-fill table-sort-icon"
-                                           aria-label="Sort ascending">
-                                        </i>
-
-                                    </button>
-
-                                </th>
-
-
-                                <!-- Status -->
+<!-- Status -->
                                 <th>
 
                                     <button type="button"
@@ -330,23 +310,7 @@
                                 </td>
 
 
-                                <!-- Timezone -->
-                                <td>
-
-                                    <span class="table-value-with-icon">
-
-                                        <i class="bi bi-globe2"></i>
-
-                                        <span th:text="${schedule.timezone}">
-                                            Europe/London
-                                        </span>
-
-                                    </span>
-
-                                </td>
-
-
-                                <!-- Status -->
+<!-- Status -->
                                 <td>
 
                                     <span th:if="${schedule.enabled}"
