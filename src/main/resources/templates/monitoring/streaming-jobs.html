@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout('Streaming Jobs', ~{::content})}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Streaming Jobs</h1>
+            <p class="page-subtitle">Start long-running scripts on demand. Streaming jobs are never scheduled automatically.</p>
+        </div>
+        <div class="page-header-actions">
+            <a th:href="@{/monitoring/jobs}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Standard Jobs</a>
+            <button type="button" class="btn btn-outline-primary" id="refreshStreamingJobs"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
+        </div>
+    </div>
+    <div id="streamingJobsError" class="alert alert-danger d-none" role="alert"></div>
+    <div id="streamingJobsLoading" class="dashboard-state"><i class="bi bi-arrow-repeat dashboard-spin"></i><p>Loading streaming jobs…</p></div>
+    <div id="streamingJobsEmpty" class="dashboard-state d-none"><i class="bi bi-terminal"></i><h6>No enabled streaming jobs</h6><p>Configure an enabled monitoring job with execution mode Streaming.</p></div>
+    <div id="streamingJobsList" class="row g-3"></div>
+    <template id="streamingJobCardTemplate">
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-header d-flex align-items-start justify-content-between gap-2">
+                    <div><h5 class="streaming-job-name mb-1"></h5><p class="streaming-job-description text-muted small mb-0"></p></div>
+                    <span class="badge streaming-job-status">IDLE</span>
+                </div>
+                <div class="card-body">
+                    <div class="small text-muted streaming-job-meta mb-3"></div>
+                    <div class="d-flex gap-2 mb-3">
+                        <button type="button" class="btn btn-primary btn-sm streaming-start"><i class="bi bi-play-fill me-1"></i> Start</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm streaming-stop"><i class="bi bi-stop-fill me-1"></i> Stop</button>
+                    </div>
+                    <div class="streaming-output bg-dark text-light rounded p-3 small" role="log" aria-live="polite" style="height:240px;overflow:auto;white-space:pre-wrap;font-family:monospace">Waiting for output…</div>
+                </div>
+            </section>
+        </div>
+    </template>
+    <script th:src="@{/js/streaming-jobs.js}"></script>
+</div>
+</body>
+</html>

@@ -34,3 +34,8 @@ management:
 
 monitoring:
   datetime-format: "MM/dd/yyyy hh:mm:ss a"
+  streaming:
+    max-runtime-seconds: ${MONITORING_STREAMING_MAX_RUNTIME_SECONDS:86400}
+    ssh-user: ${MONITORING_STREAMING_SSH_USER:}
+    ssh-key-path: ${MONITORING_STREAMING_SSH_KEY_PATH:}
+    ssh-port: ${MONITORING_STREAMING_SSH_PORT:22}
