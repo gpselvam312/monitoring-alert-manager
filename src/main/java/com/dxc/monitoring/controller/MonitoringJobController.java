@@ -168,7 +168,7 @@ public class MonitoringJobController
         job.setStoreResult(true);
         job.setManualRunEnabled(true);
         job.setAllowConcurrentExecution(false);
-        job.setExecutionMode(MonitoringJob.ExecutionMode.STANDARD);
+        job.setExecutionMode(streamingContext ? MonitoringJob.ExecutionMode.STREAMING : MonitoringJob.ExecutionMode.STANDARD);
         job.setMaxStreamingRuntimeSeconds(300);
 
         model.addAttribute("job", job);
@@ -223,8 +223,9 @@ public class MonitoringJobController
         if (validationError != null)
         {
             redirectAttributes.addFlashAttribute("errorMessage", validationError);
-            return job.getId() == null ? "redirect:/monitoring/jobs/new"
-                    : "redirect:/monitoring/jobs/" + job.getId() + "/edit";
+            String modeSuffix = "STREAMING".equalsIgnoreCase(mode) ? "?mode=STREAMING" : "";
+            return job.getId() == null ? "redirect:/monitoring/jobs/new" + modeSuffix
+                    : "redirect:/monitoring/jobs/" + job.getId() + "/edit" + modeSuffix;
         }
 
         // Streaming jobs are on-demand only; do not persist a schedule for them.
