@@ -15,7 +15,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long>
             WHERE
                 LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%'))
                 OR LOWER(COALESCE(s.description, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-                OR LOWER(COALESCE(s.timezone, '')) LIKE LOWER(CONCAT('%', :search, '%'))
                 OR LOWER(COALESCE(s.cronExpression, '')) LIKE LOWER(CONCAT('%', :search, '%'))
             """)
     Page<Schedule> findAllForList(@Param("search") String search, Pageable pageable);
