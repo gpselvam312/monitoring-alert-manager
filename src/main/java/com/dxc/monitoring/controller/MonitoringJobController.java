@@ -33,6 +33,7 @@ import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.service.MonitoringExecutionManager;
 import com.dxc.monitoring.service.MonitoringExecutionService;
 import com.dxc.monitoring.service.MonitoringJobService;
+import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
 
 @Controller
 @RequestMapping("/monitoring/jobs")
@@ -47,6 +48,7 @@ public class MonitoringJobController
     private final EnvironmentRepository environmentRepository;
     private final MonitoringExecutionManager monitoringExecutionManager;
     private final MonitoringExecutionService monitoringExecutionService;
+    private final MonitoringResultNormalizer resultNormalizer;
 
     @Value("${monitoring.streaming.max-runtime-seconds:86400}")
     private int configuredMaximumStreamingRuntimeSeconds;
@@ -60,7 +62,7 @@ public class MonitoringJobController
             ScheduleRepository scheduleRepository, UserRepository userRepository,
             ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
             MonitoringExecutionManager monitoringExecutionManager,
-            MonitoringExecutionService monitoringExecutionService)
+            MonitoringExecutionService monitoringExecutionService, MonitoringResultNormalizer resultNormalizer)
     {
         this.monitoringJobService = monitoringJobService;
         this.machineRepository = machineRepository;
@@ -70,6 +72,7 @@ public class MonitoringJobController
         this.environmentRepository = environmentRepository;
         this.monitoringExecutionManager = monitoringExecutionManager;
         this.monitoringExecutionService = monitoringExecutionService;
+        this.resultNormalizer = resultNormalizer;
     }
 
     /*
@@ -209,6 +212,17 @@ public class MonitoringJobController
         }
 
         String validationError = validateJobConfiguration(job, applicationId, environmentId);
+        if (validationError == null)
+        {
+            try
+            {
+                resultNormalizer.validateParserConfig(job.getResultParserConfig());
+            }
+            catch (IllegalArgumentException exception)
+            {
+                validationError = exception.getMessage();
+            }
+        }
         if (validationError == null
                 && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
                 && (job.getMaxStreamingRuntimeSeconds() < 1
