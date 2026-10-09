@@ -366,7 +366,9 @@ public class MonitoringJobController
             monitoringJobService.save(job);
         }
 
-        return "redirect:/monitoring/jobs";
+        return "STREAMING".equalsIgnoreCase(mode)
+                ? "redirect:/monitoring/streaming-jobs"
+                : "redirect:/monitoring/jobs";
     }
 
     /*
