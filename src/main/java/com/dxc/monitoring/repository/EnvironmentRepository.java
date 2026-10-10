@@ -15,13 +15,21 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
 {
     Optional<Environment> findByName(String name);
 
+    List<Environment> findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(Long applicationId);
+
+    List<Environment> findByApplicationIdOrderByNameIgnoreCase(Long applicationId);
+
+    boolean existsByApplicationIdAndNameIgnoreCase(Long applicationId, String name);
+
     List<Environment> findByEnabledTrueOrderByName();
 
     @Query("""
             select e
             from Environment e
+            left join e.application a
             where lower(e.name) like lower(concat('%', :search, '%'))
                or lower(coalesce(e.description, '')) like lower(concat('%', :search, '%'))
+               or lower(coalesce(a.name, '')) like lower(concat('%', :search, '%'))
             """)
     Page<Environment> findAllForList(@Param("search") String search, Pageable pageable);
 }
