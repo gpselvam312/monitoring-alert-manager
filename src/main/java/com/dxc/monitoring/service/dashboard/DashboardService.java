@@ -341,8 +341,26 @@ public class DashboardService
 
         try
         {
-            Map<String, Object> root =
-                    objectMapper.readValue(resultData, new TypeReference<Map<String, Object>>() {});
+            Object parsedRoot = objectMapper.readValue(resultData, Object.class);
+            if (parsedRoot instanceof List<?> rootRows)
+            {
+                // Script-based monitors may return a JSON array directly (one object per host).
+                // Preserve the original payload for config-driven renderers and expose rows for legacy tables.
+                List<Map<String, Object>> rows = rootRows.stream()
+                        .filter(Map.class::isInstance)
+                        .map(row -> objectMapper.convertValue(row, new TypeReference<Map<String, Object>>() {}))
+                        .toList();
+                result.setPayload(rootRows);
+                result.setRows(rows);
+                return;
+            }
+            if (!(parsedRoot instanceof Map<?, ?> parsedMap))
+            {
+                result.setPayload(parsedRoot);
+                return;
+            }
+            Map<String, Object> root = objectMapper.convertValue(
+                    parsedMap, new TypeReference<Map<String, Object>>() {});
             result.setPayload(root);
 
             Object envelopeMessage = root.get("message");
