@@ -1285,12 +1285,6 @@
             const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
             return labels[key] || labels[fields[key]] || fallback;
         };
-        const visible = function (key, aliases)
-        {
-            if (!Array.isArray(config.visibleFields) || !config.visibleFields.length) return true;
-            const list = config.visibleFields.map(String);
-            return list.includes(key) || list.includes(fields[key]) || (aliases || []).some(function (a) { return list.includes(a); });
-        };
         const collected = function (row)
         {
             return ["SUCCESS", "SUCCEEDED", "OK", "COLLECTED", "HEALTHY", "TRUE"].includes(
@@ -1942,7 +1936,7 @@
         return (
 
             '<div class="' +
-                getWidgetSizeClass(widget.size) +
+                getWidgetSizeClass(widgetType === "SYSTEM_METRICS" ? "FULL" : widget.size) +
             '">' +
 
                 '<div class="dashboard-widget h-100">' +
