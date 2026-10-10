@@ -27,6 +27,12 @@
     const emptyElement =
         document.getElementById("dashboardEmpty");
 
+    const applicationFilter =
+        document.getElementById("dashboardApplicationFilter");
+
+    const environmentFilter =
+        document.getElementById("dashboardEnvironmentFilter");
+
     const containerElement =
         document.getElementById("dashboardContainer");
 
@@ -62,6 +68,9 @@
      */
 
     let dashboardData = [];
+    let selectedApplicationId = null;
+    let selectedEnvironmentId = null;
+    let dashboardFiltersBound = false;
     const autoRefreshTimers = new Map();
 
     /*
@@ -100,7 +109,7 @@
 
         containerElement.classList.toggle(
             "d-none",
-            state !== "content"
+            state !== "content" && state !== "empty"
         );
     }
 
@@ -1976,7 +1985,7 @@
                         '<i class="bi bi-grid-3x3-gap me-2"></i>' +
 
                         '<span>' +
-                            escapeHtml(tab.environmentName || tab.name) +
+                            escapeHtml(tab.name) +
                         '</span>' +
 
                     '</button>';
@@ -2619,87 +2628,191 @@
      * ------------------------------------------------------------
      */
 
-    async function loadDashboard(preferredTabId)
+    function populateDashboardFilter(select, options, selectedId, placeholder)
+    {
+        if (!select)
+        {
+            return;
+        }
+
+        select.innerHTML = "";
+
+        if (!Array.isArray(options) || options.length === 0)
+        {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = placeholder;
+            select.appendChild(option);
+            select.disabled = true;
+            return;
+        }
+
+        options.forEach(function (item)
+        {
+            const option = document.createElement("option");
+            option.value = String(item.id);
+            option.textContent = item.name;
+            select.appendChild(option);
+        });
+
+        select.disabled = options.length <= 1;
+        if (selectedId !== null && selectedId !== undefined)
+        {
+            select.value = String(selectedId);
+        }
+        if (!select.value && options.length > 0)
+        {
+            select.value = String(options[0].id);
+        }
+    }
+
+
+    function bindDashboardFilterEvents()
+    {
+        if (dashboardFiltersBound)
+        {
+            return;
+        }
+
+        if (applicationFilter)
+        {
+            applicationFilter.addEventListener("change", function ()
+            {
+                selectedApplicationId = applicationFilter.value || null;
+                // A new application gets its own PROD-first default environment.
+                loadDashboard(undefined, selectedApplicationId, null);
+            });
+        }
+
+        if (environmentFilter)
+        {
+            environmentFilter.addEventListener("change", function ()
+            {
+                selectedEnvironmentId = environmentFilter.value || null;
+                loadDashboard(undefined, selectedApplicationId, selectedEnvironmentId);
+            });
+        }
+
+        dashboardFiltersBound = true;
+    }
+
+
+    async function loadDashboard(preferredTabId, requestedApplicationId, requestedEnvironmentId)
     {
         clearAutoRefreshTimers();
         showState("loading");
-
-
         refreshButton.disabled = true;
-
+        bindDashboardFilterEvents();
 
         try
         {
-            const response =
-                await fetch(
-                    apiUrl,
-                    {
-                        method: "GET",
+            const targetApplicationId =
+                requestedApplicationId !== undefined
+                    ? requestedApplicationId
+                    : selectedApplicationId;
 
-                        headers:
-                        {
-                            "Accept":
-                                "application/json"
-                        },
+            const targetEnvironmentId =
+                requestedEnvironmentId !== undefined
+                    ? requestedEnvironmentId
+                    : selectedEnvironmentId;
 
-                        cache: "no-store"
-                    }
-                );
-
-
-            if (!response.ok)
+            const filterParams = new URLSearchParams();
+            if (targetApplicationId)
             {
-                throw new Error(
-                    "Dashboard request failed (" +
-                    response.status +
-                    ")"
-                );
+                filterParams.set("applicationId", targetApplicationId);
+            }
+            if (targetEnvironmentId)
+            {
+                filterParams.set("environmentId", targetEnvironmentId);
             }
 
+            const filterResponse = await fetch(
+                "/api/dashboard/filters" +
+                    (filterParams.toString() ? "?" + filterParams.toString() : ""),
+                {
+                    method: "GET",
+                    headers: { "Accept": "application/json" },
+                    cache: "no-store"
+                }
+            );
 
-            const data =
-                await response.json();
+            if (!filterResponse.ok)
+            {
+                throw new Error("Dashboard filter request failed (" + filterResponse.status + ")");
+            }
 
+            const filters = await filterResponse.json();
+            populateDashboardFilter(
+                applicationFilter,
+                filters.applications,
+                filters.selectedApplicationId,
+                "No applications available"
+            );
+            populateDashboardFilter(
+                environmentFilter,
+                filters.environments,
+                filters.selectedEnvironmentId,
+                "No environments configured"
+            );
 
-            if (
-                !Array.isArray(data) ||
-                data.length === 0
-            )
+            selectedApplicationId = filters.selectedApplicationId || null;
+            selectedEnvironmentId = filters.selectedEnvironmentId || null;
+
+            if (!selectedApplicationId || !selectedEnvironmentId)
             {
                 dashboardData = [];
-
                 if (dateRangeContainer) dateRangeContainer.classList.add("d-none");
-
                 destroyDashboardCharts();
-
-
+                tabsElement.innerHTML = "";
+                contentElement.innerHTML = "";
                 showState("empty");
-
                 return;
             }
 
+            const dashboardParams = new URLSearchParams({
+                applicationId: String(selectedApplicationId),
+                environmentId: String(selectedEnvironmentId)
+            });
+
+            const response = await fetch(
+                apiUrl + "?" + dashboardParams.toString(),
+                {
+                    method: "GET",
+                    headers: { "Accept": "application/json" },
+                    cache: "no-store"
+                }
+            );
+
+            if (!response.ok)
+            {
+                throw new Error("Dashboard request failed (" + response.status + ")");
+            }
+
+            const data = await response.json();
+
+            if (!Array.isArray(data) || data.length === 0)
+            {
+                dashboardData = [];
+                if (dateRangeContainer) dateRangeContainer.classList.add("d-none");
+                destroyDashboardCharts();
+                tabsElement.innerHTML = "";
+                contentElement.innerHTML = "";
+                showState("empty");
+                return;
+            }
 
             dashboardData = data;
-
             configureDateRangeControls();
             renderTabs(preferredTabId);
-
-			showState("content");
+            showState("content");
         }
         catch (error)
         {
-            console.error(
-                "Unable to load dashboard",
-                error
-            );
-
-
+            console.error("Unable to load dashboard", error);
             errorMessageElement.textContent =
                 error && error.message
                     ? error.message
                     : "Unable to load dashboard data.";
-
-
             showState("error");
         }
         finally
@@ -2717,19 +2830,25 @@
 
     refreshButton.addEventListener(
         "click",
-        loadDashboard
+        function ()
+        {
+            loadDashboard(undefined, selectedApplicationId, selectedEnvironmentId);
+        }
     );
 
 
     retryButton.addEventListener(
         "click",
-        loadDashboard
+        function ()
+        {
+            loadDashboard(undefined, selectedApplicationId, selectedEnvironmentId);
+        }
     );
 
 
     /*
      * Initial load.
      */
-    loadDashboard();
+    loadDashboard(undefined, null, null);
 
 })();
