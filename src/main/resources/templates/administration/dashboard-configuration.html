@@ -1005,7 +1005,7 @@
                             <label for="dashboardTabApplication" class="form-label">Application <span class="text-danger">*</span></label>
                             <select class="form-select" id="dashboardTabApplication" name="applicationId" required>
                                 <option value="">Select application</option>
-                                <option th:each="application : ${applications}" th:value="${application.id}" th:text="${application.name}">Application</option>
+                                <option th:each="appItem : ${applications}" th:value="${appItem.id}" th:text="${appItem.name}">Application</option>
                             </select>
                             <div class="invalid-feedback">Select an application for this dashboard tab.</div>
                         </div>
