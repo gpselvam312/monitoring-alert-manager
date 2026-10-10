@@ -47,7 +47,8 @@
 
             <a th:href="@{/monitoring/jobs}"
                class="sidebar-link"
-               th:classappend="${currentPage == 'monitoring-jobs'} ? ' active' : ''">
+               th:classappend="${currentPage == 'monitoring-jobs'} ? ' active' : ''"
+               sec:authorize="hasAuthority('MONITORING_VIEW')">
 
                 <i class="bi bi-activity"></i>
                 <span>Monitoring Jobs</span>
@@ -66,7 +67,8 @@
 
             <a th:href="@{/monitoring/machines}"
                class="sidebar-link"
-               th:classappend="${currentPage == 'machines'} ? ' active' : ''">
+               th:classappend="${currentPage == 'machines'} ? ' active' : ''"
+               sec:authorize="hasAuthority('ROLE_ADMIN')">
 
                 <i class="bi bi-pc-display"></i>
                 <span>Servers / Machines</span>
@@ -84,7 +86,8 @@
 
             <a th:href="@{/scheduling/schedules}"
                class="sidebar-link"
-               th:classappend="${currentPage == 'schedules'} ? ' active' : ''">
+               th:classappend="${currentPage == 'schedules'} ? ' active' : ''"
+               sec:authorize="hasAuthority('ROLE_ADMIN')">
 
                 <i class="bi bi-calendar3"></i>
                 <span>Schedules</span>
