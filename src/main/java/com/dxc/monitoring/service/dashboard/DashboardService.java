@@ -4,16 +4,25 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.dxc.monitoring.entity.Application;
+import com.dxc.monitoring.entity.Environment;
+import com.dxc.monitoring.entity.User;
 import com.dxc.monitoring.entity.DashboardTab;
 import com.dxc.monitoring.entity.DashboardWidget;
 import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringResult;
 import com.dxc.monitoring.entity.MonitoringJob;
+import com.dxc.monitoring.repository.ApplicationRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringExecutionRepository;
@@ -27,6 +36,9 @@ import tools.jackson.databind.ObjectMapper;
 public class DashboardService
 {
     private final DashboardTabRepository dashboardTabRepository;
+    private final ApplicationRepository applicationRepository;
+    private final EnvironmentRepository environmentRepository;
+    private final UserRepository userRepository;
     private final DashboardWidgetRepository dashboardWidgetRepository;
     private final MonitoringExecutionRepository monitoringExecutionRepository;
     private final MonitoringResultRepository monitoringResultRepository;
@@ -38,9 +50,15 @@ public class DashboardService
             MonitoringExecutionRepository monitoringExecutionRepository,
             MonitoringResultRepository monitoringResultRepository,
             MonitoringJobRepository monitoringJobRepository,
+            ApplicationRepository applicationRepository,
+            EnvironmentRepository environmentRepository,
+            UserRepository userRepository,
             ObjectMapper objectMapper)
     {
         this.dashboardTabRepository = dashboardTabRepository;
+        this.applicationRepository = applicationRepository;
+        this.environmentRepository = environmentRepository;
+        this.userRepository = userRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringExecutionRepository = monitoringExecutionRepository;
         this.monitoringResultRepository = monitoringResultRepository;
@@ -49,13 +67,85 @@ public class DashboardService
     }
 
     @Transactional(readOnly = true)
-    public List<DashboardTabResponse> getDashboard()
+    public DashboardFilterResponse getDashboardFilters(Long requestedApplicationId, Long requestedEnvironmentId)
     {
-        List<DashboardTab> tabs = dashboardTabRepository.findAllByEnabledTrueOrderBySortOrderAsc().stream()
-                .filter(tab -> tab.getEnvironment() != null && tab.getEnvironment().isEnabled())
+        List<Application> accessibleApplications = getAccessibleApplications();
+        DashboardFilterResponse response = new DashboardFilterResponse();
+        response.setApplications(accessibleApplications.stream()
+                .map(application -> new DashboardOption(application.getId(), application.getName())).toList());
+
+        if (accessibleApplications.isEmpty())
+        {
+            response.setEnvironments(List.of());
+            return response;
+        }
+
+        Application selectedApplication;
+        if (requestedApplicationId == null)
+        {
+            selectedApplication = accessibleApplications.get(0);
+        }
+        else
+        {
+            selectedApplication = accessibleApplications.stream()
+                    .filter(application -> application.getId().equals(requestedApplicationId))
+                    .findFirst()
+                    .orElseThrow(() -> new AccessDeniedException("You do not have access to this application."));
+        }
+
+        response.setSelectedApplicationId(selectedApplication.getId());
+        List<Environment> environments =
+                dashboardTabRepository.findDistinctEnabledEnvironmentsByApplicationId(selectedApplication.getId());
+        response.setEnvironments(environments.stream()
+                .map(environment -> new DashboardOption(environment.getId(), environment.getName())).toList());
+
+        Environment selectedEnvironment;
+        if (requestedEnvironmentId != null)
+        {
+            selectedEnvironment = environments.stream()
+                    .filter(environment -> environment.getId().equals(requestedEnvironmentId))
+                    .findFirst()
+                    .orElseThrow(() -> new AccessDeniedException(
+                            "You do not have access to this environment for the selected application."));
+        }
+        else
+        {
+            selectedEnvironment = environments.stream()
+                    .filter(environment -> "PROD".equalsIgnoreCase(environment.getName()))
+                    .findFirst()
+                    .orElseGet(() -> environments.isEmpty() ? null : environments.get(0));
+        }
+
+        if (selectedEnvironment != null)
+        {
+            response.setSelectedEnvironmentId(selectedEnvironment.getId());
+        }
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<DashboardTabResponse> getDashboard(Long requestedApplicationId, Long requestedEnvironmentId)
+    {
+        DashboardFilterResponse filters = getDashboardFilters(requestedApplicationId, requestedEnvironmentId);
+        if (filters.getSelectedApplicationId() == null || filters.getSelectedEnvironmentId() == null)
+        {
+            return List.of();
+        }
+
+        List<DashboardTab> tabs = dashboardTabRepository
+                .findAllByApplication_IdAndEnvironment_IdAndEnabledTrueOrderBySortOrderAsc(
+                        filters.getSelectedApplicationId(), filters.getSelectedEnvironmentId()).stream()
+                .filter(tab -> tab.getApplication() != null && tab.getEnvironment() != null
+                        && tab.getEnvironment().isEnabled())
                 .toList();
-        List<DashboardWidget> widgets =
-            dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc();
+        if (tabs.isEmpty())
+        {
+            return List.of();
+        }
+        java.util.Set<Long> tabIds = tabs.stream().map(DashboardTab::getId).collect(Collectors.toSet());
+        List<DashboardWidget> widgets = dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc()
+                .stream().filter(widget -> widget.getTab() != null && tabIds.contains(widget.getTab().getId()))
+                .toList();
 
         // Keep legacy result-backed widgets working, but resolve them to the owning job
         // so the dashboard always displays the latest execution rather than a frozen result.
@@ -115,6 +205,8 @@ public class DashboardService
             DashboardTabResponse response = new DashboardTabResponse();
             response.setId(tab.getId());
             response.setName(tab.getName());
+            response.setApplicationId(tab.getApplication().getId());
+            response.setApplicationName(tab.getApplication().getName());
             response.setEnvironmentId(tab.getEnvironment().getId());
             response.setEnvironmentName(tab.getEnvironment().getName());
             response.setSortOrder(tab.getSortOrder());
@@ -293,7 +385,10 @@ public class DashboardService
 
     private boolean isEnvironmentCompatible(DashboardWidget widget, MonitoringJob job)
     {
-        return widget.getTab().getEnvironment() != null
+        return widget.getTab().getApplication() != null
+                && job.getApplication() != null
+                && widget.getTab().getApplication().getId().equals(job.getApplication().getId())
+                && widget.getTab().getEnvironment() != null
                 && job.getEnvironment() != null
                 && widget.getTab().getEnvironment().getId().equals(job.getEnvironment().getId());
     }
@@ -541,10 +636,47 @@ public class DashboardService
         return false;
     }
 
+    private List<Application> getAccessibleApplications()
+    {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated())
+        {
+            throw new AccessDeniedException("Authentication is required.");
+        }
+
+        if (authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())))
+        {
+            return applicationRepository.findByEnabledTrueOrderByName();
+        }
+
+        User user = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new AccessDeniedException("Authenticated user was not found."));
+        return user.getApplications().stream()
+                .filter(Application::isEnabled)
+                .sorted(Comparator.comparing(Application::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    private void assertApplicationAccess(Long applicationId)
+    {
+        if (applicationId == null || getAccessibleApplications().stream()
+                .noneMatch(application -> application.getId().equals(applicationId)))
+        {
+            throw new AccessDeniedException("You do not have access to this application's dashboard.");
+        }
+    }
+
     @Transactional(readOnly = true)
     public DashboardWidget getWidget(Long widgetId)
     {
-        return dashboardWidgetRepository.findById(widgetId)
+        DashboardWidget widget = dashboardWidgetRepository.findById(widgetId)
                 .orElseThrow(() -> new IllegalArgumentException("Dashboard widget not found: " + widgetId));
+        if (widget.getTab() == null || widget.getTab().getApplication() == null)
+        {
+            throw new AccessDeniedException("Dashboard widget is not assigned to an application.");
+        }
+        assertApplicationAccess(widget.getTab().getApplication().getId());
+        return widget;
     }
 }
