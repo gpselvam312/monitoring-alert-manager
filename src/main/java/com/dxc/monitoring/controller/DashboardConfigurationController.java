@@ -229,6 +229,8 @@ public class DashboardConfigurationController
         return switch (sort)
         {
             case "name" -> "name";
+            case "application.name" -> "application.name";
+            case "environment.name" -> "environment.name";
             case "sortOrder" -> "sortOrder";
             case "enabled" -> "enabled";
             default -> "sortOrder";
