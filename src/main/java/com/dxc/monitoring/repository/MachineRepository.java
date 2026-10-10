@@ -35,4 +35,5 @@ public interface MachineRepository extends JpaRepository<Machine, Long>
             WHERE m.id = :id
             """)
     Optional<Machine> findByIdWithEnvironment(Long id);
+    boolean existsByEnvironment_Id(Long environmentId);
 }
