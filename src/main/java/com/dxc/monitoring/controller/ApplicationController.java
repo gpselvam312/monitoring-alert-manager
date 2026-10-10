@@ -20,6 +20,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.repository.DashboardTabRepository;
+import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 @Controller
@@ -29,16 +32,21 @@ public class ApplicationController
     private final ApplicationRepository applicationRepository;
     private final MonitoringJobRepository monitoringJobRepository;
     private final DashboardAccessService accessService;
+    private final EnvironmentRepository environmentRepository;
+    private final DashboardTabRepository dashboardTabRepository;
 
     private static final Map<String, String> APPLICATION_SORT_FIELDS =
         Map.of("name", "name", "description", "description", "enabled", "enabled");
 
     public ApplicationController(ApplicationRepository applicationRepository,
-            MonitoringJobRepository monitoringJobRepository, DashboardAccessService accessService)
+            MonitoringJobRepository monitoringJobRepository, DashboardAccessService accessService,
+            EnvironmentRepository environmentRepository, DashboardTabRepository dashboardTabRepository)
     {
         this.applicationRepository = applicationRepository;
         this.monitoringJobRepository = monitoringJobRepository;
         this.accessService = accessService;
+        this.environmentRepository = environmentRepository;
+        this.dashboardTabRepository = dashboardTabRepository;
     }
 
     @GetMapping
@@ -111,6 +119,24 @@ public class ApplicationController
         return "administration/applications :: applicationsTable";
     }
 
+    private void createStandardEnvironments(Application application)
+    {
+        createEnvironment(application, "SIT", "System Integration Testing");
+        createEnvironment(application, "UAT", "User Acceptance Testing");
+        createEnvironment(application, "PROD", "Production");
+    }
+
+    private void createEnvironment(Application application, String name, String description)
+    {
+        if (environmentRepository.existsByApplicationIdAndNameIgnoreCase(application.getId(), name)) return;
+        Environment environment = new Environment();
+        environment.setApplication(application);
+        environment.setName(name);
+        environment.setDescription(description);
+        environment.setEnabled(true);
+        environmentRepository.save(environment);
+    }
+
     private Sort buildApplicationSort(String sort, String direction)
     {
         String sortField = APPLICATION_SORT_FIELDS.getOrDefault(sort, "name");
@@ -161,7 +187,8 @@ public class ApplicationController
             applicationRepository.save(existing);
         } else
         {
-            applicationRepository.save(application);
+            Application saved = applicationRepository.save(application);
+            createStandardEnvironments(saved);
         }
 
         return "redirect:/administration/applications";
@@ -188,11 +215,12 @@ public class ApplicationController
         Application application = applicationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Application not found: " + id));
 
-        if (monitoringJobRepository.existsByApplicationId(id))
+        if (monitoringJobRepository.existsByApplicationId(id)
+                || environmentRepository.existsByApplicationId(id)
+                || dashboardTabRepository.existsByApplication_Id(id))
         {
             redirectAttributes.addFlashAttribute("errorMessage", "Application '" + application.getName()
-                    + "' cannot be deleted because it is referenced by monitoring jobs.");
-
+                    + "' cannot be deleted while it has monitoring jobs, environments, or dashboard tabs. Remove those records first.");
             return "redirect:/administration/applications";
         }
 
