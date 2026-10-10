@@ -277,6 +277,9 @@
 	        String(widget.widgetType || "").toUpperCase()
 	    )
 	    {
+	        case "SERVER_HEALTH":
+	            return "bi-hdd-stack";
+
 	        case "STAT":
 	            return "bi-speedometer2";
 
