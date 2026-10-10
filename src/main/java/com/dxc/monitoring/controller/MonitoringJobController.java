@@ -528,8 +528,13 @@ public class MonitoringJobController
         model.addAttribute("job", job);
         model.addAttribute("machines", machineRepository.findAll());
         model.addAttribute("schedules", scheduleRepository.findAll());
-        model.addAttribute("applications", applicationRepository.findAll());
-        model.addAttribute("environments", environmentRepository.findAll());
+        List<com.dxc.monitoring.entity.Application> configurableApplications =
+                accessService.getApplicationsWithPermission("MONITORING_CONFIG");
+        List<Long> configurableApplicationIds = configurableApplications.stream()
+                .map(com.dxc.monitoring.entity.Application::getId).toList();
+        model.addAttribute("applications", configurableApplications);
+        model.addAttribute("environments", configurableApplicationIds.isEmpty() ? List.of()
+                : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(configurableApplicationIds));
         model.addAttribute("maxStreamingRuntimeSeconds", configuredMaximumStreamingRuntimeSeconds);
         model.addAttribute("executionModeLocked", streamingContext);
         model.addAttribute("pageTitle", streamingContext ? "Edit Streaming Job" : "Edit Monitoring Job");
