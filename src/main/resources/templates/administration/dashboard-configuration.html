@@ -9,16 +9,6 @@
 
 <div th:fragment="content">
 
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Dashboard Configuration</h1>
-            <p class="page-subtitle">
-                Configure dashboard tabs and monitoring widgets.
-            </p>
-        </div>
-    </div>
-
-
     <!-- ========================================================= -->
     <!-- TABS -->
     <!-- ========================================================= -->
@@ -140,6 +130,8 @@
                                 </th>
 
 
+                                <th>Application</th>
+
                                 <th>Environment</th>
 
                                 <th>
@@ -203,6 +195,12 @@
                                         Dashboard Tab
                                     </div>
 
+                                </td>
+
+
+                                <td>
+                                    <span class="table-secondary-text"
+                                          th:text="${tab.application != null ? tab.application.name : 'Unassigned'}">Unassigned</span>
                                 </td>
 
 
@@ -1235,6 +1233,8 @@
 								
 								    <option th:each="tab : ${dashboardTabs}"
 								            th:value="${tab.id}"
+								            th:attr="data-application-id=${tab.application != null ? tab.application.id : ''},
+								                     data-environment-id=${tab.environment != null ? tab.environment.id : ''}"
 								            th:text="${tab.name}">
 								    </option>
 								
@@ -1387,6 +1387,8 @@
                                     <option value="">Select monitoring job</option>
                                     <option th:each="job : ${monitoringJobs}"
                                             th:value="${job.id}"
+                                            th:attr="data-application-id=${job.application != null ? job.application.id : ''},
+                                                     data-environment-id=${job.environment != null ? job.environment.id : ''}"
                                             th:text="${job.name}">Monitoring Job</option>
                                 </select>
                                 <div class="invalid-feedback"
@@ -1565,6 +1567,34 @@
             }
         }
 
+        function filterDashboardWidgetJobs(clearSelection) {
+            const tabSelect = document.getElementById('dashboardWidgetTab');
+            const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
+            if (!tabSelect || !jobSelect) return;
+
+            const selectedTab = tabSelect.options[tabSelect.selectedIndex];
+            const applicationId = selectedTab ? selectedTab.getAttribute('data-application-id') : '';
+            const environmentId = selectedTab ? selectedTab.getAttribute('data-environment-id') : '';
+            let selectedJobUnavailable = false;
+
+            Array.from(jobSelect.options).forEach(function (option) {
+                if (!option.value) return;
+
+                const matches = applicationId !== '' && environmentId !== ''
+                    && option.getAttribute('data-application-id') === applicationId
+                    && option.getAttribute('data-environment-id') === environmentId;
+
+                option.hidden = !matches;
+                option.disabled = !matches;
+
+                if (option.selected && !matches) selectedJobUnavailable = true;
+            });
+
+            if (clearSelection || selectedJobUnavailable) {
+                jobSelect.value = '';
+            }
+        }
+
         function syncDashboardWidgetDataSourceFields(clearSelection) {
             const sourceType = document.getElementById('dashboardWidgetDataSourceType').value;
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
@@ -1686,6 +1716,7 @@
 
                         document.getElementById('dashboardWidgetTab').value =
                             widget.tabId ?? '';
+                        filterDashboardWidgetJobs(false);
 
                         document.getElementById('dashboardWidgetType').value =
                             widget.widgetType ?? '';
@@ -1763,6 +1794,24 @@
                 filterDashboardTabEnvironments(true);
             });
         filterDashboardTabEnvironments(false);
+
+        document.getElementById('dashboardWidgetTab')
+            .addEventListener('change', function () {
+                filterDashboardWidgetJobs(true);
+            });
+
+        document.getElementById('dashboardWidgetModal')
+            .addEventListener('show.bs.modal', function () {
+                const widgetId = document.getElementById('dashboardWidgetId').value;
+                const widgetTab = document.getElementById('dashboardWidgetTab');
+                const currentTabFilter = document.getElementById('dashboardWidgetTabFilter');
+                if (!widgetId && currentTabFilter && currentTabFilter.value) {
+                    widgetTab.value = currentTabFilter.value;
+                }
+                filterDashboardWidgetJobs(Boolean(!widgetId));
+            });
+
+        filterDashboardWidgetJobs(false);
 
         document
             .getElementById('dashboardTabForm')
