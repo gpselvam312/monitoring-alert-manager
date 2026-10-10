@@ -49,10 +49,12 @@ public class UserController
         user.setEnabled(true);
 
         model.addAttribute("user", user);
+        model.addAttribute("platformAdmin", user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName())));
         model.addAttribute("roles", userService.findAllRoles());
         model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
         model.addAttribute("selectedApplicationIds", java.util.List.of());
         model.addAttribute("roleAssignments", Map.of());
+        model.addAttribute("platformAdmin", false);
         model.addAttribute("pageTitle", "Add User");
         model.addAttribute("currentPage", "users");
 
@@ -62,9 +64,10 @@ public class UserController
     @PostMapping("/save")
     public String saveUser(@ModelAttribute("user") User user, @RequestParam("password") String password,
             @RequestParam(name = "applicationIds", required = false) List<Long> applicationIds,
-            @RequestParam Map<String, String> allParams)
+            @RequestParam Map<String, String> allParams,
+            @RequestParam(defaultValue = "false") boolean platformAdmin)
     {
-        userService.create(user, password, parseRoleAssignments(applicationIds, allParams));
+        userService.create(user, password, parseRoleAssignments(applicationIds, allParams), platformAdmin);
 
         return "redirect:/administration/users";
     }
@@ -90,10 +93,11 @@ public class UserController
     public String updateUser(@PathVariable Long id, @ModelAttribute("user") User user,
             @RequestParam("password") String password,
             @RequestParam(name = "applicationIds", required = false) List<Long> applicationIds,
-            @RequestParam Map<String, String> allParams)
+            @RequestParam Map<String, String> allParams,
+            @RequestParam(defaultValue = "false") boolean platformAdmin)
     {
         userService.update(id, user.getFullName(), user.getEmail(), user.isEnabled(), password,
-                parseRoleAssignments(applicationIds, allParams));
+                parseRoleAssignments(applicationIds, allParams), platformAdmin);
 
         return "redirect:/administration/users";
     }
