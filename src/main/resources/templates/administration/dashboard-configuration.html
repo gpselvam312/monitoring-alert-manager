@@ -253,6 +253,7 @@
                                                 th:attr="data-id=${tab.id},
                                                          data-name=${tab.name},
                                                          data-environment-id=${tab.environment != null ? tab.environment.id : ''},
+                                                          data-application-id=${tab.application != null ? tab.application.id : ''},
                                                          data-sort-order=${tab.sortOrder}"
                                                 onclick="DashboardConfig.editTab(this)">
 
@@ -1001,6 +1002,15 @@
 
 
                         <div class="mb-3">
+                            <label for="dashboardTabApplication" class="form-label">Application <span class="text-danger">*</span></label>
+                            <select class="form-select" id="dashboardTabApplication" name="applicationId" required>
+                                <option value="">Select application</option>
+                                <option th:each="application : ${applications}" th:value="${application.id}" th:text="${application.name}">Application</option>
+                            </select>
+                            <div class="invalid-feedback">Select an application for this dashboard tab.</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="dashboardTabEnvironment" class="form-label">
                                 Environment <span class="text-danger">*</span>
                             </label>
@@ -1610,6 +1620,9 @@
 
                 document.getElementById('dashboardTabName').value =
                     button.dataset.name;
+
+                document.getElementById('dashboardTabApplication').value =
+                    button.dataset.applicationId || '';
 
                 document.getElementById('dashboardTabEnvironment').value =
                     button.dataset.environmentId || '';

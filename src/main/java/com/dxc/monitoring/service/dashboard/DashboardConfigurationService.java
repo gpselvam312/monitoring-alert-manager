@@ -8,11 +8,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.DashboardTab;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.DashboardWidget;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.MonitoringResult;
+import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
@@ -26,6 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 public class DashboardConfigurationService
 {
     private final DashboardTabRepository dashboardTabRepository;
+    private final ApplicationRepository applicationRepository;
     private final EnvironmentRepository environmentRepository;
     private final DashboardWidgetRepository dashboardWidgetRepository;
     private final MonitoringJobRepository monitoringJobRepository;
@@ -35,10 +38,11 @@ public class DashboardConfigurationService
     public DashboardConfigurationService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
             MonitoringJobRepository monitoringJobRepository, MonitoringResultRepository monitoringResultRepository,
-            EnvironmentRepository environmentRepository, ObjectMapper objectMapper)
+            EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository, ObjectMapper objectMapper)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.environmentRepository = environmentRepository;
+        this.applicationRepository = applicationRepository;
         this.objectMapper = objectMapper;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringJobRepository = monitoringJobRepository;
@@ -55,6 +59,19 @@ public class DashboardConfigurationService
     public List<Environment> findEnabledEnvironments()
     {
         return environmentRepository.findByEnabledTrueOrderByName();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Application> findEnabledApplications()
+    {
+        return applicationRepository.findByEnabledTrueOrderByNameAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public Application findApplicationById(Long id)
+    {
+        return applicationRepository.findById(id).filter(Application::isEnabled)
+                .orElseThrow(() -> new IllegalArgumentException("Application not found or disabled: " + id));
     }
 
     @Transactional(readOnly = true)
@@ -89,6 +106,9 @@ public class DashboardConfigurationService
         });
 
         tab.setName(name);
+
+        if (tab.getApplication() == null || tab.getApplication().getId() == null)
+            throw new IllegalArgumentException("Dashboard tab application is required.");
 
         if (tab.getEnvironment() == null || tab.getEnvironment().getId() == null)
         {

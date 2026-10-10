@@ -1,7 +1,9 @@
 package com.dxc.monitoring.service;
 
+import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Role;
 import com.dxc.monitoring.entity.User;
+import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.RoleRepository;
 import com.dxc.monitoring.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,12 +17,14 @@ public class UserService
 {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final ApplicationRepository applicationRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder)
+    public UserService(UserRepository userRepository, RoleRepository roleRepository, ApplicationRepository applicationRepository, PasswordEncoder passwordEncoder)
     {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.applicationRepository = applicationRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -43,7 +47,7 @@ public class UserService
     }
 
     @Transactional
-    public User create(User user, String password, Long roleId)
+    public User create(User user, String password, Long roleId, List<Long> applicationIds)
     {
         user.setPasswordHash(passwordEncoder.encode(password));
 
@@ -52,12 +56,13 @@ public class UserService
 
         user.getRoles().clear();
         user.getRoles().add(role);
+        user.setApplications(resolveApplications(applicationIds));
 
         return userRepository.save(user);
     }
 
     @Transactional
-    public User update(Long id, String fullName, String email, boolean enabled, String password, Long roleId)
+    public User update(Long id, String fullName, String email, boolean enabled, String password, Long roleId, List<Long> applicationIds)
     {
         User existingUser = findById(id);
 
@@ -79,8 +84,18 @@ public class UserService
 
         existingUser.getRoles().clear();
         existingUser.getRoles().add(role);
+        existingUser.setApplications(resolveApplications(applicationIds));
 
         return userRepository.save(existingUser);
+    }
+
+    private java.util.Set<Application> resolveApplications(List<Long> applicationIds)
+    {
+        if (applicationIds == null || applicationIds.isEmpty()) return new java.util.HashSet<>();
+        List<Application> applications = applicationRepository.findAllById(applicationIds);
+        if (applications.size() != applicationIds.stream().distinct().count())
+            throw new IllegalArgumentException("One or more selected applications do not exist.");
+        return new java.util.HashSet<>(applications);
     }
 
     @Transactional

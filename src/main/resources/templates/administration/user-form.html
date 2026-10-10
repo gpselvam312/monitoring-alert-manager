@@ -198,6 +198,23 @@
 
                         </div>
 
+                        <!-- Application Access -->
+                        <div class="col-12">
+                            <label class="form-label">Application Access</label>
+                            <div class="form-text mb-2">Non-admin users can access only the applications selected here. ADMIN users retain administrative access.</div>
+                            <div class="row g-2">
+                                <div class="col-md-4 col-lg-3" th:each="application : ${applications}">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="applicationIds"
+                                               th:id="'application-' + ${application.id}" th:value="${application.id}"
+                                               th:checked="${selectedApplicationIds.contains(application.id)}">
+                                        <label class="form-check-label" th:for="'application-' + ${application.id}"
+                                               th:text="${application.name}">Application</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Enabled -->
                         <div class="col-md-6">
 
