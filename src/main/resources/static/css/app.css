@@ -432,13 +432,13 @@ body {
 }
 
 .btn-primary {
-    background: var(--dxc-orange);
-    border-color: var(--dxc-orange);
+    background-color: var(--theme-primary);
+    border-color: var(--theme-primary);
 }
 
 .btn-primary:hover {
-    background: var(--dxc-orange-dark);
-    border-color: var(--dxc-orange-dark);
+    background-color: var(--theme-primary-dark);
+    border-color: var(--theme-primary-dark);
 }
 
 /* Keep primary form actions visible across themes and CSS overrides. */
@@ -447,8 +447,8 @@ body {
 .save-action-button:focus,
 .save-action-button:active {
     color: #ffffff !important;
-    background-color: var(--dxc-orange) !important;
-    border-color: var(--dxc-orange) !important;
+    background-color: var(--theme-primary) !important;
+    border-color: var(--theme-primary) !important;
 }
 
 .btn-outline-primary {
