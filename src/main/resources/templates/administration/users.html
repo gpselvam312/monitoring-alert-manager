@@ -167,6 +167,7 @@
                             <!-- Role -->
                             <td>
 
+                                <span th:if="${user.roles.?[name == 'ADMIN'].size() > 0}" class="status-badge status-info me-1">PLATFORM ADMIN</span>
                                 <span th:if="${roleSummaries[user.id] != null}"
                                       class="table-secondary-text"
                                       th:text="${roleSummaries[user.id]}">Application — Role</span>
