@@ -200,6 +200,14 @@
 			    <span>Users</span>
 			</a>
 		
+            <a th:href="@{/administration/roles}"
+               class="sidebar-link"
+               th:classappend="${currentPage == 'roles'} ? ' active' : ''"
+               sec:authorize="hasAuthority('ROLE_ADMIN')">
+                <i class="bi bi-shield-lock"></i>
+                <span>Roles</span>
+            </a>
+
 		   <a th:href="@{/administration/settings}"
 			   class="sidebar-link"
 			   th:classappend="${currentPage == 'settings'} ? ' active' : ''"
