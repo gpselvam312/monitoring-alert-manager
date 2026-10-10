@@ -36,13 +36,23 @@
                             <td><span th:if="${platformAdminIds.contains(user.id)}" class="status-badge status-info me-1">PLATFORM ADMIN</span><span th:if="${roleSummaries[user.id] != null}" class="table-secondary-text" th:text="${roleSummaries[user.id]}">Application — Role</span><span th:if="${roleSummaries[user.id] == null}" class="text-muted">No application roles</span></td>
                             <td><span th:if="${platformAdminIds.contains(user.id) or user.enabled}" class="status-badge status-healthy"><span class="status-dot"></span>ACTIVE</span><span th:unless="${platformAdminIds.contains(user.id) or user.enabled}" class="status-badge status-disabled"><span class="status-dot"></span>INACTIVE</span></td>
                             <td th:text="${user.createdAt != null ? #temporals.format(user.createdAt, 'yyyy-MM-dd HH:mm') : '—'}">—</td>
-                            <td class="text-end table-actions-column"><div class="table-actions">
-                                <a th:href="@{/administration/users/{id}/edit(id=${user.id})}" class="btn btn-sm btn-outline-primary" title="Edit User" aria-label="Edit User"><i class="bi bi-pencil"></i></a>
-                                <form th:unless="${platformAdminIds.contains(user.id)}" th:action="@{/administration/users/{id}/toggle(id=${user.id})}" method="post">
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary" th:title="${user.enabled ? 'Deactivate User' : 'Activate User'}" th:attr="aria-label=${user.enabled ? 'Deactivate User' : 'Activate User'}"><i th:if="${user.enabled}" class="bi bi-person-dash"></i><i th:unless="${user.enabled}" class="bi bi-person-check"></i></button>
-                                </form>
-                                <span th:if="${platformAdminIds.contains(user.id)}" class="text-muted small">Protected</span>
-                            </div></td>
+                            <td class="text-end table-actions-column">
+                                <div class="table-actions table-actions-text">
+                                    <a th:href="@{/administration/users/{id}/edit(id=${user.id})}" class="btn btn-sm btn-outline-primary" title="Edit User" aria-label="Edit User"><i class="bi bi-pencil"></i><span class="ms-1">Edit</span></a>
+                                    <form th:unless="${platformAdminIds.contains(user.id)}" th:action="@{/administration/users/{id}/toggle(id=${user.id})}" method="post">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" th:title="${user.enabled ? 'Deactivate User' : 'Activate User'}" th:attr="aria-label=${user.enabled ? 'Deactivate User' : 'Activate User'}">
+                                            <i th:if="${user.enabled}" class="bi bi-person-dash"></i><i th:unless="${user.enabled}" class="bi bi-person-check"></i><span class="ms-1" th:text="${user.enabled ? 'Deactivate' : 'Activate'}">Deactivate</span>
+                                        </button>
+                                    </form>
+                                    <span th:if="${platformAdminIds.contains(user.id)}" class="text-muted small">Protected</span>
+                                </div>
+                                <div class="table-actions table-actions-icons">
+                                    <a th:href="@{/administration/users/{id}/edit(id=${user.id})}" class="btn btn-sm btn-outline-primary" title="Edit User" aria-label="Edit User"><i class="bi bi-pencil"></i></a>
+                                    <form th:unless="${platformAdminIds.contains(user.id)}" th:action="@{/administration/users/{id}/toggle(id=${user.id})}" method="post">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" th:title="${user.enabled ? 'Deactivate User' : 'Activate User'}" th:attr="aria-label=${user.enabled ? 'Deactivate User' : 'Activate User'}"><i th:if="${user.enabled}" class="bi bi-person-dash"></i><i th:unless="${user.enabled}" class="bi bi-person-check"></i></button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr></tbody>
                     </table>
                 </div>
