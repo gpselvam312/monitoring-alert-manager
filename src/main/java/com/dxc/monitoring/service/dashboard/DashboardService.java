@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
@@ -549,11 +550,26 @@ public class DashboardService
     }
 
     @Transactional(readOnly = true)
+    @Transactional(readOnly = true)
     public DashboardWidget getWidget(Long widgetId)
     {
         DashboardWidget widget = dashboardWidgetRepository.findById(widgetId)
                 .orElseThrow(() -> new IllegalArgumentException("Dashboard widget not found: " + widgetId));
         dashboardAccessService.assertCanAccessTab(widget.getTab());
+
+        MonitoringJob sourceJob = null;
+        if ("MONITORING_JOB".equals(widget.getDataSourceType()) && widget.getDataSourceId() != null)
+        {
+            sourceJob = monitoringJobRepository.findById(widget.getDataSourceId()).orElse(null);
+        }
+        else if ("MONITORING_RESULT".equals(widget.getDataSourceType()) && widget.getDataSourceId() != null)
+        {
+            MonitoringResult configuredResult = monitoringResultRepository.findById(widget.getDataSourceId()).orElse(null);
+            if (configuredResult != null && configuredResult.getExecution() != null)
+                sourceJob = configuredResult.getExecution().getMonitoringJob();
+        }
+        if (sourceJob != null && !isEnvironmentCompatible(widget, sourceJob))
+            throw new AccessDeniedException("The dashboard widget source belongs to a different application or environment.");
         return widget;
     }
 }
