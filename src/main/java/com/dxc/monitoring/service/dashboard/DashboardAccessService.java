@@ -36,10 +36,15 @@ public class DashboardAccessService {
 
     @Transactional(readOnly = true)
     public List<Application> getAccessibleApplications() {
+        return getApplicationsWithPermission("MONITORING_VIEW");
+    }
+
+    @Transactional(readOnly = true)
+    public List<Application> getApplicationsWithPermission(String permission) {
         if (isPlatformAdmin()) return applications.findByEnabledTrueOrderByNameAsc();
         return assignments.findAssignmentsForUser(currentUser().getId()).stream()
                 .filter(a -> a.getApplication().isEnabled())
-                .filter(a -> hasPermission(a.getRole(), "MONITORING_VIEW"))
+                .filter(a -> hasPermission(a.getRole(), permission))
                 .map(UserApplicationRole::getApplication).distinct()
                 .sorted(Comparator.comparing(Application::getName, String.CASE_INSENSITIVE_ORDER)).toList();
     }
