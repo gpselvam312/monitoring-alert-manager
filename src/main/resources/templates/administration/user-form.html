@@ -171,47 +171,37 @@
 
                         </div>
 
-                        <!-- Role -->
-                        <div class="col-md-6">
-
-                            <label for="roleId"
-                                   class="form-label">
-                                Role
-                            </label>
-
-                            <select id="roleId"
-                                    name="roleId"
-                                    class="form-select"
-                                    required>
-
-                                <option value="">
-                                    Select a role
-                                </option>
-
-                                <option th:each="role : ${roles}"
-                                        th:value="${role.id}"
-                                        th:text="${role.name}">
-                                    ADMIN
-                                </option>
-
-                            </select>
-
-                        </div>
-
-                        <!-- Application Access -->
+                        <!-- Per-application role assignments -->
                         <div class="col-12">
-                            <label class="form-label">Application Access</label>
-                            <div class="form-text mb-2">Non-admin users can access only the applications selected here. ADMIN users retain administrative access.</div>
-                            <div class="row g-2">
-                                <div class="col-md-4 col-lg-3" th:each="application : ${applications}">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="applicationIds"
-                                               th:id="'application-' + ${application.id}" th:value="${application.id}"
-                                               th:checked="${selectedApplicationIds.contains(application.id)}">
-                                        <label class="form-check-label" th:for="'application-' + ${application.id}"
-                                               th:text="${application.name}">Application</label>
-                                    </div>
-                                </div>
+                            <label class="form-label">Application Access and Role</label>
+                            <div class="form-text mb-3">Select each application the user may access and assign a role independently for that application.</div>
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead><tr><th>Application</th><th style="min-width: 220px;">Role</th></tr></thead>
+                                    <tbody>
+                                        <tr th:each="appItem : ${applications}">
+                                            <td>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="applicationIds"
+                                                           th:id="'application-' + ${appItem.id}" th:value="${appItem.id}"
+                                                           th:checked="${selectedApplicationIds.contains(appItem.id)}">
+                                                    <label class="form-check-label" th:for="'application-' + ${appItem.id}"
+                                                           th:text="${appItem.name}">Application</label>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <select class="form-select" th:name="|role_${appItem.id}|">
+                                                    <option value="">-- Select Role --</option>
+                                                    <option th:each="roleItem : ${roles}" th:value="${roleItem.id}"
+                                                            th:text="${roleItem.name}"
+                                                            th:selected="${roleAssignments[appItem.id] != null and roleAssignments[appItem.id] == roleItem.id}">
+                                                        VIEWER
+                                                    </option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
@@ -346,28 +336,38 @@
 
                         </div>
 
-                        <!-- Role -->
-                        <div class="col-md-6">
-
-                            <label for="roleId"
-                                   class="form-label">
-                                Role
-                            </label>
-
-                            <select id="roleId"
-                                    name="roleId"
-                                    class="form-select"
-                                    required>
-
-                                <option th:each="role : ${roles}"
-                                        th:value="${role.id}"
-                                        th:text="${role.name}"
-                                        th:selected="${!#sets.isEmpty(user.roles) and user.roles.iterator().next().id == role.id}">
-                                    ADMIN
-                                </option>
-
-                            </select>
-
+                        <!-- Per-application role assignments -->
+                        <div class="col-12">
+                            <label class="form-label">Application Access and Role</label>
+                            <div class="form-text mb-3">Select each application the user may access and assign a role independently for that application.</div>
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead><tr><th>Application</th><th style="min-width: 220px;">Role</th></tr></thead>
+                                    <tbody>
+                                        <tr th:each="appItem : ${applications}">
+                                            <td>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="applicationIds"
+                                                           th:id="'application-' + ${appItem.id}" th:value="${appItem.id}"
+                                                           th:checked="${selectedApplicationIds.contains(appItem.id)}">
+                                                    <label class="form-check-label" th:for="'application-' + ${appItem.id}"
+                                                           th:text="${appItem.name}">Application</label>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <select class="form-select" th:name="|role_${appItem.id}|">
+                                                    <option value="">-- Select Role --</option>
+                                                    <option th:each="roleItem : ${roles}" th:value="${roleItem.id}"
+                                                            th:text="${roleItem.name}"
+                                                            th:selected="${roleAssignments[appItem.id] != null and roleAssignments[appItem.id] == roleItem.id}">
+                                                        VIEWER
+                                                    </option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
                         <!-- Enabled -->
