@@ -71,6 +71,7 @@
     let selectedApplicationId = null;
     let selectedEnvironmentId = null;
     let dashboardFiltersBound = false;
+    const serverHealthViewState = new Map();
     const autoRefreshTimers = new Map();
 
     /*
@@ -1604,7 +1605,35 @@
                     '<div class="fs-5 fw-semibold text-' + item[2] + '">' + item[1] + '</div></div></div>';
             }).join("") + '</div>';
 
-        const cards = servers.map(function (server)
+        const viewState = serverHealthViewState.get(String(widget.id)) || { filter: "ALL", page: 1 };
+        const allowedFilters = ["ALL", "CRITICAL", "WARNING", "HEALTHY", "UNKNOWN"];
+        const activeFilter = allowedFilters.includes(viewState.filter) ? viewState.filter : "ALL";
+        const filteredServers = activeFilter === "ALL"
+            ? servers
+            : servers.filter(function (server) { return server.status === activeFilter; });
+        const pageSize = 12;
+        const pageCount = Math.max(1, Math.ceil(filteredServers.length / pageSize));
+        const currentPage = Math.min(Math.max(1, Number(viewState.page) || 1), pageCount);
+        serverHealthViewState.set(String(widget.id), { filter: activeFilter, page: currentPage });
+        const visibleServers = filteredServers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+        const filterBar = '<div class="d-flex flex-wrap gap-2 mb-3">' +
+            [
+                ["ALL", "All", servers.length],
+                ["CRITICAL", "Critical", counts.CRITICAL],
+                ["WARNING", "Warning", counts.WARNING],
+                ["HEALTHY", "Healthy", counts.HEALTHY],
+                ["UNKNOWN", "Unknown", counts.UNKNOWN]
+            ].map(function (item)
+            {
+                const active = item[0] === activeFilter;
+                return '<button type="button" class="btn btn-sm ' +
+                    (active ? "btn-primary" : "btn-outline-secondary") +
+                    ' server-health-filter" data-widget-id="' + escapeHtml(widget.id) +
+                    '" data-filter="' + item[0] + '">' + item[1] + ' <span class="ms-1">' + item[2] + '</span></button>';
+            }).join("") + '</div>';
+
+        const cards = visibleServers.map(function (server)
         {
             const serverTone = tone(server.status);
             const metrics = [
@@ -1642,7 +1671,20 @@
                 memoryDetail + collectionMessage + '</article></div>';
         }).join("");
 
-        return summary + '<div class="row g-3 dashboard-server-health-list">' + cards + '</div>';
+        const firstShown = filteredServers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+        const lastShown = Math.min(currentPage * pageSize, filteredServers.length);
+        const pagination = '<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">' +
+            '<small class="text-muted">Showing ' + firstShown + '–' + lastShown + ' of ' + filteredServers.length + ' servers</small>' +
+            '<div class="btn-group btn-group-sm" role="group" aria-label="Server health pagination">' +
+            '<button type="button" class="btn btn-outline-secondary server-health-page" data-widget-id="' +
+            escapeHtml(widget.id) + '" data-page="' + (currentPage - 1) + '"' +
+            (currentPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
+            '<button type="button" class="btn btn-outline-secondary server-health-page" data-widget-id="' +
+            escapeHtml(widget.id) + '" data-page="' + (currentPage + 1) + '"' +
+            (currentPage >= pageCount ? ' disabled' : '') + '>Next</button></div></div>';
+
+        const cardsHtml = cards || '<div class="col-12"><div class="text-muted small p-3">No servers match this filter.</div></div>';
+        return summary + filterBar + '<div class="row g-3 dashboard-server-health-list">' + cardsHtml + '</div>' + pagination;
     }
 
 
@@ -2228,6 +2270,7 @@
         bindTabEvents();
 
         bindWidgetActions();
+        bindServerHealthViewEvents();
 
 
         /*
@@ -2785,6 +2828,37 @@
      * LOAD DASHBOARD
      * ------------------------------------------------------------
      */
+
+    function bindServerHealthViewEvents()
+    {
+        contentElement.querySelectorAll(".server-health-filter").forEach(function (button)
+        {
+            button.addEventListener("click", function ()
+            {
+                const widgetId = String(button.dataset.widgetId);
+                serverHealthViewState.set(widgetId, { filter: button.dataset.filter || "ALL", page: 1 });
+                const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+                renderTabs(activeTab ? activeTab.dataset.tabId : undefined);
+            });
+        });
+
+        contentElement.querySelectorAll(".server-health-page").forEach(function (button)
+        {
+            button.addEventListener("click", function ()
+            {
+                if (button.disabled) return;
+                const widgetId = String(button.dataset.widgetId);
+                const current = serverHealthViewState.get(widgetId) || { filter: "ALL", page: 1 };
+                serverHealthViewState.set(widgetId, {
+                    filter: current.filter,
+                    page: Number(button.dataset.page) || 1
+                });
+                const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+                renderTabs(activeTab ? activeTab.dataset.tabId : undefined);
+            });
+        });
+    }
+
 
     function populateDashboardFilter(select, options, selectedId, placeholder)
     {
