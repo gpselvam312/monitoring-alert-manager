@@ -198,6 +198,50 @@
 
                         </div>
 
+                        <!-- Application Access -->
+                        <div class="col-12">
+                            <label class="form-label">Application Access</label>
+                            <div class="border rounded p-3">
+                                <div class="row g-2">
+                                    <div class="col-md-6" th:each="application : ${applications}">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="applicationIds"
+                                                   th:id="${'applicationAccess-' + application.id}"
+                                                   th:value="${application.id}"
+                                                   th:checked="${user.applications.contains(application)}">
+                                            <label class="form-check-label"
+                                                   th:for="${'applicationAccess-' + application.id}"
+                                                   th:text="${application.name}">Application</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text">Users can view dashboards for selected applications and all environments configured for them. ADMIN users have global application access.</div>
+                            </div>
+                        </div>
+
+                        <!-- Application Access -->
+                        <div class="col-12">
+                            <label class="form-label">Application Access</label>
+                            <div class="border rounded p-3">
+                                <div class="row g-2">
+                                    <div class="col-md-6" th:each="application : ${applications}">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="applicationIds"
+                                                   th:id="${'applicationAccess-' + application.id}"
+                                                   th:value="${application.id}"
+                                                   th:checked="${user.applications.contains(application)}">
+                                            <label class="form-check-label"
+                                                   th:for="${'applicationAccess-' + application.id}"
+                                                   th:text="${application.name}">Application</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text">Users can view dashboards for selected applications and all environments configured for them. ADMIN users have global application access.</div>
+                            </div>
+                        </div>
+
                         <!-- Enabled -->
                         <div class="col-md-6">
 
