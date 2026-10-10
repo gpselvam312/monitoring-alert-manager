@@ -40,7 +40,6 @@ public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long
     Optional<DashboardTab> findByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
             String name, Long applicationId, Long environmentId);
 
-    Optional<DashboardTab> findByEnvironment_Id(Long environmentId);
 
     boolean existsByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
             String name, Long applicationId, Long environmentId);
