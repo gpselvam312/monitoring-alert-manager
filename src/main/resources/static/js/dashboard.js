@@ -1259,7 +1259,7 @@
         const statusOf = function (row)
         {
             const collection = String(pick(row, ["collection_status", "collectionStatus", "status"]) || "").toUpperCase();
-            if (["FAILED", "ERROR", "UNREACHABLE", "UNAVAILABLE", "CRITICAL", "TIMEOUT"].includes(collection)) return "CRITICAL";
+            if (["FAILED", "FAILURE", "FAIL", "ERROR", "DOWN", "UNREACHABLE", "UNAVAILABLE", "NOT_COLLECTED", "CRITICAL", "TIMEOUT"].includes(collection)) return "CRITICAL";
             const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
             const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
             const load = number(pick(row, ["load_1m", "load1m", "load_average_1m"]));

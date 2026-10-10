@@ -246,7 +246,9 @@ public class DashboardConfigurationService
                     MonitoringJob sourceJob = monitoringJobRepository.findById(dataSourceId)
                             .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found: " + dataSourceId));
 
-                    if (widget.getTab().getEnvironment() == null || sourceJob.getEnvironment() == null
+                    if (widget.getTab().getApplication() == null || sourceJob.getApplication() == null
+                            || !widget.getTab().getApplication().getId().equals(sourceJob.getApplication().getId())
+                            || widget.getTab().getEnvironment() == null || sourceJob.getEnvironment() == null
                             || !widget.getTab().getEnvironment().getId().equals(sourceJob.getEnvironment().getId()))
                     {
                         throw new IllegalArgumentException(
