@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/head :: head('Roles')}"></head>
+<body>
+<div class="app-shell">
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <main class="app-main">
+        <div th:replace="~{fragments/header :: header('Roles')}"></div>
+        <div class="app-content">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <div class="page-header-icon"><i class="bi bi-shield-lock"></i></div>
+                    <div>
+                        <h1 class="page-title">Roles</h1>
+                        <p class="page-subtitle">Review system-defined roles and their permissions</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <div class="app-card-header">
+                    <div>
+                        <h2 class="app-card-title">Role Catalogue</h2>
+                        <p class="app-card-subtitle">Application roles are assigned separately for each application. Platform Administrator is a separate global privilege.</p>
+                    </div>
+                    <i class="bi bi-shield-check app-card-header-icon"></i>
+                </div>
+                <div class="app-card-body p-0">
+                    <div th:if="${#lists.isEmpty(roles)}" class="empty-state">
+                        <div class="empty-state-icon"><i class="bi bi-shield-lock"></i></div>
+                        <h3 class="empty-state-title">No Roles Found</h3>
+                        <p class="empty-state-text">No roles are configured in the database.</p>
+                    </div>
+                    <div th:unless="${#lists.isEmpty(roles)}" class="table-responsive">
+                        <table class="table app-table mb-0">
+                            <thead>
+                                <tr><th>Role</th><th>Description</th><th>Permissions</th><th>Scope</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="role : ${roles}">
+                                    <td><span class="fw-semibold" th:text="${role.name}">VIEWER</span></td>
+                                    <td th:text="${role.description != null and !role.description.isBlank() ? role.description : '-'}">Role description</td>
+                                    <td>
+                                        <div th:if="${!#sets.isEmpty(role.permissions)}" class="d-flex flex-wrap gap-1">
+                                            <span th:each="permission : ${role.permissions}" class="status-badge status-info"
+                                                  th:text="${permission.name}" th:title="${permission.description}">MONITORING_VIEW</span>
+                                        </div>
+                                        <span th:if="${#sets.isEmpty(role.permissions)}" class="text-muted">No permissions assigned</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${role.name == 'ADMIN'}" class="status-badge status-warning">Platform</span>
+                                        <span th:unless="${role.name == 'ADMIN'}" class="status-badge status-healthy">Application</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <p class="form-text mt-3">Roles and permission mappings are system-defined in this version; this screen is read-only to avoid changing authorization behavior unintentionally.</p>
+        </div>
+    </main>
+</div>
+<div th:replace="~{fragments/footer :: footer}"></div>
+<div th:replace="~{fragments/scripts :: scripts}"></div>
+</body>
+</html>
