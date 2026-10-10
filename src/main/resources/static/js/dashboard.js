@@ -3045,7 +3045,17 @@
 
     retryButton.addEventListener(
         "click",
-        loadDashboard
+        function ()
+        {
+            if (!applicationFilter.value || !environmentFilter.value)
+            {
+                initializeDashboard();
+            }
+            else
+            {
+                loadDashboard(activeTabId);
+            }
+        }
     );
 
 
