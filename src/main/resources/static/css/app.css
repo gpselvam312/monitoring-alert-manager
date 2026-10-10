@@ -3733,6 +3733,9 @@ textarea.form-control {
 /* System Metrics: theme-aware cards and responsive status summaries */
 .server-health-summary { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .server-health-summary-item { background: var(--card-bg); color: var(--text-primary); transition: border-color .15s ease, transform .15s ease; }
+.server-health-summary-total { width: 100%; font: inherit; text-align: left; cursor: pointer; }
+.server-health-summary-total:hover, .server-health-summary-total:focus-visible { border-color: var(--theme-primary); }
+.server-health-summary-total:focus-visible { outline: 2px solid var(--theme-primary); outline-offset: 2px; }
 .server-health-summary-item > span { display: inline-flex; align-items: center; gap: .35rem; }
 .server-health-summary-item > span i { color: var(--text-secondary); }
 .server-health-summary-warning { border-color: color-mix(in srgb, var(--warning) 40%, var(--border-color)); }
