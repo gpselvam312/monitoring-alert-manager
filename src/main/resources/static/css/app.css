@@ -3763,3 +3763,13 @@ textarea.form-control {
     .server-health-summary-item:first-child { grid-column: 1 / -1; }
     .server-health-toolbar > span { margin-left: 0; width: 100%; }
 }
+
+
+.server-health-status-healthy { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.server-health-status-warning { color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, transparent); }
+.server-health-status-critical { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.server-health-status-unknown { color: var(--text-secondary); background: color-mix(in srgb, var(--text-secondary) 12%, transparent); }
+.server-health-card-unknown { border-left-color: var(--text-secondary); }
+.server-health-card-unknown .server-health-meter > span { background: var(--text-secondary); }
+.server-health-summary-unknown { border-style: dashed; }
+.server-health-summary-unknown > span i { color: var(--text-secondary); }
