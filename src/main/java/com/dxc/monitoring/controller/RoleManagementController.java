@@ -1,6 +1,8 @@
 package com.dxc.monitoring.controller;
 
+import com.dxc.monitoring.entity.Permission;
 import com.dxc.monitoring.entity.Role;
+import com.dxc.monitoring.repository.PermissionRepository;
 import com.dxc.monitoring.repository.RoleRepository;
 import com.dxc.monitoring.repository.UserApplicationRoleRepository;
 import com.dxc.monitoring.repository.UserRepository;
@@ -22,12 +24,14 @@ public class RoleManagementController {
     private static final Pattern ROLE_NAME = Pattern.compile("[A-Z][A-Z0-9_]{1,49}");
 
     private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
     private final UserApplicationRoleRepository userApplicationRoleRepository;
 
-    public RoleManagementController(RoleRepository roleRepository, UserRepository userRepository,
+    public RoleManagementController(RoleRepository roleRepository, PermissionRepository permissionRepository, UserRepository userRepository,
             UserApplicationRoleRepository userApplicationRoleRepository) {
         this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
         this.userRepository = userRepository;
         this.userApplicationRoleRepository = userApplicationRoleRepository;
     }
@@ -42,6 +46,8 @@ public class RoleManagementController {
     @GetMapping("/new")
     public String createForm(Model model) {
         model.addAttribute("role", new Role());
+        model.addAttribute("permissions", permissionRepository.findAll(Sort.by(Sort.Direction.ASC, "name")));
+        model.addAttribute("selectedPermissionIds", Set.of());
         model.addAttribute("pageTitle", "Add Role");
         model.addAttribute("currentPage", "roles");
         return "administration/role-form";
@@ -49,7 +55,10 @@ public class RoleManagementController {
 
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model) {
-        model.addAttribute("role", findRole(id));
+        Role role = findRole(id);
+        model.addAttribute("role", role);
+        model.addAttribute("permissions", permissionRepository.findAll(Sort.by(Sort.Direction.ASC, "name")));
+        model.addAttribute("selectedPermissionIds", role.getPermissions().stream().map(Permission::getId).collect(java.util.stream.Collectors.toSet()));
         model.addAttribute("pageTitle", "Edit Role");
         model.addAttribute("currentPage", "roles");
         return "administration/role-form";
@@ -57,7 +66,9 @@ public class RoleManagementController {
 
     @PostMapping("/save")
     @Transactional
-    public String save(@ModelAttribute("role") Role formRole, RedirectAttributes flash) {
+    public String save(@ModelAttribute("role") Role formRole,
+            @RequestParam(name = "permissionIds", required = false) java.util.List<Long> permissionIds,
+            RedirectAttributes flash) {
         String name = formRole.getName() == null ? "" : formRole.getName().trim().toUpperCase(java.util.Locale.ROOT);
         String formUrl = formRole.getId() == null ? "redirect:/administration/roles/new" : "redirect:/administration/roles/" + formRole.getId() + "/edit";
         if (!ROLE_NAME.matcher(name).matches()) {
@@ -78,6 +89,15 @@ public class RoleManagementController {
 
         role.setName(name);
         role.setDescription(formRole.getDescription() == null ? null : formRole.getDescription().trim());
+        if (!"ADMIN".equals(role.getName())) {
+            java.util.List<Long> ids = permissionIds == null ? java.util.List.of() : permissionIds.stream().distinct().toList();
+            java.util.List<Permission> selected = permissionRepository.findAllById(ids);
+            if (selected.size() != ids.size()) {
+                flash.addFlashAttribute("errorMessage", "One or more selected permissions no longer exist.");
+                return formUrl;
+            }
+            role.setPermissions(new java.util.HashSet<>(selected));
+        }
         roleRepository.save(role);
         flash.addFlashAttribute("successMessage", "Role saved successfully.");
         return "redirect:/administration/roles";
