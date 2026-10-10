@@ -1654,7 +1654,8 @@
             }).join("");
 
             const loadLabel = server.load === null ? "N/A"
-                : displayNumber(server.load, "") + (server.cores ? " (÷ " + server.cores + " cores)" : "");
+                : displayNumber(server.load, "") + (server.normalizedLoad !== null
+                    ? " (" + displayNumber(server.normalizedLoad, "") + " per core)" : "");
             const memoryDetail = server.ramUsed !== null && server.ramTotal !== null
                 ? '<div class="small text-muted mt-2">' + escapeHtml(displayNumber(server.ramUsed, "") +
                     " / " + displayNumber(server.ramTotal, "") + " MB") + '</div>' : "";
@@ -1668,8 +1669,8 @@
                 serverTone + ' rounded p-3 h-100 dashboard-server-health-card">' +
                 '<div class="d-flex align-items-start gap-2 mb-3"><i class="bi bi-hdd-stack fs-5 text-' + serverTone +
                 '"></i><div class="flex-grow-1 min-w-0"><div class="fw-semibold text-break">' +
-                escapeHtml(server.hostname) + '</div><div class="small text-muted">Load (1m): ' +
-                escapeHtml(loadLabel) + '</div></div><span class="badge text-bg-' + serverTone + '">' +
+                escapeHtml(server.hostname) + '</div><div class="small text-muted">Load (1m): <span class="fw-semibold text-' +
+                tone(server.loadStatus) + '">' + escapeHtml(loadLabel) + '</span></div></div><span class="badge text-bg-' + serverTone + '">' +
                 statusLabel + '</span></div><div class="row g-3">' + metrics + '</div>' +
                 memoryDetail + collectionMessage + '</article></div>';
         }).join("");
