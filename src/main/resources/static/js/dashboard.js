@@ -1493,6 +1493,159 @@
 	    );
 	}
 
+    function renderServerHealthWidget(result, widget)
+    {
+        const config = parseWidgetFieldConfig(widget);
+        const rows = getConfiguredTableRows(result, config);
+        if (rows.length === 0)
+        {
+            return '<div class="dashboard-chart-empty"><i class="bi bi-hdd-stack"></i>' +
+                '<span>No server health records available.</span></div>';
+        }
+
+        const thresholds = config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {};
+        const cpuThresholds = thresholds.cpu || {};
+        const ramThresholds = thresholds.ram || {};
+        const loadThresholds = thresholds.loadPerCore || {};
+        const fields = Object.assign({
+            hostname: "hostname", cpu: "cpu_used_percent", ram: "ram_used_percent",
+            cpuCores: "cpu_cores", load: "load_1m", ramUsed: "ram_used_mb",
+            ramTotal: "ram_total_mb", collectionStatus: "collection_status"
+        }, config.fields || {});
+        const cpuWarning = Number(cpuThresholds.warning ?? 70);
+        const cpuCritical = Number(cpuThresholds.critical ?? 85);
+        const ramWarning = Number(ramThresholds.warning ?? 75);
+        const ramCritical = Number(ramThresholds.critical ?? 90);
+        const loadWarning = Number(loadThresholds.warning ?? 0.7);
+        const loadCritical = Number(loadThresholds.critical ?? 1.0);
+
+        function numeric(value)
+        {
+            if (value === null || value === undefined || value === "") return null;
+            const number = Number(value);
+            return Number.isFinite(number) ? number : null;
+        }
+        function metricStatus(value, warning, critical)
+        {
+            if (value === null) return "UNKNOWN";
+            if (value >= critical) return "CRITICAL";
+            if (value >= warning) return "WARNING";
+            return "HEALTHY";
+        }
+        function rank(status)
+        {
+            return status === "CRITICAL" ? 0 : status === "WARNING" ? 1 : status === "UNKNOWN" ? 2 : 3;
+        }
+        function tone(status)
+        {
+            return status === "CRITICAL" ? "danger" : status === "WARNING" ? "warning"
+                : status === "UNKNOWN" ? "secondary" : "success";
+        }
+        function displayNumber(value, suffix)
+        {
+            return value === null ? "N/A"
+                : Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 }) + (suffix || "");
+        }
+
+        const servers = rows.map(function (row)
+        {
+            const hostnameValue = getJsonPath(row, fields.hostname);
+            const cpu = numeric(getJsonPath(row, fields.cpu));
+            const ram = numeric(getJsonPath(row, fields.ram));
+            const cores = numeric(getJsonPath(row, fields.cpuCores));
+            const load = numeric(getJsonPath(row, fields.load));
+            const ramUsed = numeric(getJsonPath(row, fields.ramUsed));
+            const ramTotal = numeric(getJsonPath(row, fields.ramTotal));
+            const collectionStatus = getJsonPath(row, fields.collectionStatus);
+            const collectionFailed = collectionStatus !== null && collectionStatus !== undefined
+                && String(collectionStatus).trim() !== ""
+                && String(collectionStatus).trim().toUpperCase() !== "SUCCESS";
+            const normalizedLoad = load !== null && cores !== null && cores > 0 ? load / cores : null;
+            const cpuStatus = metricStatus(cpu, cpuWarning, cpuCritical);
+            const ramStatus = metricStatus(ram, ramWarning, ramCritical);
+            const loadStatus = metricStatus(normalizedLoad, loadWarning, loadCritical);
+            const statuses = [cpuStatus, ramStatus, loadStatus].filter(function (s) { return s !== "UNKNOWN"; });
+            let status = statuses.length === 0 ? "UNKNOWN"
+                : statuses.some(function (s) { return s === "CRITICAL"; }) ? "CRITICAL"
+                : statuses.some(function (s) { return s === "WARNING"; }) ? "WARNING" : "HEALTHY";
+            if (collectionFailed) status = "UNKNOWN";
+            const pressure = Math.max(
+                cpu === null || cpuCritical <= 0 ? 0 : cpu / cpuCritical,
+                ram === null || ramCritical <= 0 ? 0 : ram / ramCritical,
+                normalizedLoad === null || loadCritical <= 0 ? 0 : normalizedLoad / loadCritical
+            );
+            return {
+                hostname: hostnameValue === null || hostnameValue === undefined || hostnameValue === ""
+                    ? "Unknown server" : String(hostnameValue),
+                cpu: cpu, ram: ram, cores: cores, load: load, normalizedLoad: normalizedLoad,
+                ramUsed: ramUsed, ramTotal: ramTotal, collectionStatus: collectionStatus,
+                collectionFailed: collectionFailed, cpuStatus: cpuStatus, ramStatus: ramStatus,
+                loadStatus: loadStatus, status: status, pressure: pressure
+            };
+        });
+
+        servers.sort(function (left, right)
+        {
+            const severity = rank(left.status) - rank(right.status);
+            return severity !== 0 ? severity : right.pressure - left.pressure;
+        });
+
+        const counts = { CRITICAL: 0, WARNING: 0, HEALTHY: 0, UNKNOWN: 0 };
+        servers.forEach(function (server) { counts[server.status]++; });
+        const summary = '<div class="row g-2 mb-3 dashboard-server-health-summary">' +
+            [
+                ["Total", servers.length, "secondary"], ["Healthy", counts.HEALTHY, "success"],
+                ["Warning", counts.WARNING, "warning"], ["Critical", counts.CRITICAL, "danger"],
+                ["Unknown", counts.UNKNOWN, "secondary"]
+            ].map(function (item)
+            {
+                return '<div class="col-6 col-md"><div class="border rounded p-2 h-100">' +
+                    '<div class="small text-muted">' + escapeHtml(item[0]) + '</div>' +
+                    '<div class="fs-5 fw-semibold text-' + item[2] + '">' + item[1] + '</div></div></div>';
+            }).join("") + '</div>';
+
+        const cards = servers.map(function (server)
+        {
+            const serverTone = tone(server.status);
+            const metrics = [
+                { label: "CPU", value: server.cpu, status: server.cpuStatus },
+                { label: "RAM", value: server.ram, status: server.ramStatus }
+            ].map(function (metric)
+            {
+                const metricTone = tone(metric.status);
+                const width = metric.value === null ? 0 : Math.max(0, Math.min(100, metric.value));
+                return '<div class="col-6"><div class="small text-muted">' + metric.label + '</div>' +
+                    '<div class="fw-semibold text-' + metricTone + '">' + escapeHtml(displayNumber(metric.value, "%")) + '</div>' +
+                    '<div class="progress mt-1" style="height:6px" role="progressbar" aria-label="' + metric.label +
+                    ' usage" aria-valuenow="' + width + '" aria-valuemin="0" aria-valuemax="100">' +
+                    '<div class="progress-bar bg-' + metricTone + '" style="width:' + width + '%"></div></div></div>';
+            }).join("");
+
+            const loadLabel = server.load === null ? "N/A"
+                : displayNumber(server.load, "") + (server.cores ? " (÷ " + server.cores + " cores)" : "");
+            const memoryDetail = server.ramUsed !== null && server.ramTotal !== null
+                ? '<div class="small text-muted mt-2">' + escapeHtml(displayNumber(server.ramUsed, "") +
+                    " / " + displayNumber(server.ramTotal, "") + " MB") + '</div>' : "";
+            const collectionMessage = server.collectionFailed
+                ? '<div class="small text-secondary mt-2"><i class="bi bi-exclamation-circle me-1"></i>Collection: ' +
+                    escapeHtml(server.collectionStatus) + '</div>' : "";
+            const statusLabel = server.status === "HEALTHY" ? "Healthy" : server.status === "WARNING" ? "Warning"
+                : server.status === "CRITICAL" ? "Critical" : "Unknown";
+
+            return '<div class="col-12 col-md-6 col-xl-4"><article class="border border-start border-4 border-' +
+                serverTone + ' rounded p-3 h-100 dashboard-server-health-card">' +
+                '<div class="d-flex align-items-start gap-2 mb-3"><i class="bi bi-hdd-stack fs-5 text-' + serverTone +
+                '"></i><div class="flex-grow-1 min-w-0"><div class="fw-semibold text-break">' +
+                escapeHtml(server.hostname) + '</div><div class="small text-muted">Load (1m): ' +
+                escapeHtml(loadLabel) + '</div></div><span class="badge text-bg-' + serverTone + '">' +
+                statusLabel + '</span></div><div class="row g-3">' + metrics + '</div>' +
+                memoryDetail + collectionMessage + '</article></div>';
+        }).join("");
+
+        return summary + '<div class="row g-3 dashboard-server-health-list">' + cards + '</div>';
+    }
+
+
     /*
      * ------------------------------------------------------------
      * WIDGET RENDERING
@@ -1718,6 +1871,11 @@
 		{
 		    widgetContentHtml = renderTextWidget(result, widget);
 		}
+
+        else if (widgetType === "SERVER_HEALTH")
+        {
+            widgetContentHtml = renderServerHealthWidget(result, widget);
+        }
 
         /*
          * TABLE
