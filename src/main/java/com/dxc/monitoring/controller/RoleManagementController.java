@@ -89,7 +89,8 @@ public class RoleManagementController {
         Role role = findRole(id);
         if ("ADMIN".equals(role.getName())) {
             flash.addFlashAttribute("errorMessage", "The built-in ADMIN role cannot be deleted.");
-        } else if (userRepository.findAll().stream().anyMatch(user -> user.getRoles().stream().anyMatch(assignedRole -> id.equals(assignedRole.getId())))\n                || userApplicationRoleRepository.findAll().stream().anyMatch(assignment -> id.equals(assignment.getRole().getId()))) {
+        } else if (userRepository.findAll().stream().anyMatch(user -> user.getRoles().stream().anyMatch(assignedRole -> id.equals(assignedRole.getId())))
+                || userApplicationRoleRepository.findAll().stream().anyMatch(assignment -> id.equals(assignment.getRole().getId()))) {
             flash.addFlashAttribute("errorMessage", "This role is assigned to one or more users. Remove those assignments before deleting it.");
         } else {
             roleRepository.delete(role);
