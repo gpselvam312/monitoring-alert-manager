@@ -16,8 +16,24 @@ import com.dxc.monitoring.entity.DashboardTab;
 @Repository
 public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long>
 {
-    @EntityGraph(attributePaths = { "environment" })
+    @EntityGraph(attributePaths = { "application", "environment" })
     List<DashboardTab> findAllByEnabledTrueOrderBySortOrderAsc();
+
+    @EntityGraph(attributePaths = { "application", "environment" })
+    List<DashboardTab> findAllByApplication_IdAndEnvironment_IdAndEnabledTrueOrderBySortOrderAsc(
+            Long applicationId, Long environmentId);
+
+    @Query("""
+            SELECT DISTINCT t.environment
+            FROM DashboardTab t
+            WHERE t.application.id = :applicationId
+              AND t.enabled = true
+              AND t.environment IS NOT NULL
+              AND t.environment.enabled = true
+            ORDER BY t.environment.name
+            """)
+    List<com.dxc.monitoring.entity.Environment> findDistinctEnabledEnvironmentsByApplicationId(
+            @Param("applicationId") Long applicationId);
 
     List<DashboardTab> findAllByOrderBySortOrderAsc();
 
@@ -27,7 +43,7 @@ public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long
 
     boolean existsByNameIgnoreCase(String name);
 
-    @EntityGraph(attributePaths = { "environment" })
+    @EntityGraph(attributePaths = { "application", "environment" })
     @Query("""
             SELECT t
             FROM DashboardTab t
