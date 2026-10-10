@@ -297,7 +297,10 @@ public class DashboardService
 
     private boolean isEnvironmentCompatible(DashboardWidget widget, MonitoringJob job)
     {
-        return widget.getTab().getEnvironment() != null
+        return widget.getTab().getApplication() != null
+                && job.getApplication() != null
+                && widget.getTab().getApplication().getId().equals(job.getApplication().getId())
+                && widget.getTab().getEnvironment() != null
                 && job.getEnvironment() != null
                 && widget.getTab().getEnvironment().getId().equals(job.getEnvironment().getId());
     }
