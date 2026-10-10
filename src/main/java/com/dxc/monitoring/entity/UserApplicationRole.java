@@ -1,7 +1,5 @@
 package com.dxc.monitoring.entity;
 
-import java.time.OffsetDateTime;
-
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -38,5 +36,4 @@ public class UserApplicationRole {
     public void setApplication(Application application) { this.application = application; if (id == null) id = new UserApplicationRoleId(); if (application != null) id.setApplicationId(application.getId()); }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
-    public OffsetDateTime getCreatedAt() { return null; }
 }
