@@ -3,64 +3,29 @@
 <head th:replace="~{fragments/head :: head('Roles')}"></head>
 <body>
 <div class="app-shell">
-    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    <main class="app-main">
-        <div th:replace="~{fragments/header :: header('Roles')}"></div>
-        <div class="app-content">
-            <div class="page-header">
-                <div class="page-header-left">
-                    <div class="page-header-icon"><i class="bi bi-shield-lock"></i></div>
-                    <div><h1 class="page-title">Roles</h1><p class="page-subtitle">Manage application roles and their permissions</p></div>
-                </div>
-                <div class="page-header-actions">
-                    <a th:href="@{/administration/roles/new}" class="btn btn-primary d-inline-flex align-items-center gap-2"><i class="bi bi-plus-lg"></i><span>Add Role</span></a>
-                </div>
-            </div>
-            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
-                <span th:text="${successMessage}">Saved</span><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
-                <span th:text="${errorMessage}">Unable to complete the action</span><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <div class="app-card">
-                <div class="app-card-header">
-                    <div><h2 class="app-card-title">Role Catalogue</h2><p class="app-card-subtitle">Application roles are assigned separately for each application. Platform Administrator is a separate global privilege.</p></div>
-                    <i class="bi bi-shield-check app-card-header-icon"></i>
-                </div>
-                <div class="app-card-body p-0">
-                    <div th:if="${#lists.isEmpty(roles)}" class="empty-state">
-                        <div class="empty-state-icon"><i class="bi bi-shield-lock"></i></div><h3 class="empty-state-title">No Roles Found</h3><p class="empty-state-text">Create a role to define application permissions.</p>
-                        <a th:href="@{/administration/roles/new}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Role</a>
-                    </div>
-                    <div th:unless="${#lists.isEmpty(roles)}" class="table-responsive">
-                        <table class="table app-table align-middle mb-0">
-                            <thead><tr><th>Role</th><th>Description</th><th>Permissions</th><th>Scope</th><th class="text-end table-actions-column">Actions</th></tr></thead>
-                            <tbody>
-                                <tr th:each="role : ${roles}">
-                                    <td><span class="table-primary-text" th:text="${role.name}">VIEWER</span></td>
-                                    <td><span th:if="${role.description != null and !role.description.isBlank()}" class="table-secondary-text" th:text="${role.description}">Role description</span><span th:unless="${role.description != null and !role.description.isBlank()}" class="text-muted">—</span></td>
-                                    <td><div th:if="${!#sets.isEmpty(role.permissions)}" class="d-flex flex-wrap gap-1"><span th:each="permission : ${role.permissions}" class="status-badge status-info" th:text="${permission.name}" th:title="${permission.description}">MONITORING_VIEW</span></div><span th:if="${#sets.isEmpty(role.permissions)}" class="text-muted">No permissions assigned</span></td>
-                                    <td><span th:if="${role.name == 'ADMIN'}" class="status-badge status-warning">Protected global role</span><span th:unless="${role.name == 'ADMIN'}" class="status-badge status-healthy">Application role</span></td>
-                                    <td class="text-end table-actions-column">
-                                        <div class="table-actions table-actions-text">
-                                            <a th:href="@{/administration/roles/{id}/edit(id=${role.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i><span>Edit</span></a>
-                                            <form th:if="${role.name != 'ADMIN'}" method="post" th:action="@{/administration/roles/{id}/delete(id=${role.id})}" onsubmit="return confirm('Delete this role? This cannot be undone.');">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i><span>Delete</span></button>
-                                            </form>
-                                            <span th:if="${role.name == 'ADMIN'}" class="text-muted small">Protected</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <p class="form-text mt-3">The built-in ADMIN role is protected. A role assigned to a user cannot be deleted until those assignments are removed.</p>
-        </div>
-    </main>
+<div th:replace="~{fragments/sidebar :: sidebar}"></div><div class="sidebar-overlay" id="sidebarOverlay"></div>
+<main class="app-main"><div th:replace="~{fragments/header :: header('Roles')}"></div><div class="app-content">
+<div class="page-header">
+<div class="page-header-left"><div class="page-header-icon"><i class="bi bi-shield-lock"></i></div><div><h1 class="page-title">Roles</h1><p class="page-subtitle">Manage application roles and their descriptions</p></div></div>
+<div class="page-header-actions"><a th:href="@{/administration/roles/new}" class="btn btn-primary d-inline-flex align-items-center gap-2"><i class="bi bi-plus-lg"></i><span>Add Role</span></a></div>
 </div>
+<div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}">Saved</div><div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">Unable to complete the action</div>
+<div class="app-card"><div class="app-card-header"><div><h2 class="app-card-title">Role Catalogue</h2><p class="app-card-subtitle">Application roles are assigned separately for each application. The built-in ADMIN role is protected.</p></div><i class="bi bi-shield-check app-card-header-icon"></i></div>
+<div class="app-card-body p-0">
+<div th:if="${#lists.isEmpty(roles)}" class="empty-state"><div class="empty-state-icon"><i class="bi bi-shield-lock"></i></div><h3 class="empty-state-title">No Roles Found</h3><p class="empty-state-text">Create a role to configure application access.</p><a th:href="@{/administration/roles/new}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Role</a></div>
+<div th:unless="${#lists.isEmpty(roles)}" class="table-responsive"><table class="table app-table align-middle mb-0">
+<thead><tr><th>Role</th><th>Description</th><th>Permissions</th><th>Scope</th><th class="text-end table-actions-column">Actions</th></tr></thead><tbody>
+<tr th:each="role : ${roles}">
+<td><span class="table-primary-text" th:text="${role.name}">VIEWER</span></td>
+<td><span th:if="${role.description != null and !role.description.isBlank()}" class="table-secondary-text" th:text="${role.description}">Description</span><span th:unless="${role.description != null and !role.description.isBlank()}" class="text-muted">—</span></td>
+<td><div th:if="${!#sets.isEmpty(role.permissions)}" class="d-flex flex-wrap gap-1"><span th:each="permission : ${role.permissions}" class="status-badge status-info" th:text="${permission.name}" th:title="${permission.description}">MONITORING_VIEW</span></div><span th:if="${#sets.isEmpty(role.permissions)}" class="text-muted">No permissions assigned</span></td>
+<td><span th:if="${role.name == 'ADMIN'}" class="status-badge status-warning">Protected global role</span><span th:unless="${role.name == 'ADMIN'}" class="status-badge status-healthy">Application role</span></td>
+<td class="text-end table-actions-column"><div class="table-actions table-actions-text">
+<a th:href="@{/administration/roles/{id}/edit(id=${role.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i><span>Edit</span></a>
+<form th:if="${role.name != 'ADMIN'}" method="post" th:action="@{/administration/roles/{id}/delete(id=${role.id})}" onsubmit="return confirm('Delete this role? This cannot be undone.');"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i><span>Delete</span></button></form>
+<span th:if="${role.name == 'ADMIN'}" class="text-muted small">Protected</span>
+</div></td></tr></tbody></table></div></div></div>
+<p class="form-text mt-3">A role assigned to a user cannot be deleted until those assignments are removed. Permission mappings are preserved when a role is edited.</p>
+</div></main></div>
 <div th:replace="~{fragments/footer :: footer}"></div><div th:replace="~{fragments/scripts :: scripts}"></div>
-</body>
-</html>
+</body></html>
