@@ -1304,6 +1304,7 @@
 							    <option value="TABLE">Table</option>
 							    <option value="CHART">Chart</option>
 							    <option value="TEXT">Text / Info</option>
+							    <option value="SYSTEM_METRICS">System Metrics</option>
 							
 							</select>
 							
@@ -1457,7 +1458,7 @@
                                 <div class="form-text">
                                     Optional JSON: tables use rowPath, visibleFields, labels, order and formats;
                                     charts use rowPath, categoryField, valueField and optional seriesField;
-                                    STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate.
+                                    STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields, labels, formats and visibleFields.
                                     For date-filtered API jobs add "dateRange":{"enabled":true} and use {{startDate}}/{{endDate}}
                                     placeholders in the API URL or request body. Leave as {} to infer table fields automatically.
                                 </div>
