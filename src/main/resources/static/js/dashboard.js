@@ -1844,18 +1844,13 @@
 
 
         const isSystemMetrics = widgetType === "SYSTEM_METRICS";
-        let updatedHtml = "";
         let headerUpdatedHtml = "";
         if (updated)
         {
-            if (isSystemMetrics)
-            {
-                headerUpdatedHtml = '<div class="dashboard-widget-updated dashboard-widget-collected"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>Last collection: ' + escapeHtml(updated) + '</div>';
-            }
-            else
-            {
-                updatedHtml = '<div class="dashboard-widget-updated">Updated ' + escapeHtml(updated) + '</div>';
-            }
+            const timestampLabel = isSystemMetrics ? "Last collection: " : "Updated: ";
+            headerUpdatedHtml = '<span class="dashboard-widget-updated dashboard-widget-collected" title="' +
+                escapeHtml(timestampLabel + updated) + '"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' +
+                escapeHtml(updated) + '</span>';
         }
 
 
@@ -2043,7 +2038,7 @@
                             '</div>' +
 
 
-                            '<div class="min-w-0">' +
+                            '<div class="dashboard-widget-title-line min-w-0">' +
 
                                 '<h5 class="dashboard-widget-title">' +
 
@@ -2054,22 +2049,14 @@
 
                                 '</h5>' +
 
-                                headerUpdatedHtml +
-
-
                                 (
                                     widget.description
-
                                         ? (
-                                            '<div class="dashboard-widget-description">' +
-
-                                                escapeHtml(
-                                                    widget.description
-                                                ) +
-
-                                            '</div>'
+                                            '<span class="dashboard-widget-description" title="' +
+                                                escapeHtml(widget.description) + '">' +
+                                                escapeHtml(widget.description) +
+                                            '</span>'
                                         )
-
                                         : ""
                                 ) +
 
@@ -2079,6 +2066,8 @@
 
 
                         '<div class="dashboard-widget-actions">' +
+
+                            headerUpdatedHtml +
 
 
                             '<span class="dashboard-status ' +
@@ -2117,8 +2106,6 @@
                             widgetContentHtml +
 
                         '</div>' +
-
-                        updatedHtml +
 
                     '</div>' +
 
