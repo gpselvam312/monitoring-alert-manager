@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,4 +18,8 @@ public interface UserApplicationRoleRepository extends JpaRepository<UserApplica
     Optional<UserApplicationRole> findByUser_IdAndApplication_Id(Long userId, Long applicationId);
 
     void deleteByUser_IdAndApplication_Id(Long userId, Long applicationId);
+
+    @Modifying
+    @Query("delete from UserApplicationRole assignment where assignment.user.id = :userId")
+    void deleteAllAssignmentsForUser(@Param("userId") Long userId);
 }
