@@ -7,6 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -173,6 +174,7 @@ public class ApplicationController
 
     @PostMapping("/save")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Transactional
     public String save(@ModelAttribute("appName") Application application)
     {
         if (application.getId() != null)
