@@ -8,6 +8,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/administration/users")
@@ -42,6 +45,7 @@ public class UserController
         model.addAttribute("roles", userService.findAllRoles());
         model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
         model.addAttribute("selectedApplicationIds", java.util.List.of());
+        model.addAttribute("roleAssignments", Map.of());
         model.addAttribute("pageTitle", "Add User");
         model.addAttribute("currentPage", "users");
 
@@ -50,9 +54,10 @@ public class UserController
 
     @PostMapping("/save")
     public String saveUser(@ModelAttribute("user") User user, @RequestParam("password") String password,
-            @RequestParam("roleId") Long roleId, @RequestParam(name = "applicationIds", required = false) java.util.List<Long> applicationIds)
+            @RequestParam(name = "applicationIds", required = false) List<Long> applicationIds,
+            @RequestParam Map<String, String> allParams)
     {
-        userService.create(user, password, roleId, applicationIds);
+        userService.create(user, password, parseRoleAssignments(applicationIds, allParams));
 
         return "redirect:/administration/users";
     }
@@ -65,7 +70,9 @@ public class UserController
         model.addAttribute("user", user);
         model.addAttribute("roles", userService.findAllRoles());
         model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
-        model.addAttribute("selectedApplicationIds", user.getApplications().stream().map(Application::getId).toList());
+        Map<Long, Long> roleAssignments = userService.findRoleAssignments(id);
+        model.addAttribute("roleAssignments", roleAssignments);
+        model.addAttribute("selectedApplicationIds", roleAssignments.keySet());
         model.addAttribute("pageTitle", "Edit User");
         model.addAttribute("currentPage", "users");
 
@@ -74,12 +81,31 @@ public class UserController
 
     @PostMapping("/{id}/update")
     public String updateUser(@PathVariable Long id, @ModelAttribute("user") User user,
-            @RequestParam("password") String password, @RequestParam("roleId") Long roleId,
-            @RequestParam(name = "applicationIds", required = false) java.util.List<Long> applicationIds)
+            @RequestParam("password") String password,
+            @RequestParam(name = "applicationIds", required = false) List<Long> applicationIds,
+            @RequestParam Map<String, String> allParams)
     {
-        userService.update(id, user.getFullName(), user.getEmail(), user.isEnabled(), password, roleId, applicationIds);
+        userService.update(id, user.getFullName(), user.getEmail(), user.isEnabled(), password,
+                parseRoleAssignments(applicationIds, allParams));
 
         return "redirect:/administration/users";
+    }
+
+    private Map<Long, Long> parseRoleAssignments(List<Long> applicationIds, Map<String, String> params) {
+        Map<Long, Long> assignments = new HashMap<>();
+        if (applicationIds == null) return assignments;
+        for (Long applicationId : applicationIds.stream().distinct().toList()) {
+            String roleValue = params.get("role_" + applicationId);
+            if (roleValue == null || roleValue.isBlank()) {
+                throw new IllegalArgumentException("Select a role for every assigned application.");
+            }
+            try {
+                assignments.put(applicationId, Long.parseLong(roleValue));
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Invalid role selected for application " + applicationId + ".");
+            }
+        }
+        return assignments;
     }
 
     @PostMapping("/{id}/toggle")
