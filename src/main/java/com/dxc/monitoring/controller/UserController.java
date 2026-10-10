@@ -97,6 +97,7 @@ public class UserController {
         model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
         model.addAttribute("selectedApplicationIds", List.of());
         model.addAttribute("roleAssignments", Map.of());
+        model.addAttribute("primaryApplicationId", null);
         model.addAttribute("platformAdmin", false);
         model.addAttribute("pageTitle", "Add User");
         model.addAttribute("currentPage", "users");
@@ -106,9 +107,10 @@ public class UserController {
     @PostMapping("/save")
     public String saveUser(@ModelAttribute("user") User user, @RequestParam("password") String password,
             @RequestParam(name = "applicationIds", required = false) List<Long> applicationIds,
+            @RequestParam(name = "primaryApplicationId", required = false) Long primaryApplicationId,
             @RequestParam Map<String, String> allParams,
             @RequestParam(defaultValue = "false") boolean platformAdmin) {
-        userService.create(user, password, parseRoleAssignments(applicationIds, allParams), platformAdmin);
+        userService.create(user, password, parseRoleAssignments(applicationIds, allParams), primaryApplicationId, platformAdmin);
         return "redirect:/administration/users";
     }
 
@@ -121,6 +123,7 @@ public class UserController {
         model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
         Map<Long, Long> roleAssignments = userService.findRoleAssignments(id);
         model.addAttribute("roleAssignments", roleAssignments);
+        model.addAttribute("primaryApplicationId", userService.findPrimaryApplicationId(id));
         model.addAttribute("selectedApplicationIds", roleAssignments.keySet());
         model.addAttribute("pageTitle", "Edit User");
         model.addAttribute("currentPage", "users");
@@ -131,10 +134,11 @@ public class UserController {
     public String updateUser(@PathVariable Long id, @ModelAttribute("user") User user,
             @RequestParam("password") String password,
             @RequestParam(name = "applicationIds", required = false) List<Long> applicationIds,
+            @RequestParam(name = "primaryApplicationId", required = false) Long primaryApplicationId,
             @RequestParam Map<String, String> allParams,
             @RequestParam(defaultValue = "false") boolean platformAdmin) {
         userService.update(id, user.getFullName(), user.getEmail(), user.isEnabled(), password,
-                parseRoleAssignments(applicationIds, allParams), platformAdmin);
+                parseRoleAssignments(applicationIds, allParams), primaryApplicationId, platformAdmin);
         return "redirect:/administration/users";
     }
 
