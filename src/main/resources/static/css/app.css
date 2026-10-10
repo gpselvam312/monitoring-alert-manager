@@ -3732,19 +3732,23 @@ textarea.form-control {
 
 /* System Metrics: theme-aware cards and responsive status summaries */
 .server-health-summary { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.server-health-summary-item { background: var(--card-bg); color: var(--text-primary); transition: border-color .15s ease, transform .15s ease; }
-.server-health-summary-total { width: 100%; font: inherit; text-align: left; cursor: pointer; }
-.server-health-summary-total:hover, .server-health-summary-total:focus-visible { border-color: var(--theme-primary); }
-.server-health-summary-total:focus-visible { outline: 2px solid var(--theme-primary); outline-offset: 2px; }
+.server-health-summary-item { width: 100%; min-width: 0; font: inherit; text-align: left; cursor: pointer; background: var(--card-bg); color: var(--text-primary); transition: border-color .15s ease, background-color .15s ease, transform .15s ease; }
+.server-health-summary-item:hover, .server-health-summary-item:focus-visible { border-color: var(--theme-primary); }
+.server-health-summary-item:focus-visible { outline: 2px solid var(--theme-primary); outline-offset: 2px; }
+.server-health-summary-item.is-active { box-shadow: inset 0 0 0 1px var(--theme-primary); }
 .server-health-summary-item > span { display: inline-flex; align-items: center; gap: .35rem; }
 .server-health-summary-item > span i { color: var(--text-secondary); }
+.server-health-summary-healthy { border: 1px solid var(--success); }
 .server-health-summary-warning { border-color: color-mix(in srgb, var(--warning) 40%, var(--border-color)); }
 .server-health-summary-critical { border-color: color-mix(in srgb, var(--danger) 40%, var(--border-color)); }
-.server-health-summary-unknown { border-style: dashed; }
+.server-health-summary-unknown { border: 1px solid var(--text-secondary); }
 .server-health-unknown { color: var(--text-secondary); }
-.server-health-card { box-shadow: 0 1px 3px color-mix(in srgb, var(--text-primary) 5%, transparent); transition: transform .15s ease, box-shadow .15s ease; }
+.server-health-card { border-width: 1px; border-left-width: 1px; box-shadow: 0 1px 3px color-mix(in srgb, var(--text-primary) 5%, transparent); transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease; }
+.server-health-card-healthy { border-color: var(--success); }
+.server-health-card-warning { border-color: var(--warning); }
+.server-health-card-critical { border-color: var(--danger); }
+.server-health-card-unknown { border-color: var(--text-secondary); }
 .server-health-card:hover { transform: translateY(-1px); box-shadow: 0 5px 16px color-mix(in srgb, var(--text-primary) 9%, transparent); }
-.server-health-card-unknown { border-left-color: var(--text-secondary); }
 .server-health-card-header { align-items: flex-start; }
 .server-health-host { display: flex; align-items: center; gap: .5rem; min-width: 0; }
 .server-health-host > i { color: var(--text-secondary); flex: 0 0 auto; }
