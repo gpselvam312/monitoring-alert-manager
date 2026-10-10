@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.service.dashboard.DashboardService;
 import com.dxc.monitoring.service.dashboard.DashboardWidgetResponse;
 import com.dxc.monitoring.entity.DashboardWidget;
@@ -26,14 +27,15 @@ import com.dxc.monitoring.service.dashboard.DashboardTabResponse;
 public class DashboardController
 {
     private final DashboardService dashboardService;
+    private final DashboardAccessService dashboardAccessService;
     private final MonitoringExecutionManager monitoringExecutionManager;
     private final MonitoringJobService monitoringJobService;
 
-    public DashboardController(DashboardService dashboardService,
-            MonitoringExecutionManager monitoringExecutionManager,
-            MonitoringJobService monitoringJobService)
+    public DashboardController(DashboardService dashboardService, DashboardAccessService dashboardAccessService,
+            MonitoringExecutionManager monitoringExecutionManager, MonitoringJobService monitoringJobService)
     {
         this.dashboardService = dashboardService;
+        this.dashboardAccessService = dashboardAccessService;
         this.monitoringExecutionManager = monitoringExecutionManager;
         this.monitoringJobService = monitoringJobService;
     }
@@ -52,10 +54,31 @@ public class DashboardController
     }
 
     @ResponseBody
-    @GetMapping("/api/dashboard")
-    public ResponseEntity<List<DashboardTabResponse>> getDashboard()
+    @GetMapping("/api/dashboard/applications")
+    public ResponseEntity<List<Map<String, Object>>> getApplications()
     {
-        return ResponseEntity.ok(dashboardService.getDashboard());
+        List<Map<String, Object>> items = dashboardAccessService.getAccessibleApplications().stream()
+                .map(app -> Map.<String, Object>of("id", app.getId(), "name", app.getName())).toList();
+        return ResponseEntity.ok(items);
+    }
+
+    @ResponseBody
+    @GetMapping("/api/dashboard/environments")
+    public ResponseEntity<List<Map<String, Object>>> getEnvironments(
+            @org.springframework.web.bind.annotation.RequestParam Long applicationId)
+    {
+        List<Map<String, Object>> items = dashboardAccessService.getEnvironmentsForApplication(applicationId).stream()
+                .map(env -> Map.<String, Object>of("id", env.getId(), "name", env.getName())).toList();
+        return ResponseEntity.ok(items);
+    }
+
+    @ResponseBody
+    @GetMapping("/api/dashboard")
+    public ResponseEntity<List<DashboardTabResponse>> getDashboard(
+            @org.springframework.web.bind.annotation.RequestParam Long applicationId,
+            @org.springframework.web.bind.annotation.RequestParam Long environmentId)
+    {
+        return ResponseEntity.ok(dashboardService.getDashboard(applicationId, environmentId));
     }
 
     @ResponseBody
@@ -82,6 +105,8 @@ public class DashboardController
         MonitoringJob job = monitoringJobService.findById(widget.getDataSourceId());
 
         if (widget.getTab().getEnvironment() == null || !widget.getTab().getEnvironment().isEnabled()
+                || widget.getTab().getApplication() == null || job.getApplication() == null
+                || !widget.getTab().getApplication().getId().equals(job.getApplication().getId())
                 || job.getEnvironment() == null
                 || !widget.getTab().getEnvironment().getId().equals(job.getEnvironment().getId()))
         {

@@ -32,13 +32,14 @@ public class DashboardService
     private final MonitoringResultRepository monitoringResultRepository;
     private final MonitoringJobRepository monitoringJobRepository;
     private final ObjectMapper objectMapper;
+    private final DashboardAccessService dashboardAccessService;
 
     public DashboardService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
             MonitoringExecutionRepository monitoringExecutionRepository,
             MonitoringResultRepository monitoringResultRepository,
             MonitoringJobRepository monitoringJobRepository,
-            ObjectMapper objectMapper)
+            ObjectMapper objectMapper, DashboardAccessService dashboardAccessService)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
@@ -46,16 +47,19 @@ public class DashboardService
         this.monitoringResultRepository = monitoringResultRepository;
         this.monitoringJobRepository = monitoringJobRepository;
         this.objectMapper = objectMapper;
+        this.dashboardAccessService = dashboardAccessService;
     }
 
     @Transactional(readOnly = true)
-    public List<DashboardTabResponse> getDashboard()
+    public List<DashboardTabResponse> getDashboard(Long applicationId, Long environmentId)
     {
-        List<DashboardTab> tabs = dashboardTabRepository.findAllByEnabledTrueOrderBySortOrderAsc().stream()
-                .filter(tab -> tab.getEnvironment() != null && tab.getEnvironment().isEnabled())
-                .toList();
-        List<DashboardWidget> widgets =
-            dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc();
+        dashboardAccessService.assertCanAccessEnvironment(applicationId, environmentId);
+        List<DashboardTab> tabs = dashboardTabRepository
+                .findAllByApplication_IdAndEnvironment_IdAndEnabledTrueOrderBySortOrderAsc(applicationId, environmentId)
+                .stream().filter(tab -> tab.getEnvironment() != null && tab.getEnvironment().isEnabled()).toList();
+        java.util.Set<Long> tabIds = tabs.stream().map(DashboardTab::getId).collect(java.util.stream.Collectors.toSet());
+        List<DashboardWidget> widgets = dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc()
+                .stream().filter(widget -> widget.getTab() != null && tabIds.contains(widget.getTab().getId())).toList();
 
         // Keep legacy result-backed widgets working, but resolve them to the owning job
         // so the dashboard always displays the latest execution rather than a frozen result.
@@ -544,7 +548,9 @@ public class DashboardService
     @Transactional(readOnly = true)
     public DashboardWidget getWidget(Long widgetId)
     {
-        return dashboardWidgetRepository.findById(widgetId)
+        DashboardWidget widget = dashboardWidgetRepository.findById(widgetId)
                 .orElseThrow(() -> new IllegalArgumentException("Dashboard widget not found: " + widgetId));
+        dashboardAccessService.assertCanAccessTab(widget.getTab());
+        return widget;
     }
 }
