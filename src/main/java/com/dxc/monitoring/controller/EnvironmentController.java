@@ -108,12 +108,19 @@ public class EnvironmentController
     public String save(@ModelAttribute Environment environment, @RequestParam(required = false) Long applicationId,
             RedirectAttributes redirectAttributes)
     {
+        if (environment.getName() == null || environment.getName().isBlank())
+            throw new IllegalArgumentException("Environment name is required.");
+        environment.setName(environment.getName().trim());
         if (environment.getId() != null)
         {
             Environment existing = environmentRepository.findById(environment.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Environment not found: " + environment.getId()));
             accessService.assertCanAccessApplication(existing.getApplication().getId(), "SYSTEM_CONFIG");
 
+            if (environmentRepository.findByApplicationIdAndNameIgnoreCase(
+                    existing.getApplication().getId(), environment.getName())
+                    .filter(other -> !other.getId().equals(existing.getId())).isPresent())
+                throw new IllegalArgumentException("An environment with this name already exists for the application.");
             existing.setName(environment.getName());
             existing.setDescription(environment.getDescription());
             existing.setEnabled(environment.isEnabled());
@@ -128,6 +135,8 @@ public class EnvironmentController
             Application application = applicationRepository.findById(applicationId)
                     .filter(Application::isEnabled)
                     .orElseThrow(() -> new IllegalArgumentException("Application not found or disabled: " + applicationId));
+            if (environmentRepository.existsByApplicationIdAndNameIgnoreCase(applicationId, environment.getName()))
+                throw new IllegalArgumentException("An environment with this name already exists for the application.");
             environment.setApplication(application);
             environmentRepository.save(environment);
         }
