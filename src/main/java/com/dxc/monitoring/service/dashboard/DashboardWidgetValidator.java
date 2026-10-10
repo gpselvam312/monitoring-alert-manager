@@ -7,7 +7,7 @@ import jakarta.validation.ConstraintValidatorContext;
 
 public class DashboardWidgetValidator implements ConstraintValidator<ValidDashboardWidget, DashboardWidgetForm>
 {
-    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "CHART", "TEXT");
+    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "CHART", "TEXT", "SYSTEM_METRICS");
     private static final Set<String> CHART_TYPES = Set.of("LINE", "BAR", "PIE", "DONUT");
     private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB");
 
