@@ -31,6 +31,7 @@ import com.dxc.monitoring.entity.Machine;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.UserRepository;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 @Service
 public class StreamingJobService
@@ -41,6 +42,7 @@ public class StreamingJobService
     private final MonitoringJobRepository jobRepository;
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final DashboardAccessService accessService;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
     private final Map<Long, RunContext> activeRuns = new ConcurrentHashMap<>();
     private final Map<Long, Deque<String>> outputBuffers = new ConcurrentHashMap<>();
@@ -58,17 +60,21 @@ public class StreamingJobService
     private String nodeId;
 
     public StreamingJobService(MonitoringJobRepository jobRepository, UserRepository userRepository,
-            JdbcTemplate jdbcTemplate)
+            JdbcTemplate jdbcTemplate, DashboardAccessService accessService)
     {
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.accessService = accessService;
     }
 
     public List<StreamingJobView> listJobs()
     {
-        List<MonitoringJob> jobs = jobRepository.findByExecutionModeOrderByNameAsc(
-                MonitoringJob.ExecutionMode.STREAMING);
+        List<Long> applicationIds = accessService.getAccessibleApplications().stream()
+                .map(com.dxc.monitoring.entity.Application::getId).toList();
+        if (applicationIds.isEmpty()) return List.of();
+        List<MonitoringJob> jobs = jobRepository.findByExecutionModeAndApplication_IdInOrderByNameAsc(
+                MonitoringJob.ExecutionMode.STREAMING, applicationIds);
         List<StreamingJobView> views = new ArrayList<>();
         for (MonitoringJob job : jobs)
         {
@@ -95,6 +101,9 @@ public class StreamingJobService
     {
         MonitoringJob job = jobRepository.findByIdForDetails(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found: " + jobId));
+        if (job.getApplication() == null)
+            throw new org.springframework.security.access.AccessDeniedException("Streaming job is not assigned to an application.");
+        accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_RUN");
         if (!job.isEnabled() || job.getExecutionMode() != MonitoringJob.ExecutionMode.STREAMING)
             throw new IllegalStateException("Only enabled streaming jobs can be started here.");
         if (!job.isManualRunEnabled())
@@ -146,6 +155,11 @@ public class StreamingJobService
 
     public void stop(Long jobId)
     {
+        MonitoringJob job = jobRepository.findByIdForDetails(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found: " + jobId));
+        if (job.getApplication() == null)
+            throw new org.springframework.security.access.AccessDeniedException("Streaming job is not assigned to an application.");
+        accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_RUN");
         ClaimRow claim = readClaim(jobId);
         if (claim == null || !isActiveStatus(claim.status))
             throw new IllegalStateException("The streaming job is not running.");
