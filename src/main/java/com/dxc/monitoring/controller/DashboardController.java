@@ -103,6 +103,9 @@ public class DashboardController
         }
 
         MonitoringJob job = monitoringJobService.findById(widget.getDataSourceId());
+        if (job.getApplication() == null)
+            throw new org.springframework.security.access.AccessDeniedException("The monitoring job is not assigned to an application.");
+        dashboardAccessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_RUN");
 
         if (widget.getTab().getEnvironment() == null || !widget.getTab().getEnvironment().isEnabled()
                 || widget.getTab().getApplication() == null || job.getApplication() == null
