@@ -51,7 +51,7 @@
                                         <span th:if="${#sets.isEmpty(role.permissions)}" class="text-muted">No permissions assigned</span>
                                     </td>
                                     <td>
-                                        <span th:if="${role.name == 'ADMIN'}" class="status-badge status-warning">Global admin role</span>
+                                        <span th:if="${role.name == 'ADMIN'}" class="status-badge status-warning">Global and application role</span>
                                         <span th:unless="${role.name == 'ADMIN'}" class="status-badge status-healthy">Application role</span>
                                     </td>
                                 </tr>
