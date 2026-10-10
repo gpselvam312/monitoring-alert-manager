@@ -17,6 +17,8 @@ public interface UserApplicationRoleRepository extends JpaRepository<UserApplica
 
     Optional<UserApplicationRole> findByUser_IdAndApplication_Id(Long userId, Long applicationId);
 
+    Optional<UserApplicationRole> findFirstByUser_IdAndPrimaryTrue(Long userId);
+
     void deleteByUser_IdAndApplication_Id(Long userId, Long applicationId);
 
     @Modifying
