@@ -64,20 +64,28 @@ public class UserService {
                 .collect(Collectors.toMap(a -> a.getApplication().getId(), a -> a.getRole().getId()));
     }
 
+    @Transactional(readOnly = true)
+    public Long findPrimaryApplicationId(Long userId) {
+        return userApplicationRoleRepository.findFirstByUser_IdAndPrimaryTrue(userId)
+                .map(assignment -> assignment.getApplication().getId())
+                .orElse(null);
+    }
+
     @Transactional
-    public User create(User user, String password, Map<Long, Long> roleAssignments, boolean platformAdmin) {
+    public User create(User user, String password, Map<Long, Long> roleAssignments,
+            Long primaryApplicationId, boolean platformAdmin) {
         user.setPasswordHash(passwordEncoder.encode(password));
         setPlatformAdmin(user, platformAdmin);
         Set<Application> assignedApplications = resolveApplications(roleAssignments);
         user.setApplications(assignedApplications);
         User saved = userRepository.save(user);
-        replaceRoleAssignments(saved, roleAssignments);
+        replaceRoleAssignments(saved, roleAssignments, primaryApplicationId);
         return saved;
     }
 
     @Transactional
     public User update(Long id, String fullName, String email, boolean enabled, String password,
-            Map<Long, Long> roleAssignments, boolean platformAdmin) {
+            Map<Long, Long> roleAssignments, Long primaryApplicationId, boolean platformAdmin) {
         User existing = findById(id);
         existing.setFullName(fullName);
         existing.setEmail(email);
@@ -87,7 +95,7 @@ public class UserService {
         if (password != null && !password.isBlank()) existing.setPasswordHash(passwordEncoder.encode(password));
         existing.setApplications(resolveApplications(roleAssignments));
         User saved = userRepository.save(existing);
-        replaceRoleAssignments(saved, roleAssignments);
+        replaceRoleAssignments(saved, roleAssignments, primaryApplicationId);
         return saved;
     }
 
@@ -122,9 +130,17 @@ public class UserService {
         return new HashSet<>(found);
     }
 
-    private void replaceRoleAssignments(User user, Map<Long, Long> roleAssignments) {
+    private void replaceRoleAssignments(User user, Map<Long, Long> roleAssignments, Long requestedPrimaryApplicationId) {
         userApplicationRoleRepository.deleteAllAssignmentsForUser(user.getId());
         if (roleAssignments == null || roleAssignments.isEmpty()) return;
+
+        Long primaryApplicationId = requestedPrimaryApplicationId;
+        if (primaryApplicationId == null) {
+            primaryApplicationId = roleAssignments.keySet().stream().min(Long::compareTo).orElseThrow();
+        }
+        if (!roleAssignments.containsKey(primaryApplicationId)) {
+            throw new IllegalArgumentException("The primary application must be one of the user's assigned applications.");
+        }
 
         Map<Long, Application> apps = applicationRepository.findAllById(roleAssignments.keySet()).stream()
                 .collect(Collectors.toMap(Application::getId, a -> a));
@@ -136,6 +152,7 @@ public class UserService {
             assignment.setUser(user);
             assignment.setApplication(apps.get(entry.getKey()));
             assignment.setRole(roles.get(entry.getValue()));
+            assignment.setPrimary(entry.getKey().equals(primaryApplicationId));
             userApplicationRoleRepository.save(assignment);
         }
     }
