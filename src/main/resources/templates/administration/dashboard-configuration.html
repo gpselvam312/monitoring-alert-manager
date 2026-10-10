@@ -1007,8 +1007,8 @@
 
 
                         <div class="mb-3">
-                            <label for="dashboardTabEnvironment" class="form-label">
-                                Environment <span class="text-danger">*</span>
+                            <label for="dashboardTabApplication" class="form-label">
+                                Application <span class="text-danger">*</span>
                             </label>
                             <select class="form-select" id="dashboardTabApplication" name="applicationId" required>
                                 <option value="">Select application</option>
@@ -1021,6 +1021,9 @@
 
                         <div class="mb-3">
                             <label for="dashboardTabEnvironment" class="form-label">
+                                Environment <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="dashboardTabEnvironment" name="environmentId" required>
                                 <option value="">Select environment</option>
                                 <option th:each="environment : ${environments}"
                                         th:value="${environment.id}"
