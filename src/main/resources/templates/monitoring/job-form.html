@@ -237,6 +237,7 @@
 
                         <option th:each="environment : ${environments}"
                                 th:value="${environment.id}"
+                                th:attr="data-application-id=${environment.application.id}"
                                 th:text="${environment.name}"
                                 th:selected="${job.environment != null and job.environment.id == environment.id}">
                         </option>
@@ -1088,7 +1089,11 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const form = document.querySelector("form");
+    const applicationSelect = document.getElementById("applicationId");
     const environmentSelect = document.getElementById("environmentId");
+    const allEnvironmentOptions = environmentSelect
+        ? Array.from(environmentSelect.options).filter(option => option.value !== "")
+        : [];
     const machineSelect = document.getElementById("machineId");
     const typeSelect = document.getElementById("type");
     const executionMode = document.getElementById("executionMode");
@@ -1111,6 +1116,18 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     function field(id) { return document.getElementById(id); }
+
+    function filterEnvironments() {
+        if (!applicationSelect || !environmentSelect) return;
+        const applicationId = applicationSelect.value;
+        allEnvironmentOptions.forEach(function (option) {
+            const allowed = applicationId !== "" && option.getAttribute("data-application-id") === applicationId;
+            option.hidden = !allowed;
+            option.disabled = !allowed;
+        });
+        const selected = environmentSelect.selectedOptions[0];
+        if (selected && selected.value && selected.disabled) environmentSelect.value = "";
+    }
     function clearField(element) {
         if (!element) return;
         if (element.type === "checkbox") element.checked = false;
@@ -1211,10 +1228,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
         }
+        if (applicationSelect) applicationSelect.addEventListener("change", function () {
+            environmentSelect.value = "";
+            machineSelect.value = "";
+            filterEnvironments();
+            filterMachines();
+        });
         environmentSelect.addEventListener("change", function () {
             machineSelect.value = "";
             filterMachines();
         });
+        filterEnvironments();
         filterMachines();
     }
 
