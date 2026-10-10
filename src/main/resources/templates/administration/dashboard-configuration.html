@@ -1458,7 +1458,7 @@
                                 <div class="form-text">
                                     Optional JSON: tables use rowPath, visibleFields, labels, order and formats;
                                     charts use rowPath, categoryField, valueField and optional seriesField;
-                                    STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields, labels, formats and visibleFields.
+                                    STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields (logical-to-JSON mappings) and labels; standard metrics use built-in percentage, load and duration formatting.
                                     For date-filtered API jobs add "dateRange":{"enabled":true} and use {{startDate}}/{{endDate}}
                                     placeholders in the API URL or request body. Leave as {} to infer table fields automatically.
                                 </div>
