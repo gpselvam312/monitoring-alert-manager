@@ -7,6 +7,10 @@ import com.dxc.monitoring.repository.RoleRepository;
 import com.dxc.monitoring.repository.UserApplicationRoleRepository;
 import com.dxc.monitoring.repository.UserRepository;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,10 +41,44 @@ public class RoleManagementController {
     }
 
     @GetMapping
-    public String listRoles(Model model) {
-        model.addAttribute("roles", roleRepository.findAll(Sort.by(Sort.Direction.ASC, "name")));
-        model.addAttribute("currentPage", "roles");
+    public String listRoles(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
+            @RequestParam(defaultValue = "asc") String direction, Model model) {
+        populateRoleTable(model, page, size, search, sort, direction);
         return "administration/roles";
+    }
+
+    @GetMapping("/table")
+    public String roleTable(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
+            @RequestParam(defaultValue = "asc") String direction, Model model) {
+        populateRoleTable(model, page, size, search, sort, direction);
+        return "administration/roles :: rolesTable";
+    }
+
+    private void populateRoleTable(Model model, int page, int size, String search, String sort, String direction) {
+        int safeSize = (size == 5 || size == 10 || size == 25) ? size : 5;
+        String query = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        java.util.Comparator<Role> comparator = "description".equals(sort)
+                ? java.util.Comparator.comparing(r -> r.getDescription() == null ? "" : r.getDescription(), String.CASE_INSENSITIVE_ORDER)
+                : java.util.Comparator.comparing(Role::getName, String.CASE_INSENSITIVE_ORDER);
+        if ("desc".equalsIgnoreCase(direction)) comparator = comparator.reversed();
+        java.util.List<Role> filtered = roleRepository.findAll().stream()
+                .filter(role -> query.isBlank()
+                        || role.getName().toLowerCase(java.util.Locale.ROOT).contains(query)
+                        || (role.getDescription() != null && role.getDescription().toLowerCase(java.util.Locale.ROOT).contains(query))
+                        || role.getPermissions().stream().anyMatch(permission -> permission.getName().toLowerCase(java.util.Locale.ROOT).contains(query)))
+                .sorted(comparator).toList();
+        int totalPages = (int) Math.ceil((double) filtered.size() / safeSize);
+        int safePage = Math.max(0, Math.min(page, Math.max(0, totalPages - 1)));
+        int from = Math.min(safePage * safeSize, filtered.size());
+        int to = Math.min(from + safeSize, filtered.size());
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+        Page<Role> rolePage = new PageImpl<>(filtered.subList(from, to), pageable, filtered.size());
+        model.addAttribute("rolePage", rolePage);
+        model.addAttribute("pageSize", safeSize);
+        model.addAttribute("search", search == null ? "" : search.trim());
+        model.addAttribute("currentPage", "roles");
     }
 
     @GetMapping("/new")
