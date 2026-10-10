@@ -29,9 +29,25 @@ public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long
 
     Optional<DashboardTab> findByNameIgnoreCase(String name);
 
+    Optional<DashboardTab> findByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
+            String name, Long applicationId, Long environmentId);
+
+    @EntityGraph(attributePaths = { "environment", "application" })
+    List<DashboardTab> findAllByApplication_IdInOrderBySortOrderAsc(List<Long> applicationIds);
+
     Optional<DashboardTab> findByEnvironment_Id(Long environmentId);
 
     boolean existsByNameIgnoreCase(String name);
+
+    @EntityGraph(attributePaths = { "environment", "application" })
+    @Query("""
+            SELECT t
+            FROM DashboardTab t
+            WHERE t.application.id IN :applicationIds
+              AND LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%'))
+            """)
+    Page<DashboardTab> findAllForApplications(@Param("search") String search,
+            @Param("applicationIds") List<Long> applicationIds, Pageable pageable);
 
     @EntityGraph(attributePaths = { "environment" })
     @Query("""
