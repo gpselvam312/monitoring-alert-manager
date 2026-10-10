@@ -2,6 +2,7 @@ package com.dxc.monitoring.controller;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,7 +18,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.service.dashboard.DashboardService;
 import com.dxc.monitoring.service.dashboard.DashboardWidgetResponse;
+import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.DashboardWidget;
+import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.service.MonitoringExecutionManager;
 import com.dxc.monitoring.service.MonitoringJobService;
@@ -75,6 +78,58 @@ public class DashboardController
         List<Map<String, Object>> items = dashboardAccessService.getEnvironmentsForApplication(applicationId).stream()
                 .map(env -> Map.<String, Object>of("id", env.getId(), "name", env.getName())).toList();
         return ResponseEntity.ok(items);
+    }
+
+    @ResponseBody
+    @GetMapping("/api/dashboard/initial")
+    public ResponseEntity<Map<String, Object>> getInitialDashboard()
+    {
+        List<Application> accessibleApplications = dashboardAccessService.getAccessibleApplications();
+        Long primaryApplicationId = dashboardAccessService.getPrimaryApplicationId();
+
+        List<Map<String, Object>> applicationItems = accessibleApplications.stream()
+                .map(app -> Map.<String, Object>of(
+                        "id", app.getId(),
+                        "name", app.getName(),
+                        "primary", app.getId().equals(primaryApplicationId)))
+                .toList();
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("applications", applicationItems);
+
+        if (accessibleApplications.isEmpty())
+        {
+            payload.put("applicationId", null);
+            payload.put("environments", List.of());
+            payload.put("environmentId", null);
+            payload.put("dashboard", List.of());
+            return ResponseEntity.ok(payload);
+        }
+
+        Application selectedApplication = accessibleApplications.stream()
+                .filter(app -> app.getId().equals(primaryApplicationId))
+                .findFirst()
+                .orElse(accessibleApplications.get(0));
+
+        List<Environment> availableEnvironments =
+                dashboardAccessService.getEnvironmentsForApplication(selectedApplication.getId());
+        List<Map<String, Object>> environmentItems = availableEnvironments.stream()
+                .map(env -> Map.<String, Object>of("id", env.getId(), "name", env.getName()))
+                .toList();
+
+        Environment selectedEnvironment = availableEnvironments.stream()
+                .filter(env -> "PROD".equalsIgnoreCase(env.getName()))
+                .findFirst()
+                .orElse(availableEnvironments.isEmpty() ? null : availableEnvironments.get(0));
+
+        payload.put("applicationId", selectedApplication.getId());
+        payload.put("environments", environmentItems);
+        payload.put("environmentId", selectedEnvironment == null ? null : selectedEnvironment.getId());
+        payload.put("dashboard", selectedEnvironment == null
+                ? List.of()
+                : dashboardService.getDashboard(selectedApplication.getId(), selectedEnvironment.getId()));
+
+        return ResponseEntity.ok(payload);
     }
 
     @ResponseBody
