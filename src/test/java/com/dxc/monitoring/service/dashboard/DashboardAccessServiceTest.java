@@ -70,6 +70,9 @@ class DashboardAccessServiceTest {
         viewerRole.setName("VIEWER");
         viewerRole.setPermissions(Set.of(view));
 
+    }
+
+    private void stubApplicationAccess() {
         UserApplicationRole assignment = new UserApplicationRole();
         assignment.setId(new UserApplicationRoleId(7L, 11L));
         assignment.setUser(user);
@@ -99,6 +102,7 @@ class DashboardAccessServiceTest {
 
     @Test
     void returnsOnlyEnvironmentsOwnedByTheSelectedApplication() {
+        stubApplicationAccess();
         Environment sit = new Environment();
         sit.setId(101L);
         sit.setName("SIT");
@@ -127,6 +131,7 @@ class DashboardAccessServiceTest {
 
     @Test
     void rejectsActionsNotGrantedByTheSelectedApplicationRole() {
+        stubApplicationAccess();
         assertThrows(AccessDeniedException.class,
                 () -> service.assertCanAccessApplication(11L, "MONITORING_CONFIG"));
     }
