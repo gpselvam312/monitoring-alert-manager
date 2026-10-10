@@ -3,6 +3,7 @@ package com.dxc.monitoring.controller;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.ApplicationRepository;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.entity.Application;
 
 import org.springframework.data.domain.Page;
@@ -23,11 +24,14 @@ public class EnvironmentController
 {
     private final EnvironmentRepository environmentRepository;
     private final ApplicationRepository applicationRepository;
+    private final DashboardAccessService accessService;
 
-    public EnvironmentController(EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository)
+    public EnvironmentController(EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository,
+            DashboardAccessService accessService)
     {
         this.environmentRepository = environmentRepository;
         this.applicationRepository = applicationRepository;
+        this.accessService = accessService;
     }
 
     @GetMapping
@@ -36,13 +40,16 @@ public class EnvironmentController
     {
         Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "name"));
 
-        Page<Environment> page = environmentRepository.findAllForList("", pageable);
+        java.util.List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
+                .map(Application::getId).toList();
+        Page<Environment> page = applicationIds.isEmpty() ? Page.empty(pageable)
+                : environmentRepository.findAllForApplications("", applicationIds, pageable);
 
         model.addAttribute("page", page);
         model.addAttribute("pageSize", 5);
         model.addAttribute("search", "");
         model.addAttribute("currentPage", "environments");
-        model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
+        model.addAttribute("applications", accessService.getApplicationsWithPermission("SYSTEM_CONFIG"));
 
         return "administration/environments";
     }
@@ -57,7 +64,10 @@ public class EnvironmentController
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sort));
 
-        Page<Environment> environmentPage = environmentRepository.findAllForList(search.trim(), pageable);
+        java.util.List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
+                .map(Application::getId).toList();
+        Page<Environment> environmentPage = applicationIds.isEmpty() ? Page.empty(pageable)
+                : environmentRepository.findAllForApplications(search.trim(), applicationIds, pageable);
 
         model.addAttribute("page", environmentPage);
         model.addAttribute("pageSize", size);
@@ -84,6 +94,7 @@ public class EnvironmentController
     {
         Environment environment = environmentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Environment not found: " + id));
+        accessService.assertCanAccessApplication(environment.getApplication().getId(), "SYSTEM_CONFIG");
 
         model.addAttribute("environment", environment);
         model.addAttribute("pageTitle", "Edit Environment");
@@ -101,6 +112,7 @@ public class EnvironmentController
         {
             Environment existing = environmentRepository.findById(environment.getId())
                     .orElseThrow(() -> new IllegalArgumentException("Environment not found: " + environment.getId()));
+            accessService.assertCanAccessApplication(existing.getApplication().getId(), "SYSTEM_CONFIG");
 
             existing.setName(environment.getName());
             existing.setDescription(environment.getDescription());
@@ -112,6 +124,7 @@ public class EnvironmentController
         {
             if (applicationId == null)
                 throw new IllegalArgumentException("Select an application for this environment.");
+            accessService.assertCanAccessApplication(applicationId, "SYSTEM_CONFIG");
             Application application = applicationRepository.findById(applicationId)
                     .filter(Application::isEnabled)
                     .orElseThrow(() -> new IllegalArgumentException("Application not found or disabled: " + applicationId));
@@ -131,6 +144,7 @@ public class EnvironmentController
     {
         Environment environment = environmentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Environment not found: " + id));
+        accessService.assertCanAccessApplication(environment.getApplication().getId(), "SYSTEM_CONFIG");
 
         environment.setEnabled(!environment.isEnabled());
 
@@ -145,6 +159,7 @@ public class EnvironmentController
     {
         Environment environment = environmentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Environment not found: " + id));
+        accessService.assertCanAccessApplication(environment.getApplication().getId(), "SYSTEM_CONFIG");
 
         String environmentName = environment.getName();
 
