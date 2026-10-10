@@ -10,7 +10,7 @@
      */
 
     const apiUrl = "/api/dashboard";
-    const initialApiUrl = "/api/dashboard/initial";
+    const applicationsApiUrl = "/api/dashboard/applications";
     const environmentsApiUrl = "/api/dashboard/environments";
 
 
@@ -2833,84 +2833,19 @@
         return apiUrl + '?applicationId=' + encodeURIComponent(applicationFilter.value) + '&environmentId=' + encodeURIComponent(environmentFilter.value);
     }
 
-    async function initializeDashboard()
+    async function loadApplications()
     {
-        clearAutoRefreshTimers();
-        refreshButton.disabled = true;
-
-        try
-        {
-            // Fetch the initial filters and dashboard together to avoid three sequential
-            // browser requests before the first dashboard render.
-            const response = await fetch(initialApiUrl, {
-                headers: { "Accept": "application/json" },
-                cache: "no-store"
-            });
-
-            if (!response.ok)
-            {
-                throw new Error("Unable to initialize dashboard (" + response.status + ")");
-            }
-
-            const initial = await response.json();
-            const applications = Array.isArray(initial.applications) ? initial.applications : [];
-            const environments = Array.isArray(initial.environments) ? initial.environments : [];
-
-            applicationFilter.innerHTML = "";
-            applications.forEach(function (item)
-            {
-                const option = document.createElement("option");
-                option.value = item.id;
-                option.textContent = item.name;
-                applicationFilter.appendChild(option);
-            });
-            applicationFilter.disabled = applications.length <= 1;
-            if (initial.applicationId !== null && initial.applicationId !== undefined)
-            {
-                applicationFilter.value = String(initial.applicationId);
-            }
-
-            environmentFilter.innerHTML = "";
-            environments.forEach(function (item)
-            {
-                const option = document.createElement("option");
-                option.value = item.id;
-                option.textContent = item.name;
-                environmentFilter.appendChild(option);
-            });
-            environmentFilter.disabled = environments.length <= 1;
-            if (initial.environmentId !== null && initial.environmentId !== undefined)
-            {
-                environmentFilter.value = String(initial.environmentId);
-            }
-
-            const data = Array.isArray(initial.dashboard) ? initial.dashboard : [];
-            if (data.length === 0)
-            {
-                dashboardData = [];
-                if (dateRangeContainer) dateRangeContainer.classList.add("d-none");
-                destroyDashboardCharts();
-                showState("empty");
-                return;
-            }
-
-            dashboardData = data;
-            configureDateRangeControls();
-            renderTabs();
-            showState("content");
+        const response = await fetch(applicationsApiUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load applications (' + response.status + ')');
+        const items = await response.json();
+        applicationFilter.innerHTML = '';
+        items.forEach(function (item) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; applicationFilter.appendChild(option); });
+        applicationFilter.disabled = items.length <= 1;
+        if (items.length) {
+            const primary = items.find(function (item) { return item.primary === true; });
+            applicationFilter.value = String((primary || items[0]).id);
         }
-        catch (error)
-        {
-            console.error("Unable to initialize dashboard", error);
-            errorMessageElement.textContent = error && error.message
-                ? error.message
-                : "Unable to initialize dashboard filters.";
-            showState("error");
-        }
-        finally
-        {
-            refreshButton.disabled = false;
-        }
+        return items;
     }
 
     async function loadEnvironments(preferDefault)
@@ -3045,17 +2980,7 @@
 
     retryButton.addEventListener(
         "click",
-        function ()
-        {
-            if (!applicationFilter.value || !environmentFilter.value)
-            {
-                initializeDashboard();
-            }
-            else
-            {
-                loadDashboard(activeTabId);
-            }
-        }
+        loadDashboard
     );
 
 
