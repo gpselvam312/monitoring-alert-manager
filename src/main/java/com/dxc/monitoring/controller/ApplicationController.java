@@ -112,7 +112,7 @@ public class ApplicationController
     }
 
     @GetMapping("/new")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String createForm(Model model)
     {
         model.addAttribute("appName", new Application());
@@ -123,7 +123,7 @@ public class ApplicationController
     }
 
     @GetMapping("/{id}/edit")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String editForm(@PathVariable Long id, Model model)
     {
         Application application = applicationRepository.findById(id)
@@ -137,7 +137,7 @@ public class ApplicationController
     }
 
     @PostMapping("/save")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String save(@ModelAttribute("appName") Application application)
     {
         if (application.getId() != null)
@@ -159,7 +159,7 @@ public class ApplicationController
     }
 
     @PostMapping("/{id}/toggle")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String toggle(@PathVariable Long id)
     {
         Application application = applicationRepository.findById(id)
@@ -173,7 +173,7 @@ public class ApplicationController
     }
 
     @PostMapping("/{id}/delete")
-    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         Application application = applicationRepository.findById(id)
