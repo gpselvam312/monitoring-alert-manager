@@ -65,8 +65,9 @@ public class UserService {
     }
 
     @Transactional
-    public User create(User user, String password, Map<Long, Long> roleAssignments) {
+    public User create(User user, String password, Map<Long, Long> roleAssignments, boolean platformAdmin) {
         user.setPasswordHash(passwordEncoder.encode(password));
+        setPlatformAdmin(user, platformAdmin);
         Set<Application> assignedApplications = resolveApplications(roleAssignments);
         user.setApplications(assignedApplications);
         User saved = userRepository.save(user);
@@ -76,16 +77,33 @@ public class UserService {
 
     @Transactional
     public User update(Long id, String fullName, String email, boolean enabled, String password,
-            Map<Long, Long> roleAssignments) {
+            Map<Long, Long> roleAssignments, boolean platformAdmin) {
         User existing = findById(id);
         existing.setFullName(fullName);
         existing.setEmail(email);
         existing.setEnabled(enabled);
+        setPlatformAdmin(existing, platformAdmin);
         if (password != null && !password.isBlank()) existing.setPasswordHash(passwordEncoder.encode(password));
         existing.setApplications(resolveApplications(roleAssignments));
         User saved = userRepository.save(existing);
         replaceRoleAssignments(saved, roleAssignments);
         return saved;
+    }
+
+    private void setPlatformAdmin(User user, boolean platformAdmin) {
+        Role adminRole = roleRepository.findByName("ADMIN")
+                .orElseThrow(() -> new IllegalArgumentException("ADMIN role is not configured."));
+        boolean currentlyAdmin = user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()));
+        if (platformAdmin) {
+            user.getRoles().add(adminRole);
+        } else if (currentlyAdmin) {
+            long adminCount = userRepository.findAll().stream()
+                    .filter(existing -> existing.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName())))
+                    .count();
+            if (adminCount <= 1)
+                throw new IllegalArgumentException("At least one platform administrator must remain enabled.");
+            user.getRoles().removeIf(role -> "ADMIN".equals(role.getName()));
+        }
     }
 
     private Set<Application> resolveApplications(Map<Long, Long> roleAssignments) {
