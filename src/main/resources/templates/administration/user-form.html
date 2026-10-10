@@ -196,9 +196,9 @@
                                             </td>
                                             <td class="text-center">
                                                 <input type="radio" class="form-check-input primary-application-select"
-                                                       name="primaryApplicationId" th:value="\${appItem.id}"
-                                                       th:checked="\${primaryApplicationId != null and primaryApplicationId == appItem.id}"
-                                                       th:attr="aria-label=|Set \${appItem.name} as primary application|">
+                                                       name="primaryApplicationId" th:value="${appItem.id}"
+                                                       th:checked="${primaryApplicationId != null and primaryApplicationId == appItem.id}"
+                                                       th:attr="aria-label=|Set ${appItem.name} as primary application|">
                                             </td>
                                             <td>
                                                 <select class="form-select application-role-select" th:name="|role_${appItem.id}|" required>
@@ -509,9 +509,9 @@
                                             </td>
                                             <td class="text-center">
                                                 <input type="radio" class="form-check-input primary-application-select"
-                                                       name="primaryApplicationId" th:value="\${appItem.id}"
-                                                       th:checked="\${primaryApplicationId != null and primaryApplicationId == appItem.id}"
-                                                       th:attr="aria-label=|Set \${appItem.name} as primary application|">
+                                                       name="primaryApplicationId" th:value="${appItem.id}"
+                                                       th:checked="${primaryApplicationId != null and primaryApplicationId == appItem.id}"
+                                                       th:attr="aria-label=|Set ${appItem.name} as primary application|">
                                             </td>
                                             <td>
                                                 <select class="form-select application-role-select" th:name="|role_${appItem.id}|" required>
