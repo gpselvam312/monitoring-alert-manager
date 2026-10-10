@@ -51,6 +51,14 @@ public class UserService {
     public List<Role> findAllRoles() { return roleRepository.findAll(); }
 
     @Transactional(readOnly = true)
+    public String findRoleAssignmentSummary(Long userId) {
+        return userApplicationRoleRepository.findAssignmentsForUser(userId).stream()
+                .map(a -> a.getApplication().getName() + " — " + a.getRole().getName())
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .collect(Collectors.joining(", "));
+    }
+
+    @Transactional(readOnly = true)
     public Map<Long, Long> findRoleAssignments(Long userId) {
         return userApplicationRoleRepository.findAssignmentsForUser(userId).stream()
                 .collect(Collectors.toMap(a -> a.getApplication().getId(), a -> a.getRole().getId()));
