@@ -167,20 +167,11 @@
                             <!-- Role -->
                             <td>
 
-                                <div th:if="${!#sets.isEmpty(user.roles)}">
-
-                                    <span th:each="role : ${user.roles}"
-                                          class="status-badge status-info me-1"
-                                          th:text="${role.name}">
-                                        ADMIN
-                                    </span>
-
-                                </div>
-
-                                <span th:if="${#sets.isEmpty(user.roles)}"
-                                      class="text-muted">
-                                    No Role
-                                </span>
+                                <span th:if="${roleSummaries[user.id] != null}"
+                                      class="table-secondary-text"
+                                      th:text="${roleSummaries[user.id]}">Application — Role</span>
+                                <span th:if="${roleSummaries[user.id] == null}"
+                                      class="text-muted">No application roles</span>
 
                             </td>
 
