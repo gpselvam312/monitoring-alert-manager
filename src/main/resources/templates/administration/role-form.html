@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/head :: head('Role')}"></head>
-<body>
+<body th:attr="data-theme=${applicationTheme}">
 <div class="app-shell"><div th:replace="~{fragments/sidebar :: sidebar}"></div><div class="sidebar-overlay" id="sidebarOverlay"></div><main class="app-main"><div th:replace="~{fragments/header :: header('Roles')}"></div><div class="app-content">
 <div class="page-header"><div class="page-header-left"><div class="page-header-icon"><i class="bi bi-shield-lock"></i></div><div><h1 class="page-title" th:text="${pageTitle}">Role</h1><p class="page-subtitle">Configure role details</p></div></div><div class="page-header-actions"><a th:href="@{/administration/roles}" class="btn btn-outline-secondary">Back to Roles</a></div></div>
 <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">Unable to save role</div>
