@@ -51,7 +51,7 @@ class DashboardAccessServiceTest {
         user.setId(7L);
         user.setUsername("viewer1");
         SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("viewer1", "password"));
+                UsernamePasswordAuthenticationToken.authenticated("viewer1", "password", List.of()));
         when(users.findByUsername("viewer1")).thenReturn(Optional.of(user));
 
         appA = new Application();
