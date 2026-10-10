@@ -1,31 +1,38 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/head :: head('Roles')}"></head>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('Roles', ~{::content})}">
 <body>
-<div class="app-shell">
-<div th:replace="~{fragments/sidebar :: sidebar}"></div><div class="sidebar-overlay" id="sidebarOverlay"></div>
-<main class="app-main"><div th:replace="~{fragments/header :: header('Roles')}"></div><div class="app-content">
-<div class="page-header">
-<div class="page-header-left"><div class="page-header-icon"><i class="bi bi-shield-lock"></i></div><div><h1 class="page-title">Roles</h1><p class="page-subtitle">Manage application roles and their descriptions</p></div></div>
-<div class="page-header-actions"><a th:href="@{/administration/roles/new}" class="btn btn-primary d-inline-flex align-items-center gap-2"><i class="bi bi-plus-lg"></i><span>Add Role</span></a></div>
+<div th:fragment="content">
+    <div class="page-header">
+        <div><h1 class="page-title">Roles</h1><p class="page-subtitle">Manage roles and their permissions.</p></div>
+        <div class="page-header-actions"><a th:href="@{/administration/roles/new}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Role</a></div>
+    </div>
+    <div class="app-card"><div class="app-card-body p-0" id="rolesTableWrapper">
+        <div th:replace="~{fragments/data-table :: controls('roleSearch','rolePageSize','Search roles...',${pageSize},${search})}"></div>
+        <div id="rolesTableContainer"><div th:fragment="rolesTable">
+            <div th:if="${rolePage.totalElements == 0}" class="empty-state"><div class="empty-state-icon"><i class="bi bi-shield-lock"></i></div><h6 th:text="${search != null and !search.isBlank() ? 'No roles match your search' : 'No roles configured'}">No roles configured</h6><p th:if="${search != null and !search.isBlank()}">Try a different search term or clear the search.</p><p th:unless="${search != null and !search.isBlank()}">Create a role to configure access and permissions.</p><a th:unless="${search != null and !search.isBlank()}" th:href="@{/administration/roles/new}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Role</a></div>
+            <div th:if="${rolePage.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0">
+                <thead><tr>
+                    <th><button type="button" class="table-sort" data-config="roleTableConfig" data-sort="name" onclick="DataTable.sort(this)">Role <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                    <th><button type="button" class="table-sort" data-config="roleTableConfig" data-sort="description" onclick="DataTable.sort(this)">Description <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                    <th>Permissions</th><th>Scope</th><th class="text-end table-actions-column">Actions</th>
+                </tr></thead><tbody><tr th:each="role : ${rolePage.content}">
+                    <td><div class="table-primary-text" th:text="${role.name}">VIEWER</div></td>
+                    <td><span th:if="${role.description != null and !role.description.isBlank()}" class="table-secondary-text" th:text="${role.description}">Description</span><span th:unless="${role.description != null and !role.description.isBlank()}" class="text-muted">—</span></td>
+                    <td><div th:if="${!#sets.isEmpty(role.permissions)}" class="d-flex flex-wrap gap-1"><span th:each="permission : ${role.permissions}" class="status-badge status-info" th:text="${permission.name}" th:title="${permission.description}">MONITORING_VIEW</span></div><span th:if="${#sets.isEmpty(role.permissions)}" class="text-muted">No permissions assigned</span></td>
+                    <td><span th:if="${role.name == 'ADMIN'}" class="status-badge status-warning">Protected global role</span><span th:unless="${role.name == 'ADMIN'}" class="status-badge status-healthy">Application role</span></td>
+                    <td class="text-end table-actions-column"><div class="table-actions table-actions-text">
+                        <a th:href="@{/administration/roles/{id}/edit(id=${role.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i><span>Edit</span></a>
+                        <form th:if="${role.name != 'ADMIN'}" method="post" th:action="@{/administration/roles/{id}/delete(id=${role.id})}" data-app-action="delete" data-app-action-title="Delete Role" data-app-action-message="Are you sure you want to delete this role?" data-app-action-description="A role assigned to users cannot be deleted."><button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i><span>Delete</span></button></form>
+                        <span th:if="${role.name == 'ADMIN'}" class="text-muted small">Protected</span>
+                    </div></td>
+                </tr></tbody></table></div>
+            <div th:replace="~{fragments/data-table :: pagination(${rolePage},${pageSize},'roleTableConfig')}"></div>
+        </div></div>
+    </div></div>
+    <script th:inline="javascript">
+        window.roleTableConfig = { endpoint:'/administration/roles/table', searchId:'roleSearch', clearSearchId:'clear-roleSearch', pageSizeId:'rolePageSize', containerId:'rolesTableContainer', sort:'name', direction:'asc' };
+        document.addEventListener('DOMContentLoaded', function(){ if(window.DataTable){ window.DataTable.init('roleTableConfig',window.roleTableConfig); window.DataTable.updateCompactActions(window.roleTableConfig); }});
+    </script>
 </div>
-<div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}">Saved</div><div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">Unable to complete the action</div>
-<div class="app-card"><div class="app-card-header"><div><h2 class="app-card-title">Role Catalogue</h2><p class="app-card-subtitle">Application roles are assigned separately for each application. The built-in ADMIN role is protected.</p></div><i class="bi bi-shield-check app-card-header-icon"></i></div>
-<div class="app-card-body p-0">
-<div th:if="${#lists.isEmpty(roles)}" class="empty-state"><div class="empty-state-icon"><i class="bi bi-shield-lock"></i></div><h3 class="empty-state-title">No Roles Found</h3><p class="empty-state-text">Create a role to configure application access.</p><a th:href="@{/administration/roles/new}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Role</a></div>
-<div th:unless="${#lists.isEmpty(roles)}" class="table-responsive"><table class="table app-table align-middle mb-0">
-<thead><tr><th>Role</th><th>Description</th><th>Permissions</th><th>Scope</th><th class="text-end table-actions-column">Actions</th></tr></thead><tbody>
-<tr th:each="role : ${roles}">
-<td><span class="table-primary-text" th:text="${role.name}">VIEWER</span></td>
-<td><span th:if="${role.description != null and !role.description.isBlank()}" class="table-secondary-text" th:text="${role.description}">Description</span><span th:unless="${role.description != null and !role.description.isBlank()}" class="text-muted">—</span></td>
-<td><div th:if="${!#sets.isEmpty(role.permissions)}" class="d-flex flex-wrap gap-1"><span th:each="permission : ${role.permissions}" class="status-badge status-info" th:text="${permission.name}" th:title="${permission.description}">MONITORING_VIEW</span></div><span th:if="${#sets.isEmpty(role.permissions)}" class="text-muted">No permissions assigned</span></td>
-<td><span th:if="${role.name == 'ADMIN'}" class="status-badge status-warning">Protected global role</span><span th:unless="${role.name == 'ADMIN'}" class="status-badge status-healthy">Application role</span></td>
-<td class="text-end table-actions-column"><div class="table-actions table-actions-text">
-<a th:href="@{/administration/roles/{id}/edit(id=${role.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i><span>Edit</span></a>
-<form th:if="${role.name != 'ADMIN'}" method="post" th:action="@{/administration/roles/{id}/delete(id=${role.id})}" onsubmit="return confirm('Delete this role? This cannot be undone.');"><button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i><span>Delete</span></button></form>
-<span th:if="${role.name == 'ADMIN'}" class="text-muted small">Protected</span>
-</div></td></tr></tbody></table></div></div></div>
-<p class="form-text mt-3">A role assigned to a user cannot be deleted until those assignments are removed. Permission mappings are preserved when a role is edited.</p>
-</div></main></div>
-<div th:replace="~{fragments/footer :: footer}"></div><div th:replace="~{fragments/scripts :: scripts}"></div>
 </body></html>
