@@ -113,10 +113,14 @@ public class DashboardConfigurationService
 
         String name = tab.getName().trim();
 
+        if (tab.getApplication() == null || tab.getApplication().getId() == null)
+            throw new IllegalArgumentException("Dashboard tab application is required.");
+        if (tab.getEnvironment() == null || tab.getEnvironment().getId() == null)
+            throw new IllegalArgumentException("Dashboard tab environment is required.");
         accessService.assertCanAccessApplication(tab.getApplication().getId(), "SYSTEM_CONFIG");
-        if (tab.getEnvironment() == null || tab.getEnvironment().getApplication() == null
+        if (!tab.getEnvironment().isEnabled() || tab.getEnvironment().getApplication() == null
                 || !tab.getApplication().getId().equals(tab.getEnvironment().getApplication().getId()))
-            throw new IllegalArgumentException("The selected environment must belong to the selected application.");
+            throw new IllegalArgumentException("Select an enabled environment belonging to the selected application.");
 
         dashboardTabRepository.findByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
                 name, tab.getApplication().getId(), tab.getEnvironment().getId()).ifPresent(existingTab -> {
