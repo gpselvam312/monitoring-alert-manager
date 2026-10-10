@@ -99,12 +99,14 @@ public class DashboardConfigurationService
 
         String name = tab.getName().trim();
 
-        dashboardTabRepository.findByNameIgnoreCase(name).ifPresent(existingTab -> {
-            if (tab.getId() == null || !existingTab.getId().equals(tab.getId()))
-            {
-                throw new IllegalArgumentException("Dashboard tab already exists: " + name);
-            }
-        });
+        dashboardTabRepository.findByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
+                name, tab.getApplication().getId(), tab.getEnvironment().getId()).ifPresent(existingTab -> {
+                    if (tab.getId() == null || !existingTab.getId().equals(tab.getId()))
+                    {
+                        throw new IllegalArgumentException(
+                                "A dashboard tab with this name already exists for the selected application and environment.");
+                    }
+                });
 
         tab.setName(name);
 
