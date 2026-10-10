@@ -19,6 +19,18 @@ public interface ApplicationRepository extends JpaRepository<Application, Long>
     @Query("""
             SELECT a
             FROM Application a
+            WHERE a.id IN :applicationIds
+              AND (
+                    LOWER(a.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(a.description, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+              )
+            """)
+    Page<Application> findAllForApplications(@Param("search") String search,
+            @Param("applicationIds") java.util.List<Long> applicationIds, Pageable pageable);
+
+    @Query("""
+            SELECT a
+            FROM Application a
             WHERE
                 LOWER(a.name) LIKE LOWER(CONCAT('%', :search, '%'))
                 OR LOWER(COALESCE(a.description, '')) LIKE LOWER(CONCAT('%', :search, '%'))
