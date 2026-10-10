@@ -2062,7 +2062,7 @@
                         '<i class="bi bi-grid-3x3-gap me-2"></i>' +
 
                         '<span>' +
-                            escapeHtml(tab.environmentName || tab.name) +
+                            escapeHtml(tab.name) +
                         '</span>' +
 
                     '</button>';
