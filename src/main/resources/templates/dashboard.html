@@ -10,14 +10,26 @@
 
     <!-- Application and Environment filters remain visible in loading, empty, and error states. -->
     <div class="app-card mb-3 dashboard-scope-filter">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-6">
-                <label for="dashboardApplicationFilter" class="form-label">Application</label>
-                <select id="dashboardApplicationFilter" class="form-select" aria-label="Application"></select>
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-lg-5">
+                <div class="d-flex align-items-center gap-2">
+                    <label for="dashboardApplicationFilter" class="form-label mb-0 text-nowrap">Application</label>
+                    <select id="dashboardApplicationFilter" class="form-select" aria-label="Application"></select>
+                </div>
             </div>
-            <div class="col-md-6">
-                <label for="dashboardEnvironmentFilter" class="form-label">Environment</label>
-                <select id="dashboardEnvironmentFilter" class="form-select" aria-label="Environment" disabled></select>
+            <div class="col-12 col-lg-5">
+                <div class="d-flex align-items-center gap-2">
+                    <label for="dashboardEnvironmentFilter" class="form-label mb-0 text-nowrap">Environment</label>
+                    <select id="dashboardEnvironmentFilter" class="form-select" aria-label="Environment" disabled></select>
+                </div>
+            </div>
+            <div class="col-12 col-lg-2 d-flex justify-content-lg-end">
+                <button type="button"
+                        class="btn btn-outline-primary btn-sm"
+                        id="dashboardRefreshButton">
+                    <i class="bi bi-arrow-clockwise me-1"></i>
+                    Refresh
+                </button>
             </div>
         </div>
     </div>
@@ -117,31 +129,16 @@
             </div>
         </div>
 
-        <!-- Tabs and Dashboard Actions -->
-		<div class="dashboard-tab-toolbar">
-		
-		    <div class="dashboard-tabs-wrapper">
-		        <div class="dashboard-tabs"
-		             id="dashboardTabs"
-		             role="tablist"
-		             aria-label="Dashboard tabs">
-		        </div>
-		    </div>
-		
-		    <div class="dashboard-tab-actions">
-		
-		        <button type="button"
-		                class="btn btn-outline-primary btn-sm"
-		                id="dashboardRefreshButton">
-		
-		            <i class="bi bi-arrow-clockwise me-1"></i>
-		            Refresh
-		
-		        </button>
-		
-		    </div>
-		
-		</div>
+        <!-- Dashboard tabs -->
+        <div class="dashboard-tab-toolbar">
+            <div class="dashboard-tabs-wrapper">
+                <div class="dashboard-tabs"
+                     id="dashboardTabs"
+                     role="tablist"
+                     aria-label="Dashboard tabs">
+                </div>
+            </div>
+        </div>
 
 
         <!-- Tab content -->
