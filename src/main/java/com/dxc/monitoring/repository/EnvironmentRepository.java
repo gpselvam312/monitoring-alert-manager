@@ -35,6 +35,8 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
 
     boolean existsByApplicationIdAndNameIgnoreCase(Long applicationId, String name);
 
+    Optional<Environment> findByApplicationIdAndNameIgnoreCase(Long applicationId, String name);
+
     List<Environment> findByEnabledTrueOrderByName();
 
     @Query("""
