@@ -1018,6 +1018,7 @@
                                 <option value="">Select environment</option>
                                 <option th:each="environment : ${environments}"
                                         th:value="${environment.id}"
+                                        th:attr="data-application-id=${environment.application.id}"
                                         th:text="${environment.name}">PROD</option>
                             </select>
                             <div class="invalid-feedback">Select an environment for this dashboard tab.</div>
@@ -1547,6 +1548,23 @@
             /*[[${selectedTab != null ? selectedTab.id : null}]]*/ null;
 
 
+        function filterDashboardTabEnvironments(clearSelection) {
+            const applicationSelect = document.getElementById('dashboardTabApplication');
+            const environmentSelect = document.getElementById('dashboardTabEnvironment');
+            if (!applicationSelect || !environmentSelect) return;
+            const applicationId = applicationSelect.value;
+            Array.from(environmentSelect.options).forEach(function (option) {
+                if (!option.value) return;
+                const allowed = applicationId !== '' && option.getAttribute('data-application-id') === applicationId;
+                option.hidden = !allowed;
+                option.disabled = !allowed;
+            });
+            const selected = environmentSelect.selectedOptions[0];
+            if (clearSelection || (selected && selected.value && selected.disabled)) {
+                environmentSelect.value = '';
+            }
+        }
+
         function syncDashboardWidgetDataSourceFields(clearSelection) {
             const sourceType = document.getElementById('dashboardWidgetDataSourceType').value;
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
@@ -1626,6 +1644,7 @@
 
                 document.getElementById('dashboardTabEnvironment').value =
                     button.dataset.environmentId || '';
+                filterDashboardTabEnvironments(false);
 
                 document.getElementById('dashboardTabSortOrder').value =
                     button.dataset.sortOrder;
@@ -1738,6 +1757,12 @@
 
         };
 
+
+        document.getElementById('dashboardTabApplication')
+            .addEventListener('change', function () {
+                filterDashboardTabEnvironments(true);
+            });
+        filterDashboardTabEnvironments(false);
 
         document
             .getElementById('dashboardTabForm')
