@@ -285,6 +285,10 @@
 	        case "STATUS":
 	            return "bi-heart-pulse";
 
+        case "SYSTEM_METRICS":
+            return "bi-hdd-rack";
+
+
 	        case "TEXT":
 	            return "bi-card-text";
 
@@ -1124,9 +1128,11 @@
         if (config.rowPath)
         {
             const configuredRows = getJsonPath(payload, config.rowPath);
-            return Array.isArray(configuredRows) ? configuredRows.filter(isObjectRow) : [];
+            if (Array.isArray(configuredRows)) return configuredRows.filter(isObjectRow);
+            // Accept root arrays from PDSH scripts even if an older config specifies rowPath.
+            if (Array.isArray(payload)) return payload.filter(isObjectRow);
         }
-
+        if (Array.isArray(payload)) return payload.filter(isObjectRow);
         const existingRows = Array.isArray(result.rows) ? result.rows : [];
         if (existingRows.length > 0) return existingRows;
         if (!payload || typeof payload !== "object") return [];
@@ -1250,78 +1256,131 @@
     {
         const rows = getConfiguredTableRows(result, config).map(function (row) { return Object.assign({}, row); });
         const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
+        const fields = Object.assign({
+            hostname: "hostname", cpu: "cpu_used_percent", ram: "ram_used_percent",
+            load1m: "load_1m", load5m: "load_5m", load15m: "load_15m",
+            uptimeSeconds: "uptime_seconds", diskUsedPercent: "u01_used_percent",
+            collectionStatus: "collection_status", cpuCores: "cpu_cores",
+            ramUsedMb: "ram_used_mb", ramTotalMb: "ram_total_mb"
+        }, config.fields && typeof config.fields === "object" ? config.fields : {});
         const pick = function (row, keys)
         {
-            for (const key of keys) if (row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+            for (const key of keys)
+            {
+                const mapped = fields[key] || key;
+                if (row[mapped] !== undefined && row[mapped] !== null && row[mapped] !== "") return row[mapped];
+                if (row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+            }
             return null;
         };
-        const number = function (value) { const n = Number(value); return Number.isFinite(n) ? n : null; };
-        const statusOf = function (row)
+        const number = function (value)
         {
-            const collection = String(pick(row, ["collection_status", "collectionStatus", "status"]) || "").toUpperCase();
-            if (["FAILED", "FAILURE", "FAIL", "ERROR", "DOWN", "UNREACHABLE", "UNAVAILABLE", "NOT_COLLECTED", "CRITICAL", "TIMEOUT"].includes(collection)) return "CRITICAL";
-            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
-            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
-            const load = number(pick(row, ["load_1m", "load1m", "load_average_1m"]));
-            const cores = Math.max(1, number(pick(row, ["cpu_cores", "cpuCores"])) || 1);
-            const levels = [];
-            if (cpu !== null) levels.push(cpu >= 85 ? 2 : cpu >= 70 ? 1 : 0);
-            if (ram !== null) levels.push(ram >= 90 ? 2 : ram >= 75 ? 1 : 0);
-            if (load !== null) levels.push(load / cores >= 1 ? 2 : load / cores >= 0.70 ? 1 : 0);
-            if (!levels.length) return "CRITICAL";
-            const worst = Math.max.apply(null, levels);
-            return worst === 2 ? "CRITICAL" : worst === 1 ? "WARNING" : "HEALTHY";
+            if (typeof value === "number") return Number.isFinite(value) ? value : null;
+            if (value === null || value === undefined || String(value).trim() === "") return null;
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
         };
-        const pressureOf = function (row)
+        const label = function (key, fallback)
         {
-            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent"])) || 0;
-            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent"])) || 0;
-            const load = number(pick(row, ["load_1m", "load1m", "load_average_1m"])) || 0;
-            const cores = Math.max(1, number(pick(row, ["cpu_cores", "cpuCores"])) || 1);
-            return Math.max(cpu / 85, ram / 90, load / cores);
+            const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+            return labels[key] || labels[fields[key]] || fallback;
         };
-        const ranked = rows.map(function (row) { return { row: row, status: statusOf(row), pressure: pressureOf(row) }; })
-            .sort(function (a, b)
+        const visible = function (key, aliases)
+        {
+            if (!Array.isArray(config.visibleFields) || !config.visibleFields.length) return true;
+            const list = config.visibleFields.map(String);
+            return list.includes(key) || list.includes(fields[key]) || (aliases || []).some(function (a) { return list.includes(a); });
+        };
+        const collected = function (row)
+        {
+            return ["SUCCESS", "SUCCEEDED", "OK", "COLLECTED", "HEALTHY", "TRUE"].includes(
+                String(pick(row, ["collectionStatus", "collection_status"]) || "").trim().toUpperCase());
+        };
+        const uptimeText = function (seconds)
+        {
+            const v = number(seconds);
+            if (v === null || v < 0) return "N/A";
+            const d = Math.floor(v / 86400), h = Math.floor((v % 86400) / 3600), m = Math.floor((v % 3600) / 60);
+            return d > 0 ? d + "d " + h + "h" : h > 0 ? h + "h " + m + "m" : m + "m";
+        };
+        const items = rows.map(function (row)
+        {
+            const cpu = number(pick(row, ["cpu", "cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
+            const ram = number(pick(row, ["ram", "ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
+            const load1 = number(pick(row, ["load1m", "load_1m", "load_average_1m"]));
+            const cores = Math.max(1, number(pick(row, ["cpuCores", "cpu_cores"])) || 1);
+            const uptime = number(pick(row, ["uptimeSeconds", "uptime_seconds", "uptime_sec"]));
+            const disk = number(pick(row, ["diskUsedPercent", "u01_used_percent", "u01_used_percentage", "u01_percent", "disk_u01_used_percent", "u01_usage_percent"]));
+            let status = "UNKNOWN";
+            if (collected(row) && cpu !== null && ram !== null && load1 !== null)
             {
-                const rank = { CRITICAL: 0, WARNING: 1, HEALTHY: 2 };
-                return rank[a.status] - rank[b.status] || b.pressure - a.pressure;
-            });
-        const counts = { total: ranked.length, HEALTHY: 0, WARNING: 0, CRITICAL: 0 };
-        ranked.forEach(function (item) { counts[item.status]++; });
-        const filtered = state.status === "ALL" ? ranked : ranked.filter(function (item) { return item.status === state.status; });
-        const pageSize = 12, pages = Math.max(1, Math.ceil(filtered.length / pageSize));
-        state.page = Math.min(Math.max(0, state.page || 0), pages - 1);
+                const critical = cpu >= 85 || ram >= 90 || load1 / cores >= 1 || (disk !== null && disk >= 95);
+                const warning = cpu >= 70 || ram >= 75 || load1 / cores >= 0.70 || (disk !== null && disk >= 85) || (uptime !== null && uptime < 72 * 3600);
+                status = critical ? "CRITICAL" : warning ? "WARNING" : "HEALTHY";
+            }
+            return { row: row, cpu: cpu, ram: ram, load1: load1, uptime: uptime, disk: disk, status: status,
+                pressure: Math.max((cpu || 0) / 85, (ram || 0) / 90, (load1 || 0) / cores, (disk || 0) / 95) };
+        }).sort(function (a, b)
+        {
+            const rank = { CRITICAL: 0, WARNING: 1, UNKNOWN: 2, HEALTHY: 3 };
+            return rank[a.status] - rank[b.status] || b.pressure - a.pressure;
+        });
+        const counts = { total: items.length, CRITICAL: 0, WARNING: 0, UNKNOWN: 0, HEALTHY: 0 };
+        items.forEach(function (item) { counts[item.status]++; });
+        const filtered = state.status === "ALL" ? items : items.filter(function (item) { return item.status === state.status; });
+        const size = 12, pages = Math.max(1, Math.ceil(filtered.length / size));
+        state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
-        const pageRows = filtered.slice(state.page * pageSize, (state.page + 1) * pageSize);
-        const summary = '<div class="server-health-summary">' +
-            [['Total', counts.total, 'total'], ['Healthy', counts.HEALTHY, 'healthy'], ['Warning', counts.WARNING, 'warning'], ['Critical', counts.CRITICAL, 'critical']]
-            .map(function (item) { return '<div class="server-health-summary-item"><span>' + item[0] + '</span><strong class="server-health-' + item[2] + '">' + item[1] + '</strong></div>'; }).join('') + '</div>';
-        const filters = '<div class="server-health-toolbar"><label class="small text-muted" for="server-health-filter-' + escapeHtml(widget.id) + '">Status</label>' +
+        const pageItems = filtered.slice(state.page * size, (state.page + 1) * size);
+        const summaries = [
+            ["Total", counts.total, "total", "bi-hdd-rack"], ["Healthy", counts.HEALTHY, "healthy", "bi-check-circle"],
+            ["Warning", counts.WARNING, "warning", "bi-exclamation-triangle"], ["Critical", counts.CRITICAL, "critical", "bi-x-octagon"],
+            ["Unknown", counts.UNKNOWN, "unknown", "bi-question-circle"]
+        ];
+        const summary = '<div class="server-health-summary">' + summaries.map(function (x)
+        {
+            return '<div class="server-health-summary-item server-health-summary-' + x[2] + '"><span><i class="bi ' + x[3] + '" aria-hidden="true"></i> ' + x[0] + '</span><strong class="server-health-' + x[2] + '">' + x[1] + '</strong></div>';
+        }).join("") + '</div>';
+        const filters = '<div class="server-health-toolbar"><label class="small text-muted" for="server-health-filter-' + escapeHtml(widget.id) + '"><i class="bi bi-funnel me-1" aria-hidden="true"></i>Status</label>' +
             '<select class="form-select form-select-sm server-health-filter" id="server-health-filter-' + escapeHtml(widget.id) + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
-            [['ALL','All'],['CRITICAL','Critical'],['WARNING','Warning'],['HEALTHY','Healthy']].map(function (item) {
-                return '<option value="' + item[0] + '"' + (state.status === item[0] ? ' selected' : '') + '>' + item[1] + '</option>';
-            }).join('') + '</select><span class="small text-muted">Showing ' + (filtered.length ? state.page * pageSize + 1 : 0) + '–' + Math.min((state.page + 1) * pageSize, filtered.length) + ' of ' + filtered.length + '</span></div>';
-        const cards = pageRows.map(function (item)
+            [["ALL", "All statuses"], ["CRITICAL", "Critical"], ["WARNING", "Warning"], ["UNKNOWN", "Unknown"], ["HEALTHY", "Healthy"]].map(function (x)
+            { return '<option value="' + x[0] + '"' + (state.status === x[0] ? " selected" : "") + '>' + x[1] + '</option>'; }).join("") +
+            '</select><span class="small text-muted">Showing ' + (filtered.length ? state.page * size + 1 : 0) + "–" + Math.min((state.page + 1) * size, filtered.length) + " of " + filtered.length + '</span></div>';
+        const metric = function (icon, name, value, meter)
+        {
+            const display = value === null || value === undefined || value === "" ? "N/A" : escapeHtml(value) + (meter === null ? "" : "%");
+            const width = Math.max(0, Math.min(100, number(meter) || 0));
+            return '<div class="server-health-metric"><div><span><i class="bi ' + icon + '" aria-hidden="true"></i> ' + escapeHtml(name) + '</span><strong>' + display + '</strong></div>' +
+                (meter === null ? "" : '<div class="server-health-meter"><span style="width:' + width + '%"></span></div>') + '</div>';
+        };
+        const cards = pageItems.map(function (item)
         {
             const row = item.row, host = pick(row, ["hostname", "hostName", "server", "name"]) || "Unknown host";
-            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
-            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
-            const load = pick(row, ["load_1m", "load1m", "load_average_1m"]);
-            const used = pick(row, ["ram_used_mb", "ramUsedMb"]), total = pick(row, ["ram_total_mb", "ramTotalMb"]);
-            const severity = item.status.toLowerCase();
-            const metric = function (label, value, suffix)
-            {
-                const display = value === null || value === undefined ? "N/A" : escapeHtml(value) + (suffix || "");
-                const width = Math.max(0, Math.min(100, number(value) || 0));
-                return '<div class="server-health-metric"><div><span>' + label + '</span><strong>' + display + '</strong></div><div class="server-health-meter"><span class="server-health-meter-' + severity + '" style="width:' + width + '%"></span></div></div>';
-            };
-            return '<article class="server-health-card server-health-card-' + severity + '"><header><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong><span class="server-health-status server-health-status-' + severity + '">' + item.status + '</span></header>' +
-                metric("CPU", cpu, "%") + metric("RAM", ram, "%") +
-                '<div class="server-health-foot"><span>Load (1m): <strong>' + (load === null ? "N/A" : escapeHtml(load)) + '</strong></span>' +
-                (used !== null && total !== null ? '<span>RAM: ' + escapeHtml(used) + ' / ' + escapeHtml(total) + ' MB</span>' : '') + '</div></article>';
+            const sev = item.status.toLowerCase();
+            const loads = [
+                visible("load1m", ["load_1m"]) ? number(pick(row, ["load1m", "load_1m"])) : null,
+                visible("load5m", ["load_5m"]) ? number(pick(row, ["load5m", "load_5m"])) : null,
+                visible("load15m", ["load_15m"]) ? number(pick(row, ["load15m", "load_15m"])) : null
+            ].filter(function (v) { return v !== null; });
+            const loadText = loads.length ? loads.map(function (v) { return v.toFixed(2); }).join(" / ") : "N/A";
+            const uptime = item.uptime === null ? "N/A" : uptimeText(item.uptime);
+            const disk = item.disk === null ? "N/A" : item.disk + "%";
+            const ramUsed = pick(row, ["ramUsedMb", "ram_used_mb"]), ramTotal = pick(row, ["ramTotalMb", "ram_total_mb"]);
+            const statusIcon = { CRITICAL: "bi-x-octagon-fill", WARNING: "bi-exclamation-triangle-fill", UNKNOWN: "bi-question-circle-fill", HEALTHY: "bi-check-circle-fill" }[item.status];
+            let extra = "";
+            if (visible("load1m", ["load_1m"]) || visible("load5m", ["load_5m"]) || visible("load15m", ["load_15m"]))
+                extra += '<div class="server-health-detail"><span><i class="bi bi-activity" aria-hidden="true"></i> ' + escapeHtml(label("load1m", "Load (1m / 5m / 15m)")) + '</span><strong>' + escapeHtml(loadText) + '</strong></div>';
+            if (visible("uptimeSeconds", ["uptime_seconds", "uptime_sec"]))
+                extra += '<div class="server-health-detail"><span><i class="bi bi-clock-history" aria-hidden="true"></i> ' + escapeHtml(label("uptimeSeconds", "Uptime")) + '</span><strong>' + escapeHtml(uptime) + '</strong></div>';
+            if (visible("diskUsedPercent", ["u01_used_percent", "u01_used_percentage", "u01_percent", "disk_u01_used_percent"]))
+                extra += '<div class="server-health-detail"><span><i class="bi bi-device-hdd" aria-hidden="true"></i> ' + escapeHtml(label("diskUsedPercent", "/u01 Used")) + '</span><strong>' + escapeHtml(disk) + '</strong></div>';
+            const ramCapacity = ramUsed !== null && ramTotal !== null ? '<div class="server-health-foot">' + escapeHtml(ramUsed) + " / " + escapeHtml(ramTotal) + ' MB RAM</div>' : "";
+            return '<article class="server-health-card server-health-card-' + sev + '"><header class="server-health-card-header"><div class="server-health-host"><i class="bi bi-hdd-network" aria-hidden="true"></i><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong></div><span class="server-health-status server-health-status-' + sev + '"><i class="bi ' + statusIcon + '" aria-hidden="true"></i> ' + item.status + '</span></header>' +
+                (visible("cpu", ["cpu_used_percent"]) ? metric("bi-cpu", label("cpu", "CPU"), item.cpu, item.cpu) : "") +
+                (visible("ram", ["ram_used_percent"]) ? metric("bi-memory", label("ram", "RAM"), item.ram, item.ram) : "") + extra + ramCapacity + '</article>';
         }).join("");
-        const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? ' disabled' : '') + '>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + ' of ' + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? ' disabled' : '') + '>Next</button></div>';
-        return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="text-muted small p-3">No servers match this status filter.</div>') + '</div>' + pager;
+        const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
+        return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
     }
 
     function renderTableWidget(result, widget)
@@ -1707,19 +1766,19 @@
 		    widgetType === "STAT";
 
 
+        const isSystemMetrics = widgetType === "SYSTEM_METRICS";
         let updatedHtml = "";
-
-
+        let headerUpdatedHtml = "";
         if (updated)
         {
-            updatedHtml =
-                '<div class="dashboard-widget-updated">' +
-
-                    'Updated ' +
-
-                    escapeHtml(updated) +
-
-                '</div>';
+            if (isSystemMetrics)
+            {
+                headerUpdatedHtml = '<div class="dashboard-widget-updated dashboard-widget-collected"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>Last collection: ' + escapeHtml(updated) + '</div>';
+            }
+            else
+            {
+                updatedHtml = '<div class="dashboard-widget-updated">Updated ' + escapeHtml(updated) + '</div>';
+            }
         }
 
 
@@ -1799,6 +1858,10 @@
          * TABLE
          */
 
+        else if (widgetType === "SYSTEM_METRICS")
+        {
+            widgetContentHtml = renderServerHealthCards(result, widget, parseWidgetFieldConfig(widget));
+        }
         else if (widgetType === "TABLE")
         {
             widgetContentHtml =
@@ -1913,6 +1976,8 @@
                                     ) +
 
                                 '</h5>' +
+
+                                headerUpdatedHtml +
 
 
                                 (
