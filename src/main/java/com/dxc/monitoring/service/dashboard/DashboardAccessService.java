@@ -53,7 +53,7 @@ public class DashboardAccessService {
     public List<Environment> getEnvironmentsForApplication(Long applicationId) {
         assertCanAccessApplication(applicationId);
         Map<Long, Environment> scoped = new LinkedHashMap<>();
-        tabs.findAllByApplication_IdAndEnabledTrueOrderBySortOrderAsc().stream()
+        tabs.findAllByApplication_IdAndEnabledTrueOrderBySortOrderAsc(applicationId).stream()
                 .filter(tab -> tab.getApplication() != null && tab.getApplication().getId().equals(applicationId))
                 .map(DashboardTab::getEnvironment).filter(e -> e != null && e.isEnabled())
                 .forEach(e -> scoped.putIfAbsent(e.getId(), e));
