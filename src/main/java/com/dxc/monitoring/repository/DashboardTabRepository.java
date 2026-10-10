@@ -39,6 +39,8 @@ public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long
 
     boolean existsByNameIgnoreCase(String name);
 
+    boolean existsByApplication_Id(Long applicationId);
+
     @EntityGraph(attributePaths = { "environment", "application" })
     @Query("""
             SELECT t
