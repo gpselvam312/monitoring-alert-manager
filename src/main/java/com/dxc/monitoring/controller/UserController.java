@@ -29,7 +29,14 @@ public class UserController
     @GetMapping
     public String listUsers(Model model)
     {
-        model.addAttribute("users", userService.findAll());
+        List<User> users = userService.findAll();
+        Map<Long, String> roleSummaries = new HashMap<>();
+        users.forEach(user -> {
+            String summary = userService.findRoleAssignmentSummary(user.getId());
+            if (!summary.isBlank()) roleSummaries.put(user.getId(), summary);
+        });
+        model.addAttribute("users", users);
+        model.addAttribute("roleSummaries", roleSummaries);
         model.addAttribute("currentPage", "users");
 
         return "administration/users";
