@@ -57,8 +57,13 @@ public class DashboardController
     @GetMapping("/api/dashboard/applications")
     public ResponseEntity<List<Map<String, Object>>> getApplications()
     {
+        Long primaryApplicationId = dashboardAccessService.getPrimaryApplicationId();
         List<Map<String, Object>> items = dashboardAccessService.getAccessibleApplications().stream()
-                .map(app -> Map.<String, Object>of("id", app.getId(), "name", app.getName())).toList();
+                .map(app -> Map.<String, Object>of(
+                        "id", app.getId(),
+                        "name", app.getName(),
+                        "primary", app.getId().equals(primaryApplicationId)))
+                .toList();
         return ResponseEntity.ok(items);
     }
 
