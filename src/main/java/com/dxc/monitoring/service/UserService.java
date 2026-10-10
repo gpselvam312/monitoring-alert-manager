@@ -104,7 +104,7 @@ public class UserService {
     }
 
     private void replaceRoleAssignments(User user, Map<Long, Long> roleAssignments) {
-        userApplicationRoleRepository.deleteAll(userApplicationRoleRepository.findAssignmentsForUser(user.getId()));
+        userApplicationRoleRepository.deleteAllAssignmentsForUser(user.getId());
         if (roleAssignments == null || roleAssignments.isEmpty()) return;
 
         Map<Long, Application> apps = applicationRepository.findAllById(roleAssignments.keySet()).stream()
