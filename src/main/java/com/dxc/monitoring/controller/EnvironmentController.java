@@ -2,6 +2,8 @@ package com.dxc.monitoring.controller;
 
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.repository.ApplicationRepository;
+import com.dxc.monitoring.entity.Application;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,10 +22,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class EnvironmentController
 {
     private final EnvironmentRepository environmentRepository;
+    private final ApplicationRepository applicationRepository;
 
-    public EnvironmentController(EnvironmentRepository environmentRepository)
+    public EnvironmentController(EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository)
     {
         this.environmentRepository = environmentRepository;
+        this.applicationRepository = applicationRepository;
     }
 
     @GetMapping
@@ -38,6 +42,7 @@ public class EnvironmentController
         model.addAttribute("pageSize", 5);
         model.addAttribute("search", "");
         model.addAttribute("currentPage", "environments");
+        model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
 
         return "administration/environments";
     }
@@ -66,6 +71,7 @@ public class EnvironmentController
     public String createForm(Model model)
     {
         model.addAttribute("environment", new Environment());
+        model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
         model.addAttribute("pageTitle", "Add Environment");
         model.addAttribute("currentPage", "environments");
 
@@ -88,7 +94,8 @@ public class EnvironmentController
 
     @PostMapping("/save")
     @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
-    public String save(@ModelAttribute Environment environment, RedirectAttributes redirectAttributes)
+    public String save(@ModelAttribute Environment environment, @RequestParam(required = false) Long applicationId,
+            RedirectAttributes redirectAttributes)
     {
         if (environment.getId() != null)
         {
@@ -103,6 +110,12 @@ public class EnvironmentController
 
         } else
         {
+            if (applicationId == null)
+                throw new IllegalArgumentException("Select an application for this environment.");
+            Application application = applicationRepository.findById(applicationId)
+                    .filter(Application::isEnabled)
+                    .orElseThrow(() -> new IllegalArgumentException("Application not found or disabled: " + applicationId));
+            environment.setApplication(application);
             environmentRepository.save(environment);
         }
 
