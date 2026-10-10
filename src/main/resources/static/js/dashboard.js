@@ -2438,7 +2438,8 @@
             }
         );
 
-        renderTabs();
+        const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+        renderTabs(activeTab ? activeTab.dataset.tabId : undefined);
     }
 
 
@@ -2510,7 +2511,8 @@
                 }
             );
 
-            renderTabs();
+            const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+            renderTabs(activeTab ? activeTab.dataset.tabId : undefined);
         }
         catch (error)
         {
@@ -3068,7 +3070,9 @@
         "click",
         function ()
         {
-            loadDashboard(undefined, selectedApplicationId, selectedEnvironmentId);
+            const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+            loadDashboard(activeTab ? activeTab.dataset.tabId : undefined,
+                selectedApplicationId, selectedEnvironmentId);
         }
     );
 
@@ -3077,7 +3081,9 @@
         "click",
         function ()
         {
-            loadDashboard(undefined, selectedApplicationId, selectedEnvironmentId);
+            const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+            loadDashboard(activeTab ? activeTab.dataset.tabId : undefined,
+                selectedApplicationId, selectedEnvironmentId);
         }
     );
 
