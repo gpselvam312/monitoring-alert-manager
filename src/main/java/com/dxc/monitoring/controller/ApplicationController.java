@@ -99,7 +99,10 @@ public class ApplicationController
 
         Pageable pageable = PageRequest.of(page, size, pageableSort);
 
-        Page<Application> applications = applicationRepository.findAllForList(normalizedSearch, pageable);
+        java.util.List<Long> accessibleIds = accessService.getAccessibleApplications().stream()
+                .map(Application::getId).toList();
+        Page<Application> applications = accessibleIds.isEmpty() ? Page.empty(pageable)
+                : applicationRepository.findAllForApplications(normalizedSearch, accessibleIds, pageable);
 
         model.addAttribute("applications", applications);
         model.addAttribute("pageSize", size);
