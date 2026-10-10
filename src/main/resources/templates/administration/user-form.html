@@ -188,7 +188,7 @@
                                     <tbody id="applicationAccessRows">
                                         <tr th:each="appItem : ${applications}" th:if="${selectedApplicationIds.contains(appItem.id)}" class="application-access-row">
                                             <td>
-                                                <select class="form-select application-access-select" name="applicationIds" required>
+                                                <select class="form-select application-access-select" name="applicationIds">
                                                     <option value="">-- Select Application --</option>
                                                     <option th:each="appOption : ${applications}" th:value="${appOption.id}"
                                                             th:text="${appOption.name}" th:selected="${appOption.id == appItem.id}">Application</option>
