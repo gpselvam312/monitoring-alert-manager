@@ -1,273 +1,58 @@
 <!DOCTYPE html>
-
-<html lang="en"
-      xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-
-<head th:replace="~{fragments/head :: head('Users')}"></head>
-
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('Users', ~{::content})}">
 <body>
-
-<div class="app-shell">
-
-
-<!-- Sidebar -->
-<div th:replace="~{fragments/sidebar :: sidebar}"></div>
-
-<!-- Mobile Sidebar Overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<!-- Main Content -->
-<main class="app-main">
-
-    <!-- Header -->
-    <div th:replace="~{fragments/header :: header('Users')}"></div>
-    
-    <!-- Page Content -->
-    <div class="app-content">
-
-        <!-- Page Header -->
-        <div class="page-header">
-
-            <div class="page-header-left">
-
-                <div class="page-header-icon">
-                    <i class="bi bi-people"></i>
-                </div>
-
-                <div>
-
-                    <h1 class="page-title">
-                        Users
-                    </h1>
-
-                    <p class="page-subtitle">
-                        Manage application users and access roles
-                    </p>
-
-                </div>
-
-            </div>
-
-            <div class="page-header-actions">
-
-                <a th:href="@{/administration/users/new}"
-                   class="btn btn-primary d-inline-flex align-items-center gap-2">
-
-                    <i class="bi bi-person-plus"></i>
-                    <span>Add New User</span>
-
-                </a>
-
-            </div>
-
-        </div>
-
-        <!-- Users Card -->
-        <div class="app-card">
-
-            <div class="app-card-header">
-
-                <div>
-
-                    <h2 class="app-card-title">
-                        User Accounts
-                    </h2>
-
-                    <p class="app-card-subtitle">
-                        Users configured in Monitoring Alert Manager
-                    </p>
-
-                </div>
-
-                <i class="bi bi-person-badge app-card-header-icon"></i>
-
-            </div>
-
-            <div class="app-card-body p-0">
-
-                <!-- Empty State -->
-                <div th:if="${#lists.isEmpty(users)}"
-                     class="empty-state">
-
-                    <div class="empty-state-icon">
-                        <i class="bi bi-people"></i>
-                    </div>
-
-                    <h3 class="empty-state-title">
-                        No Users Found
-                    </h3>
-
-                    <p class="empty-state-text">
-                        No user accounts have been configured yet.
-                    </p>
-
-                    <a th:href="@{/administration/users/new}"
-                       class="btn btn-primary d-inline-flex align-items-center gap-2">
-
-                        <i class="bi bi-person-plus"></i>
-                        <span>Add New User</span>
-
-                    </a>
-
-                </div>
-
-                <!-- User Table -->
-                <div th:unless="${#lists.isEmpty(users)}"
-                     class="table-responsive">
-
-                    <table class="table app-table mb-0">
-
-                        <thead>
-
-                        <tr>
-
-                            <th>Username</th>
-
-                            <th>Full Name</th>
-
-                            <th>Email</th>
-
-                            <th>Role</th>
-
-                            <th>Status</th>
-
-                            <th>Created</th>
-
-                            <th class="text-end">Actions</th>
-
-                        </tr>
-
-                        </thead>
-
-                        <tbody>
-
-                        <tr th:each="user : ${users}">
-
-                            <!-- Username -->
-                            <td>
-
-                                <div class="fw-semibold"
-                                     th:text="${user.username}">
-                                    username
-                                </div>
-
-                            </td>
-
-                            <!-- Full Name -->
-                            <td th:text="${user.fullName ?: '-'}">
-                                -
-                            </td>
-
-                            <!-- Email -->
-                            <td th:text="${user.email ?: '-'}">
-                                -
-                            </td>
-
-                            <!-- Role -->
-                            <td>
-
-                                <span th:if="${platformAdminIds.contains(user.id)}" class="status-badge status-info me-1">PLATFORM ADMIN</span>
-                                <span th:if="${roleSummaries[user.id] != null}"
-                                      class="table-secondary-text"
-                                      th:text="${roleSummaries[user.id]}">Application — Role</span>
-                                <span th:if="${roleSummaries[user.id] == null}"
-                                      class="text-muted">No application roles</span>
-
-                            </td>
-
-                            <!-- Status -->
-                            <td>
-
-                                <span th:if="${user.enabled}"
-                                      class="status-badge status-healthy">
-
-                                    <span class="status-dot"></span>
-                                    Enabled
-
-                                </span>
-
-                                <span th:unless="${user.enabled}"
-                                      class="status-badge status-disabled">
-
-                                    <span class="status-dot"></span>
-                                    Disabled
-
-                                </span>
-
-                            </td>
-
-                            <!-- Created -->
-                            <td>
-
-                                <span th:text="${user.createdAt != null
-                                        ? #temporals.format(user.createdAt, 'yyyy-MM-dd HH:mm')
-                                        : '-'}">
-                                    -
-                                </span>
-
-                            </td>
-
-                            <!-- Actions -->
-                            <td class="text-end">
-
-                                <div class="d-inline-flex gap-2">
-
-                                    <!-- Edit -->
-                                    <a th:href="@{/administration/users/{id}/edit(id=${user.id})}"
-                                       class="btn btn-sm btn-outline-primary"
-                                       title="Edit User">
-
-                                        <i class="bi bi-pencil"></i>
-
-                                    </a>
-
-                                    <!-- Enable / Disable -->
-                                    <form th:action="@{/administration/users/{id}/toggle(id=${user.id})}"
-                                          method="post"
-                                          class="d-inline">
-
-                                        <button type="submit"
-                                                class="btn btn-sm btn-outline-secondary"
-                                                th:title="${user.enabled ? 'Disable User' : 'Enable User'}">
-
-                                            <i th:if="${user.enabled}"
-                                               class="bi bi-person-dash"></i>
-
-                                            <i th:unless="${user.enabled}"
-                                               class="bi bi-person-check"></i>
-
-                                        </button>
-
-                                    </form>
-
-                                </div>
-
-                            </td>
-
-                        </tr>
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-            </div>
-
-        </div>
-
+<div th:fragment="content">
+    <div class="page-header">
+        <div><h1 class="page-title">Users</h1><p class="page-subtitle">Manage application users and access roles.</p></div>
+        <div class="page-header-actions"><a th:href="@{/administration/users/new}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add New User</a></div>
     </div>
-
-</main>
-
-
+    <div class="app-card">
+        <div class="app-card-body p-0" id="usersTableWrapper">
+            <div th:replace="~{fragments/data-table :: controls('userSearch','userPageSize','Search users...',${pageSize},${search})}"></div>
+            <div id="usersTableContainer"><div th:fragment="usersTable">
+                <div th:if="${users.totalElements == 0}" class="empty-state">
+                    <div class="empty-state-icon"><i class="bi bi-people"></i></div>
+                    <h6 th:text="${search != null and !search.isBlank() ? 'No users match your search' : 'No users configured'}">No users configured</h6>
+                    <p th:if="${search != null and !search.isBlank()}">Try a different search term or clear the search.</p>
+                    <p th:unless="${search != null and !search.isBlank()}">Create a user to grant access to Monitoring Alert Manager.</p>
+                    <a th:unless="${search != null and !search.isBlank()}" th:href="@{/administration/users/new}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add New User</a>
+                </div>
+                <div th:if="${users.totalElements > 0}" class="table-responsive">
+                    <table class="table app-table align-middle mb-0">
+                        <thead><tr>
+                            <th><button type="button" class="table-sort" data-config="userTableConfig" data-sort="username" onclick="DataTable.sort(this)">Username <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                            <th><button type="button" class="table-sort" data-config="userTableConfig" data-sort="fullName" onclick="DataTable.sort(this)">Full Name <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                            <th><button type="button" class="table-sort" data-config="userTableConfig" data-sort="email" onclick="DataTable.sort(this)">Email <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                            <th>Role</th>
+                            <th><button type="button" class="table-sort" data-config="userTableConfig" data-sort="enabled" onclick="DataTable.sort(this)">Status <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                            <th><button type="button" class="table-sort" data-config="userTableConfig" data-sort="createdAt" onclick="DataTable.sort(this)">Created <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                            <th class="text-end table-actions-column">Actions</th>
+                        </tr></thead>
+                        <tbody><tr th:each="user : ${users.content}">
+                            <td><div class="table-primary-text" th:text="${user.username}">username</div></td>
+                            <td th:text="${user.fullName != null and !user.fullName.isBlank() ? user.fullName : '—'}">—</td>
+                            <td th:text="${user.email != null and !user.email.isBlank() ? user.email : '—'}">—</td>
+                            <td><span th:if="${platformAdminIds.contains(user.id)}" class="status-badge status-info me-1">PLATFORM ADMIN</span><span th:if="${roleSummaries[user.id] != null}" class="table-secondary-text" th:text="${roleSummaries[user.id]}">Application — Role</span><span th:if="${roleSummaries[user.id] == null}" class="text-muted">No application roles</span></td>
+                            <td><span th:if="${platformAdminIds.contains(user.id) or user.enabled}" class="status-badge status-healthy"><span class="status-dot"></span>ACTIVE</span><span th:unless="${platformAdminIds.contains(user.id) or user.enabled}" class="status-badge status-disabled"><span class="status-dot"></span>INACTIVE</span></td>
+                            <td th:text="${user.createdAt != null ? #temporals.format(user.createdAt, 'yyyy-MM-dd HH:mm') : '—'}">—</td>
+                            <td class="text-end table-actions-column"><div class="table-actions">
+                                <a th:href="@{/administration/users/{id}/edit(id=${user.id})}" class="btn btn-sm btn-outline-primary" title="Edit User" aria-label="Edit User"><i class="bi bi-pencil"></i></a>
+                                <form th:unless="${platformAdminIds.contains(user.id)}" th:action="@{/administration/users/{id}/toggle(id=${user.id})}" method="post">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" th:title="${user.enabled ? 'Deactivate User' : 'Activate User'}" th:attr="aria-label=${user.enabled ? 'Deactivate User' : 'Activate User'}"><i th:if="${user.enabled}" class="bi bi-person-dash"></i><i th:unless="${user.enabled}" class="bi bi-person-check"></i></button>
+                                </form>
+                                <span th:if="${platformAdminIds.contains(user.id)}" class="text-muted small">Protected</span>
+                            </div></td>
+                        </tr></tbody>
+                    </table>
+                </div>
+                <div th:replace="~{fragments/data-table :: pagination(${users},${pageSize},'userTableConfig')}"></div>
+            </div></div>
+        </div>
+    </div>
+    <script th:inline="javascript">
+        window.userTableConfig = { endpoint:'/administration/users/table', searchId:'userSearch', clearSearchId:'clear-userSearch', pageSizeId:'userPageSize', containerId:'usersTableContainer', sort:'username', direction:'asc' };
+        document.addEventListener('DOMContentLoaded', function(){ if(window.DataTable){ window.DataTable.init('userTableConfig',window.userTableConfig); window.DataTable.updateCompactActions(window.userTableConfig); }});
+    </script>
 </div>
-
-<div th:replace="~{fragments/footer :: footer}"></div>
-
-<div th:replace="~{fragments/scripts :: scripts}"></div>
-
-</body>
-
-</html>
+</body></html>
