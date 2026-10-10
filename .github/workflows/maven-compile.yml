@@ -21,4 +21,4 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Compile
-        run: mvn -B -DskipTests compile
+        run: mvn -B test
