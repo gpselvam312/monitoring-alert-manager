@@ -3038,10 +3038,10 @@ textarea.form-control {
 
 .dashboard-widget-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding: 1rem 1.1rem;
+    padding: 0.7rem 1.1rem;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -3050,6 +3050,15 @@ textarea.form-control {
     align-items: center;
     gap: 0.75rem;
     min-width: 0;
+    flex: 1 1 auto;
+}
+
+.dashboard-widget-title-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .dashboard-widget-icon {
@@ -3069,12 +3078,20 @@ textarea.form-control {
     color: var(--text-primary);
     font-size: 0.98rem;
     font-weight: 600;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .dashboard-widget-description {
-    margin-top: 0.15rem;
+    margin: 0;
     color: var(--text-secondary);
-    font-size: 0.78rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    flex: 1 1 auto;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -3138,11 +3155,16 @@ textarea.form-control {
 }
 
 .dashboard-widget-updated {
-    margin-top: 1rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--border-color);
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
     color: var(--text-secondary);
-    font-size: 0.72rem;
+    font-size: 0.68rem;
+    font-weight: 400;
+    line-height: 1.2;
+    white-space: nowrap;
 }
 
 .dashboard-status {
@@ -3764,7 +3786,7 @@ textarea.form-control {
 .server-health-detail > strong { color: var(--text-primary); text-align: right; overflow-wrap: anywhere; }
 .server-health-ram-capacity { color: var(--text-secondary); font-size: .7rem; }
 .server-health-empty { display: flex; justify-content: center; align-items: center; gap: .6rem; padding: 1.5rem; color: var(--text-secondary); border: 1px dashed var(--border-color); border-radius: .5rem; }
-.dashboard-widget-collected { margin-top: .25rem; padding-top: 0; border-top: 0; font-size: .7rem; }
+.dashboard-widget-collected { margin: 0; padding: 0; border: 0; font-size: .68rem; }
 @media (max-width: 767.98px) {
     .server-health-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .server-health-summary-item:first-child { grid-column: 1 / -1; }
@@ -3778,5 +3800,5 @@ textarea.form-control {
 .server-health-status-unknown { color: var(--text-secondary); background: color-mix(in srgb, var(--text-secondary) 12%, transparent); }
 .server-health-card-unknown { border-left-color: var(--text-secondary); }
 .server-health-card-unknown .server-health-meter > span { background: var(--text-secondary); }
-.server-health-summary-unknown { border-style: dashed; }
+.server-health-summary-unknown { border: 1px solid var(--text-secondary); }
 .server-health-summary-unknown > span i { color: var(--text-secondary); }
