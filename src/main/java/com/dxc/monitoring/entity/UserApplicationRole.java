@@ -28,6 +28,12 @@ public class UserApplicationRole {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
+    @jakarta.persistence.Column(name = "is_primary", nullable = false)
+    private boolean primary;
+
+    public boolean isPrimary() { return primary; }
+    public void setPrimary(boolean primary) { this.primary = primary; }
+
     public UserApplicationRoleId getId() { return id; }
     public void setId(UserApplicationRoleId id) { this.id = id; }
     public User getUser() { return user; }
