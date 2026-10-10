@@ -35,7 +35,7 @@
 
         </div>
 
-        <form sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+        <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
               th:action="@{/administration/environments/save}"
               th:object="${environment}"
               method="post">
