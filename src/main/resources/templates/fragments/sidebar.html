@@ -165,14 +165,16 @@
 		
 		    <a th:href="@{/administration/applications}"
 		       class="sidebar-link"
-		       th:classappend="${currentPage == 'applications'} ? ' active' : ''">
+		       th:classappend="${currentPage == 'applications'} ? ' active' : ''"
+               sec:authorize="hasAuthority('ROLE_ADMIN')">
 		        <i class="bi bi-box"></i>
 		        <span>Applications</span>
 		    </a>
 		
 		    <a th:href="@{/administration/environments}"
 		       class="sidebar-link"
-		       th:classappend="${currentPage == 'environments'} ? ' active' : ''">
+		       th:classappend="${currentPage == 'environments'} ? ' active' : ''"
+               sec:authorize="hasAuthority('MONITORING_CONFIG')">
 		        <i class="bi bi-layers"></i>
 		        <span>Environments</span>
 		    </a>
@@ -180,7 +182,7 @@
 		    <a th:href="@{/administration/dashboard}"
 			   class="sidebar-link"
 			   th:classappend="${currentPage == 'dashboard-configuration'} ? ' active' : ''"
-			   sec:authorize="hasAuthority('SYSTEM_CONFIG')">
+			   sec:authorize="hasAuthority('MONITORING_CONFIG')">
 			
 			    <i class="bi bi-grid-3x3-gap"></i>
 			    <span>Dashboard Configuration</span>
@@ -190,7 +192,7 @@
 			<a th:href="@{/administration/users}"
 			   class="sidebar-link"
 			   th:classappend="${currentPage == 'users'} ? ' active' : ''"
-			   sec:authorize="hasAuthority('USER_CONFIG')">
+			   sec:authorize="hasAuthority('ROLE_ADMIN')">
 			    <i class="bi bi-person-gear"></i>
 			    <span>Users</span>
 			</a>
