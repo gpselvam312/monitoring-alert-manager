@@ -8,6 +8,20 @@
 
 <div th:fragment="content">
 
+    <!-- Application and Environment filters remain visible in loading, empty, and error states. -->
+    <div class="app-card mb-3 dashboard-scope-filter">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label for="dashboardApplicationFilter" class="form-label">Application</label>
+                <select id="dashboardApplicationFilter" class="form-select" aria-label="Application"></select>
+            </div>
+            <div class="col-md-6">
+                <label for="dashboardEnvironmentFilter" class="form-label">Environment</label>
+                <select id="dashboardEnvironmentFilter" class="form-select" aria-label="Environment" disabled></select>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading -->
     <div id="dashboardLoading"
          class="dashboard-state">
@@ -71,19 +85,6 @@
     <!-- Dashboard -->
     <div id="dashboardContainer"
          class="d-none">
-
-        <div class="app-card mb-3 dashboard-scope-filter">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-6">
-                    <label for="dashboardApplicationFilter" class="form-label">Application</label>
-                    <select id="dashboardApplicationFilter" class="form-select" aria-label="Application"></select>
-                </div>
-                <div class="col-md-6">
-                    <label for="dashboardEnvironmentFilter" class="form-label">Environment</label>
-                    <select id="dashboardEnvironmentFilter" class="form-select" aria-label="Environment" disabled></select>
-                </div>
-            </div>
-        </div>
 
         <!-- Optional date range for API-backed widgets -->
         <div id="dashboardDateRange" class="app-card mb-3 d-none">
