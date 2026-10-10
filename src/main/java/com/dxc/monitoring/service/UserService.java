@@ -81,7 +81,8 @@ public class UserService {
         User existing = findById(id);
         existing.setFullName(fullName);
         existing.setEmail(email);
-        existing.setEnabled(enabled);
+        boolean currentlyPlatformAdmin = existing.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()));
+        existing.setEnabled(currentlyPlatformAdmin || platformAdmin || enabled);
         setPlatformAdmin(existing, platformAdmin);
         if (password != null && !password.isBlank()) existing.setPasswordHash(passwordEncoder.encode(password));
         existing.setApplications(resolveApplications(roleAssignments));
@@ -142,6 +143,11 @@ public class UserService {
     @Transactional
     public void toggleEnabled(Long id) {
         User user = findById(id);
+        if (user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()))) {
+            user.setEnabled(true);
+            userRepository.save(user);
+            return;
+        }
         user.setEnabled(!user.isEnabled());
         userRepository.save(user);
     }
