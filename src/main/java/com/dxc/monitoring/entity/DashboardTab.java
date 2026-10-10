@@ -18,6 +18,10 @@ public class DashboardTab
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "application_id")
+    private Application application;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "environment_id")
     private Environment environment;
 
@@ -60,6 +64,16 @@ public class DashboardTab
     public void setName(String name)
     {
         this.name = name;
+    }
+
+    public Application getApplication()
+    {
+        return application;
+    }
+
+    public void setApplication(Application application)
+    {
+        this.application = application;
     }
 
     public Environment getEnvironment()

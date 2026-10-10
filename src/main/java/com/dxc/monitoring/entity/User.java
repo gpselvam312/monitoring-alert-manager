@@ -37,6 +37,12 @@ public class User
                inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
 
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "user_applications", schema = "ra_fcb",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "application_id"))
+    private Set<Application> applications = new HashSet<>();
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -125,6 +131,16 @@ public class User
     public void setRoles(Set<Role> roles)
     {
         this.roles = roles;
+    }
+
+    public Set<Application> getApplications()
+    {
+        return applications;
+    }
+
+    public void setApplications(Set<Application> applications)
+    {
+        this.applications = applications;
     }
 
     public LocalDateTime getCreatedAt()

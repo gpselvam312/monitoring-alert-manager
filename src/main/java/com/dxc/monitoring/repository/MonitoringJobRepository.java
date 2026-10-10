@@ -57,4 +57,16 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
 
     boolean existsByApplicationId(Long applicationId);
 
+    @Query("""
+            SELECT DISTINCT j.environment
+            FROM MonitoringJob j
+            WHERE j.application.id = :applicationId
+              AND j.environment IS NOT NULL
+              AND j.environment.enabled = true
+            ORDER BY j.environment.name
+            """)
+    List<com.dxc.monitoring.entity.Environment> findDistinctEnabledEnvironmentsByApplicationId(@Param("applicationId") Long applicationId);
+
+    boolean existsByApplicationIdAndEnvironmentId(Long applicationId, Long environmentId);
+
 }

@@ -16,8 +16,14 @@ import com.dxc.monitoring.entity.DashboardTab;
 @Repository
 public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long>
 {
-    @EntityGraph(attributePaths = { "environment" })
+    @EntityGraph(attributePaths = { "environment", "application" })
     List<DashboardTab> findAllByEnabledTrueOrderBySortOrderAsc();
+
+    @EntityGraph(attributePaths = { "environment", "application" })
+    List<DashboardTab> findAllByApplication_IdAndEnvironment_IdAndEnabledTrueOrderBySortOrderAsc(Long applicationId, Long environmentId);
+
+    @EntityGraph(attributePaths = { "environment", "application" })
+    List<DashboardTab> findAllByApplication_IdAndEnabledTrueOrderBySortOrderAsc(Long applicationId);
 
     List<DashboardTab> findAllByOrderBySortOrderAsc();
 
