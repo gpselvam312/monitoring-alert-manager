@@ -49,7 +49,6 @@ public class UserController
         user.setEnabled(true);
 
         model.addAttribute("user", user);
-        model.addAttribute("platformAdmin", user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName())));
         model.addAttribute("roles", userService.findAllRoles());
         model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
         model.addAttribute("selectedApplicationIds", java.util.List.of());
@@ -78,6 +77,7 @@ public class UserController
         User user = userService.findById(id);
 
         model.addAttribute("user", user);
+        model.addAttribute("platformAdmin", user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName())));
         model.addAttribute("roles", userService.findAllRoles());
         model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
         Map<Long, Long> roleAssignments = userService.findRoleAssignments(id);
