@@ -673,6 +673,16 @@ public class DashboardService
             throw new AccessDeniedException("Dashboard widget is not assigned to an application.");
         }
         assertApplicationAccess(widget.getTab().getApplication().getId());
+
+        if ("MONITORING_JOB".equals(widget.getDataSourceType()) && widget.getDataSourceId() != null)
+        {
+            MonitoringJob sourceJob = monitoringJobRepository.findById(widget.getDataSourceId()).orElse(null);
+            if (sourceJob != null && !isEnvironmentCompatible(widget, sourceJob))
+            {
+                throw new AccessDeniedException(
+                        "The monitoring job does not belong to this dashboard application and environment.");
+            }
+        }
         return widget;
     }
 }
