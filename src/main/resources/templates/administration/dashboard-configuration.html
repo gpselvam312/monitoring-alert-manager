@@ -36,7 +36,7 @@
             <button type="button"
                     class="btn btn-primary"
                     data-bs-toggle="modal"
-                    data-bs-target="#dashboardTabModal"
+                    onclick="DashboardConfig.newTab()" data-bs-target="#dashboardTabModal"
                     sec:authorize="hasAuthority('SYSTEM_CONFIG')">
                 <i class="bi bi-plus-lg me-1"></i>
                 Add Tab
@@ -99,7 +99,7 @@
                             <button type="button"
                                     class="btn btn-primary"
                                     data-bs-toggle="modal"
-                                    data-bs-target="#dashboardTabModal"
+                                    onclick="DashboardConfig.newTab()" data-bs-target="#dashboardTabModal"
                                     sec:authorize="hasAuthority('SYSTEM_CONFIG')">
 
                                 <i class="bi bi-plus-lg me-1"></i>
@@ -140,6 +140,7 @@
                                 </th>
 
 
+                                <th>Application</th>
                                 <th>Environment</th>
 
                                 <th>
@@ -208,6 +209,10 @@
 
                                 <td>
                                     <span class="table-secondary-text"
+                                          th:text="${tab.application != null ? tab.application.name : 'Unassigned'}">Unassigned</span>
+                                </td>
+                                <td>
+                                    <span class="table-secondary-text"
                                           th:text="${tab.environment != null ? tab.environment.name : 'Unassigned'}">Unassigned</span>
                                 </td>
 
@@ -252,6 +257,7 @@
                                                 class="btn btn-sm btn-outline-primary"
                                                 th:attr="data-id=${tab.id},
                                                          data-name=${tab.name},
+                                                         data-application-id=${tab.application != null ? tab.application.id : ''},
                                                          data-environment-id=${tab.environment != null ? tab.environment.id : ''},
                                                          data-sort-order=${tab.sortOrder}"
                                                 onclick="DashboardConfig.editTab(this)">
@@ -1001,6 +1007,19 @@
 
 
                         <div class="mb-3">
+                            <label for="dashboardTabApplication" class="form-label">
+                                Application <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="dashboardTabApplication" name="applicationId" required>
+                                <option value="">Select application</option>
+                                <option th:each="application : ${applications}"
+                                        th:value="${application.id}"
+                                        th:text="${application.name}">Application</option>
+                            </select>
+                            <div class="invalid-feedback">Select an application for this dashboard tab.</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="dashboardTabEnvironment" class="form-label">
                                 Environment <span class="text-danger">*</span>
                             </label>
@@ -1258,6 +1277,7 @@
 							    <option value="STAT">Stat</option>
 							    <option value="STATUS">Status</option>
 							    <option value="TABLE">Table</option>
+							    <option value="SERVER_HEALTH">Server Health Cards</option>
 							    <option value="CHART">Chart</option>
 							    <option value="TEXT">Text / Info</option>
 							
@@ -1603,6 +1623,12 @@
 
         window.DashboardConfig = {
 
+            newTab: function () {
+                document.getElementById('dashboardTabForm').reset();
+                document.getElementById('dashboardTabId').value = '';
+                document.getElementById('dashboardTabModalTitle').textContent = 'Add Dashboard Tab';
+            },
+
             editTab: function (button) {
 
                 document.getElementById('dashboardTabId').value =
@@ -1610,6 +1636,9 @@
 
                 document.getElementById('dashboardTabName').value =
                     button.dataset.name;
+
+                document.getElementById('dashboardTabApplication').value =
+                    button.dataset.applicationId || '';
 
                 document.getElementById('dashboardTabEnvironment').value =
                     button.dataset.environmentId || '';

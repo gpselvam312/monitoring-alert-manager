@@ -21,6 +21,7 @@ import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.service.MonitoringExecutionManager;
 import com.dxc.monitoring.service.MonitoringJobService;
 import com.dxc.monitoring.service.dashboard.DashboardTabResponse;
+import com.dxc.monitoring.service.dashboard.DashboardFilterResponse;
 
 @Controller
 public class DashboardController
@@ -52,10 +53,21 @@ public class DashboardController
     }
 
     @ResponseBody
-    @GetMapping("/api/dashboard")
-    public ResponseEntity<List<DashboardTabResponse>> getDashboard()
+    @GetMapping("/api/dashboard/filters")
+    public ResponseEntity<DashboardFilterResponse> getDashboardFilters(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long applicationId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long environmentId)
     {
-        return ResponseEntity.ok(dashboardService.getDashboard());
+        return ResponseEntity.ok(dashboardService.getDashboardFilters(applicationId, environmentId));
+    }
+
+    @ResponseBody
+    @GetMapping("/api/dashboard")
+    public ResponseEntity<List<DashboardTabResponse>> getDashboard(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long applicationId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Long environmentId)
+    {
+        return ResponseEntity.ok(dashboardService.getDashboard(applicationId, environmentId));
     }
 
     @ResponseBody
@@ -81,7 +93,9 @@ public class DashboardController
 
         MonitoringJob job = monitoringJobService.findById(widget.getDataSourceId());
 
-        if (widget.getTab().getEnvironment() == null || !widget.getTab().getEnvironment().isEnabled()
+        if (widget.getTab().getApplication() == null || job.getApplication() == null
+                || !widget.getTab().getApplication().getId().equals(job.getApplication().getId())
+                || widget.getTab().getEnvironment() == null || !widget.getTab().getEnvironment().isEnabled()
                 || job.getEnvironment() == null
                 || !widget.getTab().getEnvironment().getId().equals(job.getEnvironment().getId()))
         {

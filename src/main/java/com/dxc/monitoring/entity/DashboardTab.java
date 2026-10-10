@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "dashboard_tabs",
-       schema = "ra_fcb",
-       uniqueConstraints = { @UniqueConstraint(name = "uk_dashboard_tabs_name", columnNames = "name") })
+@Table(name = "dashboard_tabs", schema = "ra_fcb")
 public class DashboardTab
 {
 
@@ -16,6 +14,10 @@ public class DashboardTab
 
     @Column(nullable = false, length = 100)
     private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "application_id")
+    private Application application;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "environment_id")
@@ -60,6 +62,16 @@ public class DashboardTab
     public void setName(String name)
     {
         this.name = name;
+    }
+
+    public Application getApplication()
+    {
+        return application;
+    }
+
+    public void setApplication(Application application)
+    {
+        this.application = application;
     }
 
     public Environment getEnvironment()

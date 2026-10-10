@@ -14,6 +14,8 @@ public interface ApplicationRepository extends JpaRepository<Application, Long>
 {
     Optional<Application> findByName(String name);
 
+    java.util.List<Application> findByEnabledTrueOrderByName();
+
     @Query("""
             SELECT a
             FROM Application a

@@ -27,6 +27,12 @@
     const emptyElement =
         document.getElementById("dashboardEmpty");
 
+    const applicationFilter =
+        document.getElementById("dashboardApplicationFilter");
+
+    const environmentFilter =
+        document.getElementById("dashboardEnvironmentFilter");
+
     const containerElement =
         document.getElementById("dashboardContainer");
 
@@ -62,6 +68,10 @@
      */
 
     let dashboardData = [];
+    let selectedApplicationId = null;
+    let selectedEnvironmentId = null;
+    let dashboardFiltersBound = false;
+    const serverHealthViewState = new Map();
     const autoRefreshTimers = new Map();
 
     /*
@@ -100,7 +110,7 @@
 
         containerElement.classList.toggle(
             "d-none",
-            state !== "content"
+            state !== "content" && state !== "empty"
         );
     }
 
@@ -267,6 +277,9 @@
 	        String(widget.widgetType || "").toUpperCase()
 	    )
 	    {
+	        case "SERVER_HEALTH":
+	            return "bi-hdd-stack";
+
 	        case "STAT":
 	            return "bi-speedometer2";
 
@@ -1484,6 +1497,201 @@
 	    );
 	}
 
+    function renderServerHealthWidget(result, widget)
+    {
+        const config = parseWidgetFieldConfig(widget);
+        const rows = getConfiguredTableRows(result, config);
+        if (rows.length === 0)
+        {
+            return '<div class="dashboard-chart-empty"><i class="bi bi-hdd-stack"></i>' +
+                '<span>No server health records available.</span></div>';
+        }
+
+        const thresholds = config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {};
+        const cpuThresholds = thresholds.cpu || {};
+        const ramThresholds = thresholds.ram || {};
+        const loadThresholds = thresholds.loadPerCore || {};
+        const fields = Object.assign({
+            hostname: "hostname", cpu: "cpu_used_percent", ram: "ram_used_percent",
+            cpuCores: "cpu_cores", load: "load_1m", ramUsed: "ram_used_mb",
+            ramTotal: "ram_total_mb", collectionStatus: "collection_status"
+        }, config.fields || {});
+        const cpuWarning = Number(cpuThresholds.warning ?? 70);
+        const cpuCritical = Number(cpuThresholds.critical ?? 85);
+        const ramWarning = Number(ramThresholds.warning ?? 75);
+        const ramCritical = Number(ramThresholds.critical ?? 90);
+        const loadWarning = Number(loadThresholds.warning ?? 0.7);
+        const loadCritical = Number(loadThresholds.critical ?? 1.0);
+
+        function numeric(value)
+        {
+            if (value === null || value === undefined || value === "") return null;
+            const number = Number(value);
+            return Number.isFinite(number) ? number : null;
+        }
+        function metricStatus(value, warning, critical)
+        {
+            if (value === null) return "UNKNOWN";
+            if (value >= critical) return "CRITICAL";
+            if (value >= warning) return "WARNING";
+            return "HEALTHY";
+        }
+        function rank(status)
+        {
+            return status === "CRITICAL" ? 0 : status === "WARNING" ? 1 : status === "UNKNOWN" ? 2 : 3;
+        }
+        function tone(status)
+        {
+            return status === "CRITICAL" ? "danger" : status === "WARNING" ? "warning"
+                : status === "UNKNOWN" ? "secondary" : "success";
+        }
+        function displayNumber(value, suffix)
+        {
+            return value === null ? "N/A"
+                : Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 }) + (suffix || "");
+        }
+
+        const servers = rows.map(function (row)
+        {
+            const hostnameValue = getJsonPath(row, fields.hostname);
+            const cpu = numeric(getJsonPath(row, fields.cpu));
+            const ram = numeric(getJsonPath(row, fields.ram));
+            const cores = numeric(getJsonPath(row, fields.cpuCores));
+            const load = numeric(getJsonPath(row, fields.load));
+            const ramUsed = numeric(getJsonPath(row, fields.ramUsed));
+            const ramTotal = numeric(getJsonPath(row, fields.ramTotal));
+            const collectionStatus = getJsonPath(row, fields.collectionStatus);
+            const collectionFailed = collectionStatus !== null && collectionStatus !== undefined
+                && String(collectionStatus).trim() !== ""
+                && String(collectionStatus).trim().toUpperCase() !== "SUCCESS";
+            const normalizedLoad = load !== null && cores !== null && cores > 0 ? load / cores : null;
+            const cpuStatus = metricStatus(cpu, cpuWarning, cpuCritical);
+            const ramStatus = metricStatus(ram, ramWarning, ramCritical);
+            const loadStatus = metricStatus(normalizedLoad, loadWarning, loadCritical);
+            const statuses = [cpuStatus, ramStatus, loadStatus].filter(function (s) { return s !== "UNKNOWN"; });
+            let status = statuses.length === 0 ? "UNKNOWN"
+                : statuses.some(function (s) { return s === "CRITICAL"; }) ? "CRITICAL"
+                : statuses.some(function (s) { return s === "WARNING"; }) ? "WARNING" : "HEALTHY";
+            if (collectionFailed) status = "UNKNOWN";
+            const pressure = Math.max(
+                cpu === null || cpuCritical <= 0 ? 0 : cpu / cpuCritical,
+                ram === null || ramCritical <= 0 ? 0 : ram / ramCritical,
+                normalizedLoad === null || loadCritical <= 0 ? 0 : normalizedLoad / loadCritical
+            );
+            return {
+                hostname: hostnameValue === null || hostnameValue === undefined || hostnameValue === ""
+                    ? "Unknown server" : String(hostnameValue),
+                cpu: cpu, ram: ram, cores: cores, load: load, normalizedLoad: normalizedLoad,
+                ramUsed: ramUsed, ramTotal: ramTotal, collectionStatus: collectionStatus,
+                collectionFailed: collectionFailed, cpuStatus: cpuStatus, ramStatus: ramStatus,
+                loadStatus: loadStatus, status: status, pressure: pressure
+            };
+        });
+
+        servers.sort(function (left, right)
+        {
+            const severity = rank(left.status) - rank(right.status);
+            return severity !== 0 ? severity : right.pressure - left.pressure;
+        });
+
+        const counts = { CRITICAL: 0, WARNING: 0, HEALTHY: 0, UNKNOWN: 0 };
+        servers.forEach(function (server) { counts[server.status]++; });
+        const summary = '<div class="row g-2 mb-3 dashboard-server-health-summary">' +
+            [
+                ["Total", servers.length, "secondary"], ["Healthy", counts.HEALTHY, "success"],
+                ["Warning", counts.WARNING, "warning"], ["Critical", counts.CRITICAL, "danger"],
+                ["Unknown", counts.UNKNOWN, "secondary"]
+            ].map(function (item)
+            {
+                return '<div class="col-6 col-md"><div class="border rounded p-2 h-100">' +
+                    '<div class="small text-muted">' + escapeHtml(item[0]) + '</div>' +
+                    '<div class="fs-5 fw-semibold text-' + item[2] + '">' + item[1] + '</div></div></div>';
+            }).join("") + '</div>';
+
+        const viewState = serverHealthViewState.get(String(widget.id)) || { filter: "ALL", page: 1 };
+        const allowedFilters = ["ALL", "CRITICAL", "WARNING", "HEALTHY", "UNKNOWN"];
+        const activeFilter = allowedFilters.includes(viewState.filter) ? viewState.filter : "ALL";
+        const filteredServers = activeFilter === "ALL"
+            ? servers
+            : servers.filter(function (server) { return server.status === activeFilter; });
+        const pageSize = 12;
+        const pageCount = Math.max(1, Math.ceil(filteredServers.length / pageSize));
+        const currentPage = Math.min(Math.max(1, Number(viewState.page) || 1), pageCount);
+        serverHealthViewState.set(String(widget.id), { filter: activeFilter, page: currentPage });
+        const visibleServers = filteredServers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+        const filterBar = '<div class="d-flex flex-wrap gap-2 mb-3">' +
+            [
+                ["ALL", "All", servers.length],
+                ["CRITICAL", "Critical", counts.CRITICAL],
+                ["WARNING", "Warning", counts.WARNING],
+                ["HEALTHY", "Healthy", counts.HEALTHY],
+                ["UNKNOWN", "Unknown", counts.UNKNOWN]
+            ].map(function (item)
+            {
+                const active = item[0] === activeFilter;
+                return '<button type="button" class="btn btn-sm ' +
+                    (active ? "btn-primary" : "btn-outline-secondary") +
+                    ' server-health-filter" data-widget-id="' + escapeHtml(widget.id) +
+                    '" data-filter="' + item[0] + '">' + item[1] + ' <span class="ms-1">' + item[2] + '</span></button>';
+            }).join("") + '</div>';
+
+        const cards = visibleServers.map(function (server)
+        {
+            const serverTone = tone(server.status);
+            const metrics = [
+                { label: "CPU", value: server.cpu, status: server.cpuStatus },
+                { label: "RAM", value: server.ram, status: server.ramStatus }
+            ].map(function (metric)
+            {
+                const metricTone = tone(metric.status);
+                const width = metric.value === null ? 0 : Math.max(0, Math.min(100, metric.value));
+                return '<div class="col-6"><div class="small text-muted">' + metric.label + '</div>' +
+                    '<div class="fw-semibold text-' + metricTone + '">' + escapeHtml(displayNumber(metric.value, "%")) + '</div>' +
+                    '<div class="progress mt-1" style="height:6px" role="progressbar" aria-label="' + metric.label +
+                    ' usage" aria-valuenow="' + width + '" aria-valuemin="0" aria-valuemax="100">' +
+                    '<div class="progress-bar bg-' + metricTone + '" style="width:' + width + '%"></div></div></div>';
+            }).join("");
+
+            const loadLabel = server.load === null ? "N/A"
+                : displayNumber(server.load, "") + (server.normalizedLoad !== null
+                    ? " (" + displayNumber(server.normalizedLoad, "") + " per core)" : "");
+            const memoryDetail = server.ramUsed !== null && server.ramTotal !== null
+                ? '<div class="small text-muted mt-2">' + escapeHtml(displayNumber(server.ramUsed, "") +
+                    " / " + displayNumber(server.ramTotal, "") + " MB") + '</div>' : "";
+            const collectionMessage = server.collectionFailed
+                ? '<div class="small text-secondary mt-2"><i class="bi bi-exclamation-circle me-1"></i>Collection: ' +
+                    escapeHtml(server.collectionStatus) + '</div>' : "";
+            const statusLabel = server.status === "HEALTHY" ? "Healthy" : server.status === "WARNING" ? "Warning"
+                : server.status === "CRITICAL" ? "Critical" : "Unknown";
+
+            return '<div class="col-12 col-md-6 col-xl-4"><article class="border border-start border-4 border-' +
+                serverTone + ' rounded p-3 h-100 dashboard-server-health-card">' +
+                '<div class="d-flex align-items-start gap-2 mb-3"><i class="bi bi-hdd-stack fs-5 text-' + serverTone +
+                '"></i><div class="flex-grow-1 min-w-0"><div class="fw-semibold text-break">' +
+                escapeHtml(server.hostname) + '</div><div class="small text-muted">Load (1m): <span class="fw-semibold text-' +
+                tone(server.loadStatus) + '">' + escapeHtml(loadLabel) + '</span></div></div><span class="badge text-bg-' + serverTone + '">' +
+                statusLabel + '</span></div><div class="row g-3">' + metrics + '</div>' +
+                memoryDetail + collectionMessage + '</article></div>';
+        }).join("");
+
+        const firstShown = filteredServers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+        const lastShown = Math.min(currentPage * pageSize, filteredServers.length);
+        const pagination = '<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">' +
+            '<small class="text-muted">Showing ' + firstShown + '–' + lastShown + ' of ' + filteredServers.length + ' servers</small>' +
+            '<div class="btn-group btn-group-sm" role="group" aria-label="Server health pagination">' +
+            '<button type="button" class="btn btn-outline-secondary server-health-page" data-widget-id="' +
+            escapeHtml(widget.id) + '" data-page="' + (currentPage - 1) + '"' +
+            (currentPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
+            '<button type="button" class="btn btn-outline-secondary server-health-page" data-widget-id="' +
+            escapeHtml(widget.id) + '" data-page="' + (currentPage + 1) + '"' +
+            (currentPage >= pageCount ? ' disabled' : '') + '>Next</button></div></div>';
+
+        const cardsHtml = cards || '<div class="col-12"><div class="text-muted small p-3">No servers match this filter.</div></div>';
+        return summary + filterBar + '<div class="row g-3 dashboard-server-health-list">' + cardsHtml + '</div>' + pagination;
+    }
+
+
     /*
      * ------------------------------------------------------------
      * WIDGET RENDERING
@@ -1709,6 +1917,11 @@
 		{
 		    widgetContentHtml = renderTextWidget(result, widget);
 		}
+
+        else if (widgetType === "SERVER_HEALTH")
+        {
+            widgetContentHtml = renderServerHealthWidget(result, widget);
+        }
 
         /*
          * TABLE
@@ -1976,7 +2189,7 @@
                         '<i class="bi bi-grid-3x3-gap me-2"></i>' +
 
                         '<span>' +
-                            escapeHtml(tab.environmentName || tab.name) +
+                            escapeHtml(tab.name) +
                         '</span>' +
 
                     '</button>';
@@ -2061,6 +2274,7 @@
         bindTabEvents();
 
         bindWidgetActions();
+        bindServerHealthViewEvents();
 
 
         /*
@@ -2224,7 +2438,8 @@
             }
         );
 
-        renderTabs();
+        const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+        renderTabs(activeTab ? activeTab.dataset.tabId : undefined);
     }
 
 
@@ -2296,7 +2511,8 @@
                 }
             );
 
-            renderTabs();
+            const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+            renderTabs(activeTab ? activeTab.dataset.tabId : undefined);
         }
         catch (error)
         {
@@ -2619,87 +2835,222 @@
      * ------------------------------------------------------------
      */
 
-    async function loadDashboard(preferredTabId)
+    function bindServerHealthViewEvents()
+    {
+        contentElement.querySelectorAll(".server-health-filter").forEach(function (button)
+        {
+            button.addEventListener("click", function ()
+            {
+                const widgetId = String(button.dataset.widgetId);
+                serverHealthViewState.set(widgetId, { filter: button.dataset.filter || "ALL", page: 1 });
+                const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+                renderTabs(activeTab ? activeTab.dataset.tabId : undefined);
+            });
+        });
+
+        contentElement.querySelectorAll(".server-health-page").forEach(function (button)
+        {
+            button.addEventListener("click", function ()
+            {
+                if (button.disabled) return;
+                const widgetId = String(button.dataset.widgetId);
+                const current = serverHealthViewState.get(widgetId) || { filter: "ALL", page: 1 };
+                serverHealthViewState.set(widgetId, {
+                    filter: current.filter,
+                    page: Number(button.dataset.page) || 1
+                });
+                const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+                renderTabs(activeTab ? activeTab.dataset.tabId : undefined);
+            });
+        });
+    }
+
+
+    function populateDashboardFilter(select, options, selectedId, placeholder)
+    {
+        if (!select)
+        {
+            return;
+        }
+
+        select.innerHTML = "";
+
+        if (!Array.isArray(options) || options.length === 0)
+        {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = placeholder;
+            select.appendChild(option);
+            select.disabled = true;
+            return;
+        }
+
+        options.forEach(function (item)
+        {
+            const option = document.createElement("option");
+            option.value = String(item.id);
+            option.textContent = item.name;
+            select.appendChild(option);
+        });
+
+        select.disabled = options.length <= 1;
+        if (selectedId !== null && selectedId !== undefined)
+        {
+            select.value = String(selectedId);
+        }
+        if (!select.value && options.length > 0)
+        {
+            select.value = String(options[0].id);
+        }
+    }
+
+
+    function bindDashboardFilterEvents()
+    {
+        if (dashboardFiltersBound)
+        {
+            return;
+        }
+
+        if (applicationFilter)
+        {
+            applicationFilter.addEventListener("change", function ()
+            {
+                selectedApplicationId = applicationFilter.value || null;
+                // A new application gets its own PROD-first default environment.
+                loadDashboard(undefined, selectedApplicationId, null);
+            });
+        }
+
+        if (environmentFilter)
+        {
+            environmentFilter.addEventListener("change", function ()
+            {
+                selectedEnvironmentId = environmentFilter.value || null;
+                loadDashboard(undefined, selectedApplicationId, selectedEnvironmentId);
+            });
+        }
+
+        dashboardFiltersBound = true;
+    }
+
+
+    async function loadDashboard(preferredTabId, requestedApplicationId, requestedEnvironmentId)
     {
         clearAutoRefreshTimers();
         showState("loading");
-
-
         refreshButton.disabled = true;
-
+        bindDashboardFilterEvents();
 
         try
         {
-            const response =
-                await fetch(
-                    apiUrl,
-                    {
-                        method: "GET",
+            const targetApplicationId =
+                requestedApplicationId !== undefined
+                    ? requestedApplicationId
+                    : selectedApplicationId;
 
-                        headers:
-                        {
-                            "Accept":
-                                "application/json"
-                        },
+            const targetEnvironmentId =
+                requestedEnvironmentId !== undefined
+                    ? requestedEnvironmentId
+                    : selectedEnvironmentId;
 
-                        cache: "no-store"
-                    }
-                );
-
-
-            if (!response.ok)
+            const filterParams = new URLSearchParams();
+            if (targetApplicationId)
             {
-                throw new Error(
-                    "Dashboard request failed (" +
-                    response.status +
-                    ")"
-                );
+                filterParams.set("applicationId", targetApplicationId);
+            }
+            if (targetEnvironmentId)
+            {
+                filterParams.set("environmentId", targetEnvironmentId);
             }
 
+            const filterResponse = await fetch(
+                "/api/dashboard/filters" +
+                    (filterParams.toString() ? "?" + filterParams.toString() : ""),
+                {
+                    method: "GET",
+                    headers: { "Accept": "application/json" },
+                    cache: "no-store"
+                }
+            );
 
-            const data =
-                await response.json();
+            if (!filterResponse.ok)
+            {
+                throw new Error("Dashboard filter request failed (" + filterResponse.status + ")");
+            }
 
+            const filters = await filterResponse.json();
+            populateDashboardFilter(
+                applicationFilter,
+                filters.applications,
+                filters.selectedApplicationId,
+                "No applications available"
+            );
+            populateDashboardFilter(
+                environmentFilter,
+                filters.environments,
+                filters.selectedEnvironmentId,
+                "No environments configured"
+            );
 
-            if (
-                !Array.isArray(data) ||
-                data.length === 0
-            )
+            selectedApplicationId = filters.selectedApplicationId || null;
+            selectedEnvironmentId = filters.selectedEnvironmentId || null;
+
+            if (!selectedApplicationId || !selectedEnvironmentId)
             {
                 dashboardData = [];
-
                 if (dateRangeContainer) dateRangeContainer.classList.add("d-none");
-
                 destroyDashboardCharts();
-
-
+                tabsElement.innerHTML = "";
+                contentElement.innerHTML = "";
                 showState("empty");
-
                 return;
             }
 
+            const dashboardParams = new URLSearchParams({
+                applicationId: String(selectedApplicationId),
+                environmentId: String(selectedEnvironmentId)
+            });
+
+            const response = await fetch(
+                apiUrl + "?" + dashboardParams.toString(),
+                {
+                    method: "GET",
+                    headers: { "Accept": "application/json" },
+                    cache: "no-store"
+                }
+            );
+
+            if (!response.ok)
+            {
+                throw new Error("Dashboard request failed (" + response.status + ")");
+            }
+
+            const data = await response.json();
+
+            if (!Array.isArray(data) || data.length === 0)
+            {
+                dashboardData = [];
+                if (dateRangeContainer) dateRangeContainer.classList.add("d-none");
+                destroyDashboardCharts();
+                tabsElement.innerHTML = "";
+                contentElement.innerHTML = "";
+                showState("empty");
+                return;
+            }
 
             dashboardData = data;
-
             configureDateRangeControls();
             renderTabs(preferredTabId);
-
-			showState("content");
+            showState("content");
         }
         catch (error)
         {
-            console.error(
-                "Unable to load dashboard",
-                error
-            );
-
-
+            console.error("Unable to load dashboard", error);
             errorMessageElement.textContent =
                 error && error.message
                     ? error.message
                     : "Unable to load dashboard data.";
-
-
             showState("error");
         }
         finally
@@ -2717,19 +3068,29 @@
 
     refreshButton.addEventListener(
         "click",
-        loadDashboard
+        function ()
+        {
+            const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+            loadDashboard(activeTab ? activeTab.dataset.tabId : undefined,
+                selectedApplicationId, selectedEnvironmentId);
+        }
     );
 
 
     retryButton.addEventListener(
         "click",
-        loadDashboard
+        function ()
+        {
+            const activeTab = tabsElement.querySelector(".dashboard-tab.active");
+            loadDashboard(activeTab ? activeTab.dataset.tabId : undefined,
+                selectedApplicationId, selectedEnvironmentId);
+        }
     );
 
 
     /*
      * Initial load.
      */
-    loadDashboard();
+    loadDashboard(undefined, null, null);
 
 })();

@@ -1,7 +1,9 @@
 package com.dxc.monitoring.service;
 
+import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Role;
 import com.dxc.monitoring.entity.User;
+import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.RoleRepository;
 import com.dxc.monitoring.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,12 +16,15 @@ import java.util.List;
 public class UserService
 {
     private final UserRepository userRepository;
+    private final ApplicationRepository applicationRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder)
+    public UserService(UserRepository userRepository, RoleRepository roleRepository,
+            ApplicationRepository applicationRepository, PasswordEncoder passwordEncoder)
     {
         this.userRepository = userRepository;
+        this.applicationRepository = applicationRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -33,7 +38,14 @@ public class UserService
     @Transactional(readOnly = true)
     public User findById(Long id)
     {
-        return userRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+        return userRepository.findWithApplicationsById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Application> findAllApplications()
+    {
+        return applicationRepository.findByEnabledTrueOrderByName();
     }
 
     @Transactional(readOnly = true)
@@ -43,7 +55,7 @@ public class UserService
     }
 
     @Transactional
-    public User create(User user, String password, Long roleId)
+    public User create(User user, String password, Long roleId, List<Long> applicationIds)
     {
         user.setPasswordHash(passwordEncoder.encode(password));
 
@@ -52,12 +64,18 @@ public class UserService
 
         user.getRoles().clear();
         user.getRoles().add(role);
+        user.getApplications().clear();
+        if (applicationIds != null && !applicationIds.isEmpty())
+        {
+            user.getApplications().addAll(applicationRepository.findAllById(applicationIds));
+        }
 
         return userRepository.save(user);
     }
 
     @Transactional
-    public User update(Long id, String fullName, String email, boolean enabled, String password, Long roleId)
+    public User update(Long id, String fullName, String email, boolean enabled, String password, Long roleId,
+            List<Long> applicationIds)
     {
         User existingUser = findById(id);
 
@@ -79,6 +97,11 @@ public class UserService
 
         existingUser.getRoles().clear();
         existingUser.getRoles().add(role);
+        existingUser.getApplications().clear();
+        if (applicationIds != null && !applicationIds.isEmpty())
+        {
+            existingUser.getApplications().addAll(applicationRepository.findAllById(applicationIds));
+        }
 
         return userRepository.save(existingUser);
     }

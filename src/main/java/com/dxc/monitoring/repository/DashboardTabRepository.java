@@ -16,18 +16,35 @@ import com.dxc.monitoring.entity.DashboardTab;
 @Repository
 public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long>
 {
-    @EntityGraph(attributePaths = { "environment" })
+    @EntityGraph(attributePaths = { "application", "environment" })
     List<DashboardTab> findAllByEnabledTrueOrderBySortOrderAsc();
+
+    @EntityGraph(attributePaths = { "application", "environment" })
+    List<DashboardTab> findAllByApplication_IdAndEnvironment_IdAndEnabledTrueOrderBySortOrderAsc(
+            Long applicationId, Long environmentId);
+
+    @Query("""
+            SELECT DISTINCT t.environment
+            FROM DashboardTab t
+            WHERE t.application.id = :applicationId
+              AND t.enabled = true
+              AND t.environment IS NOT NULL
+              AND t.environment.enabled = true
+            ORDER BY t.environment.name
+            """)
+    List<com.dxc.monitoring.entity.Environment> findDistinctEnabledEnvironmentsByApplicationId(
+            @Param("applicationId") Long applicationId);
 
     List<DashboardTab> findAllByOrderBySortOrderAsc();
 
-    Optional<DashboardTab> findByNameIgnoreCase(String name);
+    Optional<DashboardTab> findByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
+            String name, Long applicationId, Long environmentId);
 
-    Optional<DashboardTab> findByEnvironment_Id(Long environmentId);
 
-    boolean existsByNameIgnoreCase(String name);
+    boolean existsByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
+            String name, Long applicationId, Long environmentId);
 
-    @EntityGraph(attributePaths = { "environment" })
+    @EntityGraph(attributePaths = { "application", "environment" })
     @Query("""
             SELECT t
             FROM DashboardTab t

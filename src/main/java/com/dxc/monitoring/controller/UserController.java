@@ -36,6 +36,8 @@ public class UserController
 
         model.addAttribute("user", user);
         model.addAttribute("roles", userService.findAllRoles());
+        model.addAttribute("applications", userService.findAllApplications());
+        model.addAttribute("userApplicationIds", java.util.Set.of());
         model.addAttribute("pageTitle", "Add User");
         model.addAttribute("currentPage", "users");
 
@@ -44,9 +46,10 @@ public class UserController
 
     @PostMapping("/save")
     public String saveUser(@ModelAttribute("user") User user, @RequestParam("password") String password,
-            @RequestParam("roleId") Long roleId)
+            @RequestParam("roleId") Long roleId,
+            @RequestParam(name = "applicationIds", required = false) java.util.List<Long> applicationIds)
     {
-        userService.create(user, password, roleId);
+        userService.create(user, password, roleId, applicationIds);
 
         return "redirect:/administration/users";
     }
@@ -58,6 +61,9 @@ public class UserController
 
         model.addAttribute("user", user);
         model.addAttribute("roles", userService.findAllRoles());
+        model.addAttribute("applications", userService.findAllApplications());
+        model.addAttribute("userApplicationIds", user.getApplications().stream()
+                .map(com.dxc.monitoring.entity.Application::getId).collect(java.util.stream.Collectors.toSet()));
         model.addAttribute("pageTitle", "Edit User");
         model.addAttribute("currentPage", "users");
 
@@ -66,9 +72,10 @@ public class UserController
 
     @PostMapping("/{id}/update")
     public String updateUser(@PathVariable Long id, @ModelAttribute("user") User user,
-            @RequestParam("password") String password, @RequestParam("roleId") Long roleId)
+            @RequestParam("password") String password, @RequestParam("roleId") Long roleId,
+            @RequestParam(name = "applicationIds", required = false) java.util.List<Long> applicationIds)
     {
-        userService.update(id, user.getFullName(), user.getEmail(), user.isEnabled(), password, roleId);
+        userService.update(id, user.getFullName(), user.getEmail(), user.isEnabled(), password, roleId, applicationIds);
 
         return "redirect:/administration/users";
     }
