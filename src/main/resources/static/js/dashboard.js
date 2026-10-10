@@ -3017,7 +3017,8 @@
                 state.status = String(summaryCard.dataset.status || "ALL").toUpperCase();
                 state.page = 0;
                 serverHealthState.set(widgetId, state);
-                loadDashboard(activeTabId);
+                // Apply the status filter to the dashboard data already in memory.
+                renderTabs(activeTabId);
             }
             return;
         }
@@ -3027,7 +3028,8 @@
         const state = serverHealthState.get(String(button.dataset.widgetId)) || { status: "ALL", page: 0 };
         state.page = Number(button.dataset.page) || 0;
         serverHealthState.set(String(button.dataset.widgetId), state);
-        loadDashboard(activeTabId);
+        // Pagination is client-side; do not reload dashboard data from the server.
+        renderTabs(activeTabId);
     });
 
     /* Initial load. */
