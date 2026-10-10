@@ -441,6 +441,16 @@ body {
     border-color: var(--dxc-orange-dark);
 }
 
+/* Keep primary form actions visible across themes and CSS overrides. */
+.save-action-button,
+.save-action-button:hover,
+.save-action-button:focus,
+.save-action-button:active {
+    color: #ffffff !important;
+    background-color: var(--dxc-orange) !important;
+    border-color: var(--dxc-orange) !important;
+}
+
 .btn-outline-primary {
     color: var(--dxc-orange);
     border-color: var(--dxc-orange);
