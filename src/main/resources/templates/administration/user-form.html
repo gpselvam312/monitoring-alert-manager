@@ -209,7 +209,7 @@
                                                    name="applicationIds"
                                                    th:id="${'applicationAccess-' + application.id}"
                                                    th:value="${application.id}"
-                                                   th:checked="${user.applications.contains(application)}">
+                                                   th:checked="${userApplicationIds.contains(application.id)}>
                                             <label class="form-check-label"
                                                    th:for="${'applicationAccess-' + application.id}"
                                                    th:text="${application.name}">Application</label>
