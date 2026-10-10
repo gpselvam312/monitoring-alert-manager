@@ -10,6 +10,7 @@
 <div class="mt-4"><label class="form-label">Permissions</label><p class="form-text" th:if="${role.name == 'ADMIN'}">Permissions for the built-in ADMIN role are protected.</p><div class="row g-3"><div class="col-md-6 col-xl-4" th:each="permission : ${permissions}"><label class="border rounded p-3 d-flex gap-2 align-items-start h-100"><input class="form-check-input mt-1" type="checkbox" name="permissionIds" th:value="${permission.id}" th:checked="${selectedPermissionIds.contains(permission.id)}" th:disabled="${role.name == 'ADMIN'}"><span><span class="fw-semibold d-block" th:text="${permission.name}">MONITORING_VIEW</span><span class="form-text" th:text="${permission.description}">Permission description</span></span></label></div></div><div th:if="${#lists.isEmpty(permissions)}" class="text-muted">No permissions are configured.</div><p class="form-text mt-2">Only select permissions required for this role.</p></div>
 <div class="form-actions">
     <a th:href="@{/administration/roles}" class="btn btn-outline-secondary">Cancel</a>
-    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i><span>Save Role</span></button>
+    <button type="submit" class="btn btn-primary save-action-button">
+                            <i class="bi bi-check-lg me-1"></i><span>Save Role</span></button>
 </div></form></div></div></div></main></div>
 <div th:replace="~{fragments/footer :: footer}"></div><div th:replace="~{fragments/scripts :: scripts}"></div></body></html>
