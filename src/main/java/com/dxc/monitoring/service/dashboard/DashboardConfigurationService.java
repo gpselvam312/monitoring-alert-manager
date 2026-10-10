@@ -178,6 +178,7 @@ public class DashboardConfigurationService
     @Transactional(readOnly = true)
     public List<DashboardWidget> findWidgetsByTabId(Long tabId)
     {
+        findTabById(tabId);
         return dashboardWidgetRepository.findAllByTabIdOrderBySortOrderAsc(tabId);
     }
 
