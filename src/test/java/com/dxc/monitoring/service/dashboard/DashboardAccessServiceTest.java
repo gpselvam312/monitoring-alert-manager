@@ -85,6 +85,19 @@ class DashboardAccessServiceTest {
     }
 
     @Test
+    void returnsConfiguredPrimaryApplicationId() {
+        UserApplicationRole primaryAssignment = new UserApplicationRole();
+        primaryAssignment.setId(new UserApplicationRoleId(7L, 12L));
+        primaryAssignment.setUser(user);
+        primaryAssignment.setApplication(appB);
+        primaryAssignment.setRole(viewerRole);
+        primaryAssignment.setPrimary(true);
+        when(assignments.findFirstByUser_IdAndPrimaryTrue(7L)).thenReturn(Optional.of(primaryAssignment));
+
+        assertEquals(12L, service.getPrimaryApplicationId());
+    }
+
+    @Test
     void returnsOnlyEnvironmentsOwnedByTheSelectedApplication() {
         Environment sit = new Environment();
         sit.setId(101L);
