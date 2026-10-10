@@ -1252,7 +1252,7 @@
         return typeof value === "object" ? JSON.stringify(value) : value;
     }
 
-    function renderServerHealthCards(result, widget, config)
+    function renderSystemMetricsCards(result, widget, config)
     {
         const rows = getConfiguredTableRows(result, config).map(function (row) { return Object.assign({}, row); });
         const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
@@ -1374,6 +1374,86 @@
         }).join("");
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
         return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
+    }
+
+    // Backward-compatible renderer for existing TABLE widgets configured with renderer: SERVER_HEALTH.
+    function renderServerHealthCards(result, widget, config)
+    {
+        const rows = getConfiguredTableRows(result, config).map(function (row) { return Object.assign({}, row); });
+        const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
+        const pick = function (row, keys)
+        {
+            for (const key of keys) if (row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+            return null;
+        };
+        const number = function (value) { const n = Number(value); return Number.isFinite(n) ? n : null; };
+        const statusOf = function (row)
+        {
+            const collection = String(pick(row, ["collection_status", "collectionStatus", "status"]) || "").toUpperCase();
+            if (["FAILED", "FAILURE", "FAIL", "ERROR", "DOWN", "UNREACHABLE", "UNAVAILABLE", "NOT_COLLECTED", "CRITICAL", "TIMEOUT"].includes(collection)) return "CRITICAL";
+            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
+            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
+            const load = number(pick(row, ["load_1m", "load1m", "load_average_1m"]));
+            const cores = Math.max(1, number(pick(row, ["cpu_cores", "cpuCores"])) || 1);
+            const levels = [];
+            if (cpu !== null) levels.push(cpu >= 85 ? 2 : cpu >= 70 ? 1 : 0);
+            if (ram !== null) levels.push(ram >= 90 ? 2 : ram >= 75 ? 1 : 0);
+            if (load !== null) levels.push(load / cores >= 1 ? 2 : load / cores >= 0.70 ? 1 : 0);
+            if (!levels.length) return "CRITICAL";
+            const worst = Math.max.apply(null, levels);
+            return worst === 2 ? "CRITICAL" : worst === 1 ? "WARNING" : "HEALTHY";
+        };
+        const pressureOf = function (row)
+        {
+            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent"])) || 0;
+            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent"])) || 0;
+            const load = number(pick(row, ["load_1m", "load1m", "load_average_1m"])) || 0;
+            const cores = Math.max(1, number(pick(row, ["cpu_cores", "cpuCores"])) || 1);
+            return Math.max(cpu / 85, ram / 90, load / cores);
+        };
+        const ranked = rows.map(function (row) { return { row: row, status: statusOf(row), pressure: pressureOf(row) }; })
+            .sort(function (a, b)
+            {
+                const rank = { CRITICAL: 0, WARNING: 1, HEALTHY: 2 };
+                return rank[a.status] - rank[b.status] || b.pressure - a.pressure;
+            });
+        const counts = { total: ranked.length, HEALTHY: 0, WARNING: 0, CRITICAL: 0 };
+        ranked.forEach(function (item) { counts[item.status]++; });
+        const filtered = state.status === "ALL" ? ranked : ranked.filter(function (item) { return item.status === state.status; });
+        const pageSize = 12, pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        state.page = Math.min(Math.max(0, state.page || 0), pages - 1);
+        serverHealthState.set(String(widget.id), state);
+        const pageRows = filtered.slice(state.page * pageSize, (state.page + 1) * pageSize);
+        const summary = '<div class="server-health-summary">' +
+            [["Total", counts.total, "total"], ["Healthy", counts.HEALTHY, "healthy"], ["Warning", counts.WARNING, "warning"], ["Critical", counts.CRITICAL, "critical"]]
+            .map(function (item) { return '<div class="server-health-summary-item"><span>' + item[0] + '</span><strong class="server-health-' + item[2] + '">' + item[1] + '</strong></div>'; }).join("") + '</div>';
+        const filters = '<div class="server-health-toolbar"><label class="small text-muted" for="server-health-filter-' + escapeHtml(widget.id) + '">Status</label>' +
+            '<select class="form-select form-select-sm server-health-filter" id="server-health-filter-' + escapeHtml(widget.id) + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
+            [["ALL", "All"], ["CRITICAL", "Critical"], ["WARNING", "Warning"], ["HEALTHY", "Healthy"]].map(function (item)
+            {
+                return '<option value="' + item[0] + '"' + (state.status === item[0] ? " selected" : "") + ">" + item[1] + "</option>";
+            }).join("") + '</select><span class="small text-muted">Showing ' + (filtered.length ? state.page * pageSize + 1 : 0) + "–" + Math.min((state.page + 1) * pageSize, filtered.length) + " of " + filtered.length + "</span></div>";
+        const cards = pageRows.map(function (item)
+        {
+            const row = item.row, host = pick(row, ["hostname", "hostName", "server", "name"]) || "Unknown host";
+            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
+            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
+            const load = pick(row, ["load_1m", "load1m", "load_average_1m"]);
+            const used = pick(row, ["ram_used_mb", "ramUsedMb"]), total = pick(row, ["ram_total_mb", "ramTotalMb"]);
+            const severity = item.status.toLowerCase();
+            const metric = function (label, value, suffix)
+            {
+                const display = value === null || value === undefined ? "N/A" : escapeHtml(value) + (suffix || "");
+                const width = Math.max(0, Math.min(100, number(value) || 0));
+                return '<div class="server-health-metric"><div><span>' + label + '</span><strong>' + display + '</strong></div><div class="server-health-meter"><span class="server-health-meter-' + severity + '" style="width:' + width + '%"></span></div></div>';
+            };
+            return '<article class="server-health-card server-health-card-' + severity + '"><header><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong><span class="server-health-status server-health-status-' + severity + '">' + item.status + '</span></header>' +
+                metric("CPU", cpu, "%") + metric("RAM", ram, "%") +
+                '<div class="server-health-foot"><span>Load (1m): <strong>' + (load === null ? "N/A" : escapeHtml(load)) + '</strong></span>' +
+                (used !== null && total !== null ? '<span>RAM: ' + escapeHtml(used) + " / " + escapeHtml(total) + " MB</span>" : "") + "</div></article>";
+        }).join("");
+        const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + ">Previous</button><span class=\"small text-muted\">Page " + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + ">Next</button></div>";
+        return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="text-muted small p-3">No servers match this status filter.</div>') + "</div>" + pager;
     }
 
     function renderTableWidget(result, widget)
@@ -1853,7 +1933,7 @@
 
         else if (widgetType === "SYSTEM_METRICS")
         {
-            widgetContentHtml = renderServerHealthCards(result, widget, parseWidgetFieldConfig(widget));
+            widgetContentHtml = renderSystemMetricsCards(result, widget, parseWidgetFieldConfig(widget));
         }
         else if (widgetType === "TABLE")
         {
