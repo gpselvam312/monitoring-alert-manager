@@ -21,7 +21,6 @@ import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringResult;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.ApplicationRepository;
-import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
@@ -37,7 +36,6 @@ public class DashboardService
 {
     private final DashboardTabRepository dashboardTabRepository;
     private final ApplicationRepository applicationRepository;
-    private final EnvironmentRepository environmentRepository;
     private final UserRepository userRepository;
     private final DashboardWidgetRepository dashboardWidgetRepository;
     private final MonitoringExecutionRepository monitoringExecutionRepository;
@@ -51,13 +49,11 @@ public class DashboardService
             MonitoringResultRepository monitoringResultRepository,
             MonitoringJobRepository monitoringJobRepository,
             ApplicationRepository applicationRepository,
-            EnvironmentRepository environmentRepository,
             UserRepository userRepository,
             ObjectMapper objectMapper)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.applicationRepository = applicationRepository;
-        this.environmentRepository = environmentRepository;
         this.userRepository = userRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringExecutionRepository = monitoringExecutionRepository;
