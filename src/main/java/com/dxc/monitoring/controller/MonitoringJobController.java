@@ -34,6 +34,7 @@ import com.dxc.monitoring.service.MonitoringExecutionManager;
 import com.dxc.monitoring.service.MonitoringExecutionService;
 import com.dxc.monitoring.service.MonitoringJobService;
 import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 @Controller
 @RequestMapping("/monitoring/jobs")
@@ -49,6 +50,7 @@ public class MonitoringJobController
     private final MonitoringExecutionManager monitoringExecutionManager;
     private final MonitoringExecutionService monitoringExecutionService;
     private final MonitoringResultNormalizer resultNormalizer;
+    private final DashboardAccessService accessService;
 
     @Value("${monitoring.streaming.max-runtime-seconds:86400}")
     private int configuredMaximumStreamingRuntimeSeconds;
@@ -62,7 +64,8 @@ public class MonitoringJobController
             ScheduleRepository scheduleRepository, UserRepository userRepository,
             ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
             MonitoringExecutionManager monitoringExecutionManager,
-            MonitoringExecutionService monitoringExecutionService, MonitoringResultNormalizer resultNormalizer)
+            MonitoringExecutionService monitoringExecutionService, MonitoringResultNormalizer resultNormalizer,
+            DashboardAccessService accessService)
     {
         this.monitoringJobService = monitoringJobService;
         this.machineRepository = machineRepository;
@@ -73,6 +76,7 @@ public class MonitoringJobController
         this.monitoringExecutionManager = monitoringExecutionManager;
         this.monitoringExecutionService = monitoringExecutionService;
         this.resultNormalizer = resultNormalizer;
+        this.accessService = accessService;
     }
 
     /*
@@ -178,8 +182,13 @@ public class MonitoringJobController
         model.addAttribute("job", job);
         model.addAttribute("machines", machineRepository.findAll());
         model.addAttribute("schedules", scheduleRepository.findAll());
-        model.addAttribute("applications", applicationRepository.findAll());
-        model.addAttribute("environments", environmentRepository.findAll());
+        List<com.dxc.monitoring.entity.Application> configurableApplications =
+                accessService.getApplicationsWithPermission("MONITORING_CONFIG");
+        List<Long> configurableApplicationIds = configurableApplications.stream()
+                .map(com.dxc.monitoring.entity.Application::getId).toList();
+        model.addAttribute("applications", configurableApplications);
+        model.addAttribute("environments", configurableApplicationIds.isEmpty() ? List.of()
+                : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(configurableApplicationIds));
         model.addAttribute("maxStreamingRuntimeSeconds", configuredMaximumStreamingRuntimeSeconds);
         model.addAttribute("executionModeLocked", streamingContext);
         model.addAttribute("pageTitle", streamingContext ? "Add Streaming Job" : "Add Monitoring Job");
@@ -211,6 +220,13 @@ public class MonitoringJobController
             job.setMaxStreamingRuntimeSeconds(300);
         }
 
+        if (applicationId != null)
+            accessService.assertCanAccessApplication(applicationId, "MONITORING_CONFIG");
+        if (job.getId() != null) {
+            MonitoringJob existingForAuthorization = monitoringJobService.findById(job.getId());
+            if (existingForAuthorization.getApplication() != null)
+                accessService.assertCanAccessApplication(existingForAuthorization.getApplication().getId(), "MONITORING_CONFIG");
+        }
         String validationError = validateJobConfiguration(job, applicationId, environmentId);
         if (validationError == null)
         {
@@ -403,6 +419,17 @@ public class MonitoringJobController
             return "Select an application.";
         if (environmentId == null)
             return "Select an environment.";
+        com.dxc.monitoring.entity.Application selectedApplication = applicationRepository.findById(applicationId)
+                .filter(com.dxc.monitoring.entity.Application::isEnabled)
+                .orElse(null);
+        if (selectedApplication == null)
+            return "Select an enabled application.";
+        com.dxc.monitoring.entity.Environment selectedEnvironment = environmentRepository.findById(environmentId)
+                .filter(com.dxc.monitoring.entity.Environment::isEnabled)
+                .orElse(null);
+        if (selectedEnvironment == null || selectedEnvironment.getApplication() == null
+                || !applicationId.equals(selectedEnvironment.getApplication().getId()))
+            return "Select an enabled environment belonging to the selected application.";
         if (job.getType() == null)
             return "Select a monitoring type.";
         if (job.getTimeoutSeconds() == null || job.getTimeoutSeconds() < 1)
@@ -476,6 +503,8 @@ public class MonitoringJobController
     public String viewJob(@PathVariable Long id, @RequestParam(required = false) String mode, Model model)
     {
         MonitoringJob job = monitoringJobService.findById(id);
+        if (job.getApplication() != null)
+            accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_CONFIG");
         boolean streamingContext = "STREAMING".equalsIgnoreCase(mode)
                 && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING;
 
