@@ -27,7 +27,7 @@
 
         <div class="page-header-actions">
 
-            <a sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+            <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
                th:href="@{/administration/environments/new}"
                class="btn btn-primary">
 
@@ -110,7 +110,7 @@
                                 Add an environment to start configuring monitoring.
                             </p>
 
-                            <a sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                            <a sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                th:href="@{/administration/environments/new}"
                                class="btn btn-primary">
 
@@ -203,7 +203,7 @@
 
                                 <!-- Actions -->
 
-                                <th sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                <th sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                     class="text-end table-actions-column">
 
                                     Actions
@@ -285,7 +285,7 @@
 
                                 <!-- Actions -->
 
-                                <td sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                <td sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                     class="text-end table-actions-column">
 
                                     <!-- Text actions -->
