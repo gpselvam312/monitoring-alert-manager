@@ -33,6 +33,8 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
     Page<Environment> findAllForApplications(@Param("search") String search,
             @Param("applicationIds") List<Long> applicationIds, Pageable pageable);
 
+    boolean existsByApplicationId(Long applicationId);
+
     boolean existsByApplicationIdAndNameIgnoreCase(Long applicationId, String name);
 
     Optional<Environment> findByApplicationIdAndNameIgnoreCase(Long applicationId, String name);
