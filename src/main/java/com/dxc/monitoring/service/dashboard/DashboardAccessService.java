@@ -40,6 +40,13 @@ public class DashboardAccessService {
     }
 
     @Transactional(readOnly = true)
+    public Long getPrimaryApplicationId() {
+        return assignments.findFirstByUser_IdAndPrimaryTrue(currentUser().getId())
+                .map(assignment -> assignment.getApplication().getId())
+                .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
     public List<Application> getApplicationsWithPermission(String permission) {
         if (isPlatformAdmin()) return applications.findByEnabledTrueOrderByNameAsc();
         return assignments.findAssignmentsForUser(currentUser().getId()).stream()
