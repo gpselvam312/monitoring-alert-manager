@@ -1335,18 +1335,17 @@
         ];
         const summary = '<div class="server-health-summary">' + summaries.map(function (x)
         {
-            const totalCard = x[2] === "total";
-            const tag = totalCard ? "button" : "div";
-            const attributes = totalCard
-                ? ' type="button" class="server-health-summary-item server-health-summary-' + x[2] + ' server-health-summary-total" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Show all servers and clear status filter" aria-pressed="' + (state.status === "ALL") + '"'
-                : ' class="server-health-summary-item server-health-summary-' + x[2] + '"';
-            return '<' + tag + attributes + '><span><i class="bi ' + x[3] + '" aria-hidden="true"></i> ' + x[0] + '</span><strong class="server-health-' + x[2] + '">' + x[1] + '</strong></' + tag + '>';
+            const statusFilter = x[2] === "total" ? "ALL" : x[2].toUpperCase();
+            return '<button type="button" class="server-health-summary-item server-health-summary-' + x[2] + ' server-health-summary-filter' +
+                (state.status === statusFilter ? ' is-active' : '') + '" data-widget-id="' + escapeHtml(widget.id) +
+                '" data-status="' + statusFilter + '" aria-label="Filter servers by ' + x[0] +
+                '" aria-pressed="' + (state.status === statusFilter) + '"><span><i class="bi ' + x[3] +
+                '" aria-hidden="true"></i> ' + x[0] + '</span><strong class="server-health-' + x[2] +
+                '">' + x[1] + '</strong></button>';
         }).join("") + '</div>';
-        const filters = '<div class="server-health-toolbar"><label class="small text-muted" for="server-health-filter-' + escapeHtml(widget.id) + '"><i class="bi bi-funnel me-1" aria-hidden="true"></i>Status</label>' +
-            '<select class="form-select form-select-sm server-health-filter" id="server-health-filter-' + escapeHtml(widget.id) + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
-            [["ALL", "All statuses"], ["CRITICAL", "Critical"], ["WARNING", "Warning"], ["UNKNOWN", "Unknown"], ["HEALTHY", "Healthy"]].map(function (x)
-            { return '<option value="' + x[0] + '"' + (state.status === x[0] ? " selected" : "") + '>' + x[1] + '</option>'; }).join("") +
-            '</select><span class="small text-muted">Showing ' + (filtered.length ? state.page * size + 1 : 0) + "–" + Math.min((state.page + 1) * size, filtered.length) + " of " + filtered.length + '</span></div>';
+        const filters = '<div class="server-health-toolbar"><span class="small text-muted">Showing ' +
+            (filtered.length ? state.page * size + 1 : 0) + "–" + Math.min((state.page + 1) * size, filtered.length) +
+            " of " + filtered.length + ' servers</span></div>';
         const metric = function (icon, name, value, meter)
         {
             const display = value === null || value === undefined || value === "" ? "N/A" : escapeHtml(value) + (meter === null ? "" : "%");
@@ -3008,14 +3007,14 @@
     });
     contentElement.addEventListener("click", function (event)
     {
-        const totalCard = event.target.closest(".server-health-summary-total");
-        if (totalCard)
+        const summaryCard = event.target.closest(".server-health-summary-filter");
+        if (summaryCard)
         {
-            const widgetId = String(totalCard.dataset.widgetId || "");
+            const widgetId = String(summaryCard.dataset.widgetId || "");
             if (widgetId)
             {
                 const state = serverHealthState.get(widgetId) || { status: "ALL", page: 0 };
-                state.status = "ALL";
+                state.status = String(summaryCard.dataset.status || "ALL").toUpperCase();
                 state.page = 0;
                 serverHealthState.set(widgetId, state);
                 loadDashboard(activeTabId);
