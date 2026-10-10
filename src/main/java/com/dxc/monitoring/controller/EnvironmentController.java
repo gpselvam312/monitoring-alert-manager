@@ -3,6 +3,9 @@ package com.dxc.monitoring.controller;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.ApplicationRepository;
+import com.dxc.monitoring.repository.MonitoringJobRepository;
+import com.dxc.monitoring.repository.DashboardTabRepository;
+import com.dxc.monitoring.repository.MachineRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.entity.Application;
 
@@ -25,13 +28,20 @@ public class EnvironmentController
     private final EnvironmentRepository environmentRepository;
     private final ApplicationRepository applicationRepository;
     private final DashboardAccessService accessService;
+    private final MonitoringJobRepository monitoringJobRepository;
+    private final DashboardTabRepository dashboardTabRepository;
+    private final MachineRepository machineRepository;
 
     public EnvironmentController(EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository,
-            DashboardAccessService accessService)
+            DashboardAccessService accessService, MonitoringJobRepository monitoringJobRepository,
+            DashboardTabRepository dashboardTabRepository, MachineRepository machineRepository)
     {
         this.environmentRepository = environmentRepository;
         this.applicationRepository = applicationRepository;
         this.accessService = accessService;
+        this.monitoringJobRepository = monitoringJobRepository;
+        this.dashboardTabRepository = dashboardTabRepository;
+        this.machineRepository = machineRepository;
     }
 
     @GetMapping
@@ -171,6 +181,13 @@ public class EnvironmentController
         accessService.assertCanAccessApplication(environment.getApplication().getId(), "SYSTEM_CONFIG");
 
         String environmentName = environment.getName();
+        if (monitoringJobRepository.existsByEnvironmentId(id)
+                || dashboardTabRepository.existsByEnvironment_Id(id)
+                || machineRepository.existsByEnvironment_Id(id)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Environment '" + environmentName
+                    + "' cannot be deleted while monitoring jobs, dashboard tabs, or machines reference it.");
+            return "redirect:/administration/environments";
+        }
 
         environmentRepository.delete(environment);
 
