@@ -2712,7 +2712,10 @@
         applicationFilter.innerHTML = '';
         items.forEach(function (item) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; applicationFilter.appendChild(option); });
         applicationFilter.disabled = items.length <= 1;
-        if (items.length) applicationFilter.value = String(items[0].id);
+        if (items.length) {
+            const primary = items.find(function (item) { return item.primary === true; });
+            applicationFilter.value = String((primary || items[0]).id);
+        }
         return items;
     }
 
