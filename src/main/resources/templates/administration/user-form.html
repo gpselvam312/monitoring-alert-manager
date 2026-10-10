@@ -306,6 +306,16 @@
                             }
                         });
                         </script>
+                        </div>
+
+                        <div class="col-12" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="platformAdmin"
+                                       name="platformAdmin" th:checked="${platformAdmin}">
+                                <label class="form-check-label" for="platformAdmin">Platform Administrator</label>
+                            </div>
+                            <div class="form-text">Platform administrators can manage all applications and user access. This is separate from each user's application-specific role.</div>
+                        </div>
 
                         <!-- Enabled -->
                         <div class="col-md-6">
@@ -573,6 +583,16 @@
                             }
                         });
                         </script>
+                        </div>
+
+                        <div class="col-12" sec:authorize="hasAuthority('ROLE_ADMIN')">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="platformAdmin"
+                                       name="platformAdmin" th:checked="${platformAdmin}">
+                                <label class="form-check-label" for="platformAdmin">Platform Administrator</label>
+                            </div>
+                            <div class="form-text">Platform administrators can manage all applications and user access. This is separate from each user's application-specific role.</div>
+                        </div>
 
                         <!-- Enabled -->
                         <div class="col-md-6">
