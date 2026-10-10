@@ -24,7 +24,7 @@
                     <td class="text-end table-actions-column"><div class="table-actions table-actions-text">
                         <a th:href="@{/administration/roles/{id}/edit(id=${role.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i><span>Edit</span></a>
                         <form th:if="${role.name != 'ADMIN'}" method="post" th:action="@{/administration/roles/{id}/delete(id=${role.id})}" data-app-action="delete" data-app-action-title="Delete Role" data-app-action-message="Are you sure you want to delete this role?" data-app-action-description="A role assigned to users cannot be deleted."><button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i><span>Delete</span></button></form>
-                        <span th:if="${role.name == 'ADMIN'}" class="text-muted small">Protected</span>
+                        <button th:if="${role.name == 'ADMIN'}" type="button" class="btn btn-sm btn-outline-danger" disabled title="Built-in ADMIN role cannot be deleted" aria-label="Built-in ADMIN role cannot be deleted"><i class="bi bi-trash"></i><span>Delete</span></button>
                     </div></td>
                 </tr></tbody></table></div>
             <div th:replace="~{fragments/data-table :: pagination(${rolePage},${pageSize},'roleTableConfig')}"></div>
