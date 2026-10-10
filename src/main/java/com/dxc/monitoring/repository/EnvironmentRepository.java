@@ -19,6 +19,8 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
 
     List<Environment> findByApplicationIdOrderByNameIgnoreCase(Long applicationId);
 
+    List<Environment> findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(List<Long> applicationIds);
+
     @Query("""
             select e
             from Environment e
