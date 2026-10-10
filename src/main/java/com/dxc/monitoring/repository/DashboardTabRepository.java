@@ -48,7 +48,11 @@ public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long
             SELECT t
             FROM DashboardTab t
             WHERE t.application.id IN :applicationIds
-              AND LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%'))
+              AND (
+                    LOWER(t.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                 OR LOWER(t.application.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                 OR LOWER(t.environment.name) LIKE LOWER(CONCAT('%', :search, '%'))
+              )
             """)
     Page<DashboardTab> findAllForApplications(@Param("search") String search,
             @Param("applicationIds") List<Long> applicationIds, Pageable pageable);
