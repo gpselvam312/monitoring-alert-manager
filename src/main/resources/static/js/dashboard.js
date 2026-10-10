@@ -1335,7 +1335,12 @@
         ];
         const summary = '<div class="server-health-summary">' + summaries.map(function (x)
         {
-            return '<div class="server-health-summary-item server-health-summary-' + x[2] + '"><span><i class="bi ' + x[3] + '" aria-hidden="true"></i> ' + x[0] + '</span><strong class="server-health-' + x[2] + '">' + x[1] + '</strong></div>';
+            const totalCard = x[2] === "total";
+            const tag = totalCard ? "button" : "div";
+            const attributes = totalCard
+                ? ' type="button" class="server-health-summary-item server-health-summary-' + x[2] + ' server-health-summary-total" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Show all servers and clear status filter" aria-pressed="' + (state.status === "ALL") + '"'
+                : ' class="server-health-summary-item server-health-summary-' + x[2] + '"';
+            return '<' + tag + attributes + '><span><i class="bi ' + x[3] + '" aria-hidden="true"></i> ' + x[0] + '</span><strong class="server-health-' + x[2] + '">' + x[1] + '</strong></' + tag + '>';
         }).join("") + '</div>';
         const filters = '<div class="server-health-toolbar"><label class="small text-muted" for="server-health-filter-' + escapeHtml(widget.id) + '"><i class="bi bi-funnel me-1" aria-hidden="true"></i>Status</label>' +
             '<select class="form-select form-select-sm server-health-filter" id="server-health-filter-' + escapeHtml(widget.id) + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
@@ -3003,6 +3008,21 @@
     });
     contentElement.addEventListener("click", function (event)
     {
+        const totalCard = event.target.closest(".server-health-summary-total");
+        if (totalCard)
+        {
+            const widgetId = String(totalCard.dataset.widgetId || "");
+            if (widgetId)
+            {
+                const state = serverHealthState.get(widgetId) || { status: "ALL", page: 0 };
+                state.status = "ALL";
+                state.page = 0;
+                serverHealthState.set(widgetId, state);
+                loadDashboard(activeTabId);
+            }
+            return;
+        }
+
         const button = event.target.closest(".server-health-page");
         if (!button || button.disabled) return;
         const state = serverHealthState.get(String(button.dataset.widgetId)) || { status: "ALL", page: 0 };
