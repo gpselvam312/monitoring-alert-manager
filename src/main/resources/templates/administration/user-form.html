@@ -171,48 +171,141 @@
 
                         </div>
 
-                        <!-- Per-application role assignments -->
+                        <!-- Application access and role assignments -->
                         <div class="col-12">
-                            <label class="form-label">Application Access and Role</label>
-                            <div class="form-text mb-3">Select each application the user may access and assign a role independently for that application.</div>
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                                <div>
+                                    <label class="form-label mb-1">Application Access and Role</label>
+                                    <div class="form-text">Add one row for each application the user may access, then choose the role for that application.</div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="addApplicationAccessRow">
+                                    <i class="bi bi-plus-lg me-1"></i>Add Application Access
+                                </button>
+                            </div>
                             <div class="table-responsive">
-                                <table class="table align-middle">
-                                    <thead><tr><th>Application</th><th style="min-width: 220px;">Role</th></tr></thead>
-                                    <tbody>
-                                        <tr th:each="appItem : ${applications}">
+                                <table class="table align-middle" id="applicationAccessTable">
+                                    <thead><tr><th style="min-width: 240px;">Application</th><th style="min-width: 220px;">Role</th><th class="text-end">Action</th></tr></thead>
+                                    <tbody id="applicationAccessRows">
+                                        <tr th:each="appItem : ${applications}" th:if="${selectedApplicationIds.contains(appItem.id)}" class="application-access-row">
                                             <td>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="applicationIds"
-                                                           th:id="'application-' + ${appItem.id}" th:value="${appItem.id}"
-                                                           th:checked="${selectedApplicationIds.contains(appItem.id)}">
-                                                    <label class="form-check-label" th:for="'application-' + ${appItem.id}"
-                                                           th:text="${appItem.name}">Application</label>
-                                                </div>
+                                                <select class="form-select application-access-select" name="applicationIds" required>
+                                                    <option value="">-- Select Application --</option>
+                                                    <option th:each="appOption : ${applications}" th:value="${appOption.id}"
+                                                            th:text="${appOption.name}" th:selected="${appOption.id == appItem.id}">Application</option>
+                                                </select>
                                             </td>
                                             <td>
-                                                <select class="form-select" th:name="|role_${appItem.id}|">
+                                                <select class="form-select application-role-select" th:name="|role_${appItem.id}|" required>
                                                     <option value="">-- Select Role --</option>
-                                                    <option th:each="roleItem : ${roles}" th:value="${roleItem.id}"
-                                                            th:text="${roleItem.name}"
-                                                            th:selected="${roleAssignments[appItem.id] != null and roleAssignments[appItem.id] == roleItem.id}">
-                                                        VIEWER
-                                                    </option>
+                                                    <option th:each="roleItem : ${roles}" th:value="${roleItem.id}" th:text="${roleItem.name}"
+                                                            th:selected="${roleAssignments[appItem.id] != null and roleAssignments[appItem.id] == roleItem.id}">VIEWER</option>
                                                 </select>
+                                            </td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-application-access" title="Remove application access" aria-label="Remove application access">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
+                            <div id="noApplicationAccessMessage" class="text-muted small py-2" th:if="${#lists.isEmpty(applications)}">
+                                No enabled applications are available to assign.
+                            </div>
+                            <template id="applicationAccessRowTemplate">
+                                <tr class="application-access-row">
+                                    <td>
+                                        <select class="form-select application-access-select" name="applicationIds" required>
+                                            <option value="">-- Select Application --</option>
+                                            <option th:each="appOption : ${applications}" th:value="${appOption.id}" th:text="${appOption.name}">Application</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-select application-role-select" required disabled>
+                                            <option value="">-- Select Role --</option>
+                                            <option th:each="roleItem : ${roles}" th:value="${roleItem.id}" th:text="${roleItem.name}">VIEWER</option>
+                                        </select>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-application-access" title="Remove application access" aria-label="Remove application access">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
                         </div>
 
-                        <div class="col-12" sec:authorize="hasAuthority('ROLE_ADMIN')">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="platformAdmin"
-                                       name="platformAdmin" th:checked="${platformAdmin}">
-                                <label class="form-check-label" for="platformAdmin">Platform Administrator</label>
-                            </div>
-                            <div class="form-text">Platform administrators can manage all applications and user access. This is separate from each user's application-specific role.</div>
-                        </div>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const rows = document.getElementById('applicationAccessRows');
+                            const addButton = document.getElementById('addApplicationAccessRow');
+                            const template = document.getElementById('applicationAccessRowTemplate');
+                            const formElement = rows ? rows.closest('form') : null;
+                            if (!rows || !addButton || !template) return;
+
+                            function refreshRoleName(row) {
+                                const appSelect = row.querySelector('.application-access-select');
+                                const roleSelect = row.querySelector('.application-role-select');
+                                if (!appSelect || !roleSelect) return;
+                                roleSelect.name = appSelect.value ? 'role_' + appSelect.value : '';
+                                roleSelect.disabled = !appSelect.value;
+                                if (!appSelect.value) roleSelect.value = '';
+                            }
+
+                            function selectedApplicationIds(exceptRow) {
+                                return Array.from(rows.querySelectorAll('.application-access-select'))
+                                    .filter(select => select.closest('tr') !== exceptRow && select.value)
+                                    .map(select => select.value);
+                            }
+
+                            function bindRow(row) {
+                                const appSelect = row.querySelector('.application-access-select');
+                                const roleSelect = row.querySelector('.application-role-select');
+                                const removeButton = row.querySelector('.remove-application-access');
+                                if (appSelect) {
+                                    appSelect.addEventListener('change', function () {
+                                        if (appSelect.value && selectedApplicationIds(row).includes(appSelect.value)) {
+                                            window.alert('This application has already been added.');
+                                            appSelect.value = '';
+                                        }
+                                        refreshRoleName(row);
+                                    });
+                                    refreshRoleName(row);
+                                }
+                                if (removeButton) removeButton.addEventListener('click', () => row.remove());
+                                if (roleSelect && appSelect && appSelect.value) roleSelect.disabled = false;
+                            }
+
+                            rows.querySelectorAll('.application-access-row').forEach(bindRow);
+                            addButton.addEventListener('click', function () {
+                                const clone = template.content.firstElementChild.cloneNode(true);
+                                rows.appendChild(clone);
+                                bindRow(clone);
+                                const appSelect = clone.querySelector('.application-access-select');
+                                if (appSelect) appSelect.focus();
+                            });
+
+                            if (formElement) {
+                                formElement.addEventListener('submit', function (event) {
+                                    for (const row of Array.from(rows.querySelectorAll('.application-access-row'))) {
+                                        const appSelect = row.querySelector('.application-access-select');
+                                        const roleSelect = row.querySelector('.application-role-select');
+                                        if (!appSelect || !appSelect.value) {
+                                            row.remove();
+                                            continue;
+                                        }
+                                        if (!roleSelect || !roleSelect.value) {
+                                            event.preventDefault();
+                                            if (roleSelect) roleSelect.focus();
+                                            window.alert('Select a role for every assigned application.');
+                                            return;
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                        </script>
 
                         <!-- Enabled -->
                         <div class="col-md-6">
@@ -345,48 +438,141 @@
 
                         </div>
 
-                        <!-- Per-application role assignments -->
+                        <!-- Application access and role assignments -->
                         <div class="col-12">
-                            <label class="form-label">Application Access and Role</label>
-                            <div class="form-text mb-3">Select each application the user may access and assign a role independently for that application.</div>
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                                <div>
+                                    <label class="form-label mb-1">Application Access and Role</label>
+                                    <div class="form-text">Add one row for each application the user may access, then choose the role for that application.</div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="addApplicationAccessRow">
+                                    <i class="bi bi-plus-lg me-1"></i>Add Application Access
+                                </button>
+                            </div>
                             <div class="table-responsive">
-                                <table class="table align-middle">
-                                    <thead><tr><th>Application</th><th style="min-width: 220px;">Role</th></tr></thead>
-                                    <tbody>
-                                        <tr th:each="appItem : ${applications}">
+                                <table class="table align-middle" id="applicationAccessTable">
+                                    <thead><tr><th style="min-width: 240px;">Application</th><th style="min-width: 220px;">Role</th><th class="text-end">Action</th></tr></thead>
+                                    <tbody id="applicationAccessRows">
+                                        <tr th:each="appItem : ${applications}" th:if="${selectedApplicationIds.contains(appItem.id)}" class="application-access-row">
                                             <td>
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" name="applicationIds"
-                                                           th:id="'application-' + ${appItem.id}" th:value="${appItem.id}"
-                                                           th:checked="${selectedApplicationIds.contains(appItem.id)}">
-                                                    <label class="form-check-label" th:for="'application-' + ${appItem.id}"
-                                                           th:text="${appItem.name}">Application</label>
-                                                </div>
+                                                <select class="form-select application-access-select" name="applicationIds" required>
+                                                    <option value="">-- Select Application --</option>
+                                                    <option th:each="appOption : ${applications}" th:value="${appOption.id}"
+                                                            th:text="${appOption.name}" th:selected="${appOption.id == appItem.id}">Application</option>
+                                                </select>
                                             </td>
                                             <td>
-                                                <select class="form-select" th:name="|role_${appItem.id}|">
+                                                <select class="form-select application-role-select" th:name="|role_${appItem.id}|" required>
                                                     <option value="">-- Select Role --</option>
-                                                    <option th:each="roleItem : ${roles}" th:value="${roleItem.id}"
-                                                            th:text="${roleItem.name}"
-                                                            th:selected="${roleAssignments[appItem.id] != null and roleAssignments[appItem.id] == roleItem.id}">
-                                                        VIEWER
-                                                    </option>
+                                                    <option th:each="roleItem : ${roles}" th:value="${roleItem.id}" th:text="${roleItem.name}"
+                                                            th:selected="${roleAssignments[appItem.id] != null and roleAssignments[appItem.id] == roleItem.id}">VIEWER</option>
                                                 </select>
+                                            </td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-application-access" title="Remove application access" aria-label="Remove application access">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
+                            <div id="noApplicationAccessMessage" class="text-muted small py-2" th:if="${#lists.isEmpty(applications)}">
+                                No enabled applications are available to assign.
+                            </div>
+                            <template id="applicationAccessRowTemplate">
+                                <tr class="application-access-row">
+                                    <td>
+                                        <select class="form-select application-access-select" name="applicationIds" required>
+                                            <option value="">-- Select Application --</option>
+                                            <option th:each="appOption : ${applications}" th:value="${appOption.id}" th:text="${appOption.name}">Application</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-select application-role-select" required disabled>
+                                            <option value="">-- Select Role --</option>
+                                            <option th:each="roleItem : ${roles}" th:value="${roleItem.id}" th:text="${roleItem.name}">VIEWER</option>
+                                        </select>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-application-access" title="Remove application access" aria-label="Remove application access">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
                         </div>
 
-                        <div class="col-12" sec:authorize="hasAuthority('ROLE_ADMIN')">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="platformAdmin"
-                                       name="platformAdmin" th:checked="${platformAdmin}">
-                                <label class="form-check-label" for="platformAdmin">Platform Administrator</label>
-                            </div>
-                            <div class="form-text">Platform administrators can manage all applications and user access. This is separate from each user's application-specific role.</div>
-                        </div>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function () {
+                            const rows = document.getElementById('applicationAccessRows');
+                            const addButton = document.getElementById('addApplicationAccessRow');
+                            const template = document.getElementById('applicationAccessRowTemplate');
+                            const formElement = rows ? rows.closest('form') : null;
+                            if (!rows || !addButton || !template) return;
+
+                            function refreshRoleName(row) {
+                                const appSelect = row.querySelector('.application-access-select');
+                                const roleSelect = row.querySelector('.application-role-select');
+                                if (!appSelect || !roleSelect) return;
+                                roleSelect.name = appSelect.value ? 'role_' + appSelect.value : '';
+                                roleSelect.disabled = !appSelect.value;
+                                if (!appSelect.value) roleSelect.value = '';
+                            }
+
+                            function selectedApplicationIds(exceptRow) {
+                                return Array.from(rows.querySelectorAll('.application-access-select'))
+                                    .filter(select => select.closest('tr') !== exceptRow && select.value)
+                                    .map(select => select.value);
+                            }
+
+                            function bindRow(row) {
+                                const appSelect = row.querySelector('.application-access-select');
+                                const roleSelect = row.querySelector('.application-role-select');
+                                const removeButton = row.querySelector('.remove-application-access');
+                                if (appSelect) {
+                                    appSelect.addEventListener('change', function () {
+                                        if (appSelect.value && selectedApplicationIds(row).includes(appSelect.value)) {
+                                            window.alert('This application has already been added.');
+                                            appSelect.value = '';
+                                        }
+                                        refreshRoleName(row);
+                                    });
+                                    refreshRoleName(row);
+                                }
+                                if (removeButton) removeButton.addEventListener('click', () => row.remove());
+                                if (roleSelect && appSelect && appSelect.value) roleSelect.disabled = false;
+                            }
+
+                            rows.querySelectorAll('.application-access-row').forEach(bindRow);
+                            addButton.addEventListener('click', function () {
+                                const clone = template.content.firstElementChild.cloneNode(true);
+                                rows.appendChild(clone);
+                                bindRow(clone);
+                                const appSelect = clone.querySelector('.application-access-select');
+                                if (appSelect) appSelect.focus();
+                            });
+
+                            if (formElement) {
+                                formElement.addEventListener('submit', function (event) {
+                                    for (const row of Array.from(rows.querySelectorAll('.application-access-row'))) {
+                                        const appSelect = row.querySelector('.application-access-select');
+                                        const roleSelect = row.querySelector('.application-role-select');
+                                        if (!appSelect || !appSelect.value) {
+                                            row.remove();
+                                            continue;
+                                        }
+                                        if (!roleSelect || !roleSelect.value) {
+                                            event.preventDefault();
+                                            if (roleSelect) roleSelect.focus();
+                                            window.alert('Select a role for every assigned application.');
+                                            return;
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                        </script>
 
                         <!-- Enabled -->
                         <div class="col-md-6">
