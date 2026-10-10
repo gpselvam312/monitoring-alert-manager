@@ -35,8 +35,12 @@ public class UserController
             String summary = userService.findRoleAssignmentSummary(user.getId());
             if (!summary.isBlank()) roleSummaries.put(user.getId(), summary);
         });
+        List<Long> platformAdminIds = users.stream()
+                .filter(user -> user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName())))
+                .map(User::getId).toList();
         model.addAttribute("users", users);
         model.addAttribute("roleSummaries", roleSummaries);
+        model.addAttribute("platformAdminIds", platformAdminIds);
         model.addAttribute("currentPage", "users");
 
         return "administration/users";
