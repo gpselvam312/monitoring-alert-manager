@@ -28,7 +28,7 @@ import jakarta.validation.Valid;
 
 @Controller
 @RequestMapping("/administration/dashboard")
-@PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
+@PreAuthorize("hasAuthority('MONITORING_CONFIG')")
 public class DashboardConfigurationController
 {
     private final DashboardConfigurationService dashboardConfigurationService;
