@@ -100,4 +100,6 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
 
     boolean existsByApplicationIdAndEnvironmentId(Long applicationId, Long environmentId);
 
+    boolean existsByEnvironmentId(Long environmentId);
+
 }
