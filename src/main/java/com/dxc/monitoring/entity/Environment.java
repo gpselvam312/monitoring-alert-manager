@@ -5,9 +5,8 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "environments",
-       schema = "ra_fcb",
-       uniqueConstraints = { @UniqueConstraint(name = "environments_name_key", columnNames = "name") })
+@Table(name = "environments", schema = "ra_fcb",
+       uniqueConstraints = { @UniqueConstraint(name = "uk_environments_application_name", columnNames = { "application_id", "name" }) })
 public class Environment
 {
 
@@ -15,7 +14,11 @@ public class Environment
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "application_id", nullable = false)
+    private Application application;
+
+    @Column(nullable = false, length = 50)
     private String name;
 
     @Column(length = 500)
@@ -58,6 +61,16 @@ public class Environment
     public void setId(Long id)
     {
         this.id = id;
+    }
+
+    public Application getApplication()
+    {
+        return application;
+    }
+
+    public void setApplication(Application application)
+    {
+        this.application = application;
     }
 
     public String getName()
