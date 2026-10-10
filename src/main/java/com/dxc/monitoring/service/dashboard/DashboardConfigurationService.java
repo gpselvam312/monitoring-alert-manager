@@ -108,13 +108,15 @@ public class DashboardConfigurationService
 
         tab.setName(name);
 
-        if (tab.getApplication() == null || tab.getApplication().getId() == null)
+        if (tab.getApplication() == null || tab.getApplication().getId() == null
+                || !tab.getApplication().isEnabled())
         {
-            throw new IllegalArgumentException("Dashboard tab application is required.");
+            throw new IllegalArgumentException("Select an enabled application for this dashboard tab.");
         }
-        if (tab.getEnvironment() == null || tab.getEnvironment().getId() == null)
+        if (tab.getEnvironment() == null || tab.getEnvironment().getId() == null
+                || !tab.getEnvironment().isEnabled())
         {
-            throw new IllegalArgumentException("Dashboard tab environment is required.");
+            throw new IllegalArgumentException("Select an enabled environment for this dashboard tab.");
         }
 
         if (tab.getSortOrder() == null || tab.getSortOrder() < 0)
@@ -254,7 +256,7 @@ public class DashboardConfigurationService
                             || !widget.getTab().getEnvironment().getId().equals(sourceJob.getEnvironment().getId()))
                     {
                         throw new IllegalArgumentException(
-                                "The monitoring job must belong to the same environment as the dashboard tab.");
+                                "The monitoring job must belong to the same application and environment as the dashboard tab.");
                     }
                 }
                 default -> throw new IllegalArgumentException("Unsupported dashboard data source type: " + dataSourceType);
