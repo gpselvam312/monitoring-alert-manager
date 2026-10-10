@@ -3677,3 +3677,44 @@ textarea.form-control {
     font-size: 0.8rem;
     white-space: nowrap;
 }
+
+/* Dashboard scope filters */
+.dashboard-scope-filter { padding: 16px 20px; }
+.dashboard-scope-filter .form-label { font-weight: 600; margin-bottom: 6px; }
+
+/* Compact, responsive Server Health cards */
+.server-health-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.server-health-summary-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); }
+.server-health-summary-item > span { color: var(--text-secondary); font-size: 12px; }
+.server-health-summary-item strong { font-size: 20px; }
+.server-health-healthy { color: var(--success); }
+.server-health-warning { color: var(--warning); }
+.server-health-critical { color: var(--danger); }
+.server-health-total { color: var(--text-primary); }
+.server-health-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 12px; }
+.server-health-toolbar select { width: 150px; }
+.server-health-toolbar > span { margin-left: auto; }
+.server-health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr)); gap: 12px; }
+.server-health-card { min-width: 0; border: 1px solid var(--border-color); border-left: 4px solid var(--success); border-radius: 9px; padding: 14px; background: var(--card-bg); }
+.server-health-card-warning { border-left-color: var(--warning); }
+.server-health-card-critical { border-left-color: var(--danger); }
+.server-health-card header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.server-health-card header strong { overflow-wrap: anywhere; font-size: 14px; }
+.server-health-status { flex: 0 0 auto; font-size: 10px; font-weight: 700; border-radius: 999px; padding: 4px 7px; background: rgba(25,135,84,.12); color: var(--success); }
+.server-health-status-warning { background: rgba(217,154,0,.14); color: var(--warning); }
+.server-health-status-critical { background: rgba(220,53,69,.12); color: var(--danger); }
+.server-health-metric { margin: 10px 0; }
+.server-health-metric > div:first-child { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.server-health-metric > div:first-child span { color: var(--text-secondary); }
+.server-health-meter { height: 5px; margin-top: 6px; background: var(--border-color); border-radius: 5px; overflow: hidden; }
+.server-health-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--success); }
+.server-health-meter-warning { background: var(--warning) !important; }
+.server-health-meter-critical { background: var(--danger) !important; }
+.server-health-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 10px; margin-top: 12px; color: var(--text-secondary); font-size: 11px; }
+.server-health-foot strong { color: var(--text-primary); }
+.server-health-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 14px; }
+@media (max-width: 575.98px) {
+    .server-health-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .server-health-summary-item { padding: 10px; }
+    .server-health-summary-item strong { font-size: 18px; }
+}

@@ -10,6 +10,8 @@
      */
 
     const apiUrl = "/api/dashboard";
+    const applicationsApiUrl = "/api/dashboard/applications";
+    const environmentsApiUrl = "/api/dashboard/environments";
 
 
     /*
@@ -53,6 +55,8 @@
     const dateRangeToGroup = document.getElementById("dashboardDateRangeToGroup");
     const dateRangeApplyButton = document.getElementById("dashboardDateRangeApply");
     const dateRangeMessage = document.getElementById("dashboardDateRangeMessage");
+    const applicationFilter = document.getElementById("dashboardApplicationFilter");
+    const environmentFilter = document.getElementById("dashboardEnvironmentFilter");
 
 
     /*
@@ -62,6 +66,8 @@
      */
 
     let dashboardData = [];
+    let activeTabId = null;
+    const serverHealthState = new Map();
     const autoRefreshTimers = new Map();
 
     /*
@@ -1240,9 +1246,88 @@
         return typeof value === "object" ? JSON.stringify(value) : value;
     }
 
+    function renderServerHealthCards(result, widget, config)
+    {
+        const rows = getConfiguredTableRows(result, config).map(function (row) { return Object.assign({}, row); });
+        const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
+        const pick = function (row, keys)
+        {
+            for (const key of keys) if (row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+            return null;
+        };
+        const number = function (value) { const n = Number(value); return Number.isFinite(n) ? n : null; };
+        const statusOf = function (row)
+        {
+            const collection = String(pick(row, ["collection_status", "collectionStatus", "status"]) || "").toUpperCase();
+            if (["FAILED", "ERROR", "UNREACHABLE", "UNAVAILABLE", "CRITICAL", "TIMEOUT"].includes(collection)) return "CRITICAL";
+            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
+            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
+            const load = number(pick(row, ["load_1m", "load1m", "load_average_1m"]));
+            const cores = Math.max(1, number(pick(row, ["cpu_cores", "cpuCores"])) || 1);
+            const levels = [];
+            if (cpu !== null) levels.push(cpu >= 85 ? 2 : cpu >= 70 ? 1 : 0);
+            if (ram !== null) levels.push(ram >= 90 ? 2 : ram >= 75 ? 1 : 0);
+            if (load !== null) levels.push(load / cores >= 1 ? 2 : load / cores >= 0.70 ? 1 : 0);
+            if (!levels.length) return "CRITICAL";
+            const worst = Math.max.apply(null, levels);
+            return worst === 2 ? "CRITICAL" : worst === 1 ? "WARNING" : "HEALTHY";
+        };
+        const pressureOf = function (row)
+        {
+            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent"])) || 0;
+            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent"])) || 0;
+            const load = number(pick(row, ["load_1m", "load1m", "load_average_1m"])) || 0;
+            const cores = Math.max(1, number(pick(row, ["cpu_cores", "cpuCores"])) || 1);
+            return Math.max(cpu / 85, ram / 90, load / cores);
+        };
+        const ranked = rows.map(function (row) { return { row: row, status: statusOf(row), pressure: pressureOf(row) }; })
+            .sort(function (a, b)
+            {
+                const rank = { CRITICAL: 0, WARNING: 1, HEALTHY: 2 };
+                return rank[a.status] - rank[b.status] || b.pressure - a.pressure;
+            });
+        const counts = { total: ranked.length, HEALTHY: 0, WARNING: 0, CRITICAL: 0 };
+        ranked.forEach(function (item) { counts[item.status]++; });
+        const filtered = state.status === "ALL" ? ranked : ranked.filter(function (item) { return item.status === state.status; });
+        const pageSize = 12, pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        state.page = Math.min(Math.max(0, state.page || 0), pages - 1);
+        serverHealthState.set(String(widget.id), state);
+        const pageRows = filtered.slice(state.page * pageSize, (state.page + 1) * pageSize);
+        const summary = '<div class="server-health-summary">' +
+            [['Total', counts.total, 'total'], ['Healthy', counts.HEALTHY, 'healthy'], ['Warning', counts.WARNING, 'warning'], ['Critical', counts.CRITICAL, 'critical']]
+            .map(function (item) { return '<div class="server-health-summary-item"><span>' + item[0] + '</span><strong class="server-health-' + item[2] + '">' + item[1] + '</strong></div>'; }).join('') + '</div>';
+        const filters = '<div class="server-health-toolbar"><label class="small text-muted" for="server-health-filter-' + escapeHtml(widget.id) + '">Status</label>' +
+            '<select class="form-select form-select-sm server-health-filter" id="server-health-filter-' + escapeHtml(widget.id) + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
+            [['ALL','All'],['CRITICAL','Critical'],['WARNING','Warning'],['HEALTHY','Healthy']].map(function (item) {
+                return '<option value="' + item[0] + '"' + (state.status === item[0] ? ' selected' : '') + '>' + item[1] + '</option>';
+            }).join('') + '</select><span class="small text-muted">Showing ' + (filtered.length ? state.page * pageSize + 1 : 0) + '–' + Math.min((state.page + 1) * pageSize, filtered.length) + ' of ' + filtered.length + '</span></div>';
+        const cards = pageRows.map(function (item)
+        {
+            const row = item.row, host = pick(row, ["hostname", "hostName", "server", "name"]) || "Unknown host";
+            const cpu = number(pick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
+            const ram = number(pick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
+            const load = pick(row, ["load_1m", "load1m", "load_average_1m"]);
+            const used = pick(row, ["ram_used_mb", "ramUsedMb"]), total = pick(row, ["ram_total_mb", "ramTotalMb"]);
+            const severity = item.status.toLowerCase();
+            const metric = function (label, value, suffix)
+            {
+                const display = value === null || value === undefined ? "N/A" : escapeHtml(value) + (suffix || "");
+                const width = Math.max(0, Math.min(100, number(value) || 0));
+                return '<div class="server-health-metric"><div><span>' + label + '</span><strong>' + display + '</strong></div><div class="server-health-meter"><span class="server-health-meter-' + severity + '" style="width:' + width + '%"></span></div></div>';
+            };
+            return '<article class="server-health-card server-health-card-' + severity + '"><header><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong><span class="server-health-status server-health-status-' + severity + '">' + item.status + '</span></header>' +
+                metric("CPU", cpu, "%") + metric("RAM", ram, "%") +
+                '<div class="server-health-foot"><span>Load (1m): <strong>' + (load === null ? "N/A" : escapeHtml(load)) + '</strong></span>' +
+                (used !== null && total !== null ? '<span>RAM: ' + escapeHtml(used) + ' / ' + escapeHtml(total) + ' MB</span>' : '') + '</div></article>';
+        }).join("");
+        const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? ' disabled' : '') + '>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + ' of ' + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? ' disabled' : '') + '>Next</button></div>';
+        return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="text-muted small p-3">No servers match this status filter.</div>') + '</div>' + pager;
+    }
+
     function renderTableWidget(result, widget)
     {
         const config = parseWidgetFieldConfig(widget);
+        if (String(config.renderer || '').toUpperCase() === 'SERVER_HEALTH') return renderServerHealthCards(result, widget, config);
         let columns = !config.rowPath && Array.isArray(result.columns)
             ? result.columns.filter(function (column)
                 {
@@ -1942,6 +2027,7 @@
                 const active = hasPreferredTab
                     ? String(tab.id) === String(preferredTabId)
                     : index === 0;
+                if (active) activeTabId = tab.id;
 
 
                 const tabButton =
@@ -2613,6 +2699,45 @@
             );
     }
 
+    function buildDashboardUrl()
+    {
+        return apiUrl + '?applicationId=' + encodeURIComponent(applicationFilter.value) + '&environmentId=' + encodeURIComponent(environmentFilter.value);
+    }
+
+    async function loadApplications()
+    {
+        const response = await fetch(applicationsApiUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load applications (' + response.status + ')');
+        const items = await response.json();
+        applicationFilter.innerHTML = '';
+        items.forEach(function (item) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; applicationFilter.appendChild(option); });
+        applicationFilter.disabled = items.length <= 1;
+        if (items.length) applicationFilter.value = String(items[0].id);
+        return items;
+    }
+
+    async function loadEnvironments(preferDefault)
+    {
+        environmentFilter.disabled = true;
+        environmentFilter.innerHTML = '';
+        if (!applicationFilter.value) { showState('empty'); return; }
+        const response = await fetch(environmentsApiUrl + '?applicationId=' + encodeURIComponent(applicationFilter.value), { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load environments (' + response.status + ')');
+        const items = await response.json();
+        items.forEach(function (item) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; environmentFilter.appendChild(option); });
+        if (!items.length) { dashboardData = []; showState('empty'); return; }
+        const prod = items.find(function (item) { return String(item.name).toUpperCase() === 'PROD'; });
+        environmentFilter.value = String(preferDefault ? (prod || items[0]).id : (items.find(function (item) { return String(item.id) === environmentFilter.value; }) || prod || items[0]).id);
+        environmentFilter.disabled = items.length <= 1;
+        await loadDashboard();
+    }
+
+    async function initializeDashboard()
+    {
+        try { const items = await loadApplications(); if (!items.length) { showState('empty'); return; } await loadEnvironments(true); }
+        catch (error) { errorMessageElement.textContent = error && error.message ? error.message : 'Unable to initialize dashboard filters.'; showState('error'); }
+    }
+
     /*
      * ------------------------------------------------------------
      * LOAD DASHBOARD
@@ -2632,7 +2757,7 @@
         {
             const response =
                 await fetch(
-                    apiUrl,
+                    buildDashboardUrl(),
                     {
                         method: "GET",
 
@@ -2717,7 +2842,7 @@
 
     refreshButton.addEventListener(
         "click",
-        loadDashboard
+        function () { loadDashboard(activeTabId); }
     );
 
 
@@ -2727,9 +2852,25 @@
     );
 
 
-    /*
-     * Initial load.
-     */
-    loadDashboard();
+    applicationFilter.addEventListener("change", function () { loadEnvironments(true); });
+    environmentFilter.addEventListener("change", function () { loadDashboard(); });
+    contentElement.addEventListener("change", function (event)
+    {
+        if (!event.target.classList.contains("server-health-filter")) return;
+        serverHealthState.set(String(event.target.dataset.widgetId), { status: event.target.value, page: 0 });
+        loadDashboard(activeTabId);
+    });
+    contentElement.addEventListener("click", function (event)
+    {
+        const button = event.target.closest(".server-health-page");
+        if (!button || button.disabled) return;
+        const state = serverHealthState.get(String(button.dataset.widgetId)) || { status: "ALL", page: 0 };
+        state.page = Number(button.dataset.page) || 0;
+        serverHealthState.set(String(button.dataset.widgetId), state);
+        loadDashboard(activeTabId);
+    });
+
+    /* Initial load. */
+    initializeDashboard();
 
 })();
