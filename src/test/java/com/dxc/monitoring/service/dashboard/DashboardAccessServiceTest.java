@@ -118,6 +118,7 @@ class DashboardAccessServiceTest {
 
     @Test
     void rejectsAnEnvironmentOwnedByAnotherApplication() {
+        stubApplicationAccess();
         Environment appBProd = new Environment();
         appBProd.setId(202L);
         appBProd.setName("PROD");
