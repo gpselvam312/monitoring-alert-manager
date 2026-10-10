@@ -20,6 +20,7 @@ import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.MonitoringResultRepository;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -34,16 +35,19 @@ public class DashboardConfigurationService
     private final MonitoringJobRepository monitoringJobRepository;
     private final MonitoringResultRepository monitoringResultRepository;
     private final ObjectMapper objectMapper;
+    private final DashboardAccessService accessService;
 
     public DashboardConfigurationService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
             MonitoringJobRepository monitoringJobRepository, MonitoringResultRepository monitoringResultRepository,
-            EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository, ObjectMapper objectMapper)
+            EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository, ObjectMapper objectMapper,
+            DashboardAccessService accessService)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.environmentRepository = environmentRepository;
         this.applicationRepository = applicationRepository;
         this.objectMapper = objectMapper;
+        this.accessService = accessService;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
         this.monitoringJobRepository = monitoringJobRepository;
         this.monitoringResultRepository = monitoringResultRepository;
@@ -52,24 +56,31 @@ public class DashboardConfigurationService
     @Transactional(readOnly = true)
     public List<DashboardTab> findAllTabs()
     {
-        return dashboardTabRepository.findAllByOrderBySortOrderAsc();
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
+                .map(Application::getId).toList();
+        if (applicationIds.isEmpty()) return List.of();
+        return dashboardTabRepository.findAllByApplication_IdInOrderBySortOrderAsc(applicationIds);
     }
 
     @Transactional(readOnly = true)
     public List<Environment> findEnabledEnvironments()
     {
-        return environmentRepository.findByEnabledTrueOrderByName();
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
+                .map(Application::getId).toList();
+        if (applicationIds.isEmpty()) return List.of();
+        return environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds);
     }
 
     @Transactional(readOnly = true)
     public List<Application> findEnabledApplications()
     {
-        return applicationRepository.findByEnabledTrueOrderByNameAsc();
+        return accessService.getApplicationsWithPermission("SYSTEM_CONFIG");
     }
 
     @Transactional(readOnly = true)
     public Application findApplicationById(Long id)
     {
+        accessService.assertCanAccessApplication(id, "SYSTEM_CONFIG");
         return applicationRepository.findById(id).filter(Application::isEnabled)
                 .orElseThrow(() -> new IllegalArgumentException("Application not found or disabled: " + id));
     }
@@ -84,8 +95,12 @@ public class DashboardConfigurationService
     @Transactional(readOnly = true)
     public DashboardTab findTabById(Long id)
     {
-        return dashboardTabRepository.findById(id)
+        DashboardTab tab = dashboardTabRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Dashboard tab not found: " + id));
+        if (tab.getApplication() == null)
+            throw new org.springframework.security.access.AccessDeniedException("Dashboard tab is not assigned to an application.");
+        accessService.assertCanAccessApplication(tab.getApplication().getId(), "SYSTEM_CONFIG");
+        return tab;
     }
 
     @Transactional
@@ -98,7 +113,13 @@ public class DashboardConfigurationService
 
         String name = tab.getName().trim();
 
-        dashboardTabRepository.findByNameIgnoreCase(name).ifPresent(existingTab -> {
+        accessService.assertCanAccessApplication(tab.getApplication().getId(), "SYSTEM_CONFIG");
+        if (tab.getEnvironment() == null || tab.getEnvironment().getApplication() == null
+                || !tab.getApplication().getId().equals(tab.getEnvironment().getApplication().getId()))
+            throw new IllegalArgumentException("The selected environment must belong to the selected application.");
+
+        dashboardTabRepository.findByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
+                name, tab.getApplication().getId(), tab.getEnvironment().getId()).ifPresent(existingTab -> {
             if (tab.getId() == null || !existingTab.getId().equals(tab.getId()))
             {
                 throw new IllegalArgumentException("Dashboard tab already exists: " + name);
@@ -159,8 +180,10 @@ public class DashboardConfigurationService
     @Transactional(readOnly = true)
     public DashboardWidget findWidgetById(Long id)
     {
-        return dashboardWidgetRepository.findById(id)
+        DashboardWidget widget = dashboardWidgetRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Dashboard widget not found: " + id));
+        if (widget.getTab() != null) findTabById(widget.getTab().getId());
+        return widget;
     }
 
     private void validateWidget(DashboardWidget widget)
@@ -334,7 +357,10 @@ public class DashboardConfigurationService
     @Transactional(readOnly = true)
     public List<MonitoringJob> findDashboardMonitoringJobs()
     {
-        return monitoringJobRepository.findAll();
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
+                .map(Application::getId).toList();
+        if (applicationIds.isEmpty()) return List.of();
+        return monitoringJobRepository.findByApplicationIdIn(applicationIds);
     }
 
     @Transactional(readOnly = true)
@@ -345,7 +371,10 @@ public class DashboardConfigurationService
             search = "";
         }
 
-        return dashboardTabRepository.findAllForList(search.trim(), pageable);
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
+                .map(Application::getId).toList();
+        if (applicationIds.isEmpty()) return Page.empty(pageable);
+        return dashboardTabRepository.findAllForApplications(search.trim(), applicationIds, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -355,6 +384,7 @@ public class DashboardConfigurationService
         {
             throw new IllegalArgumentException("Dashboard tab is required.");
         }
+        findTabById(tabId);
 
         if (search == null)
         {
