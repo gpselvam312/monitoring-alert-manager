@@ -37,11 +37,13 @@ public interface DashboardTabRepository extends JpaRepository<DashboardTab, Long
 
     List<DashboardTab> findAllByOrderBySortOrderAsc();
 
-    Optional<DashboardTab> findByNameIgnoreCase(String name);
+    Optional<DashboardTab> findByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
+            String name, Long applicationId, Long environmentId);
 
     Optional<DashboardTab> findByEnvironment_Id(Long environmentId);
 
-    boolean existsByNameIgnoreCase(String name);
+    boolean existsByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
+            String name, Long applicationId, Long environmentId);
 
     @EntityGraph(attributePaths = { "application", "environment" })
     @Query("""
