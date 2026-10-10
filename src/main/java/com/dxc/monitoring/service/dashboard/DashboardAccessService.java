@@ -1,36 +1,33 @@
 package com.dxc.monitoring.service.dashboard;
 
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.dxc.monitoring.entity.Application;
-import com.dxc.monitoring.entity.DashboardTab;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.User;
 import com.dxc.monitoring.repository.ApplicationRepository;
-import com.dxc.monitoring.repository.DashboardTabRepository;
-import com.dxc.monitoring.repository.MonitoringJobRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.UserRepository;
 
 @Service
 public class DashboardAccessService {
     private final ApplicationRepository applications;
+    private final EnvironmentRepository environments;
     private final UserRepository users;
-    private final DashboardTabRepository tabs;
-    private final MonitoringJobRepository jobs;
 
-    public DashboardAccessService(ApplicationRepository applications, UserRepository users,
-            DashboardTabRepository tabs, MonitoringJobRepository jobs) {
+    public DashboardAccessService(ApplicationRepository applications, EnvironmentRepository environments,
+            UserRepository users) {
         this.applications = applications;
+        this.environments = environments;
         this.users = users;
-        this.tabs = tabs;
-        this.jobs = jobs;
     }
 
     @Transactional(readOnly = true)
@@ -49,30 +46,27 @@ public class DashboardAccessService {
             throw new AccessDeniedException("You are not authorized to access this application.");
     }
 
+    /**
+     * Environments are a shared global master. Application authorization is checked
+     * separately; an environment does not grant or restrict access to an application.
+     */
     @Transactional(readOnly = true)
     public List<Environment> getEnvironmentsForApplication(Long applicationId) {
         assertCanAccessApplication(applicationId);
-        Map<Long, Environment> scoped = new LinkedHashMap<>();
-        tabs.findAllByApplication_IdAndEnabledTrueOrderBySortOrderAsc(applicationId).stream()
-                .filter(tab -> tab.getApplication() != null && tab.getApplication().getId().equals(applicationId))
-                .map(DashboardTab::getEnvironment).filter(e -> e != null && e.isEnabled())
-                .forEach(e -> scoped.putIfAbsent(e.getId(), e));
-        jobs.findDistinctEnabledEnvironmentsByApplicationId(applicationId)
-                .forEach(e -> scoped.putIfAbsent(e.getId(), e));
-        return scoped.values().stream().sorted(Comparator.comparing(Environment::getName,
-                String.CASE_INSENSITIVE_ORDER)).toList();
+        return environments.findByEnabledTrueOrderByName().stream()
+                .sorted(Comparator.comparing(Environment::getName, String.CASE_INSENSITIVE_ORDER)).toList();
     }
 
     @Transactional(readOnly = true)
     public void assertCanAccessEnvironment(Long applicationId, Long environmentId) {
         assertCanAccessApplication(applicationId);
-        if (environmentId == null || getEnvironmentsForApplication(applicationId).stream()
-                .noneMatch(e -> e.getId().equals(environmentId)))
-            throw new AccessDeniedException("You are not authorized to access this environment.");
+        if (environmentId == null || environments.findById(environmentId)
+                .filter(Environment::isEnabled).isEmpty())
+            throw new AccessDeniedException("The selected environment is unavailable.");
     }
 
     @Transactional(readOnly = true)
-    public void assertCanAccessTab(DashboardTab tab) {
+    public void assertCanAccessTab(com.dxc.monitoring.entity.DashboardTab tab) {
         if (tab == null || tab.getApplication() == null || tab.getEnvironment() == null)
             throw new AccessDeniedException("This dashboard tab is not assigned to an application and environment.");
         assertCanAccessEnvironment(tab.getApplication().getId(), tab.getEnvironment().getId());
@@ -85,7 +79,9 @@ public class DashboardAccessService {
 
     private User currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) throw new AccessDeniedException("Authentication is required.");
-        return users.findByUsername(auth.getName()).orElseThrow(() -> new AccessDeniedException("Authenticated user was not found."));
+        if (auth == null || !auth.isAuthenticated())
+            throw new AccessDeniedException("Authentication is required.");
+        return users.findByUsername(auth.getName())
+                .orElseThrow(() -> new AccessDeniedException("Authenticated user was not found."));
     }
 }
