@@ -37,7 +37,7 @@
                     class="btn btn-primary"
                     data-bs-toggle="modal"
                     data-bs-target="#dashboardTabModal"
-                    sec:authorize="hasAuthority('SYSTEM_CONFIG')">
+                    sec:authorize="hasAuthority('MONITORING_CONFIG')">
                 <i class="bi bi-plus-lg me-1"></i>
                 Add Tab
             </button>
@@ -100,7 +100,7 @@
                                     class="btn btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#dashboardTabModal"
-                                    sec:authorize="hasAuthority('SYSTEM_CONFIG')">
+                                    sec:authorize="hasAuthority('MONITORING_CONFIG')">
 
                                 <i class="bi bi-plus-lg me-1"></i>
                                 Add Tab
@@ -180,7 +180,7 @@
                                 </th>
 
 
-                                <th sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                <th sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                     class="text-end table-actions-column">
 
                                     Actions
@@ -243,7 +243,7 @@
                                 </td>
 
 
-                                <td sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                <td sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                     class="text-end table-actions-column">
 
                                     <div class="table-actions table-actions-text">
@@ -440,7 +440,7 @@
                     th:if="${selectedTab != null}"
                     data-bs-toggle="modal"
                     data-bs-target="#dashboardWidgetModal"
-                    sec:authorize="hasAuthority('SYSTEM_CONFIG')">
+                    sec:authorize="hasAuthority('MONITORING_CONFIG')">
 
                 <i class="bi bi-plus-lg me-1"></i>
                 Add Widget
@@ -579,7 +579,7 @@
                                     class="btn btn-primary"
                                     data-bs-toggle="modal"
                                     data-bs-target="#dashboardWidgetModal"
-                                    sec:authorize="hasAuthority('SYSTEM_CONFIG')">
+                                    sec:authorize="hasAuthority('MONITORING_CONFIG')">
 
                                 <i class="bi bi-plus-lg me-1"></i>
                                 Add Widget
@@ -695,7 +695,7 @@
                                 </th>
 
 
-                                <th sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                <th sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                     class="text-end table-actions-column">
 
                                     Actions
@@ -779,7 +779,7 @@
                                 </td>
 
 
-                                <td sec:authorize="hasAuthority('SYSTEM_CONFIG')"
+                                <td sec:authorize="hasAuthority('MONITORING_CONFIG')"
                                     class="text-end table-actions-column">
 
                                     <div class="table-actions table-actions-text">
