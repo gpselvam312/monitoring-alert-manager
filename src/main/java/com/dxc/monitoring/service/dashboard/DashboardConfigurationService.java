@@ -99,6 +99,12 @@ public class DashboardConfigurationService
 
         String name = tab.getName().trim();
 
+        if (tab.getApplication() == null || tab.getApplication().getId() == null
+                || tab.getEnvironment() == null || tab.getEnvironment().getId() == null)
+        {
+            throw new IllegalArgumentException("Dashboard tab application and environment are required.");
+        }
+
         dashboardTabRepository.findByNameIgnoreCaseAndApplication_IdAndEnvironment_Id(
                 name, tab.getApplication().getId(), tab.getEnvironment().getId()).ifPresent(existingTab -> {
                     if (tab.getId() == null || !existingTab.getId().equals(tab.getId()))
