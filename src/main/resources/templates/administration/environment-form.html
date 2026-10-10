@@ -28,7 +28,7 @@
                 </h1>
 
                 <p class="page-subtitle">
-                    Configure a shared environment available to all applications.
+                    Configure an environment owned by one application.
                 </p>
 
             </div>
@@ -40,8 +40,27 @@
               th:object="${environment}"
               method="post">
 
-            <input type="hidden"
-                   th:field="*{id}">
+            <input type="hidden" th:field="*{id}">
+
+            <div class="app-card mb-4">
+                <div class="app-card-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6" th:if="${environment.id == null}">
+                            <label for="applicationId" class="form-label">Application <span class="text-danger">*</span></label>
+                            <select id="applicationId" name="applicationId" class="form-select" required>
+                                <option value="">-- Select Application --</option>
+                                <option th:each="appItem : ${applications}" th:value="${appItem.id}" th:text="${appItem.name}">Application</option>
+                            </select>
+                            <div class="form-text">This environment will belong only to the selected application.</div>
+                        </div>
+                        <div class="col-12 col-md-6" th:if="${environment.id != null}">
+                            <label class="form-label">Application</label>
+                            <input type="text" class="form-control" th:value="${environment.application.name}" readonly>
+                            <div class="form-text">An environment's application cannot be changed after creation.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div class="app-card mb-4">
 
@@ -84,7 +103,7 @@
                                    placeholder="e.g. PROD">
 
                             <div class="form-text">
-                                Use a unique environment name.
+                                Environment names must be unique within the selected application.
                             </div>
 
                         </div>
