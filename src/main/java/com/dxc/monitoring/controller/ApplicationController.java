@@ -20,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 @Controller
 @RequestMapping("/administration/applications")
@@ -27,15 +28,17 @@ public class ApplicationController
 {
     private final ApplicationRepository applicationRepository;
     private final MonitoringJobRepository monitoringJobRepository;
+    private final DashboardAccessService accessService;
 
     private static final Map<String, String> APPLICATION_SORT_FIELDS =
         Map.of("name", "name", "description", "description", "enabled", "enabled");
 
     public ApplicationController(ApplicationRepository applicationRepository,
-            MonitoringJobRepository monitoringJobRepository)
+            MonitoringJobRepository monitoringJobRepository, DashboardAccessService accessService)
     {
         this.applicationRepository = applicationRepository;
         this.monitoringJobRepository = monitoringJobRepository;
+        this.accessService = accessService;
     }
 
     @GetMapping
@@ -60,7 +63,10 @@ public class ApplicationController
 
         Pageable pageable = PageRequest.of(page, size, pageableSort);
 
-        Page<Application> applications = applicationRepository.findAllForList(normalizedSearch, pageable);
+        java.util.List<Long> accessibleIds = accessService.getAccessibleApplications().stream()
+                .map(Application::getId).toList();
+        Page<Application> applications = accessibleIds.isEmpty() ? Page.empty(pageable)
+                : applicationRepository.findAllForApplications(normalizedSearch, accessibleIds, pageable);
 
         model.addAttribute("applications", applications);
         model.addAttribute("pageSize", size);
