@@ -550,7 +550,6 @@ public class DashboardService
     }
 
     @Transactional(readOnly = true)
-    @Transactional(readOnly = true)
     public DashboardWidget getWidget(Long widgetId)
     {
         DashboardWidget widget = dashboardWidgetRepository.findById(widgetId)
