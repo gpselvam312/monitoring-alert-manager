@@ -3728,3 +3728,38 @@ textarea.form-control {
     .server-health-summary-item { padding: 10px; }
     .server-health-summary-item strong { font-size: 18px; }
 }
+
+
+/* System Metrics: theme-aware cards and responsive status summaries */
+.server-health-summary { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.server-health-summary-item { background: var(--card-bg); color: var(--text-primary); transition: border-color .15s ease, transform .15s ease; }
+.server-health-summary-item > span { display: inline-flex; align-items: center; gap: .35rem; }
+.server-health-summary-item > span i { color: var(--text-secondary); }
+.server-health-summary-warning { border-color: color-mix(in srgb, var(--warning) 40%, var(--border-color)); }
+.server-health-summary-critical { border-color: color-mix(in srgb, var(--danger) 40%, var(--border-color)); }
+.server-health-summary-unknown { border-style: dashed; }
+.server-health-unknown { color: var(--text-secondary); }
+.server-health-card { box-shadow: 0 1px 3px color-mix(in srgb, var(--text-primary) 5%, transparent); transition: transform .15s ease, box-shadow .15s ease; }
+.server-health-card:hover { transform: translateY(-1px); box-shadow: 0 5px 16px color-mix(in srgb, var(--text-primary) 9%, transparent); }
+.server-health-card-unknown { border-left-color: var(--text-secondary); }
+.server-health-card-header { align-items: flex-start; }
+.server-health-host { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.server-health-host > i { color: var(--text-secondary); flex: 0 0 auto; }
+.server-health-host strong { overflow-wrap: anywhere; }
+.server-health-status { display: inline-flex; align-items: center; gap: .3rem; }
+.server-health-status-unknown { color: var(--text-secondary); background: color-mix(in srgb, var(--text-secondary) 12%, transparent); }
+.server-health-meter > span { background: var(--success); }
+.server-health-card-warning .server-health-meter > span { background: var(--warning); }
+.server-health-card-critical .server-health-meter > span { background: var(--danger); }
+.server-health-card-unknown .server-health-meter > span { background: var(--text-secondary); }
+.server-health-detail { display: flex; justify-content: space-between; align-items: center; gap: .75rem; margin-top: .7rem; padding-top: .65rem; border-top: 1px solid var(--border-color); font-size: .76rem; }
+.server-health-detail > span { color: var(--text-secondary); display: inline-flex; align-items: center; gap: .35rem; min-width: 0; }
+.server-health-detail > strong { color: var(--text-primary); text-align: right; overflow-wrap: anywhere; }
+.server-health-ram-capacity { color: var(--text-secondary); font-size: .7rem; }
+.server-health-empty { display: flex; justify-content: center; align-items: center; gap: .6rem; padding: 1.5rem; color: var(--text-secondary); border: 1px dashed var(--border-color); border-radius: .5rem; }
+.dashboard-widget-collected { margin-top: .25rem; padding-top: 0; border-top: 0; font-size: .7rem; }
+@media (max-width: 767.98px) {
+    .server-health-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .server-health-summary-item:first-child { grid-column: 1 / -1; }
+    .server-health-toolbar > span { margin-left: 0; width: 100%; }
+}
