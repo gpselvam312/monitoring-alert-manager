@@ -95,6 +95,13 @@ WHERE p.menu_key = 'ADMINISTRATION'
 
 INSERT INTO ra_fcb.menu_items
     (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'DASHBOARD_CONFIGURATION', 'Dashboard Configuration', '/administration/dashboard', 'bi-grid-3x3-gap', p.id, 25, 'MONITORING_CONFIG', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ADMINISTRATION'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'DASHBOARD_CONFIGURATION');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
 SELECT 'USERS', 'Users', '/administration/users', 'bi-person-gear', p.id, 30, 'USER_CONFIG', TRUE
 FROM ra_fcb.menu_items p
 WHERE p.menu_key = 'ADMINISTRATION'
