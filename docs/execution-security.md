@@ -13,23 +13,23 @@ This is a method-level safeguard, not a guarantee that an endpoint is read-only.
 Script execution is denied unless the script:
 - resolves to a readable regular file under a configured trusted directory;
 - is not itself a symbolic link;
-- has a matching SHA-256 entry in the trusted hash configuration;
+- has a matching SHA-256 hash stored on that Monitoring Job;
 - does not match the initial dangerous-command or nested-execution patterns; and
 - uses a working directory inside the matched trusted script directory, if one is configured.
 
-Configuration is supplied through environment variables:
+The trusted directories are configured through environment variables:
 
 - `MONITORING_SCRIPT_ALLOWED_DIRECTORIES`: comma-separated absolute trusted directories. Defaults to `${user.dir}/scripts`.
-- `MONITORING_SCRIPT_APPROVED_SHA256`: comma-separated entries in the form `/absolute/path/to/script.sh=64-character-sha256`.
 
-Example format (replace the example path and digest with values calculated from your deployed, reviewed script files):
+The approved SHA-256 hash is stored in the **Approved SHA-256** field on each Monitoring Job. Users who already have permission to create or edit jobs can maintain the hash; the existing job permissions are unchanged. The hash is checked at execution time, so a hash update does not require an application restart. A missing hash or mismatch blocks execution and is recorded as a specific execution error for the dashboard widget and execution history.
 
-```text
-MONITORING_SCRIPT_ALLOWED_DIRECTORIES=/opt/monitoring/scripts
-MONITORING_SCRIPT_APPROVED_SHA256=/opt/monitoring/scripts/health.sh=<64-character-sha256>
+Calculate a hash on the host that stores the script:
+
+```bash
+sha256sum /opt/monitoring/scripts/health.sh
 ```
 
-If no approved hash is configured for a script, it will not execute. Update the trusted hash configuration through your normal protected deployment/configuration process whenever an intentional script update is deployed. This is not an in-application approval workflow.
+Copy the 64-character digest into the corresponding job's **Approved SHA-256** field. Update it only when the new script version has been reviewed and is intended to be trusted.
 
 ## Important limitations
 
