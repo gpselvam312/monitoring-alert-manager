@@ -1605,6 +1605,7 @@
                     '<i class="bi bi-arrow-down-up kafka-health-sort-icon" aria-hidden="true"></i></button></th>';
             }).join("") + '<th class="kafka-health-expand-heading"></th></tr></thead>';
 
+        let kafkaTopicRowStripeIndex = 0;
         mappedGroups.forEach(function (group, groupIndex)
         {
             const groupId = widgetId + "-g" + groupIndex;
@@ -1657,7 +1658,8 @@
                     logEndOffset: '<td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(topic, config.topicEndField), "logEndOffset")) + '</td>',
                     lag: '<td class="text-end kafka-health-number ' + groupStatusClass + '">' + escapeHtml(numberOf(topicLag, "lag")) + '</td>'
                 };
-                html += '<tr class="kafka-health-topic-row" data-topic-search="' + escapeHtml(topicName.toLowerCase()) + '">' +
+                const topicStripeClass = kafkaTopicRowStripeIndex++ % 2 === 1 ? ' kafka-health-topic-row-alt' : '';
+                html += '<tr class="kafka-health-topic-row' + topicStripeClass + '" data-topic-search="' + escapeHtml(topicName.toLowerCase()) + '">' +
                     columnKeys.map(function (key) { return topicCells[key] || ""; }).join("") +
                     '<td class="text-end"><button type="button" class="btn btn-sm btn-link kafka-health-expand" data-expand-id="' +
                     escapeHtml(expandId) + '" aria-expanded="false" aria-label="Expand partitions for ' + escapeHtml(topicName) +
@@ -1666,8 +1668,11 @@
                 if (partitionList.length)
                 {
                     html += '<tr class="kafka-health-partition-row d-none" data-partition-parent="' + escapeHtml(expandId) +
-                        '"><td colspan="' + (columnKeys.length + 1) + '"><div class="kafka-health-partitions"><div class="kafka-health-partition-title">Partition details</div>' +
-                        '<table class="table table-sm mb-0"><thead><tr><th>' + escapeHtml(labels.partition || "Partition") +
+                        '"><td colspan="' + (columnKeys.length + 1) + '"><div class="kafka-health-partitions">' +
+                        '<div class="kafka-health-partition-heading"><div class="kafka-health-partition-title"><i class="bi bi-diagram-3" aria-hidden="true"></i><span>Partition-level offsets</span></div>' +
+                        '<span class="kafka-health-partition-count">' + partitionList.length + ' partitions</span></div>' +
+                        '<p class="kafka-health-partition-description">Offset and lag details for each partition in this topic.</p>' +
+                        '<div class="kafka-health-partition-table-wrap"><table class="table table-sm kafka-partition-table mb-0"><thead><tr><th>' + escapeHtml(labels.partition || "Partition") +
                         '</th><th class="text-end">' + escapeHtml(labels.currentOffset || "Current") + '</th>' +
                         '<th class="text-end">' + escapeHtml(labels.logEndOffset || "End") + '</th><th class="text-end">' +
                         escapeHtml(labels.lag || "Lag") + '</th></tr></thead><tbody>';
