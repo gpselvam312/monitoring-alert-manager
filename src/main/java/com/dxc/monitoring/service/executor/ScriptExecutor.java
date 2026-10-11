@@ -132,8 +132,8 @@ public class ScriptExecutor implements MonitoringExecutor
                 process.destroyForcibly();
             result.setExecutionStatus(MonitoringExecution.ExecutionStatus.ERROR);
             result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
-            result.setMessage("Script security validation rejected execution.");
-            result.setErrorMessage(exception.getMessage());
+            result.setMessage(safeSecurityMessage(exception.getMessage()));
+            result.setErrorMessage(safeSecurityMessage(exception.getMessage()));
             normalizeResult(result, exception.getMessage(), startedAt, job.getResultParserConfig());
         }
         catch (InterruptedException exception)
@@ -158,6 +158,14 @@ public class ScriptExecutor implements MonitoringExecutor
             normalizeResult(result, exception.getMessage(), startedAt, job.getResultParserConfig());
         }
         return result;
+    }
+
+    private String safeSecurityMessage(String message)
+    {
+        if (message == null || message.isBlank())
+            return "Execution blocked: Script security validation failed. Check execution details for more information.";
+        // Validator messages are deliberately authored without exposing local file paths or script contents.
+        return message;
     }
 
     private void normalizeResult(MonitoringExecutionResult result, String output, OffsetDateTime startedAt, String parserConfigJson)
