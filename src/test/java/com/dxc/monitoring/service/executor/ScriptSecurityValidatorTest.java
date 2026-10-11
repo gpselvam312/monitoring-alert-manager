@@ -41,6 +41,18 @@ class ScriptSecurityValidatorTest
     }
 
     @Test
+    void rejectsScriptWhenHashNoLongerMatchesApprovedVersion() throws Exception
+    {
+        Path script = tempDir.resolve("health.sh");
+        Files.writeString(script, "#!/bin/sh\\necho healthy\\n");
+        MonitoringJob job = job(script);
+        Files.writeString(script, "#!/bin/sh\\necho changed\\n");
+        ScriptSecurityValidator validator = new ScriptSecurityValidator(tempDir.toString());
+
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(job));
+    }
+
+    @Test
     void rejectsKnownDestructiveCommandEvenWhenHashMatches() throws Exception
     {
         Path script = tempDir.resolve("health.sh");
