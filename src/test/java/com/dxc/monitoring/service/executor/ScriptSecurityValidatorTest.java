@@ -23,8 +23,7 @@ class ScriptSecurityValidatorTest
     {
         Path script = tempDir.resolve("health.sh");
         Files.writeString(script, "#!/bin/sh\nprintf 'healthy\\n'\n");
-        ScriptSecurityValidator validator = new ScriptSecurityValidator(tempDir.toString(),
-                script.toAbsolutePath() + "=" + sha256(script));
+        ScriptSecurityValidator validator = new ScriptSecurityValidator(tempDir.toString());
 
         assertEquals(script.toRealPath(), validator.validate(job(script)));
     }
@@ -34,7 +33,7 @@ class ScriptSecurityValidatorTest
     {
         Path script = tempDir.resolve("health.sh");
         Files.writeString(script, "#!/bin/sh\necho healthy\n");
-        ScriptSecurityValidator validator = new ScriptSecurityValidator(tempDir.toString(), "");
+        ScriptSecurityValidator validator = new ScriptSecurityValidator(tempDir.toString());
 
         assertThrows(IllegalArgumentException.class, () -> validator.validate(job(script)));
     }
@@ -65,6 +64,8 @@ class ScriptSecurityValidatorTest
     {
         MonitoringJob job = new MonitoringJob();
         job.setScriptPath(script.toString());
+        try { job.setApprovedSha256(sha256(script)); }
+        catch (Exception exception) { throw new IllegalStateException(exception); }
         return job;
     }
 
