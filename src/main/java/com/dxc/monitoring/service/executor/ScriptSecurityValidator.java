@@ -8,9 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.Locale;
-import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -37,11 +35,9 @@ public class ScriptSecurityValidator
             + "|(?:curl|wget)\\b[^\\n]*\\|\\s*(?:ba)?sh\\b");
 
     private final Path[] allowedDirectories;
-    private final Map<Path, String> approvedHashes;
 
     public ScriptSecurityValidator(
-            @Value("${monitoring.security.script.allowed-directories:${user.dir}/scripts}") String allowedDirectories,
-            @Value("${monitoring.security.script.approved-sha256:}") String approvedSha256)
+            @Value("${monitoring.security.script.allowed-directories:${user.dir}/scripts}") String allowedDirectories)
     {
         this.allowedDirectories = Arrays.stream(allowedDirectories.split(","))
                 .map(String::trim)
@@ -50,18 +46,6 @@ public class ScriptSecurityValidator
                 .map(Path::toAbsolutePath)
                 .map(Path::normalize)
                 .toArray(Path[]::new);
-
-        this.approvedHashes = Arrays.stream(approvedSha256.split(","))
-                .map(String::trim)
-                .filter(value -> !value.isBlank())
-                .map(entry -> entry.split("=", 2))
-                .filter(parts -> parts.length == 2 && !parts[0].isBlank() && parts[1].matches("(?i)[a-f0-9]{64}"))
-                .collect(Collectors.toUnmodifiableMap(
-                        parts -> Path.of(parts[0]).toAbsolutePath().normalize(),
-                        parts -> parts[1].toLowerCase(Locale.ROOT),
-                        (first, second) -> {
-                            throw new IllegalArgumentException("Duplicate script path in approved SHA-256 configuration.");
-                        }));
     }
 
     public Path validate(MonitoringJob job) throws IOException
@@ -81,16 +65,14 @@ public class ScriptSecurityValidator
         if (allowedRoot == null)
             throw new IllegalArgumentException("Script security validation rejected a path outside configured allowed directories.");
 
-        String approvedHash = approvedHashes.get(configuredPath);
-        if (approvedHash == null)
-            approvedHash = approvedHashes.get(realScript);
-        if (approvedHash == null)
-            throw new IllegalArgumentException("Script security validation rejected execution because no approved SHA-256 hash is configured.");
+        String approvedHash = job.getApprovedSha256();
+        if (approvedHash == null || !approvedHash.matches("(?i)[a-f0-9]{64}"))
+            throw new IllegalArgumentException("Execution blocked: Approved SHA-256 hash is not configured for this job.");
 
         String actualHash = sha256(realScript);
         if (!MessageDigest.isEqual(actualHash.getBytes(java.nio.charset.StandardCharsets.US_ASCII),
-                approvedHash.getBytes(java.nio.charset.StandardCharsets.US_ASCII)))
-            throw new IllegalArgumentException("Script security validation rejected a script whose SHA-256 hash does not match the configured baseline.");
+                approvedHash.toLowerCase(Locale.ROOT).getBytes(java.nio.charset.StandardCharsets.US_ASCII)))
+            throw new IllegalArgumentException("Execution blocked: Script SHA-256 validation failed. The script may have changed since approval.");
 
         String script = Files.readString(realScript);
         if (DANGEROUS_COMMAND.matcher(script).find())
