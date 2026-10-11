@@ -1567,19 +1567,20 @@
             ? numberOf(availableBrokers) + " brokers"
             : numberOf(availableBrokers) + " / " + numberOf(expectedBrokers) + " brokers";
         const widgetId = String(widget.id || "widget").replace(/[^a-zA-Z0-9_-]/g, "-");
+        const offlinePartitions = Number(valueAt(cluster, config.clusterOfflinePartitionsField));
         const clusterHtml = '<section class="kafka-health-cluster"><div class="kafka-health-cluster-heading">' +
             '<div><strong>' + escapeHtml(clusterName || "Kafka cluster") + '</strong><span class="kafka-health-cluster-version">Kafka ' +
             escapeHtml(valueAt(cluster, config.clusterVersionField) || "version unknown") + '</span></div><span class="kafka-health-badge ' +
             cssOf(clusterStatus) + '">' + labelOf(clusterStatus) + '</span></div><div class="kafka-cluster-stat-grid">' +
-            '<div class="kafka-cluster-stat"><span class="kafka-cluster-stat-label">Available Brokers</span><strong>' +
+            '<div class="kafka-cluster-stat kafka-cluster-stat-brokers"><div class="kafka-cluster-stat-top"><span class="kafka-cluster-stat-icon"><i class="bi bi-hdd-network" aria-hidden="true"></i></span><span class="kafka-cluster-stat-label">Available Brokers</span></div><strong>' +
             escapeHtml(numberOf(availableBrokers)) + '<small> / ' + escapeHtml(expectedBrokers === null || expectedBrokers === undefined || expectedBrokers === "" ? "?" : numberOf(expectedBrokers)) +
             '</small></strong><span class="kafka-cluster-stat-footnote">Brokers available</span></div>' +
-            '<div class="kafka-cluster-stat"><span class="kafka-cluster-stat-label">Kafka Version</span><strong class="kafka-cluster-stat-version">' +
+            '<div class="kafka-cluster-stat kafka-cluster-stat-version-card"><div class="kafka-cluster-stat-top"><span class="kafka-cluster-stat-icon"><i class="bi bi-layers" aria-hidden="true"></i></span><span class="kafka-cluster-stat-label">Kafka Version</span></div><strong class="kafka-cluster-stat-version">' +
             escapeHtml(valueAt(cluster, config.clusterVersionField) || "Unknown") + '</strong><span class="kafka-cluster-stat-footnote">Cluster software</span></div>' +
-            '<div class="kafka-cluster-stat"><span class="kafka-cluster-stat-label">Topics</span><strong>' +
+            '<div class="kafka-cluster-stat kafka-cluster-stat-topics"><div class="kafka-cluster-stat-top"><span class="kafka-cluster-stat-icon"><i class="bi bi-collection" aria-hidden="true"></i></span><span class="kafka-cluster-stat-label">Topics</span></div><strong>' +
             escapeHtml(numberOf(valueAt(cluster, config.clusterTopicCountField))) + '</strong><span class="kafka-cluster-stat-footnote">Configured topics</span></div>' +
-            '<div class="kafka-cluster-stat"><span class="kafka-cluster-stat-label">Offline Partitions</span><strong class="' +
-            (Number(valueAt(cluster, config.clusterOfflinePartitionsField)) > 0 ? 'kafka-stat-critical' : 'kafka-stat-healthy') + '">' +
+            '<div class="kafka-cluster-stat kafka-cluster-stat-offline"><div class="kafka-cluster-stat-top"><span class="kafka-cluster-stat-icon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span><span class="kafka-cluster-stat-label">Offline Partitions</span></div><strong class="' +
+            (offlinePartitions > 0 ? 'kafka-stat-critical' : 'kafka-stat-healthy') + '">' +
             escapeHtml(numberOf(valueAt(cluster, config.clusterOfflinePartitionsField))) + '</strong><span class="kafka-cluster-stat-footnote">Partitions unavailable</span></div>' +
             '</div></section>';
         let html = '<div class="kafka-health-widget" data-kafka-widget="' + escapeHtml(widgetId) +
