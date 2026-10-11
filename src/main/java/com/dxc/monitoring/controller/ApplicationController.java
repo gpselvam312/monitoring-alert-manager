@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Controller;
@@ -175,6 +176,7 @@ public class ApplicationController
     @PostMapping("/save")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Transactional
+    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String save(@ModelAttribute("appName") Application application)
     {
         if (application.getId() != null)
@@ -198,6 +200,7 @@ public class ApplicationController
 
     @PostMapping("/{id}/toggle")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String toggle(@PathVariable Long id)
     {
         Application application = applicationRepository.findById(id)
@@ -212,6 +215,7 @@ public class ApplicationController
 
     @PostMapping("/{id}/delete")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         Application application = applicationRepository.findById(id)
