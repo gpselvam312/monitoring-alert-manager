@@ -3874,10 +3874,45 @@ textarea.form-control {
 .kafka-health-cluster-heading > div { display: flex; align-items: baseline; gap: .65rem; flex-wrap: wrap; min-width: 0; }
 .kafka-health-cluster-heading strong { font-size: .95rem; overflow-wrap: anywhere; }
 .kafka-health-cluster-version { color: var(--text-secondary); font-size: .78rem; }
-.kafka-cluster-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
-.kafka-cluster-stat { display: flex; flex-direction: column; align-items: flex-start; gap: .22rem; min-width: 0; padding: .7rem .75rem; background: var(--app-bg); border: 1px solid var(--border-color); border-radius: .5rem; }
-.kafka-cluster-stat-label { color: var(--text-secondary); font-size: .73rem; }
-.kafka-cluster-stat strong { color: var(--text-primary); font-size: 1.35rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.kafka-cluster-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; }
+.kafka-cluster-stat {
+    --kafka-stat-accent: var(--theme-primary);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .45rem;
+    min-width: 0;
+    padding: .85rem .9rem;
+    overflow: hidden;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--kafka-stat-accent) 10%, var(--card-bg)), var(--card-bg) 78%);
+    border: 1px solid color-mix(in srgb, var(--kafka-stat-accent) 28%, var(--border-color));
+    border-top: 3px solid var(--kafka-stat-accent);
+    border-radius: .7rem;
+    box-shadow: 0 2px 7px color-mix(in srgb, var(--kafka-stat-accent) 8%, transparent);
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+.kafka-cluster-stat:hover { transform: translateY(-2px); box-shadow: 0 5px 14px color-mix(in srgb, var(--kafka-stat-accent) 15%, transparent); }
+.kafka-cluster-stat-brokers { --kafka-stat-accent: var(--theme-primary); }
+.kafka-cluster-stat-version-card { --kafka-stat-accent: var(--info); }
+.kafka-cluster-stat-topics { --kafka-stat-accent: var(--success); }
+.kafka-cluster-stat-offline { --kafka-stat-accent: var(--danger); }
+.kafka-cluster-stat-top { display: flex; align-items: center; gap: .55rem; min-width: 0; width: 100%; }
+.kafka-cluster-stat-icon {
+    display: inline-flex;
+    flex: 0 0 2rem;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--kafka-stat-accent);
+    background: color-mix(in srgb, var(--kafka-stat-accent) 13%, var(--card-bg));
+    border: 1px solid color-mix(in srgb, var(--kafka-stat-accent) 18%, transparent);
+    border-radius: .6rem;
+    font-size: 1rem;
+}
+.kafka-cluster-stat-label { color: var(--text-secondary); font-size: .75rem; font-weight: 600; line-height: 1.3; }
+.kafka-cluster-stat strong { color: var(--text-primary); font-size: 1.45rem; line-height: 1.25; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .kafka-cluster-stat strong small { color: var(--text-secondary); font-size: .85rem; font-weight: 500; }
 .kafka-cluster-stat-version { font-size: 1.05rem !important; overflow-wrap: anywhere; }
 .kafka-cluster-stat-footnote { color: var(--text-secondary); font-size: .7rem; }
