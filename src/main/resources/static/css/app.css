@@ -3969,10 +3969,96 @@ textarea.form-control {
 .kafka-health-sort-hint { color: var(--text-secondary); font-size: .75rem; }
 
 
-/* Kafka consumer table zebra striping (theme-aware). */
-.kafka-health-table > tbody.kafka-health-group > tr.kafka-health-topic-row:nth-of-type(even) > td {
-    background-color: color-mix(in srgb, var(--theme-primary) 4%, var(--card-bg));
+/* Kafka consumer table zebra striping (theme-aware). Explicit row class is used
+   because hidden partition-detail rows interrupt nth-of-type counting. */
+.kafka-health-table > tbody.kafka-health-group > tr.kafka-health-topic-row-alt > td {
+    background-color: color-mix(in srgb, var(--theme-primary) 5%, var(--card-bg));
 }
 .kafka-health-table > tbody.kafka-health-group > tr.kafka-health-topic-row:hover > td {
-    background-color: color-mix(in srgb, var(--theme-primary) 9%, var(--card-bg));
+    background-color: color-mix(in srgb, var(--theme-primary) 10%, var(--card-bg));
+}
+
+/* Expanded partition data is visually distinct from the consumer/topic table. */
+.kafka-health-table > tbody.kafka-health-group > tr.kafka-health-partition-row > td {
+    padding: .65rem .8rem .85rem;
+    background: var(--app-bg);
+    border-top: 0;
+}
+.kafka-health-partitions {
+    padding: .85rem 1rem 1rem;
+    background: color-mix(in srgb, var(--theme-primary) 3%, var(--card-bg));
+    border: 1px solid color-mix(in srgb, var(--theme-primary) 18%, var(--border-color));
+    border-left: 3px solid var(--theme-primary);
+    border-radius: .65rem;
+}
+.kafka-health-partition-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .25rem;
+}
+.kafka-health-partition-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0;
+    color: var(--text-primary);
+    font-size: .84rem;
+    font-weight: 750;
+}
+.kafka-health-partition-title > i {
+    color: var(--theme-primary);
+    font-size: 1rem;
+}
+.kafka-health-partition-count {
+    padding: .2rem .55rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    background: var(--card-bg);
+    font-size: .72rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+.kafka-health-partition-description {
+    margin: 0 0 .7rem;
+    color: var(--text-secondary);
+    font-size: .76rem;
+}
+.kafka-health-partition-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: .45rem;
+    background: var(--card-bg);
+}
+.kafka-partition-table {
+    min-width: 420px;
+    width: 100%;
+    color: var(--text-primary);
+    font-size: .8rem;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.kafka-partition-table > thead > tr > th {
+    padding: .55rem .75rem;
+    background: color-mix(in srgb, var(--theme-primary) 7%, var(--app-bg));
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    font-size: .72rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+.kafka-partition-table > tbody > tr:nth-child(even) > td {
+    background: color-mix(in srgb, var(--theme-primary) 4%, var(--card-bg));
+}
+.kafka-partition-table > tbody > tr > td {
+    padding: .55rem .75rem;
+    color: var(--text-primary);
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    font-variant-numeric: tabular-nums;
+}
+.kafka-partition-table > tbody > tr:last-child > td {
+    border-bottom: 0;
 }
