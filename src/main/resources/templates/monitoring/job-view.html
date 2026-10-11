@@ -601,6 +601,24 @@
                     <div class="detail-item">
 
                         <div class="detail-label">
+                            Approved SHA-256
+                        </div>
+
+                        <div class="detail-code"
+                             th:text="${job.approvedSha256 ?: 'Not configured'}">
+                            Not configured
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-12">
+
+                    <div class="detail-item">
+
+                        <div class="detail-label">
                             Working Directory
                         </div>
 
