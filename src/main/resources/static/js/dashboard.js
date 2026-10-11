@@ -1635,7 +1635,7 @@
                 if (partitionList.length)
                 {
                     html += '<tr class="kafka-health-partition-row d-none" data-partition-parent="' + escapeHtml(expandId) +
-                        '"><td colspan="6"><div class="kafka-health-partitions"><div class="kafka-health-partition-title">Partition details</div>' +
+                        '"><td colspan="' + (columnKeys.length + 1) + '"><div class="kafka-health-partitions"><div class="kafka-health-partition-title">Partition details</div>' +
                         '<table class="table table-sm mb-0"><thead><tr><th>' + escapeHtml(labels.partition || "Partition") +
                         '</th><th class="text-end">' + escapeHtml(labels.currentOffset || "Current") + '</th>' +
                         '<th class="text-end">' + escapeHtml(labels.logEndOffset || "End") + '</th><th class="text-end">' +
