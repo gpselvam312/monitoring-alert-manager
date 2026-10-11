@@ -19,6 +19,37 @@ Create a TABLE widget bound to the Kafka health Monitoring Job. Paste the follow
 \`\`\`json
 {
   "renderer": "KAFKA_CONSUMER_HEALTH",
+  "presentation": {
+    "type": "expandable-table"
+  },
+  "order": [
+    "consumerGroup",
+    "topic",
+    "currentOffset",
+    "logEndOffset",
+    "lag"
+  ],
+  "labels": {
+    "consumerGroup": "Consumer Group",
+    "topic": "Topic",
+    "currentOffset": "Current Offset",
+    "logEndOffset": "Log-End Offset",
+    "lag": "Lag",
+    "partition": "Partition"
+  },
+  "formats": {
+    "currentOffset": "number",
+    "logEndOffset": "number",
+    "lag": "number"
+  },
+  "rowPath": "consumerGroups.items",
+  "visibleFields": [
+    "consumerGroup",
+    "topic",
+    "currentOffset",
+    "logEndOffset",
+    "lag"
+  ],
   "clusterPath": "cluster",
   "clusterNameField": "name",
   "clusterStatusField": "status",
@@ -27,7 +58,6 @@ Create a TABLE widget bound to the Kafka health Monitoring Job. Paste the follow
   "clusterVersionField": "kafkaVersion",
   "clusterTopicCountField": "topicCount",
   "clusterOfflinePartitionsField": "offlinePartitions",
-  "rowPath": "consumerGroups.items",
   "groupNameField": "groupId",
   "groupStatusField": "status",
   "groupLagField": "totalLag",
@@ -42,8 +72,6 @@ Create a TABLE widget bound to the Kafka health Monitoring Job. Paste the follow
   "partitionEndField": "logEndOffset",
   "partitionLagField": "lag"
 }
-\`\`\`
-
-The widget renders group status counts, search, sorting, pagination by consumer group, and expandable topic partition rows. Current/End values on a topic row are sums of its partition offsets; expanded rows show each partition's offsets.
+\`\`\`he widget renders group status counts, search, sorting, pagination by consumer group, and expandable topic partition rows. Current/End values on a topic row are sums of its partition offsets; expanded rows show each partition's offsets.
 
 CPU, RAM and storage are intentionally not collected by this script; use the existing Metrics widget for the three Kafka hosts.
