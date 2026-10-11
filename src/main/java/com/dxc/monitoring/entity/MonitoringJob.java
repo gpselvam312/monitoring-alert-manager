@@ -88,6 +88,9 @@ public class MonitoringJob
     @Column(name = "script_path", length = 1000)
     private String scriptPath;
 
+    @Column(name = "approved_sha256", length = 64)
+    private String approvedSha256;
+
     @Column(name = "working_directory", length = 1000)
     private String workingDirectory;
 
@@ -383,6 +386,17 @@ public class MonitoringJob
     public String getScriptPath()
     {
         return scriptPath;
+    }
+
+    public String getApprovedSha256()
+    {
+        return approvedSha256;
+    }
+
+    public void setApprovedSha256(String approvedSha256)
+    {
+        this.approvedSha256 = approvedSha256 == null || approvedSha256.isBlank()
+                ? null : approvedSha256.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     public void setScriptPath(String scriptPath)
