@@ -12,26 +12,26 @@ import org.springframework.transaction.annotation.Transactional;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.Role;
-import com.dxc.monitoring.entity.User;
 import com.dxc.monitoring.entity.UserApplicationRole;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.UserApplicationRoleRepository;
-import com.dxc.monitoring.repository.UserRepository;
+import com.dxc.monitoring.security.CustomUserDetails;
+import com.dxc.monitoring.service.ReferenceDataCacheService;
 
 @Service
 public class DashboardAccessService {
     private final ApplicationRepository applications;
     private final EnvironmentRepository environments;
-    private final UserRepository users;
+    private final ReferenceDataCacheService referenceDataCache;
     private final UserApplicationRoleRepository assignments;
 
     public DashboardAccessService(ApplicationRepository applications, EnvironmentRepository environments,
-            UserRepository users, UserApplicationRoleRepository assignments) {
+            UserApplicationRoleRepository assignments, ReferenceDataCacheService referenceDataCache) {
         this.applications = applications;
         this.environments = environments;
-        this.users = users;
         this.assignments = assignments;
+        this.referenceDataCache = referenceDataCache;
     }
 
     @Transactional(readOnly = true)
@@ -41,7 +41,7 @@ public class DashboardAccessService {
 
     @Transactional(readOnly = true)
     public Long getPrimaryApplicationId() {
-        return assignments.findFirstByUser_IdAndPrimaryTrue(currentUser().getId())
+        return assignments.findFirstByUser_IdAndPrimaryTrue(currentUserId())
                 .map(assignment -> assignment.getApplication().getId())
                 .orElse(null);
     }
@@ -49,7 +49,7 @@ public class DashboardAccessService {
     @Transactional(readOnly = true)
     public List<Application> getApplicationsWithPermission(String permission) {
         if (isPlatformAdmin()) return applications.findByEnabledTrueOrderByNameAsc();
-        return assignments.findAssignmentsForUser(currentUser().getId()).stream()
+        return assignments.findAssignmentsForUser(currentUserId()).stream()
                 .filter(a -> a.getApplication().isEnabled())
                 .filter(a -> hasPermission(a.getRole(), permission))
                 .map(UserApplicationRole::getApplication).distinct()
@@ -67,8 +67,8 @@ public class DashboardAccessService {
         Application app = applications.findById(applicationId).filter(Application::isEnabled)
                 .orElseThrow(() -> new AccessDeniedException("Application is unavailable."));
         if (isPlatformAdmin()) return;
-        User user = currentUser();
-        UserApplicationRole assignment = assignments.findByUser_IdAndApplication_Id(user.getId(), app.getId())
+        Long userId = currentUserId();
+        UserApplicationRole assignment = assignments.findByUser_IdAndApplication_Id(userId, app.getId())
                 .orElseThrow(() -> new AccessDeniedException("You are not assigned to this application."));
         if (!hasPermission(assignment.getRole(), permission))
             throw new AccessDeniedException("Your role does not allow this action for the selected application.");
@@ -77,7 +77,7 @@ public class DashboardAccessService {
     @Transactional(readOnly = true)
     public List<Environment> getEnvironmentsForApplication(Long applicationId) {
         assertCanAccessApplication(applicationId, "MONITORING_VIEW");
-        return environments.findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(applicationId);
+        return referenceDataCache.getEnabledEnvironments(applicationId);
     }
 
     @Transactional(readOnly = true)
@@ -111,11 +111,12 @@ public class DashboardAccessService {
         return auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
-    private User currentUser() {
+    private Long currentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated())
             throw new AccessDeniedException("Authentication is required.");
-        return users.findByUsername(auth.getName())
-                .orElseThrow(() -> new AccessDeniedException("Authenticated user was not found."));
+        if (auth.getPrincipal() instanceof CustomUserDetails userDetails)
+            return userDetails.getUserId();
+        throw new AccessDeniedException("Authenticated user details are unavailable.");
     }
 }
