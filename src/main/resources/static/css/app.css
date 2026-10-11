@@ -4062,3 +4062,158 @@ textarea.form-control {
 .kafka-partition-table > tbody > tr:last-child > td {
     border-bottom: 0;
 }
+
+
+/* System Metrics: Kafka-inspired metric cards */
+.server-health-summary-item {
+    --server-health-accent: var(--theme-primary);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    min-width: 0;
+    padding: .85rem .95rem;
+    color: var(--text-primary);
+    background: linear-gradient(140deg, color-mix(in srgb, var(--server-health-accent) 9%, var(--card-bg)), var(--card-bg) 78%);
+    border: 1px solid color-mix(in srgb, var(--server-health-accent) 25%, var(--border-color));
+    border-radius: .75rem;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--text-primary) 4%, transparent);
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease, background-color .18s ease;
+}
+.server-health-summary-item:hover,
+.server-health-summary-item:focus-visible {
+    border-color: var(--server-health-accent);
+    box-shadow: 0 5px 14px color-mix(in srgb, var(--server-health-accent) 12%, transparent);
+    transform: translateY(-2px);
+}
+.server-health-summary-item > span {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    min-width: 0;
+    color: var(--text-secondary);
+    font-size: .82rem;
+    font-weight: 600;
+}
+.server-health-summary-item > span i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2.2rem;
+    width: 2.2rem;
+    height: 2.2rem;
+    color: var(--server-health-accent);
+    background: color-mix(in srgb, var(--server-health-accent) 14%, var(--card-bg));
+    border: 1px solid color-mix(in srgb, var(--server-health-accent) 20%, transparent);
+    border-radius: .62rem;
+    font-size: 1rem;
+}
+.server-health-summary-item strong {
+    flex: 0 0 auto;
+    color: var(--text-primary);
+    font-size: 1.65rem;
+    line-height: 1.1;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+.server-health-summary-total { --server-health-accent: var(--theme-primary); }
+.server-health-summary-healthy { --server-health-accent: var(--success); }
+.server-health-summary-warning { --server-health-accent: var(--warning); }
+.server-health-summary-critical { --server-health-accent: var(--danger); }
+.server-health-summary-unknown { --server-health-accent: var(--text-secondary); }
+.server-health-summary-healthy,
+.server-health-summary-warning,
+.server-health-summary-critical,
+.server-health-summary-unknown {
+    border-color: color-mix(in srgb, var(--server-health-accent) 25%, var(--border-color));
+}
+.server-health-summary-item.is-active {
+    border-color: var(--server-health-accent);
+    box-shadow: inset 0 0 0 1px var(--server-health-accent), 0 4px 12px color-mix(in srgb, var(--server-health-accent) 12%, transparent);
+}
+.server-health-summary-healthy > span i { color: var(--success); }
+.server-health-summary-warning > span i { color: var(--warning); }
+.server-health-summary-critical > span i { color: var(--danger); }
+.server-health-summary-unknown > span i { color: var(--text-secondary); }
+
+.server-health-card {
+    --server-health-accent: var(--success);
+    position: relative;
+    overflow: hidden;
+    padding: 1rem;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--server-health-accent) 5%, var(--card-bg)), var(--card-bg) 58%);
+    border: 1px solid color-mix(in srgb, var(--server-health-accent) 27%, var(--border-color));
+    border-left: 4px solid var(--server-health-accent);
+    border-radius: .8rem;
+    box-shadow: 0 2px 9px color-mix(in srgb, var(--text-primary) 4%, transparent);
+    transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.server-health-card-healthy { --server-health-accent: var(--success); }
+.server-health-card-warning { --server-health-accent: var(--warning); }
+.server-health-card-critical { --server-health-accent: var(--danger); }
+.server-health-card-unknown { --server-health-accent: var(--text-secondary); }
+.server-health-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--server-health-accent) 55%, var(--border-color));
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--server-health-accent) 10%, transparent);
+}
+.server-health-card-header {
+    align-items: center;
+    gap: .65rem;
+    margin-bottom: 1rem;
+    padding-bottom: .8rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--server-health-accent) 18%, var(--border-color));
+}
+.server-health-host { gap: .55rem; }
+.server-health-host > i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: .62rem;
+    color: var(--server-health-accent);
+    background: color-mix(in srgb, var(--server-health-accent) 13%, var(--card-bg));
+    border: 1px solid color-mix(in srgb, var(--server-health-accent) 20%, transparent);
+    font-size: 1rem;
+}
+.server-health-host strong { font-size: .92rem; font-weight: 700; }
+.server-health-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .32rem .55rem;
+    border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 750;
+    letter-spacing: .025em;
+}
+.server-health-metric { margin: .85rem 0; }
+.server-health-metric > div:first-child { align-items: center; font-size: .8rem; }
+.server-health-metric > div:first-child span { display: inline-flex; align-items: center; gap: .35rem; }
+.server-health-metric > div:first-child span i { color: var(--server-health-accent); }
+.server-health-metric > div:first-child strong { color: var(--text-primary); font-size: .95rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.server-health-meter { height: .42rem; margin-top: .5rem; background: color-mix(in srgb, var(--border-color) 75%, transparent); border-radius: 999px; }
+.server-health-meter > span { background: var(--server-health-accent); }
+.server-health-detail { padding-top: .7rem; }
+.server-health-detail > span i { color: var(--server-health-accent); }
+.server-health-foot {
+    margin-top: .8rem;
+    padding-top: .65rem;
+    border-top: 1px dashed var(--border-color);
+    font-size: .72rem;
+}
+@media (max-width: 767.98px) {
+    .server-health-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .server-health-summary-item { padding: .7rem; }
+    .server-health-summary-item > span { gap: .4rem; font-size: .75rem; }
+    .server-health-summary-item > span i { flex-basis: 1.9rem; width: 1.9rem; height: 1.9rem; }
+    .server-health-summary-item strong { font-size: 1.35rem; }
+}
+@media (max-width: 420px) {
+    .server-health-summary-item { align-items: flex-start; flex-direction: column; }
+    .server-health-summary-item strong { align-self: flex-end; }
+}
+
