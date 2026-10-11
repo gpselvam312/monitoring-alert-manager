@@ -3938,8 +3938,10 @@ textarea.form-control {
     transition: transform .18s ease, box-shadow .18s ease;
 }
 .kafka-cluster-stat:hover { transform: translateY(-2px); box-shadow: 0 5px 14px color-mix(in srgb, var(--kafka-stat-accent) 15%, transparent); }
+.kafka-cluster-stat { cursor: default; }
 .kafka-cluster-stat-brokers { --kafka-stat-accent: var(--theme-primary); }
 .kafka-cluster-stat-brokers-ok { --kafka-stat-accent: var(--success); }
+.kafka-cluster-stat-brokers-ok > strong { color: var(--success); }
 .kafka-cluster-stat-version-card { --kafka-stat-accent: var(--info); }
 .kafka-cluster-stat-topics { --kafka-stat-accent: var(--success); }
 .kafka-cluster-stat-offline { --kafka-stat-accent: var(--danger); }
