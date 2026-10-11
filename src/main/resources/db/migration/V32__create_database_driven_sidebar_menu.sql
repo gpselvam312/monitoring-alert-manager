@@ -1,61 +1,122 @@
-CREATE TABLE ra_fcb.menu_items (
-    id BIGSERIAL PRIMARY KEY,
-    menu_key VARCHAR(80) NOT NULL UNIQUE,
-    label VARCHAR(100) NOT NULL,
-    route_key VARCHAR(80) NOT NULL,
-    icon VARCHAR(80) NOT NULL,
-    section_name VARCHAR(100) NOT NULL,
-    section_order INTEGER NOT NULL,
-    display_order INTEGER NOT NULL,
-    enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    required_role VARCHAR(100),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- The menu table predates this migration in some environments and uses
+-- menu_name/url/parent_id/required_permission. Keep that schema as the canonical
+-- model; do not replace or recreate an existing table.
+DO $$
+BEGIN
+    IF to_regclass('ra_fcb.menu_items') IS NULL THEN
+        CREATE TABLE ra_fcb.menu_items (
+            id BIGSERIAL PRIMARY KEY,
+            menu_key VARCHAR(80) NOT NULL UNIQUE,
+            menu_name VARCHAR(100) NOT NULL,
+            url VARCHAR(500),
+            icon VARCHAR(80),
+            parent_id BIGINT,
+            display_order INTEGER NOT NULL,
+            required_permission VARCHAR(100),
+            enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_by BIGINT,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_by BIGINT,
+            CONSTRAINT fk_menu_items_parent
+                FOREIGN KEY (parent_id) REFERENCES ra_fcb.menu_items(id) ON DELETE SET NULL
+        );
+    END IF;
+END
+$$;
 
-CREATE INDEX idx_menu_items_enabled_order
-    ON ra_fcb.menu_items (enabled, section_order, display_order);
+CREATE INDEX IF NOT EXISTS idx_menu_items_enabled_order
+    ON ra_fcb.menu_items (enabled, display_order);
 
-CREATE TABLE ra_fcb.menu_item_permissions (
-    menu_item_id BIGINT NOT NULL,
-    permission_id BIGINT NOT NULL,
-    CONSTRAINT pk_menu_item_permissions PRIMARY KEY (menu_item_id, permission_id),
-    CONSTRAINT fk_menu_item_permissions_menu_item
-        FOREIGN KEY (menu_item_id) REFERENCES ra_fcb.menu_items(id) ON DELETE CASCADE,
-    CONSTRAINT fk_menu_item_permissions_permission
-        FOREIGN KEY (permission_id) REFERENCES ra_fcb.permissions(id) ON DELETE CASCADE
-);
-
--- Seed only links that have real application routes. Former href="#" placeholders
--- (alerts, notification configuration/history, and audit log) are intentionally omitted.
+-- Seed defaults only when absent. Existing menu rows and their IDs/permissions
+-- are intentionally left unchanged.
 INSERT INTO ra_fcb.menu_items
-    (menu_key, label, route_key, icon, section_name, section_order, display_order, required_role)
-VALUES
-    ('dashboard', 'Dashboard', 'dashboard', 'bi-grid-1x2', 'Main', 1, 1, NULL),
-    ('monitoring-jobs', 'Monitoring Jobs', 'monitoring-jobs', 'bi-activity', 'Monitoring', 2, 1, NULL),
-    ('streaming-jobs', 'Streaming Jobs', 'streaming-jobs', 'bi-terminal', 'Monitoring', 2, 2, NULL),
-    ('machines', 'Servers / Machines', 'machines', 'bi-pc-display', 'Monitoring', 2, 3, NULL),
-    ('schedules', 'Schedules', 'schedules', 'bi-calendar3', 'Scheduling', 3, 1, NULL),
-    ('applications', 'Applications', 'applications', 'bi-box', 'Administration', 4, 1, NULL),
-    ('environments', 'Environments', 'environments', 'bi-layers', 'Administration', 4, 2, NULL),
-    ('dashboard-configuration', 'Dashboard Configuration', 'dashboard-configuration', 'bi-grid-3x3-gap', 'Administration', 4, 3, NULL),
-    ('users', 'Users', 'users', 'bi-person-gear', 'Administration', 4, 4, 'ROLE_ADMIN'),
-    ('roles', 'Roles', 'roles', 'bi-shield-lock', 'Administration', 4, 5, 'ROLE_ADMIN'),
-    ('settings', 'Settings', 'settings', 'bi-gear', 'Administration', 4, 6, NULL)
-ON CONFLICT (menu_key) DO NOTHING;
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'DASHBOARD', 'Dashboard', '/dashboard', 'bi-grid-1x2', NULL, 10, 'MONITORING_VIEW', TRUE
+WHERE NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'DASHBOARD');
 
-INSERT INTO ra_fcb.menu_item_permissions (menu_item_id, permission_id)
-SELECT mi.id, p.id
-FROM (VALUES
-    ('monitoring-jobs', 'MONITORING_VIEW'),
-    ('streaming-jobs', 'MONITORING_VIEW'),
-    ('machines', 'MACHINE_VIEW'),
-    ('schedules', 'SCHEDULE_VIEW'),
-    ('applications', 'MONITORING_VIEW'),
-    ('environments', 'MONITORING_CONFIG'),
-    ('dashboard-configuration', 'MONITORING_CONFIG'),
-    ('settings', 'SYSTEM_CONFIG')
-) AS mapping(menu_key, permission_name)
-JOIN ra_fcb.menu_items mi ON mi.menu_key = mapping.menu_key
-JOIN ra_fcb.permissions p ON p.name = mapping.permission_name
-ON CONFLICT DO NOTHING;
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'MONITORING_JOBS', 'Monitoring Jobs', '/monitoring/jobs', 'bi-activity', NULL, 20, 'MONITORING_VIEW', TRUE
+WHERE NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'MONITORING_JOBS');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'STREAMING_JOBS', 'Streaming Jobs', '/monitoring/streaming-jobs', 'bi-terminal', NULL, 25, 'MONITORING_VIEW', TRUE
+WHERE NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'STREAMING_JOBS');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'MACHINES', 'Machines', '/monitoring/machines', 'bi-pc-display', NULL, 30, 'MACHINE_VIEW', TRUE
+WHERE NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'MACHINES');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'SCHEDULES', 'Schedules', '/scheduling/schedules', 'bi-calendar3', NULL, 40, 'SCHEDULE_VIEW', TRUE
+WHERE NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'SCHEDULES');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'ALERTS', 'Alerts', NULL, 'bi-exclamation-triangle', NULL, 50, NULL, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'ALERTS');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'ADMINISTRATION', 'Administration', NULL, 'bi-gear', NULL, 60, 'SYSTEM_CONFIG', TRUE
+WHERE NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'ADMINISTRATION');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'ACTIVE_ALERTS', 'Active Alerts', '/alerts', 'bi-exclamation-triangle', p.id, 10, 'ALERT_VIEW', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ALERTS'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'ACTIVE_ALERTS');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'ALERT_HISTORY', 'Alert History', '/alerts/history', 'bi-clock-history', p.id, 20, 'ALERT_VIEW', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ALERTS'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'ALERT_HISTORY');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'APPLICATIONS', 'Applications', '/administration/applications', 'bi-box', p.id, 10, 'SYSTEM_CONFIG', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ADMINISTRATION'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'APPLICATIONS');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'ENVIRONMENTS', 'Environments', '/administration/environments', 'bi-layers', p.id, 20, 'MONITORING_CONFIG', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ADMINISTRATION'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'ENVIRONMENTS');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'USERS', 'Users', '/administration/users', 'bi-person-gear', p.id, 30, 'USER_CONFIG', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ADMINISTRATION'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'USERS');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'SETTINGS', 'Settings', '/administration/settings', 'bi-gear', p.id, 40, 'SYSTEM_CONFIG', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ADMINISTRATION'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'SETTINGS');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'AUDIT_LOG', 'Audit Log', '/administration/audit', 'bi-journal-text', p.id, 50, 'AUDIT_VIEW', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ADMINISTRATION'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'AUDIT_LOG');
+
+INSERT INTO ra_fcb.menu_items
+    (menu_key, menu_name, url, icon, parent_id, display_order, required_permission, enabled)
+SELECT 'ROLES', 'Roles', '/administration/roles', 'bi-shield-lock', p.id, 60, 'USER_CONFIG', TRUE
+FROM ra_fcb.menu_items p
+WHERE p.menu_key = 'ADMINISTRATION'
+  AND NOT EXISTS (SELECT 1 FROM ra_fcb.menu_items WHERE menu_key = 'ROLES');
