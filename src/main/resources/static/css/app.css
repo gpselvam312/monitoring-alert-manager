@@ -3828,6 +3828,11 @@ textarea.form-control {
 .kafka-health-table-wrap { border: 1px solid var(--border-color); border-radius: .5rem; }
 .kafka-health-table { color: var(--text-primary); vertical-align: middle; }
 .kafka-health-table > thead > tr > th { background: var(--app-bg); color: var(--text-secondary); border-color: var(--border-color); white-space: nowrap; font-size: .78rem; font-weight: 600; }
+.kafka-health-sort-header { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; text-align: inherit; white-space: nowrap; cursor: pointer; }
+.kafka-health-sort-header:hover, .kafka-health-sort-header.is-active { color: var(--theme-primary); }
+.kafka-health-sort-icon { font-size: .72rem; opacity: .7; }
+.kafka-health-sort-header.is-active .kafka-health-sort-icon { opacity: 1; }
+.kafka-health-expand-heading { width: 2.5rem; }
 .kafka-health-table > tbody > tr > td { color: var(--text-primary); border-color: var(--border-color); font-size: .82rem; }
 .kafka-health-group-name { display: block; font-weight: 600; overflow-wrap: anywhere; }
 .kafka-health-badge { display: inline-block; margin-top: .2rem; color: var(--kafka-status-color); font-size: .68rem; font-weight: 600; text-transform: uppercase; }
@@ -3848,23 +3853,34 @@ textarea.form-control {
     .kafka-health-search { max-width: none; width: 100%; }
     .kafka-health-table { min-width: 620px; }
     .kafka-health-pagination { align-items: flex-start; flex-direction: column; }
+    .kafka-cluster-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 420px) {
+    .kafka-cluster-stat-grid { gap: .4rem; }
+    .kafka-cluster-stat { padding: .55rem; }
+    .kafka-cluster-stat strong { font-size: 1.15rem; }
 }
 
 .kafka-health-cluster {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .75rem;
-    flex-wrap: wrap;
-    margin-bottom: .75rem;
-    padding: .65rem .8rem;
+    display: block;
+    margin-bottom: .9rem;
+    padding: .85rem;
     color: var(--text-primary);
-    background: var(--app-bg);
+    background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: .5rem;
+    border-radius: .65rem;
 }
-.kafka-health-cluster-heading,
-.kafka-health-cluster-metrics { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
-.kafka-health-cluster-heading strong { font-size: .88rem; }
-.kafka-health-cluster-metrics { color: var(--text-secondary); font-size: .75rem; }
-.kafka-health-cluster-metrics span + span { padding-left: .6rem; border-left: 1px solid var(--border-color); }
+.kafka-health-cluster-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .8rem; }
+.kafka-health-cluster-heading > div { display: flex; align-items: baseline; gap: .65rem; flex-wrap: wrap; min-width: 0; }
+.kafka-health-cluster-heading strong { font-size: .95rem; overflow-wrap: anywhere; }
+.kafka-health-cluster-version { color: var(--text-secondary); font-size: .78rem; }
+.kafka-cluster-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
+.kafka-cluster-stat { display: flex; flex-direction: column; align-items: flex-start; gap: .22rem; min-width: 0; padding: .7rem .75rem; background: var(--app-bg); border: 1px solid var(--border-color); border-radius: .5rem; }
+.kafka-cluster-stat-label { color: var(--text-secondary); font-size: .73rem; }
+.kafka-cluster-stat strong { color: var(--text-primary); font-size: 1.35rem; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.kafka-cluster-stat strong small { color: var(--text-secondary); font-size: .85rem; font-weight: 500; }
+.kafka-cluster-stat-version { font-size: 1.05rem !important; overflow-wrap: anywhere; }
+.kafka-cluster-stat-footnote { color: var(--text-secondary); font-size: .7rem; }
+.kafka-cluster-stat .kafka-stat-healthy { color: var(--success); }
+.kafka-cluster-stat .kafka-stat-critical { color: var(--danger); }
+.kafka-health-sort-hint { color: var(--text-secondary); font-size: .75rem; }
