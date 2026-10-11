@@ -1795,6 +1795,18 @@
 
         const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
         const formats = config.formats && typeof config.formats === "object" ? config.formats : {};
+        const configuredColumns = Array.isArray(config.columns) ? config.columns : [];
+        if (configuredColumns.length > 0)
+        {
+            const sourceColumns = new Map(columns.map(function (column) { return [String(column.key), column]; }));
+            columns = configuredColumns.filter(function (column) { return column && (column.field || column.key) && column.visible !== false; })
+                .map(function (column)
+                {
+                    const key = String(column.field || column.key);
+                    const existing = sourceColumns.get(key) || {};
+                    return Object.assign({}, existing, column, { key: key, label: column.label || labels[key] || existing.label || key });
+                });
+        }
         columns = columns.map(function (column)
         {
             return Object.assign({}, column, { label: labels[column.key] || column.label || column.key });
@@ -1803,30 +1815,59 @@
         if (columns.length === 0)
             return '<div class="text-muted small p-3">No columns match the configured visible fields.</div>';
 
+        const sorting = config.sorting && typeof config.sorting === "object" ? config.sorting : {};
+        const search = config.search && typeof config.search === "object" ? config.search : {};
+        const pagination = config.pagination && typeof config.pagination === "object" ? config.pagination : {};
+        const sortingEnabled = sorting.enabled !== false;
+        const searchEnabled = search.enabled !== false;
+        const paginationEnabled = pagination.enabled !== false;
+        const pageSize = Math.max(1, Math.min(500, Number(pagination.pageSize) || 10));
+        const defaultSortField = sorting.defaultField || "";
+        const defaultSortDirection = String(sorting.direction || "asc").toLowerCase() === "desc" ? "desc" : "asc";
+        const widgetId = String(widget.id || "table");
         const headerHtml = columns.map(function (column, index)
         {
-            return '<th scope="col" class="dashboard-table-sortable" data-column-index="' +
-                index + '" data-column-key="' + escapeHtml(column.key || "") +
-                '"><span class="dashboard-table-header-content"><span>' +
+            const sortable = sortingEnabled && column.sortable !== false;
+            return '<th scope="col"' + (sortable ? ' class="dashboard-table-sortable"' : '') +
+                ' data-column-index="' + index + '" data-column-key="' + escapeHtml(column.key || "") +
+                '" data-sortable="' + sortable + '"><span class="dashboard-table-header-content"><span>' +
                 escapeHtml(column.label || column.key || "") +
-                '</span><i class="bi bi-arrow-down-up dashboard-table-sort-icon"></i></span></th>';
+                '</span>' + (sortable ? '<i class="bi bi-arrow-down-up dashboard-table-sort-icon" aria-hidden="true"></i>' : '') + '</span></th>';
         }).join("");
 
         const bodyHtml = rows.length
             ? rows.map(function (row)
                 {
-                    return '<tr>' + columns.map(function (column)
+                    const searchable = columns.filter(function (column) { return column.searchable !== false; }).map(function (column)
+                    {
+                        const value = Object.prototype.hasOwnProperty.call(row, column.key) ? row[column.key] : getJsonPath(row, column.key);
+                        return value === null || value === undefined ? "" : (typeof value === "object" ? JSON.stringify(value) : String(value));
+                    }).join(" ").toLowerCase();
+                    return '<tr data-search-text="' + escapeHtml(searchable) + '">' + columns.map(function (column)
                     {
                         const value = Object.prototype.hasOwnProperty.call(row, column.key)
                             ? row[column.key]
                             : getJsonPath(row, column.key);
-                        return '<td>' + escapeHtml(formatTableValue(value, formats[column.key])) + '</td>';
+                        return '<td>' + escapeHtml(formatTableValue(value, formats[column.key] || column.format)) + '</td>';
                     }).join("") + '</tr>';
                 }).join("")
             : '<tr><td colspan="' + columns.length + '">No data available.</td></tr>';
 
-        return '<div class="dashboard-table-wrapper"><table class="table dashboard-table mb-0">' +
-            '<thead><tr>' + headerHtml + '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>';
+        const toolbar = searchEnabled
+            ? '<div class="dashboard-table-toolbar"><input type="search" class="form-control form-control-sm dashboard-table-search" placeholder="' +
+                escapeHtml(search.placeholder || "Search table...") + '" aria-label="Search table"></div>'
+            : '';
+        const pager = paginationEnabled
+            ? '<div class="dashboard-table-pagination" data-page-size="' + pageSize + '"><span class="dashboard-table-page-summary small text-muted" aria-live="polite"></span>' +
+                '<div class="d-flex align-items-center gap-2"><label class="small text-muted">Rows <select class="form-select form-select-sm dashboard-table-page-size" aria-label="Rows per page">' +
+                [5, 10, 20, 50, 100].map(function (size) { return '<option value="' + size + '"' + (size === pageSize ? ' selected' : '') + '>' + size + '</option>'; }).join('') +
+                '</select></label><button type="button" class="btn btn-sm btn-outline-secondary dashboard-table-prev" aria-label="Previous page"><i class="bi bi-chevron-left"></i></button>' +
+                '<span class="dashboard-table-page-number small"></span><button type="button" class="btn btn-sm btn-outline-secondary dashboard-table-next" aria-label="Next page"><i class="bi bi-chevron-right"></i></button></div></div>'
+            : '';
+        return '<div class="dashboard-configurable-table" data-widget-id="' + escapeHtml(widgetId) + '" data-default-sort="' +
+            escapeHtml(defaultSortField) + '" data-default-direction="' + defaultSortDirection + '">' + toolbar +
+            '<div class="dashboard-table-wrapper"><table class="table dashboard-table mb-0"><thead><tr>' + headerHtml +
+            '</tr></thead><tbody>' + bodyHtml + '</tbody></table></div>' + pager + '</div>';
     }
 
     function renderStatusWidget(result, widget)
@@ -2567,6 +2608,7 @@
         bindTabEvents();
 
         bindWidgetActions();
+        bindConfigurableTableEvents();
 
 
         /*
@@ -2586,6 +2628,91 @@
                 dashboardData[0].id
             );
         }
+    }
+
+
+    function bindConfigurableTableEvents()
+    {
+        contentElement.querySelectorAll(".dashboard-configurable-table").forEach(function (container)
+        {
+            const table = container.querySelector("table");
+            const tbody = table && table.tBodies[0];
+            if (!table || !tbody || container.dataset.tableEventsBound === "true") return;
+            container.dataset.tableEventsBound = "true";
+
+            const searchInput = container.querySelector(".dashboard-table-search");
+            const pagination = container.querySelector(".dashboard-table-pagination");
+            const pageSizeSelect = container.querySelector(".dashboard-table-page-size");
+            const summary = container.querySelector(".dashboard-table-page-summary");
+            const pageNumber = container.querySelector(".dashboard-table-page-number");
+            const previous = container.querySelector(".dashboard-table-prev");
+            const next = container.querySelector(".dashboard-table-next");
+            const state = { page: 0, pageSize: Number(pageSizeSelect && pageSizeSelect.value) || 10, sortKey: "", sortDirection: "asc" };
+            const defaultSort = container.dataset.defaultSort;
+            if (defaultSort)
+            {
+                state.sortKey = defaultSort;
+                state.sortDirection = container.dataset.defaultDirection === "desc" ? "desc" : "asc";
+            }
+
+            function rows() { return Array.from(tbody.querySelectorAll("tr")).filter(function (row) { return !row.querySelector("td[colspan]"); }); }
+            function sortRows()
+            {
+                if (!state.sortKey) return;
+                const header = Array.from(table.querySelectorAll("thead th")).find(function (th) { return th.dataset.columnKey === state.sortKey; });
+                if (!header || header.dataset.sortable !== "true") return;
+                const index = Number(header.dataset.columnIndex);
+                rows().sort(function (a, b)
+                {
+                    const left = (a.cells[index] && a.cells[index].textContent || "").trim();
+                    const right = (b.cells[index] && b.cells[index].textContent || "").trim();
+                    const ln = left === "" ? NaN : Number(left.replace(/,/g, "").replace(/%$/, ""));
+                    const rn = right === "" ? NaN : Number(right.replace(/,/g, "").replace(/%$/, ""));
+                    let result;
+                    if (Number.isFinite(ln) && Number.isFinite(rn)) result = ln - rn;
+                    else result = left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
+                    return state.sortDirection === "desc" ? -result : result;
+                }).forEach(function (row) { tbody.appendChild(row); });
+            }
+            function renderPage()
+            {
+                const allRows = rows();
+                const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+                const filtered = allRows.filter(function (row) { return !query || (row.dataset.searchText || row.textContent.toLowerCase()).includes(query); });
+                const pages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
+                state.page = Math.min(Math.max(0, state.page), pages - 1);
+                allRows.forEach(function (row) { row.hidden = true; });
+                filtered.slice(state.page * state.pageSize, (state.page + 1) * state.pageSize).forEach(function (row) { row.hidden = false; });
+                if (summary) summary.textContent = "Showing " + (filtered.length ? state.page * state.pageSize + 1 : 0) + "–" + Math.min((state.page + 1) * state.pageSize, filtered.length) + " of " + filtered.length;
+                if (pageNumber) pageNumber.textContent = "Page " + (state.page + 1) + " of " + pages;
+                if (previous) previous.disabled = state.page === 0;
+                if (next) next.disabled = state.page >= pages - 1;
+            }
+            table.querySelectorAll("thead th[data-sortable='true']").forEach(function (header)
+            {
+                header.style.cursor = "pointer";
+                header.setAttribute("tabindex", "0");
+                header.setAttribute("role", "button");
+                function toggleSort()
+                {
+                    const key = header.dataset.columnKey;
+                    state.sortDirection = state.sortKey === key && state.sortDirection === "asc" ? "desc" : "asc";
+                    state.sortKey = key;
+                    state.page = 0;
+                    sortRows();
+                    renderPage();
+                }
+                header.addEventListener("click", toggleSort);
+                header.addEventListener("keydown", function (event) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleSort(); } });
+            });
+            if (searchInput) searchInput.addEventListener("input", function () { state.page = 0; renderPage(); });
+            if (pageSizeSelect) pageSizeSelect.addEventListener("change", function () { state.pageSize = Math.max(1, Number(this.value) || 10); state.page = 0; renderPage(); });
+            if (previous) previous.addEventListener("click", function () { state.page--; renderPage(); });
+            if (next) next.addEventListener("click", function () { state.page++; renderPage(); });
+            sortRows();
+            renderPage();
+            if (pagination && pageSizeSelect) pagination.dataset.pageSize = String(state.pageSize);
+        });
     }
 
 
