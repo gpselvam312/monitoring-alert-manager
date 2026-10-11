@@ -125,7 +125,7 @@ public class ScriptSecurityValidator
         return null;
     }
 
-    private static String sha256(Path file) throws IOException
+    public static String sha256(Path file) throws IOException
     {
         try
         {

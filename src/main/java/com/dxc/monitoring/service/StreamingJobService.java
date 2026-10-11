@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
+import com.dxc.monitoring.service.executor.ScriptSecurityValidator;
 
 @Service
 public class StreamingJobService
@@ -43,6 +45,7 @@ public class StreamingJobService
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
     private final DashboardAccessService accessService;
+    private final ScriptSecurityValidator scriptSecurityValidator;
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
     private final Map<Long, RunContext> activeRuns = new ConcurrentHashMap<>();
     private final Map<Long, Deque<String>> outputBuffers = new ConcurrentHashMap<>();
@@ -60,12 +63,13 @@ public class StreamingJobService
     private String nodeId;
 
     public StreamingJobService(MonitoringJobRepository jobRepository, UserRepository userRepository,
-            JdbcTemplate jdbcTemplate, DashboardAccessService accessService)
+            JdbcTemplate jdbcTemplate, DashboardAccessService accessService, ScriptSecurityValidator scriptSecurityValidator)
     {
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.accessService = accessService;
+        this.scriptSecurityValidator = scriptSecurityValidator;
     }
 
     public List<StreamingJobView> listJobs()
@@ -260,14 +264,16 @@ public class StreamingJobService
     {
         try
         {
+            Path validatedScript = scriptSecurityValidator.validate(job);
+            String verifiedHash = ScriptSecurityValidator.sha256(validatedScript);
             Machine machine = job.getMachine();
             String host = machine == null ? null :
                     (machine.getHostname() != null && !machine.getHostname().isBlank()
                             ? machine.getHostname().trim() : machine.getIpAddress());
             boolean remote = host != null && !host.isBlank()
                     && !host.equalsIgnoreCase("localhost") && !host.equals("127.0.0.1");
-            if (remote) launchRemote(job, host, context);
-            else launchLocal(job, context);
+            if (remote) launchRemote(job, host, context, validatedScript.toString(), verifiedHash);
+            else launchLocal(job, context, validatedScript.toString());
         }
         catch (Exception exception)
         {
@@ -285,9 +291,9 @@ public class StreamingJobService
         }
     }
 
-    private void launchLocal(MonitoringJob job, RunContext context) throws IOException
+    private void launchLocal(MonitoringJob job, RunContext context, String validatedScriptPath) throws IOException
     {
-        ProcessBuilder builder = new ProcessBuilder("setsid", "bash", "-lc", buildScriptCommand(job)).redirectErrorStream(true);
+        ProcessBuilder builder = new ProcessBuilder("setsid", "bash", "-lc", buildScriptCommand(job, validatedScriptPath)).redirectErrorStream(true);
         if (job.getWorkingDirectory() != null && !job.getWorkingDirectory().isBlank())
             builder.directory(new java.io.File(job.getWorkingDirectory()));
         Process process = builder.start();
@@ -304,20 +310,24 @@ public class StreamingJobService
         scheduler.execute(() -> waitForExit(job.getId(), context, process));
     }
 
-    private void launchRemote(MonitoringJob job, String host, RunContext context) throws Exception
+    private void launchRemote(MonitoringJob job, String host, RunContext context, String validatedScriptPath, String verifiedHash) throws Exception
     {
         if (sshUser == null || sshUser.isBlank())
             throw new IllegalStateException("Set MONITORING_STREAMING_SSH_USER to enable remote streaming jobs.");
         String logPath = "/tmp/monitoring-stream-" + job.getId() + "-" + System.currentTimeMillis() + ".log";
         String exitPath = logPath + ".exit";
-        String remoteScript = buildScriptCommand(job) + "; rc=$?; printf '%s' \"$rc\" > "
+        String remoteScript = buildScriptCommand(job, validatedScriptPath) + "; rc=$?; printf '%s' \"$rc\" > "
                 + shellQuote(exitPath) + "; exit \"$rc\"";
         context.remote = true;
         context.host = host;
         context.marker = job.getScriptPath();
         context.remoteLogPath = logPath;
         persistProcess(job.getId(), context);
-        String remoteCommand = "mkdir -p /tmp; rm -f " + shellQuote(exitPath) + "; nohup setsid bash -lc "
+        String remoteCommand = "test -f " + shellQuote(validatedScriptPath) + " && test ! -L "
+                + shellQuote(validatedScriptPath) + " || exit 86; actual=$(sha256sum -- "
+                + shellQuote(validatedScriptPath) + " | awk '{print $1}'); [ \"$actual\" = "
+                + shellQuote(verifiedHash) + " ] || exit 86; mkdir -p /tmp; rm -f "
+                + shellQuote(exitPath) + "; nohup setsid bash -lc "
                 + shellQuote(remoteScript) + " > " + shellQuote(logPath) + " 2>&1 < /dev/null & echo $!";
         Process launcher = new ProcessBuilder(sshCommand(host, remoteCommand)).redirectErrorStream(true).start();
         if (!launcher.waitFor(15, TimeUnit.SECONDS))
@@ -546,10 +556,10 @@ public class StreamingJobService
         return command;
     }
 
-    private String buildScriptCommand(MonitoringJob job)
+    private String buildScriptCommand(MonitoringJob job, String validatedScriptPath)
     {
         List<String> parts = new ArrayList<>();
-        parts.add(shellQuote(job.getScriptPath()));
+        parts.add(shellQuote(validatedScriptPath));
         if (job.getCommandArguments() != null && !job.getCommandArguments().isBlank())
             for (String argument : job.getCommandArguments().trim().split("\\s+"))
                 if (!argument.isBlank()) parts.add(shellQuote(argument));
