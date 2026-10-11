@@ -288,6 +288,9 @@
         case "SYSTEM_METRICS":
             return "bi-hdd-rack";
 
+        case "ELASTICSEARCH":
+            return "bi-database-check";
+
 
 	        case "TEXT":
 	            return "bi-card-text";
@@ -1945,6 +1948,49 @@
 	    );
 	}
 
+
+    function renderElasticsearchWidget(result, widget, config)
+    {
+        const root = result && result.payload && typeof result.payload === "object" ? result.payload : {};
+        const data = root.data && typeof root.data === "object" ? root.data : root;
+        const cluster = data.cluster && typeof data.cluster === "object" ? data.cluster : {};
+        const nodes = Array.isArray(data.nodes) ? data.nodes.filter(function (n) { return n && typeof n === "object"; }) : [];
+        const pick = function (obj, keys) { for (const key of keys) if (obj && obj[key] !== undefined && obj[key] !== null && obj[key] !== "") return obj[key]; return null; };
+        const num = function (v) { if (v === null || v === undefined || String(v).trim() === "") return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
+        const fmt = function (v, suffix) { const n = num(v); return n === null ? "N/A" : (Number.isInteger(n) ? n.toLocaleString() : n.toFixed(1)) + (suffix || ""); };
+        const bytes = function (v) { let n = num(v); if (n === null || n < 0) return "N/A"; if (n < 1024) return n + " B"; const units = ["KB", "MB", "GB", "TB", "PB"]; let i = -1; do { n /= 1024; i++; } while (n >= 1024 && i < units.length - 1); return n.toFixed(1) + " " + units[i]; };
+        const health = String(cluster.status || "UNKNOWN").toUpperCase();
+        const clusterState = health === "GREEN" ? "healthy" : health === "YELLOW" ? "warning" : health === "RED" ? "critical" : "unknown";
+        const summary = [
+            ["nodes", "bi-hdd-network", "Nodes", fmt(pick(cluster, ["numberOfNodes", "nodeCount"]))],
+            ["shards", "bi-exclamation-diamond", "Unassigned shards", fmt(cluster.unassignedShards)],
+            ["indices", "bi-files", "Indices", fmt(pick(cluster, ["indices", "indexCount"]))],
+            ["storage", "bi-database", "Store size", bytes(pick(cluster, ["storeSizeBytes", "store_size_bytes"]))]
+        ].map(function (x) { return '<div class="elasticsearch-summary-item elasticsearch-summary-' + x[0] + '"><span><i class="bi ' + x[1] + '" aria-hidden="true"></i>' + x[2] + '</span><strong>' + escapeHtml(x[3]) + '</strong></div>'; }).join("");
+        const cards = nodes.map(function (node, index) {
+            const raw = String(node.status || node.healthStatus || "UNKNOWN").toUpperCase();
+            const state = ["UP", "HEALTHY", "GREEN", "SUCCESS"].includes(raw) ? "healthy" : ["WARNING", "YELLOW"].includes(raw) ? "warning" : ["DOWN", "CRITICAL", "RED", "FAILED", "FAILURE"].includes(raw) ? "critical" : "unknown";
+            const name = pick(node, ["name", "nodeName", "hostname"]) || ("Node " + (index + 1));
+            const roles = pick(node, ["roles", "role"]);
+            const meta = roles ? "Roles: " + (Array.isArray(roles) ? roles.join(", ") : roles) : (pick(node, ["ip", "address"]) || "Elasticsearch node");
+            const metric = function (icon, title, v) { const n = num(v), shown = n === null ? "N/A" : fmt(n, "%"), width = n === null ? 0 : Math.max(0, Math.min(100, n)); return '<div class="elasticsearch-node-metric"><div><span><i class="bi ' + icon + '" aria-hidden="true"></i>' + title + '</span><strong>' + escapeHtml(shown) + '</strong></div>' + (n === null ? "" : '<div class="elasticsearch-meter"><span style="width:' + width + '%"></span></div>') + '</div>'; };
+            return '<article class="elasticsearch-node-card elasticsearch-node-' + state + '"><header class="elasticsearch-node-header"><div class="elasticsearch-node-title"><i class="bi bi-hdd-network" aria-hidden="true"></i><div><strong title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</strong><small>' + escapeHtml(meta) + '</small></div></div><span class="elasticsearch-node-status"><i class="bi ' + (state === "healthy" ? "bi-check-circle-fill" : state === "warning" ? "bi-exclamation-triangle-fill" : state === "critical" ? "bi-x-circle-fill" : "bi-question-circle-fill") + '" aria-hidden="true"></i>' + (state === "healthy" ? "UP" : state.toUpperCase()) + '</span></header>' +
+                metric("bi-cpu", "CPU", pick(node, ["cpuPercent", "cpu_percent", "cpu"])) + metric("bi-memory", "JVM heap", pick(node, ["jvmHeapPercent", "jvm_heap_percent", "heapPercent"])) + metric("bi-device-hdd", "OS disk", pick(node, ["osDiskUsedPercent", "os_disk_used_percent"])) + metric("bi-database", "Data disk", pick(node, ["dataDiskUsedPercent", "data_disk_used_percent"])) +
+                '<footer class="elasticsearch-node-footer"><span><i class="bi bi-search" aria-hidden="true"></i>Search total: ' + escapeHtml(fmt(pick(node, ["searchTotal", "search_total"]))) + '</span><span><i class="bi bi-pencil-square" aria-hidden="true"></i>Index total: ' + escapeHtml(fmt(pick(node, ["indexingTotal", "indexing_total"]))) + '</span></footer></article>';
+        }).join("");
+        const name = pick(cluster, ["name", "clusterName"]) || "Elasticsearch cluster";
+        const version = pick(data, ["version"]) || pick(cluster, ["version"]);
+        const nodeCount = num(pick(cluster, ["numberOfNodes", "nodeCount"]));
+        const alertList = Array.isArray(data.alerts) ? data.alerts : [];
+        const alertHtml = alertList.length ? '<div class="elasticsearch-alerts"><h6><i class="bi bi-bell me-1" aria-hidden="true"></i>Threshold alerts</h6><ul>' + alertList.map(function (a) { return '<li>' + escapeHtml(typeof a === "string" ? a : (a.message || JSON.stringify(a))) + '</li>'; }).join("") + '</ul></div>' : "";
+        const notice = root.message || result.message || "";
+        const unavailable = nodes.filter(function (n) { return ["DOWN", "CRITICAL", "RED", "FAILED", "FAILURE"].includes(String(n.status || n.healthStatus || "").toUpperCase()); }).length;
+        return '<section class="elasticsearch-widget"><div class="elasticsearch-cluster-banner elasticsearch-cluster-' + clusterState + '"><div class="elasticsearch-cluster-identity"><span class="elasticsearch-cluster-icon"><i class="bi bi-database-check" aria-hidden="true"></i></span><div><strong>' + escapeHtml(name) + '</strong><small>' + escapeHtml(version ? "Elasticsearch " + version : "Cluster overview") + '</small></div></div><div class="elasticsearch-cluster-health"><span class="elasticsearch-health-dot" aria-hidden="true"></span><div><strong>' + escapeHtml(health) + '</strong><small>Cluster health</small></div></div></div>' +
+            '<div class="elasticsearch-summary">' + summary + '</div><div class="elasticsearch-section-heading"><h6><i class="bi bi-hdd-network me-1" aria-hidden="true"></i>Node health</h6><span>' + escapeHtml(nodes.length + (nodeCount === null ? "" : " / " + nodeCount) + " reported") + '</span></div><div class="elasticsearch-node-grid">' + (cards || '<div class="elasticsearch-empty">No node metrics available.</div>') + '</div>' +
+            (unavailable ? '<div class="elasticsearch-inline-alert"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>' + unavailable + ' node(s) report critical or unavailable status.</div>' : "") +
+            (notice && (health === "UNKNOWN" || !nodes.length) ? '<div class="elasticsearch-inline-alert"><i class="bi bi-info-circle" aria-hidden="true"></i>' + escapeHtml(notice) + '</div>' : "") + alertHtml + '</section>';
+    }
+
     /*
      * ------------------------------------------------------------
      * WIDGET RENDERING
@@ -2084,10 +2130,11 @@
 
 
         const isSystemMetrics = widgetType === "SYSTEM_METRICS";
+        const isElasticsearch = widgetType === "ELASTICSEARCH";
         let headerUpdatedHtml = "";
         if (updated)
         {
-            const timestampLabel = isSystemMetrics ? "Last collection: " : "Updated: ";
+            const timestampLabel = (isSystemMetrics || isElasticsearch) ? "Last collection: " : "Updated: ";
             headerUpdatedHtml = '<span class="dashboard-widget-updated dashboard-widget-collected" title="' +
                 escapeHtml(timestampLabel + updated) + '"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' +
                 escapeHtml(updated) + '</span>';
@@ -2174,6 +2221,10 @@
         {
             widgetContentHtml = renderSystemMetricsCards(result, widget, parseWidgetFieldConfig(widget));
         }
+        else if (widgetType === "ELASTICSEARCH")
+        {
+            widgetContentHtml = renderElasticsearchWidget(result, widget, parseWidgetFieldConfig(widget));
+        }
         else if (widgetType === "TABLE")
         {
             widgetContentHtml =
@@ -2255,7 +2306,7 @@
         return (
 
             '<div class="' +
-                getWidgetSizeClass(widgetType === "SYSTEM_METRICS" ? "FULL" : widget.size) +
+                getWidgetSizeClass((widgetType === "SYSTEM_METRICS" || widgetType === "ELASTICSEARCH") ? "FULL" : widget.size) +
             '">' +
 
                 '<div class="dashboard-widget h-100">' +
