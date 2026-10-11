@@ -1568,11 +1568,15 @@
             : numberOf(availableBrokers) + " / " + numberOf(expectedBrokers) + " brokers";
         const widgetId = String(widget.id || "widget").replace(/[^a-zA-Z0-9_-]/g, "-");
         const offlinePartitions = Number(valueAt(cluster, config.clusterOfflinePartitionsField));
+        const brokerCount = Number(availableBrokers);
+        const expectedBrokerCount = Number(expectedBrokers);
+        const allBrokersAvailable = Number.isFinite(brokerCount) && Number.isFinite(expectedBrokerCount) &&
+            expectedBrokerCount > 0 && brokerCount >= expectedBrokerCount;
         const clusterHtml = '<section class="kafka-health-cluster"><div class="kafka-health-cluster-heading">' +
             '<div><strong>' + escapeHtml(clusterName || "Kafka cluster") + '</strong><span class="kafka-health-cluster-version">Kafka ' +
             escapeHtml(valueAt(cluster, config.clusterVersionField) || "version unknown") + '</span></div><span class="kafka-health-badge ' +
             cssOf(clusterStatus) + '">' + labelOf(clusterStatus) + '</span></div><div class="kafka-cluster-stat-grid">' +
-            '<div class="kafka-cluster-stat kafka-cluster-stat-brokers"><div class="kafka-cluster-stat-top"><span class="kafka-cluster-stat-icon"><i class="bi bi-hdd-network" aria-hidden="true"></i></span><span class="kafka-cluster-stat-label">Available Brokers</span></div><strong>' +
+            '<div class="kafka-cluster-stat kafka-cluster-stat-brokers' + (allBrokersAvailable ? ' kafka-cluster-stat-brokers-ok' : '') + '"><div class="kafka-cluster-stat-top"><span class="kafka-cluster-stat-icon"><i class="bi bi-hdd-network" aria-hidden="true"></i></span><span class="kafka-cluster-stat-label">Available Brokers</span></div><strong>' +
             escapeHtml(numberOf(availableBrokers)) + '<small> / ' + escapeHtml(expectedBrokers === null || expectedBrokers === undefined || expectedBrokers === "" ? "?" : numberOf(expectedBrokers)) +
             '</small></strong><span class="kafka-cluster-stat-footnote">Brokers available</span></div>' +
             '<div class="kafka-cluster-stat kafka-cluster-stat-version-card"><div class="kafka-cluster-stat-top"><span class="kafka-cluster-stat-icon"><i class="bi bi-layers" aria-hidden="true"></i></span><span class="kafka-cluster-stat-label">Kafka Version</span></div><strong class="kafka-cluster-stat-version">' +
@@ -1585,12 +1589,13 @@
             '</div></section>';
         let html = '<div class="kafka-health-widget" data-kafka-widget="' + escapeHtml(widgetId) +
             '" data-kafka-filter="ALL" data-kafka-page="1" data-kafka-page-size="10" data-kafka-sort-key="lag" data-kafka-sort="desc">' +
-            clusterHtml + '<div class="kafka-health-summary">' +
-            '<button type="button" class="kafka-health-count is-active" data-kafka-filter-button="ALL"><span>Total</span><strong>' + mappedGroups.length + '</strong></button>' +
-            '<button type="button" class="kafka-health-count kafka-status-healthy" data-kafka-filter-button="HEALTHY"><span>Healthy</span><strong>' + counts.HEALTHY + '</strong></button>' +
-            '<button type="button" class="kafka-health-count kafka-status-warning" data-kafka-filter-button="WARNING"><span>Warning</span><strong>' + counts.WARNING + '</strong></button>' +
-            '<button type="button" class="kafka-health-count kafka-status-critical" data-kafka-filter-button="CRITICAL"><span>Critical</span><strong>' + counts.CRITICAL + '</strong></button>' +
-            '<button type="button" class="kafka-health-count kafka-status-unknown" data-kafka-filter-button="UNKNOWN"><span>Unknown</span><strong>' + counts.UNKNOWN + '</strong></button></div>' +
+            clusterHtml + '<section class="kafka-consumer-section"><div class="kafka-consumer-section-heading"><div><span class="kafka-section-eyebrow">CONSUMER MONITORING</span><h3><i class="bi bi-activity" aria-hidden="true"></i> Consumer Group Lag</h3><p>Monitor consumer health and identify groups falling behind.</p></div><span class="kafka-consumer-total-badge">' + mappedGroups.length + ' groups</span></div>' +
+            '<div class="kafka-health-summary" aria-label="Filter consumer groups by status">' +
+            '<button type="button" class="kafka-health-count kafka-health-count-total is-active" data-kafka-filter-button="ALL"><span class="kafka-health-count-icon"><i class="bi bi-collection" aria-hidden="true"></i></span><span class="kafka-health-count-label">Total Groups</span><strong>' + mappedGroups.length + '</strong></button>' +
+            '<button type="button" class="kafka-health-count kafka-status-healthy" data-kafka-filter-button="HEALTHY"><span class="kafka-health-count-icon"><i class="bi bi-check-circle" aria-hidden="true"></i></span><span class="kafka-health-count-label">Healthy</span><strong>' + counts.HEALTHY + '</strong></button>' +
+            '<button type="button" class="kafka-health-count kafka-status-warning" data-kafka-filter-button="WARNING"><span class="kafka-health-count-icon"><i class="bi bi-exclamation-circle" aria-hidden="true"></i></span><span class="kafka-health-count-label">Warning</span><strong>' + counts.WARNING + '</strong></button>' +
+            '<button type="button" class="kafka-health-count kafka-status-critical" data-kafka-filter-button="CRITICAL"><span class="kafka-health-count-icon"><i class="bi bi-x-octagon" aria-hidden="true"></i></span><span class="kafka-health-count-label">Critical</span><strong>' + counts.CRITICAL + '</strong></button>' +
+            '<button type="button" class="kafka-health-count kafka-status-unknown" data-kafka-filter-button="UNKNOWN"><span class="kafka-health-count-icon"><i class="bi bi-question-circle" aria-hidden="true"></i></span><span class="kafka-health-count-label">Unknown</span><strong>' + counts.UNKNOWN + '</strong></button></div></section>' +
             '<div class="kafka-health-toolbar"><input type="search" class="form-control form-control-sm kafka-health-search" placeholder="Search consumer group or topic..." aria-label="Search consumer group or topic">' +
             '<span class="kafka-health-sort-hint">Select a column heading to sort</span></div>' +
             '<div class="table-responsive kafka-health-table-wrap"><table class="table table-sm dashboard-table kafka-health-table mb-0">' +
