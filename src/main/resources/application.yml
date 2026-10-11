@@ -43,7 +43,5 @@ monitoring:
 
   security:
     script:
-      # Comma-separated trusted directories and scriptPath=sha256 entries.
-      # Empty hash configuration intentionally blocks all script execution.
+      # Trusted directories remain environment-specific; approved hashes are stored per Monitoring Job.
       allowed-directories: ${MONITORING_SCRIPT_ALLOWED_DIRECTORIES:${user.dir}/scripts}
-      approved-sha256: ${MONITORING_SCRIPT_APPROVED_SHA256:}
