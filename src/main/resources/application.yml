@@ -40,3 +40,10 @@ monitoring:
     ssh-key-path: ${MONITORING_STREAMING_SSH_KEY_PATH:}
     ssh-port: ${MONITORING_STREAMING_SSH_PORT:22}
     node-id: ${MONITORING_STREAMING_NODE_ID:${HOSTNAME:localhost}}
+
+  security:
+    script:
+      # Comma-separated trusted directories and scriptPath=sha256 entries.
+      # Empty hash configuration intentionally blocks all script execution.
+      allowed-directories: ${MONITORING_SCRIPT_ALLOWED_DIRECTORIES:${user.dir}/scripts}
+      approved-sha256: ${MONITORING_SCRIPT_APPROVED_SHA256:}

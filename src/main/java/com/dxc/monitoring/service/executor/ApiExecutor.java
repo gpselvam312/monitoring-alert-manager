@@ -53,14 +53,18 @@ public class ApiExecutor implements MonitoringExecutor
             if (job.getUrl() == null || job.getUrl().isBlank())
                 throw new IllegalArgumentException("URL is required for API monitoring.");
 
+            String method = job.getHttpMethod() == null || job.getHttpMethod().isBlank()
+                    ? "GET" : job.getHttpMethod().trim().toUpperCase(Locale.ROOT);
+            if (!"GET".equals(method) && !"HEAD".equals(method))
+                throw new IllegalArgumentException("API security policy rejected HTTP method '" + method
+                        + "'. Only GET and HEAD are permitted.");
+
             int timeoutSeconds = job.getTimeoutSeconds() == null ? 30 : Math.max(1, job.getTimeoutSeconds());
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(timeoutSeconds))
-                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .followRedirects(HttpClient.Redirect.NEVER)
                     .build();
 
-            String method = job.getHttpMethod() == null || job.getHttpMethod().isBlank()
-                    ? "GET" : job.getHttpMethod().trim().toUpperCase(Locale.ROOT);
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(resolveTemplate(job.getUrl().trim(), parameters)))
                     .timeout(Duration.ofSeconds(timeoutSeconds));
@@ -85,7 +89,7 @@ public class ApiExecutor implements MonitoringExecutor
             if ("GET".equals(method) || "HEAD".equals(method))
                 builder.method(method, HttpRequest.BodyPublishers.noBody());
             else
-                builder.method(method, HttpRequest.BodyPublishers.ofString(resolveTemplate(body == null ? "" : body, parameters)));
+                throw new IllegalArgumentException("API security policy rejected HTTP method '" + method + "'. Only GET and HEAD are permitted.");
 
             HttpResponse<String> response = client.send(builder.build(),
                     HttpResponse.BodyHandlers.ofString());

@@ -21,10 +21,12 @@ import com.dxc.monitoring.entity.MonitoringResult;
 public class ScriptExecutor implements MonitoringExecutor
 {
     private final MonitoringResultNormalizer resultNormalizer;
+    private final ScriptSecurityValidator scriptSecurityValidator;
 
-    public ScriptExecutor(MonitoringResultNormalizer resultNormalizer)
+    public ScriptExecutor(MonitoringResultNormalizer resultNormalizer, ScriptSecurityValidator scriptSecurityValidator)
     {
         this.resultNormalizer = resultNormalizer;
+        this.scriptSecurityValidator = scriptSecurityValidator;
     }
 
     @Override
@@ -124,6 +126,16 @@ public class ScriptExecutor implements MonitoringExecutor
 
             normalizeResult(result, stdout, startedAt, job.getResultParserConfig());
         }
+        catch (IllegalArgumentException exception)
+        {
+            if (process != null)
+                process.destroyForcibly();
+            result.setExecutionStatus(MonitoringExecution.ExecutionStatus.ERROR);
+            result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
+            result.setMessage("Script security validation rejected execution.");
+            result.setErrorMessage(exception.getMessage());
+            normalizeResult(result, exception.getMessage(), startedAt, job.getResultParserConfig());
+        }
         catch (InterruptedException exception)
         {
             Thread.currentThread().interrupt();
@@ -184,13 +196,10 @@ public class ScriptExecutor implements MonitoringExecutor
         }
     }
 
-    private List<String> buildCommand(MonitoringJob job)
+    private List<String> buildCommand(MonitoringJob job) throws IOException
     {
-        if (job.getScriptPath() == null || job.getScriptPath().isBlank())
-            throw new IllegalArgumentException("Script path is required for SCRIPT monitoring job.");
-
         List<String> command = new ArrayList<>();
-        command.add(job.getScriptPath());
+        command.add(scriptSecurityValidator.validate(job).toString());
         if (job.getCommandArguments() != null && !job.getCommandArguments().isBlank())
             command.addAll(parseArguments(job.getCommandArguments()));
         return command;
