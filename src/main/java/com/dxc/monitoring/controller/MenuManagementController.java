@@ -104,7 +104,7 @@ public class MenuManagementController
         model.addAttribute("parentNames", parentNames);
         model.addAttribute("pageSize", safeSize);
         model.addAttribute("search", search == null ? "" : search.trim());
-        model.addAttribute("currentPage", "menus");
+        model.addAttribute("currentPage", "menu-management");
     }
 
     @GetMapping("/new")
@@ -116,7 +116,7 @@ public class MenuManagementController
         model.addAttribute("menuItem", menuItem);
         populateForm(model, null);
         model.addAttribute("pageTitle", "Add Menu");
-        model.addAttribute("currentPage", "menus");
+        model.addAttribute("currentPage", "menu-management");
         return "administration/menu-form";
     }
 
@@ -128,7 +128,7 @@ public class MenuManagementController
         model.addAttribute("menuItem", menuItem);
         populateForm(model, id);
         model.addAttribute("pageTitle", "Edit Menu");
-        model.addAttribute("currentPage", "menus");
+        model.addAttribute("currentPage", "menu-management");
         return "administration/menu-form";
     }
 
@@ -180,7 +180,7 @@ public class MenuManagementController
             model.addAttribute("menuItem", form);
             populateForm(model, id);
             model.addAttribute("pageTitle", id == null ? "Add Menu" : "Edit Menu");
-            model.addAttribute("currentPage", "menus");
+            model.addAttribute("currentPage", "menu-management");
             model.addAttribute("errorMessage", error);
             return "administration/menu-form";
         }
