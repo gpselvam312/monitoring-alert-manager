@@ -7,12 +7,14 @@ import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.MachineRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
+import com.dxc.monitoring.service.ReferenceDataCacheService;
 import com.dxc.monitoring.entity.Application;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.cache.annotation.CacheEvict;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -31,10 +33,12 @@ public class EnvironmentController
     private final MonitoringJobRepository monitoringJobRepository;
     private final DashboardTabRepository dashboardTabRepository;
     private final MachineRepository machineRepository;
+    private final ReferenceDataCacheService referenceDataCache;
 
     public EnvironmentController(EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository,
             DashboardAccessService accessService, MonitoringJobRepository monitoringJobRepository,
-            DashboardTabRepository dashboardTabRepository, MachineRepository machineRepository)
+            DashboardTabRepository dashboardTabRepository, MachineRepository machineRepository,
+            ReferenceDataCacheService referenceDataCache)
     {
         this.environmentRepository = environmentRepository;
         this.applicationRepository = applicationRepository;
@@ -42,6 +46,7 @@ public class EnvironmentController
         this.monitoringJobRepository = monitoringJobRepository;
         this.dashboardTabRepository = dashboardTabRepository;
         this.machineRepository = machineRepository;
+        this.referenceDataCache = referenceDataCache;
     }
 
     @GetMapping
@@ -91,7 +96,7 @@ public class EnvironmentController
     public String createForm(Model model)
     {
         model.addAttribute("environment", new Environment());
-        model.addAttribute("applications", applicationRepository.findByEnabledTrueOrderByNameAsc());
+        model.addAttribute("applications", referenceDataCache.getEnabledApplications());
         model.addAttribute("pageTitle", "Add Environment");
         model.addAttribute("currentPage", "environments");
 
@@ -115,6 +120,7 @@ public class EnvironmentController
 
     @PostMapping("/save")
     @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String save(@ModelAttribute Environment environment, @RequestParam(required = false) Long applicationId,
             RedirectAttributes redirectAttributes)
     {
@@ -159,6 +165,7 @@ public class EnvironmentController
 
     @PostMapping("/{id}/toggle")
     @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String toggle(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         Environment environment = environmentRepository.findById(id)
@@ -174,6 +181,7 @@ public class EnvironmentController
 
     @PostMapping("/{id}/delete")
     @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         Environment environment = environmentRepository.findById(id)
