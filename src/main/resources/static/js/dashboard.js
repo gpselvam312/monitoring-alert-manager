@@ -1498,12 +1498,42 @@
             return status === "HEALTHY" ? "kafka-status-healthy" : status === "WARNING" ? "kafka-status-warning" :
                 status === "CRITICAL" ? "kafka-status-critical" : "kafka-status-unknown";
         };
-        const numberOf = function (value)
+        const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+        const formats = config.formats && typeof config.formats === "object" ? config.formats : {};
+        const numberOf = function (value, field)
         {
             if (value === null || value === undefined || value === "") return "—";
             const number = Number(value);
-            return Number.isFinite(number) ? number.toLocaleString() : String(value);
+            if (!Number.isFinite(number)) return String(value);
+            return formats[field] === "raw" ? String(value) : number.toLocaleString();
         };
+        const defaultColumnKeys = ["consumerGroup", "topic", "currentOffset", "logEndOffset", "lag"];
+        const requestedFields = Array.isArray(config.visibleFields) && config.visibleFields.length
+            ? config.visibleFields.map(String).filter(function (field) { return defaultColumnKeys.includes(field); })
+            : defaultColumnKeys.slice();
+        const columnKeys = Array.from(new Set(requestedFields));
+        const order = Array.isArray(config.order) ? config.order.map(String) : [];
+        columnKeys.sort(function (left, right)
+        {
+            const leftIndex = order.indexOf(left);
+            const rightIndex = order.indexOf(right);
+            if (leftIndex < 0 && rightIndex < 0) return defaultColumnKeys.indexOf(left) - defaultColumnKeys.indexOf(right);
+            if (leftIndex < 0) return 1;
+            if (rightIndex < 0) return -1;
+            return leftIndex - rightIndex;
+        });
+        if (!columnKeys.length) columnKeys.push("consumerGroup", "topic", "lag");
+        const columnLabels = {
+            consumerGroup: labels.consumerGroup || "Consumer Group",
+            topic: labels.topic || "Topic",
+            currentOffset: labels.currentOffset || "Current",
+            logEndOffset: labels.logEndOffset || "End",
+            lag: labels.lag || "Lag"
+        };
+        const presentation = config.presentation && typeof config.presentation === "object" ? config.presentation : {};
+        const presentationType = String(presentation.type || "expandable-table").toLowerCase();
+        if (presentationType !== "expandable-table")
+            return '<div class="kafka-health-empty">Unsupported Kafka presentation type: ' + escapeHtml(presentationType) + '.</div>';
 
         const mappedGroups = groups.filter(isObjectRow).map(function (group, index)
         {
@@ -1555,7 +1585,10 @@
             '<div class="kafka-health-toolbar"><input type="search" class="form-control form-control-sm kafka-health-search" placeholder="Search consumer group or topic..." aria-label="Search consumer group or topic">' +
             '<button type="button" class="btn btn-sm btn-outline-secondary kafka-health-sort"><i class="bi bi-sort-down"></i> Highest lag first</button></div>' +
             '<div class="table-responsive kafka-health-table-wrap"><table class="table table-sm dashboard-table kafka-health-table mb-0">' +
-            '<thead><tr><th>Consumer Group</th><th>Topic</th><th class="text-end">Current</th><th class="text-end">End</th><th class="text-end">Lag</th><th></th></tr></thead>';
+            '<thead><tr>' + columnKeys.map(function (key) {
+                return '<th' + (["currentOffset", "logEndOffset", "lag"].includes(key) ? ' class="text-end"' : '') + '>' +
+                    escapeHtml(columnLabels[key]) + '</th>';
+            }).join("") + '<th></th></tr></thead>';
 
         mappedGroups.forEach(function (group, groupIndex)
         {
@@ -1577,12 +1610,16 @@
                 const partitions = valueAt(topic, config.partitionsField);
                 const partitionList = Array.isArray(partitions) ? partitions.filter(isObjectRow) : [];
                 const expandId = groupId + "-t" + topicIndex;
+                const topicCells = {
+                    consumerGroup: '<td><span class="kafka-health-group-name">' + escapeHtml(group.name) + '</span><span class="kafka-health-badge ' +
+                        groupStatusClass + '">' + labelOf(group.status) + '</span></td>',
+                    topic: '<td>' + escapeHtml(topicName) + '</td>',
+                    currentOffset: '<td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(topic, config.topicCurrentField), "currentOffset")) + '</td>',
+                    logEndOffset: '<td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(topic, config.topicEndField), "logEndOffset")) + '</td>',
+                    lag: '<td class="text-end kafka-health-number ' + groupStatusClass + '">' + escapeHtml(numberOf(topicLag, "lag")) + '</td>'
+                };
                 html += '<tr class="kafka-health-topic-row" data-topic-search="' + escapeHtml(topicName.toLowerCase()) + '">' +
-                    '<td><span class="kafka-health-group-name">' + escapeHtml(group.name) + '</span><span class="kafka-health-badge ' +
-                    groupStatusClass + '">' + labelOf(group.status) + '</span></td><td>' + escapeHtml(topicName) + '</td>' +
-                    '<td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(topic, config.topicCurrentField))) + '</td>' +
-                    '<td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(topic, config.topicEndField))) + '</td>' +
-                    '<td class="text-end kafka-health-number ' + groupStatusClass + '">' + escapeHtml(numberOf(topicLag)) + '</td>' +
+                    columnKeys.map(function (key) { return topicCells[key] || ""; }).join("") +
                     '<td class="text-end"><button type="button" class="btn btn-sm btn-link kafka-health-expand" data-expand-id="' +
                     escapeHtml(expandId) + '" aria-expanded="false" aria-label="Expand partitions for ' + escapeHtml(topicName) +
                     '"><i class="bi bi-chevron-down"></i></button></td></tr>';
@@ -1596,9 +1633,9 @@
                     partitionList.forEach(function (partition)
                     {
                         html += '<tr><td>' + escapeHtml(valueAt(partition, config.partitionIdField)) +
-                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionCurrentField))) +
-                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionEndField))) +
-                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionLagField))) +
+                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionCurrentField), "currentOffset")) +
+                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionEndField), "logEndOffset")) +
+                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionLagField), "lag")) +
                             '</td></tr>';
                     });
                     html += '</tbody></table></div></td></tr>';
