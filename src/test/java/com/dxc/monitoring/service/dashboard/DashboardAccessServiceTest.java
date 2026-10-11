@@ -29,13 +29,14 @@ import com.dxc.monitoring.entity.UserApplicationRoleId;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.UserApplicationRoleRepository;
-import com.dxc.monitoring.repository.UserRepository;
+import com.dxc.monitoring.security.CustomUserDetails;
+import com.dxc.monitoring.service.ReferenceDataCacheService;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardAccessServiceTest {
     @Mock private ApplicationRepository applications;
     @Mock private EnvironmentRepository environments;
-    @Mock private UserRepository users;
+    @Mock private ReferenceDataCacheService referenceDataCache;
     @Mock private UserApplicationRoleRepository assignments;
 
     @InjectMocks private DashboardAccessService service;
@@ -50,9 +51,10 @@ class DashboardAccessServiceTest {
         user = new User();
         user.setId(7L);
         user.setUsername("viewer1");
+        CustomUserDetails userDetails = new CustomUserDetails(
+                7L, "viewer1", "password", true, List.of(), "Viewer One");
         SecurityContextHolder.getContext().setAuthentication(
-                UsernamePasswordAuthenticationToken.authenticated("viewer1", "password", List.of()));
-        when(users.findByUsername("viewer1")).thenReturn(Optional.of(user));
+                UsernamePasswordAuthenticationToken.authenticated(userDetails, "password", List.of()));
 
         appA = new Application();
         appA.setId(11L);
@@ -108,8 +110,7 @@ class DashboardAccessServiceTest {
         sit.setName("SIT");
         sit.setApplication(appA);
         sit.setEnabled(true);
-        when(environments.findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(11L))
-                .thenReturn(List.of(sit));
+        when(referenceDataCache.getEnabledEnvironments(11L)).thenReturn(List.of(sit));
 
         List<Environment> result = service.getEnvironmentsForApplication(11L);
 
