@@ -1584,7 +1584,7 @@
             '</div></section>';
         let html = '<div class="kafka-health-widget" data-kafka-widget="' + escapeHtml(widgetId) +
             '" data-kafka-filter="ALL" data-kafka-page="1" data-kafka-page-size="10" data-kafka-sort-key="lag" data-kafka-sort="desc">' +
-            clusterHtml + '<div class="kafka-health-summary">'
+            clusterHtml + '<div class="kafka-health-summary">' +
             '<button type="button" class="kafka-health-count is-active" data-kafka-filter-button="ALL"><span>Total</span><strong>' + mappedGroups.length + '</strong></button>' +
             '<button type="button" class="kafka-health-count kafka-status-healthy" data-kafka-filter-button="HEALTHY"><span>Healthy</span><strong>' + counts.HEALTHY + '</strong></button>' +
             '<button type="button" class="kafka-health-count kafka-status-warning" data-kafka-filter-button="WARNING"><span>Warning</span><strong>' + counts.WARNING + '</strong></button>' +
