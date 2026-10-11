@@ -3677,3 +3677,69 @@ textarea.form-control {
     font-size: 0.8rem;
     white-space: nowrap;
 }
+
+/* Kafka consumer health widget - compact and theme-aware. */
+.kafka-health-widget { color: var(--text-primary); min-width: 0; }
+.kafka-health-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .5rem; margin-bottom: .75rem; }
+.kafka-health-count {
+    display: flex; flex-direction: column; align-items: flex-start; gap: .15rem;
+    min-width: 0; padding: .55rem .7rem; color: var(--text-primary); background: var(--card-bg);
+    border: 1px solid var(--border-color); border-radius: .5rem; text-align: left; cursor: pointer;
+}
+.kafka-health-count span { color: var(--text-secondary); font-size: .75rem; }
+.kafka-health-count strong { font-size: 1.15rem; line-height: 1.25; }
+.kafka-health-count.is-active { border-color: var(--theme-primary); box-shadow: inset 0 0 0 1px var(--theme-primary); }
+.kafka-status-healthy { --kafka-status-color: var(--success); }
+.kafka-status-warning { --kafka-status-color: var(--warning); }
+.kafka-status-critical { --kafka-status-color: var(--danger); }
+.kafka-status-unknown { --kafka-status-color: var(--text-secondary); }
+.kafka-health-count.kafka-status-healthy,
+.kafka-health-count.kafka-status-warning,
+.kafka-health-count.kafka-status-critical,
+.kafka-health-count.kafka-status-unknown { border-left: 3px solid var(--kafka-status-color); }
+.kafka-health-toolbar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .65rem; }
+.kafka-health-search { max-width: 360px; background-color: var(--card-bg); color: var(--text-primary); border-color: var(--border-color); }
+.kafka-health-search::placeholder { color: var(--text-secondary); }
+.kafka-health-table-wrap { border: 1px solid var(--border-color); border-radius: .5rem; }
+.kafka-health-table { color: var(--text-primary); vertical-align: middle; }
+.kafka-health-table > thead > tr > th { background: var(--app-bg); color: var(--text-secondary); border-color: var(--border-color); white-space: nowrap; font-size: .78rem; font-weight: 600; }
+.kafka-health-table > tbody > tr > td { color: var(--text-primary); border-color: var(--border-color); font-size: .82rem; }
+.kafka-health-group-name { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.kafka-health-badge { display: inline-block; margin-top: .2rem; color: var(--kafka-status-color); font-size: .68rem; font-weight: 600; text-transform: uppercase; }
+.kafka-health-number { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kafka-health-expand { color: var(--text-secondary); padding: .15rem .35rem; text-decoration: none; }
+.kafka-health-expand:hover { color: var(--theme-primary); }
+.kafka-health-partitions { padding: .5rem .75rem; background: var(--app-bg); border-left: 2px solid var(--theme-primary); border-radius: .25rem; }
+.kafka-health-partition-title { margin-bottom: .35rem; color: var(--text-secondary); font-size: .75rem; font-weight: 600; }
+.kafka-health-partitions .table { color: var(--text-primary); font-size: .78rem; }
+.kafka-health-partitions .table > :not(caption) > * > * { color: var(--text-primary); background: transparent; border-color: var(--border-color); }
+.kafka-health-pagination, .kafka-health-page-controls { display: flex; align-items: center; gap: .45rem; }
+.kafka-health-pagination { justify-content: space-between; margin-top: .65rem; color: var(--text-secondary); font-size: .78rem; }
+.kafka-health-page-controls .form-select { width: auto; min-width: 4rem; background-color: var(--card-bg); color: var(--text-primary); border-color: var(--border-color); }
+.kafka-health-empty { padding: .9rem; color: var(--text-secondary); background: var(--app-bg); border: 1px solid var(--border-color); border-radius: .5rem; font-size: .85rem; }
+@media (max-width: 767.98px) {
+    .kafka-health-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .kafka-health-toolbar { align-items: stretch; flex-direction: column; }
+    .kafka-health-search { max-width: none; width: 100%; }
+    .kafka-health-table { min-width: 620px; }
+    .kafka-health-pagination { align-items: flex-start; flex-direction: column; }
+}
+
+.kafka-health-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: .75rem;
+    padding: .65rem .8rem;
+    color: var(--text-primary);
+    background: var(--app-bg);
+    border: 1px solid var(--border-color);
+    border-radius: .5rem;
+}
+.kafka-health-cluster-heading,
+.kafka-health-cluster-metrics { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.kafka-health-cluster-heading strong { font-size: .88rem; }
+.kafka-health-cluster-metrics { color: var(--text-secondary); font-size: .75rem; }
+.kafka-health-cluster-metrics span + span { padding-left: .6rem; border-left: 1px solid var(--border-color); }

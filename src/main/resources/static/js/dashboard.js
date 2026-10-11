@@ -1240,6 +1240,163 @@
         return typeof value === "object" ? JSON.stringify(value) : value;
     }
 
+
+    function renderKafkaConsumerHealthWidget(result, widget)
+    {
+        const config = parseWidgetFieldConfig(widget);
+        const payload = result.payload || result.data || {};
+        let groups = config.rowPath ? getJsonPath(payload, config.rowPath) : undefined;
+        if (!Array.isArray(groups) && config.rowPath)
+            groups = getJsonPath(getJsonPath(payload, "data") || {}, config.rowPath);
+        if (!Array.isArray(groups))
+            return '<div class="kafka-health-empty">Kafka consumer data is unavailable. Check the widget rowPath mapping.</div>';
+
+        const mappings = ["clusterPath","clusterNameField","clusterStatusField","clusterAvailableBrokersField",
+            "clusterExpectedBrokersField","clusterVersionField","clusterTopicCountField","clusterOfflinePartitionsField",
+            "groupNameField","groupStatusField","groupLagField","topicsField","topicNameField",
+            "topicCurrentField","topicEndField","topicLagField","partitionsField","partitionIdField",
+            "partitionCurrentField","partitionEndField","partitionLagField"];
+        const missing = mappings.filter(function (key) { return typeof config[key] !== "string" || !config[key].trim(); });
+        if (missing.length)
+            return '<div class="kafka-health-empty">Configure Kafka field mappings: ' + escapeHtml(missing.join(", ")) + '.</div>';
+
+        const valueAt = function (source, path) { return getJsonPath(source, path); };
+        const statusOf = function (value)
+        {
+            const status = String(value || "UNKNOWN").toUpperCase();
+            if (["HEALTHY","SUCCESS","GREEN","OK"].includes(status)) return "HEALTHY";
+            if (["WARNING","YELLOW"].includes(status)) return "WARNING";
+            if (["CRITICAL","FAILED","FAILURE","RED"].includes(status)) return "CRITICAL";
+            return "UNKNOWN";
+        };
+        const labelOf = function (status)
+        {
+            return status === "HEALTHY" ? "Healthy" : status === "WARNING" ? "Warning" :
+                status === "CRITICAL" ? "Critical" : "Unknown";
+        };
+        const cssOf = function (status)
+        {
+            return status === "HEALTHY" ? "kafka-status-healthy" : status === "WARNING" ? "kafka-status-warning" :
+                status === "CRITICAL" ? "kafka-status-critical" : "kafka-status-unknown";
+        };
+        const numberOf = function (value)
+        {
+            if (value === null || value === undefined || value === "") return "—";
+            const number = Number(value);
+            return Number.isFinite(number) ? number.toLocaleString() : String(value);
+        };
+
+        const mappedGroups = groups.filter(isObjectRow).map(function (group, index)
+        {
+            const rawName = valueAt(group, config.groupNameField);
+            const rawLag = valueAt(group, config.groupLagField);
+            const lag = rawLag === null || rawLag === undefined || rawLag === "" ? null : Number(rawLag);
+            const rawTopics = valueAt(group, config.topicsField);
+            return {
+                id: String(rawName === null || rawName === undefined ? "unknown-" + index : rawName),
+                name: rawName === null || rawName === undefined ? "Unknown group" : String(rawName),
+                status: statusOf(valueAt(group, config.groupStatusField)),
+                lag: Number.isFinite(lag) ? lag : null,
+                topics: Array.isArray(rawTopics) ? rawTopics.filter(isObjectRow) : []
+            };
+        }).sort(function (a, b)
+        {
+            if (a.lag === null && b.lag === null) return a.name.localeCompare(b.name);
+            if (a.lag === null) return 1;
+            if (b.lag === null) return -1;
+            return b.lag - a.lag;
+        });
+
+        const counts = {HEALTHY:0, WARNING:0, CRITICAL:0, UNKNOWN:0};
+        mappedGroups.forEach(function (group) { counts[group.status]++; });
+        const cluster = valueAt(payload, config.clusterPath) || valueAt(getJsonPath(payload, "data") || {}, config.clusterPath) || {};
+        const clusterStatus = statusOf(valueAt(cluster, config.clusterStatusField));
+        const clusterName = valueAt(cluster, config.clusterNameField);
+        const availableBrokers = valueAt(cluster, config.clusterAvailableBrokersField);
+        const expectedBrokers = valueAt(cluster, config.clusterExpectedBrokersField);
+        const brokerLabel = expectedBrokers === null || expectedBrokers === undefined || expectedBrokers === ""
+            ? numberOf(availableBrokers) + " brokers"
+            : numberOf(availableBrokers) + " / " + numberOf(expectedBrokers) + " brokers";
+        const widgetId = String(widget.id || "widget").replace(/[^a-zA-Z0-9_-]/g, "-");
+        const clusterHtml = '<div class="kafka-health-cluster"><div class="kafka-health-cluster-heading">' +
+            '<strong>' + escapeHtml(clusterName || "Kafka cluster") + '</strong><span class="kafka-health-badge ' +
+            cssOf(clusterStatus) + '">' + labelOf(clusterStatus) + '</span></div><div class="kafka-health-cluster-metrics">' +
+            '<span>' + escapeHtml(brokerLabel) + '</span><span>Kafka ' +
+            escapeHtml(valueAt(cluster, config.clusterVersionField) || "version unknown") + '</span><span>' +
+            escapeHtml(numberOf(valueAt(cluster, config.clusterTopicCountField))) + ' topics</span><span>' +
+            escapeHtml(numberOf(valueAt(cluster, config.clusterOfflinePartitionsField))) + ' offline partitions</span></div></div>';
+        let html = '<div class="kafka-health-widget" data-kafka-widget="' + escapeHtml(widgetId) +
+            '" data-kafka-filter="ALL" data-kafka-page="1" data-kafka-page-size="10" data-kafka-sort="desc">' +
+            clusterHtml + '<div class="kafka-health-summary">' +
+            '<button type="button" class="kafka-health-count is-active" data-kafka-filter-button="ALL"><span>Total</span><strong>' + mappedGroups.length + '</strong></button>' +
+            '<button type="button" class="kafka-health-count kafka-status-healthy" data-kafka-filter-button="HEALTHY"><span>Healthy</span><strong>' + counts.HEALTHY + '</strong></button>' +
+            '<button type="button" class="kafka-health-count kafka-status-warning" data-kafka-filter-button="WARNING"><span>Warning</span><strong>' + counts.WARNING + '</strong></button>' +
+            '<button type="button" class="kafka-health-count kafka-status-critical" data-kafka-filter-button="CRITICAL"><span>Critical</span><strong>' + counts.CRITICAL + '</strong></button>' +
+            '<button type="button" class="kafka-health-count kafka-status-unknown" data-kafka-filter-button="UNKNOWN"><span>Unknown</span><strong>' + counts.UNKNOWN + '</strong></button></div>' +
+            '<div class="kafka-health-toolbar"><input type="search" class="form-control form-control-sm kafka-health-search" placeholder="Search consumer group or topic..." aria-label="Search consumer group or topic">' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary kafka-health-sort"><i class="bi bi-sort-down"></i> Highest lag first</button></div>' +
+            '<div class="table-responsive kafka-health-table-wrap"><table class="table table-sm dashboard-table kafka-health-table mb-0">' +
+            '<thead><tr><th>Consumer Group</th><th>Topic</th><th class="text-end">Current</th><th class="text-end">End</th><th class="text-end">Lag</th><th></th></tr></thead>';
+
+        mappedGroups.forEach(function (group, groupIndex)
+        {
+            const groupId = widgetId + "-g" + groupIndex;
+            const groupStatusClass = cssOf(group.status);
+            const topicSearch = group.topics.map(function (topic) { return String(valueAt(topic, config.topicNameField) || "").toLowerCase(); }).join(" ");
+            html += '<tbody class="kafka-health-group" data-group-id="' + escapeHtml(groupId) + '" data-group-name="' +
+                escapeHtml(group.name.toLowerCase()) + '" data-group-status="' + group.status + '" data-group-lag="' +
+                (group.lag === null ? "" : String(group.lag)) + '" data-group-topics="' + escapeHtml(topicSearch) + '">';
+
+            if (!group.topics.length)
+                html += '<tr><td><span class="kafka-health-group-name">' + escapeHtml(group.name) + '</span><span class="kafka-health-badge ' +
+                    groupStatusClass + '">' + labelOf(group.status) + '</span></td><td colspan="4" class="text-muted">No topic offsets available</td><td></td></tr>';
+
+            group.topics.forEach(function (topic, topicIndex)
+            {
+                const topicName = String(valueAt(topic, config.topicNameField) ?? "Unknown topic");
+                const topicLag = valueAt(topic, config.topicLagField);
+                const partitions = valueAt(topic, config.partitionsField);
+                const partitionList = Array.isArray(partitions) ? partitions.filter(isObjectRow) : [];
+                const expandId = groupId + "-t" + topicIndex;
+                html += '<tr class="kafka-health-topic-row" data-topic-search="' + escapeHtml(topicName.toLowerCase()) + '">' +
+                    '<td><span class="kafka-health-group-name">' + escapeHtml(group.name) + '</span><span class="kafka-health-badge ' +
+                    groupStatusClass + '">' + labelOf(group.status) + '</span></td><td>' + escapeHtml(topicName) + '</td>' +
+                    '<td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(topic, config.topicCurrentField))) + '</td>' +
+                    '<td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(topic, config.topicEndField))) + '</td>' +
+                    '<td class="text-end kafka-health-number ' + groupStatusClass + '">' + escapeHtml(numberOf(topicLag)) + '</td>' +
+                    '<td class="text-end"><button type="button" class="btn btn-sm btn-link kafka-health-expand" data-expand-id="' +
+                    escapeHtml(expandId) + '" aria-expanded="false" aria-label="Expand partitions for ' + escapeHtml(topicName) +
+                    '"><i class="bi bi-chevron-down"></i></button></td></tr>';
+
+                if (partitionList.length)
+                {
+                    html += '<tr class="kafka-health-partition-row d-none" data-partition-parent="' + escapeHtml(expandId) +
+                        '"><td colspan="6"><div class="kafka-health-partitions"><div class="kafka-health-partition-title">Partition details</div>' +
+                        '<table class="table table-sm mb-0"><thead><tr><th>Partition</th><th class="text-end">Current</th>' +
+                        '<th class="text-end">End</th><th class="text-end">Lag</th></tr></thead><tbody>';
+                    partitionList.forEach(function (partition)
+                    {
+                        html += '<tr><td>' + escapeHtml(valueAt(partition, config.partitionIdField)) +
+                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionCurrentField))) +
+                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionEndField))) +
+                            '</td><td class="text-end kafka-health-number">' + escapeHtml(numberOf(valueAt(partition, config.partitionLagField))) +
+                            '</td></tr>';
+                    });
+                    html += '</tbody></table></div></td></tr>';
+                }
+            });
+            html += '</tbody>';
+        });
+
+        html += '</table></div><div class="kafka-health-pagination"><span class="kafka-health-page-summary" aria-live="polite"></span>' +
+            '<div class="kafka-health-page-controls"><label class="small text-muted" for="' + escapeHtml(widgetId) + '-page-size">Rows</label>' +
+            '<select class="form-select form-select-sm kafka-health-page-size" id="' + escapeHtml(widgetId) +
+            '-page-size"><option value="5">5</option><option value="10" selected>10</option><option value="20">20</option></select>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary kafka-health-prev" aria-label="Previous page"><i class="bi bi-chevron-left"></i></button>' +
+            '<span class="kafka-health-page-number"></span><button type="button" class="btn btn-sm btn-outline-secondary kafka-health-next" aria-label="Next page"><i class="bi bi-chevron-right"></i></button></div></div></div>';
+        return html;
+    }
+
     function renderTableWidget(result, widget)
     {
         const config = parseWidgetFieldConfig(widget);
@@ -1716,8 +1873,10 @@
 
         else if (widgetType === "TABLE")
         {
-            widgetContentHtml =
-                renderTableWidget(result, widget);
+            const fieldConfig = parseWidgetFieldConfig(widget);
+            widgetContentHtml = String(fieldConfig.renderer || "").toUpperCase() === "KAFKA_CONSUMER_HEALTH"
+                ? renderKafkaConsumerHealthWidget(result, widget)
+                : renderTableWidget(result, widget);
         }
 
 
@@ -2683,6 +2842,7 @@
 
             configureDateRangeControls();
             renderTabs(preferredTabId);
+            initializeKafkaHealthWidgets();
 
 			showState("content");
         }
@@ -2708,6 +2868,125 @@
         }
     }
 
+
+    /*
+     * ------------------------------------------------------------
+     * KAFKA CONSUMER HEALTH TABLE INTERACTIONS
+     * ------------------------------------------------------------
+     */
+
+    function updateKafkaHealthWidget(widgetElement)
+    {
+        const allGroups = Array.from(widgetElement.querySelectorAll(".kafka-health-group"));
+        const filter = widgetElement.dataset.kafkaFilter || "ALL";
+        const searchInput = widgetElement.querySelector(".kafka-health-search");
+        const search = searchInput ? searchInput.value.trim().toLowerCase() : "";
+        const pageSize = Math.max(1, Number(widgetElement.dataset.kafkaPageSize || 10));
+        const sortDirection = widgetElement.dataset.kafkaSort || "desc";
+        const matchingGroups = allGroups.filter(function (group)
+        {
+            const statusMatches = filter === "ALL" || group.dataset.groupStatus === filter;
+            const searchText = (group.dataset.groupName || "") + " " + (group.dataset.groupTopics || "");
+            return statusMatches && (!search || searchText.includes(search));
+        });
+        matchingGroups.sort(function (left, right)
+        {
+            const leftLag = left.dataset.groupLag === "" ? null : Number(left.dataset.groupLag);
+            const rightLag = right.dataset.groupLag === "" ? null : Number(right.dataset.groupLag);
+            let comparison = leftLag === null && rightLag === null ? left.dataset.groupName.localeCompare(right.dataset.groupName)
+                : leftLag === null ? 1 : rightLag === null ? -1 : leftLag - rightLag;
+            return sortDirection === "desc" ? -comparison : comparison;
+        });
+        allGroups.forEach(function (group) { group.classList.add("d-none"); });
+        const pageCount = Math.max(1, Math.ceil(matchingGroups.length / pageSize));
+        let page = Math.min(Math.max(1, Number(widgetElement.dataset.kafkaPage || 1)), pageCount);
+        widgetElement.dataset.kafkaPage = String(page);
+        const start = (page - 1) * pageSize;
+        matchingGroups.slice(start, start + pageSize).forEach(function (group) { group.classList.remove("d-none"); });
+        widgetElement.querySelectorAll("[data-kafka-filter-button]").forEach(function (button)
+        {
+            const active = button.dataset.kafkaFilterButton === filter;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+        const summary = widgetElement.querySelector(".kafka-health-page-summary");
+        if (summary) summary.textContent = matchingGroups.length ? (start + 1) + "–" + Math.min(start + pageSize, matchingGroups.length) + " of " + matchingGroups.length + " groups" : "0 groups";
+        const pageNumber = widgetElement.querySelector(".kafka-health-page-number");
+        if (pageNumber) pageNumber.textContent = page + " / " + pageCount;
+        const previous = widgetElement.querySelector(".kafka-health-prev");
+        const next = widgetElement.querySelector(".kafka-health-next");
+        if (previous) previous.disabled = page <= 1;
+        if (next) next.disabled = page >= pageCount;
+    }
+
+    if (!contentElement.dataset.kafkaHealthEventsBound)
+    {
+        contentElement.dataset.kafkaHealthEventsBound = "true";
+        contentElement.addEventListener("click", function (event)
+        {
+            const widgetElement = event.target.closest(".kafka-health-widget");
+            if (!widgetElement) return;
+            const filterButton = event.target.closest("[data-kafka-filter-button]");
+            if (filterButton)
+            {
+                widgetElement.dataset.kafkaFilter = filterButton.dataset.kafkaFilterButton;
+                widgetElement.dataset.kafkaPage = "1";
+                updateKafkaHealthWidget(widgetElement);
+                return;
+            }
+            const expandButton = event.target.closest(".kafka-health-expand");
+            if (expandButton)
+            {
+                const expandId = expandButton.dataset.expandId;
+                const expanded = expandButton.getAttribute("aria-expanded") === "true";
+                widgetElement.querySelectorAll('[data-partition-parent="' + CSS.escape(expandId) + '"]').forEach(function (row)
+                {
+                    row.classList.toggle("d-none", expanded);
+                });
+                expandButton.setAttribute("aria-expanded", String(!expanded));
+                const icon = expandButton.querySelector("i");
+                if (icon) icon.className = expanded ? "bi bi-chevron-down" : "bi bi-chevron-up";
+                return;
+            }
+            if (event.target.closest(".kafka-health-sort"))
+            {
+                widgetElement.dataset.kafkaSort = widgetElement.dataset.kafkaSort === "desc" ? "asc" : "desc";
+                const button = widgetElement.querySelector(".kafka-health-sort");
+                if (button) button.innerHTML = widgetElement.dataset.kafkaSort === "desc"
+                    ? '<i class="bi bi-sort-down"></i> Highest lag first' : '<i class="bi bi-sort-up"></i> Lowest lag first';
+                updateKafkaHealthWidget(widgetElement);
+                return;
+            }
+            if (event.target.closest(".kafka-health-prev") || event.target.closest(".kafka-health-next"))
+            {
+                widgetElement.dataset.kafkaPage = String(Math.max(1, Number(widgetElement.dataset.kafkaPage || 1) +
+                    (event.target.closest(".kafka-health-prev") ? -1 : 1)));
+                updateKafkaHealthWidget(widgetElement);
+            }
+        });
+        contentElement.addEventListener("input", function (event)
+        {
+            if (!event.target.matches(".kafka-health-search")) return;
+            const widgetElement = event.target.closest(".kafka-health-widget");
+            if (!widgetElement) return;
+            widgetElement.dataset.kafkaPage = "1";
+            updateKafkaHealthWidget(widgetElement);
+        });
+        contentElement.addEventListener("change", function (event)
+        {
+            if (!event.target.matches(".kafka-health-page-size")) return;
+            const widgetElement = event.target.closest(".kafka-health-widget");
+            if (!widgetElement) return;
+            widgetElement.dataset.kafkaPageSize = event.target.value;
+            widgetElement.dataset.kafkaPage = "1";
+            updateKafkaHealthWidget(widgetElement);
+        });
+    }
+
+    function initializeKafkaHealthWidgets()
+    {
+        contentElement.querySelectorAll(".kafka-health-widget").forEach(updateKafkaHealthWidget);
+    }
 
     /*
      * ------------------------------------------------------------
