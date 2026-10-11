@@ -1,7 +1,6 @@
 package com.dxc.monitoring.service;
 
 import com.dxc.monitoring.entity.MenuItem;
-import com.dxc.monitoring.entity.Permission;
 import com.dxc.monitoring.repository.MenuItemRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,7 +11,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
@@ -29,9 +27,11 @@ class MenuItemServiceTest
     @Test
     void showsOnlyItemsAllowedByGrantedAuthorities()
     {
-        MenuItem monitoring = item("monitoring-jobs", "Monitoring", "MONITORING_VIEW");
-        MenuItem machines = item("machines", "Monitoring", "MACHINE_VIEW");
-        when(menuItemRepository.findByEnabledTrueOrderBySectionOrderAscDisplayOrderAsc())
+        MenuItem monitoring = item(1L, "MONITORING_JOBS", "Monitoring Jobs", "/monitoring/jobs",
+                null, "MONITORING_VIEW");
+        MenuItem machines = item(2L, "MACHINES", "Machines", "/monitoring/machines",
+                null, "MACHINE_VIEW");
+        when(menuItemRepository.findByEnabledTrueOrderByDisplayOrderAscIdAsc())
                 .thenReturn(List.of(monitoring, machines));
 
         var authentication = new UsernamePasswordAuthenticationToken("operator", "n/a",
@@ -45,16 +45,39 @@ class MenuItemServiceTest
     }
 
     @Test
-    void keepsUnrestrictedDashboardVisibleToAuthenticatedUsers()
+    void rendersChildrenUnderTheirConfiguredParent()
     {
-        MenuItem dashboard = new MenuItem();
-        dashboard.setMenuKey("dashboard");
-        dashboard.setRouteKey("dashboard");
-        dashboard.setLabel("Dashboard");
-        dashboard.setIcon("bi-grid-1x2");
-        dashboard.setSectionName("Main");
-        dashboard.setEnabled(true);
-        when(menuItemRepository.findByEnabledTrueOrderBySectionOrderAscDisplayOrderAsc())
+        MenuItem alerts = item(5L, "ALERTS", "Alerts", null, null, null);
+        MenuItem activeAlerts = item(7L, "ACTIVE_ALERTS", "Active Alerts", "/alerts", 5L, "ALERT_VIEW");
+        when(menuItemRepository.findByEnabledTrueOrderByDisplayOrderAscIdAsc())
+                .thenReturn(List.of(alerts, activeAlerts));
+
+        var authentication = new UsernamePasswordAuthenticationToken("operator", "n/a",
+                List.of(new SimpleGrantedAuthority("ALERT_VIEW")));
+
+        // Alert routes are deliberately not exposed until the corresponding pages exist.
+        assertEquals(0, menuItemService.getVisibleSections(authentication).size());
+    }
+
+    @Test
+    void requiresAdminRoleForUserAdministration()
+    {
+        MenuItem administration = item(6L, "ADMINISTRATION", "Administration", null, null, "SYSTEM_CONFIG");
+        MenuItem users = item(11L, "USERS", "Users", "/administration/users", 6L, "USER_CONFIG");
+        when(menuItemRepository.findByEnabledTrueOrderByDisplayOrderAscIdAsc())
+                .thenReturn(List.of(administration, users));
+
+        var nonAdmin = new UsernamePasswordAuthenticationToken("operator", "n/a",
+                List.of(new SimpleGrantedAuthority("USER_CONFIG"), new SimpleGrantedAuthority("SYSTEM_CONFIG")));
+
+        assertEquals(0, menuItemService.getVisibleSections(nonAdmin).size());
+    }
+
+    @Test
+    void keepsDashboardVisibleWhenItsPermissionIsGranted()
+    {
+        MenuItem dashboard = item(1L, "DASHBOARD", "Dashboard", "/dashboard", null, "MONITORING_VIEW");
+        when(menuItemRepository.findByEnabledTrueOrderByDisplayOrderAscIdAsc())
                 .thenReturn(List.of(dashboard));
 
         var authentication = new UsernamePasswordAuthenticationToken("viewer", "n/a",
@@ -65,39 +88,18 @@ class MenuItemServiceTest
         assertEquals("/dashboard", sections.get(0).getItems().get(0).getHref());
     }
 
-    @Test
-    void requiresAdminAuthorityForAdminOnlyItems()
+    private MenuItem item(Long id, String key, String name, String url, Long parentId, String permission)
     {
-        MenuItem users = new MenuItem();
-        users.setMenuKey("users");
-        users.setRouteKey("users");
-        users.setLabel("Users");
-        users.setIcon("bi-person-gear");
-        users.setSectionName("Administration");
-        users.setRequiredRole("ROLE_ADMIN");
-        users.setEnabled(true);
-        when(menuItemRepository.findByEnabledTrueOrderBySectionOrderAscDisplayOrderAsc())
-                .thenReturn(List.of(users));
-
-        var viewer = new UsernamePasswordAuthenticationToken("viewer", "n/a",
-                List.of(new SimpleGrantedAuthority("USER_CONFIG")));
-
-        assertEquals(0, menuItemService.getVisibleSections(viewer).size());
-    }
-
-    private MenuItem item(String key, String section, String permissionName)
-    {
-        Permission permission = new Permission();
-        permission.setName(permissionName);
-
         MenuItem item = new MenuItem();
+        item.setId(id);
         item.setMenuKey(key);
-        item.setRouteKey(key);
-        item.setLabel(key);
+        item.setMenuName(name);
+        item.setUrl(url);
+        item.setParentId(parentId);
         item.setIcon("bi-activity");
-        item.setSectionName(section);
+        item.setDisplayOrder(id.intValue());
+        item.setRequiredPermission(permission);
         item.setEnabled(true);
-        item.setPermissions(Set.of(permission));
         return item;
     }
 }
