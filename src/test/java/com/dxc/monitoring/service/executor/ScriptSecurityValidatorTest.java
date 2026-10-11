@@ -34,8 +34,10 @@ class ScriptSecurityValidatorTest
         Path script = tempDir.resolve("health.sh");
         Files.writeString(script, "#!/bin/sh\necho healthy\n");
         ScriptSecurityValidator validator = new ScriptSecurityValidator(tempDir.toString());
+        MonitoringJob job = job(script);
+        job.setApprovedSha256(null);
 
-        assertThrows(IllegalArgumentException.class, () -> validator.validate(job(script)));
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(job));
     }
 
     @Test
