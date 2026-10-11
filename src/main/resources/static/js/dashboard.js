@@ -1237,7 +1237,7 @@
         if (!format) return typeof value === "object" ? JSON.stringify(value) : value;
 
         const normalizedFormat = String(format).toLowerCase();
-        if (normalizedFormat === "percentage" && Number.isFinite(Number(value)))
+        if ((normalizedFormat === "percentage" || normalizedFormat === "percent") && Number.isFinite(Number(value)))
             return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
         if (normalizedFormat === "number" && Number.isFinite(Number(value)))
             return Number(value).toLocaleString();
@@ -1848,7 +1848,13 @@
                         const value = Object.prototype.hasOwnProperty.call(row, column.key)
                             ? row[column.key]
                             : getJsonPath(row, column.key);
-                        return '<td>' + escapeHtml(formatTableValue(value, formats[column.key] || column.format)) + '</td>';
+                        const format = formats[column.key] || column.format;
+                        if (String(format || "").toLowerCase() === "status")
+                        {
+                            return '<td><span class="dashboard-status ' + getStatusClass(value) + '">' +
+                                escapeHtml(getStatusLabel(value)) + '</span></td>';
+                        }
+                        return '<td>' + escapeHtml(formatTableValue(value, format)) + '</td>';
                     }).join("") + '</tr>';
                 }).join("")
             : '<tr><td colspan="' + columns.length + '">No data available.</td></tr>';
@@ -1860,7 +1866,7 @@
         const pager = paginationEnabled
             ? '<div class="dashboard-table-pagination" data-page-size="' + pageSize + '"><span class="dashboard-table-page-summary small text-muted" aria-live="polite"></span>' +
                 '<div class="d-flex align-items-center gap-2"><label class="small text-muted">Rows <select class="form-select form-select-sm dashboard-table-page-size" aria-label="Rows per page">' +
-                [5, 10, 20, 50, 100].map(function (size) { return '<option value="' + size + '"' + (size === pageSize ? ' selected' : '') + '>' + size + '</option>'; }).join('') +
+                Array.from(new Set([5, 10, 20, 50, 100, pageSize])).sort(function (a, b) { return a - b; }).map(function (size) { return '<option value="' + size + '"' + (size === pageSize ? ' selected' : '') + '>' + size + '</option>'; }).join('') +
                 '</select></label><button type="button" class="btn btn-sm btn-outline-secondary dashboard-table-prev" aria-label="Previous page"><i class="bi bi-chevron-left"></i></button>' +
                 '<span class="dashboard-table-page-number small"></span><button type="button" class="btn btn-sm btn-outline-secondary dashboard-table-next" aria-label="Next page"><i class="bi bi-chevron-right"></i></button></div></div>'
             : '';
