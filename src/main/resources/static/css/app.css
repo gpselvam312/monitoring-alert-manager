@@ -32,6 +32,8 @@
     --execution-error-bg: #fff5f5;
     --execution-error-border: #f1b0b7;
     --execution-output-bg: #f8f9fa;
+    --status-disabled-bg: #eeeeee;
+    --status-disabled-text: #666666;
 
     --success: #198754;
     --warning: #d99a00;
@@ -87,6 +89,8 @@
     --execution-error-bg: #3b1720;
     --execution-error-border: #9f3848;
     --execution-output-bg: #111c30;
+    --status-disabled-bg: #334155;
+    --status-disabled-text: #e2e8f0;
 }
 
 /* --- Blue Theme --- */
@@ -131,6 +135,8 @@
     --execution-error-bg: #3b1720;
     --execution-error-border: #9f3848;
     --execution-output-bg: #111c30;
+    --status-disabled-bg: #334155;
+    --status-disabled-text: #e2e8f0;
 }
 
 /* --- Green Theme --- */
@@ -1023,8 +1029,8 @@ body {
 }
 
 .status-disabled {
-    background: #eeeeee;
-    color: #666666;
+    background: var(--status-disabled-bg);
+    color: var(--status-disabled-text);
 }
 
 .status-info {
@@ -4456,6 +4462,18 @@ textarea.form-control {
     color: var(--text-secondary) !important;
 }
 
+/* Bootstrap form checks and switches otherwise retain their light defaults. */
+[data-theme="orange-dark"],
+[data-theme="blue-dark"] {
+    --bs-body-color: var(--text-primary);
+    --bs-body-bg: var(--app-bg);
+    --bs-secondary-color: var(--text-secondary);
+    --bs-tertiary-bg: var(--app-dark-soft);
+    --bs-border-color: var(--border-color);
+    --bs-form-check-bg: var(--input-bg);
+    --bs-form-check-input-bg: var(--input-bg);
+}
+
 [data-theme="orange-dark"] .form-check-input,
 [data-theme="blue-dark"] .form-check-input {
     background-color: var(--input-bg);
@@ -4466,6 +4484,45 @@ textarea.form-control {
 [data-theme="blue-dark"] .form-check-input:checked {
     background-color: var(--theme-primary);
     border-color: var(--theme-primary);
+}
+
+[data-theme="orange-dark"] .form-check-input:focus,
+[data-theme="blue-dark"] .form-check-input:focus {
+    border-color: var(--theme-primary);
+    box-shadow: 0 0 0 0.2rem var(--theme-focus);
+}
+
+[data-theme="orange-dark"] .form-check-label,
+[data-theme="blue-dark"] .form-check-label,
+[data-theme="orange-dark"] .form-label,
+[data-theme="blue-dark"] .form-label {
+    color: var(--text-primary);
+}
+
+/* Settings uses Bootstrap .card rather than the shared .app-card component. */
+[data-theme="orange-dark"] .card,
+[data-theme="blue-dark"] .card {
+    color: var(--text-primary);
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+[data-theme="orange-dark"] .card-header,
+[data-theme="blue-dark"] .card-header {
+    color: var(--text-primary);
+    background-color: var(--app-dark-soft);
+    border-color: var(--border-color);
+}
+
+[data-theme="orange-dark"] .card-body,
+[data-theme="blue-dark"] .card-body {
+    color: var(--text-primary);
+}
+
+[data-theme="orange-dark"] .status-disabled,
+[data-theme="blue-dark"] .status-disabled {
+    background-color: var(--status-disabled-bg);
+    color: var(--status-disabled-text);
 }
 
 .app-table {
