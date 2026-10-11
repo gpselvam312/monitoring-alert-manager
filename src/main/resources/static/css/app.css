@@ -4535,3 +4535,17 @@ textarea.form-control {
         min-width: 640px;
     }
 }
+
+
+/* Final dark-theme overrides for native Bootstrap form checks and status badges. */
+[data-theme="orange-dark"] .form-check-input:not(:checked),
+[data-theme="blue-dark"] .form-check-input:not(:checked) {
+    background-color: var(--input-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="orange-dark"] .status-badge.status-disabled,
+[data-theme="blue-dark"] .status-badge.status-disabled {
+    background-color: var(--status-disabled-bg) !important;
+    color: var(--status-disabled-text) !important;
+}
