@@ -3967,3 +3967,12 @@ textarea.form-control {
 .kafka-cluster-stat .kafka-stat-healthy { color: var(--success); }
 .kafka-cluster-stat .kafka-stat-critical { color: var(--danger); }
 .kafka-health-sort-hint { color: var(--text-secondary); font-size: .75rem; }
+
+
+/* Kafka consumer table zebra striping (theme-aware). */
+.kafka-health-table > tbody.kafka-health-group > tr.kafka-health-topic-row:nth-of-type(even) > td {
+    background-color: color-mix(in srgb, var(--theme-primary) 4%, var(--card-bg));
+}
+.kafka-health-table > tbody.kafka-health-group > tr.kafka-health-topic-row:hover > td {
+    background-color: color-mix(in srgb, var(--theme-primary) 9%, var(--card-bg));
+}
