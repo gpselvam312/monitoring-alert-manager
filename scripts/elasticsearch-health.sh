@@ -12,7 +12,7 @@ WARNING_JVM="${ES_WARNING_JVM:-75}"
 CRITICAL_JVM="${ES_CRITICAL_JVM:-90}"
 WARNING_DISK="${ES_WARNING_DISK:-80}"
 CRITICAL_DISK="${ES_CRITICAL_DISK:-90}"
-TIMEOUT="${ES_TIMEOUT_SECONDS:-10}"
+TIMEOUT="${ES_TIMEOUT_SECONDS:-4}"
 
 usage() {
     cat <<'USAGE'
@@ -107,6 +107,7 @@ jq -en --arg label "$CLUSTER_LABEL" \
    elif $health.status == "yellow" then "WARNING"
    elif any($nodes[]; .status == "CRITICAL") then "FAILURE"
    elif any($nodes[]; .status == "WARNING") then "WARNING"
+   elif any($nodes[]; .status == "UNKNOWN") then "UNKNOWN"
    elif $health.status == "green" then "SUCCESS" else "UNKNOWN" end) as $overall |
   {schemaVersion:1,status:$overall,
    message:(if $overall == "SUCCESS" then "Elasticsearch cluster is healthy." elif $overall == "WARNING" then "Elasticsearch cluster has warning conditions." elif $overall == "FAILURE" then "Elasticsearch cluster has critical conditions." else "Elasticsearch cluster health is unknown." end),
