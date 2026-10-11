@@ -4537,8 +4537,8 @@ textarea.form-control {
 }
 
 
-/* Final theme-aware form controls and dropdowns. Keep these rules after
-   Bootstrap and component styles so theme variables win consistently. */
+/* Final theme-aware form-control overrides. Keep these after Bootstrap
+   and component styles so shared theme variables win consistently. */
 .form-check-input:not(:checked) {
     background-color: var(--input-bg) !important;
     border-color: var(--border-color) !important;
@@ -4564,38 +4564,6 @@ textarea.form-control {
 .form-select:focus {
     border-color: var(--theme-primary);
     box-shadow: 0 0 0 0.2rem var(--theme-focus);
-}
-
-[data-theme="orange-dark"],
-[data-theme="blue-dark"] {
-    color-scheme: dark;
-    --bs-body-color: var(--text-primary);
-    --bs-body-bg: var(--app-bg);
-    --bs-secondary-color: var(--text-secondary);
-    --bs-tertiary-bg: var(--app-dark-soft);
-    --bs-border-color: var(--border-color);
-    --bs-form-check-bg: var(--input-bg);
-    --bs-form-check-input-bg: var(--input-bg);
-}
-
-[data-theme="orange-dark"] .dropdown-menu,
-[data-theme="blue-dark"] .dropdown-menu {
-    color: var(--text-primary);
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
-}
-
-[data-theme="orange-dark"] .dropdown-item,
-[data-theme="blue-dark"] .dropdown-item {
-    color: var(--text-primary);
-}
-
-[data-theme="orange-dark"] .dropdown-item:hover,
-[data-theme="orange-dark"] .dropdown-item:focus,
-[data-theme="blue-dark"] .dropdown-item:hover,
-[data-theme="blue-dark"] .dropdown-item:focus {
-    color: var(--text-primary);
-    background-color: var(--app-dark-soft);
 }
 
 [data-theme="orange-dark"] .dropdown-item:active,
