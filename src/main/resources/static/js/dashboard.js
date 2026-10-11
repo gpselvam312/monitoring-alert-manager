@@ -3334,7 +3334,7 @@
                 if (icon) icon.className = expanded ? "bi bi-chevron-down" : "bi bi-chevron-up";
                 return;
             }
-            const sortHeader = event.target.closest("[data-kafka-sort-key]");
+            const sortHeader = event.target.closest(".kafka-health-sort-header[data-kafka-sort-key]");
             if (sortHeader)
             {
                 const nextKey = sortHeader.dataset.kafkaSortKey;
