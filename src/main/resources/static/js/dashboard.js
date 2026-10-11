@@ -1600,8 +1600,16 @@
                 (group.lag === null ? "" : String(group.lag)) + '" data-group-topics="' + escapeHtml(topicSearch) + '">';
 
             if (!group.topics.length)
-                html += '<tr><td><span class="kafka-health-group-name">' + escapeHtml(group.name) + '</span><span class="kafka-health-badge ' +
-                    groupStatusClass + '">' + labelOf(group.status) + '</span></td><td colspan="4" class="text-muted">No topic offsets available</td><td></td></tr>';
+            {
+                html += '<tr>' + columnKeys.map(function (key, columnIndex) {
+                    if (key === "consumerGroup")
+                        return '<td><span class="kafka-health-group-name">' + escapeHtml(group.name) + '</span><span class="kafka-health-badge ' +
+                            groupStatusClass + '">' + labelOf(group.status) + '</span></td>';
+                    if (columnIndex === 0)
+                        return '<td class="text-muted">No topic offsets available</td>';
+                    return '';
+                }).join("") + '<td></td></tr>';
+            }
 
             group.topics.forEach(function (topic, topicIndex)
             {
@@ -1628,8 +1636,10 @@
                 {
                     html += '<tr class="kafka-health-partition-row d-none" data-partition-parent="' + escapeHtml(expandId) +
                         '"><td colspan="6"><div class="kafka-health-partitions"><div class="kafka-health-partition-title">Partition details</div>' +
-                        '<table class="table table-sm mb-0"><thead><tr><th>Partition</th><th class="text-end">Current</th>' +
-                        '<th class="text-end">End</th><th class="text-end">Lag</th></tr></thead><tbody>';
+                        '<table class="table table-sm mb-0"><thead><tr><th>' + escapeHtml(labels.partition || "Partition") +
+                        '</th><th class="text-end">' + escapeHtml(labels.currentOffset || "Current") + '</th>' +
+                        '<th class="text-end">' + escapeHtml(labels.logEndOffset || "End") + '</th><th class="text-end">' +
+                        escapeHtml(labels.lag || "Lag") + '</th></tr></thead><tbody>';
                     partitionList.forEach(function (partition)
                     {
                         html += '<tr><td>' + escapeHtml(valueAt(partition, config.partitionIdField)) +
