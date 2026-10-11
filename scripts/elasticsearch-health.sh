@@ -100,7 +100,7 @@ jq -en --arg label "$CLUSTER_LABEL" \
      roles:($n.roles // ($cat["node.role"] // "" | split(","))),master:(($cat.master // "false") == "*"),
      cpuPercent:$cpu,jvmHeapPercent:$heap,osDiskUsedPercent:$osDisk,dataDiskUsedPercent:$dataDisk,
      searchTotal:($n.indices.search.query_total // null),indexingTotal:($n.indices.indexing.index_total // null),
-     status:(if ($alerts|length)>0 then (if any($alerts[]; startswith("CRITICAL:")) then "CRITICAL" else "WARNING" end) else "UP" end),
+     status:(if all([$cpu,$heap,$osDisk,$dataDisk][]; . == null) then "UNKNOWN" elif ($alerts|length)>0 then (if any($alerts[]; startswith("CRITICAL:")) then "CRITICAL" else "WARNING" end) else "UP" end),
      alerts:$alerts}
   ] as $nodes |
   (if $health.status == "red" then "FAILURE"
