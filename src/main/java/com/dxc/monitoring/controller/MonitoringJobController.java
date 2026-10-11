@@ -298,6 +298,7 @@ public class MonitoringJobController
 
             // Script configuration
             existingJob.setScriptPath(job.getScriptPath());
+            existingJob.setApprovedSha256(job.getApprovedSha256());
             existingJob.setWorkingDirectory(job.getWorkingDirectory());
             existingJob.setCommandArguments(job.getCommandArguments());
 
