@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,6 +45,7 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
     List<Environment> findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(
             @Param("applicationIds") List<Long> applicationIds);
 
+    @EntityGraph(attributePaths = "application")
     @Query("""
             select e
             from Environment e
@@ -64,6 +66,7 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
 
     List<Environment> findByEnabledTrueOrderByName();
 
+    @EntityGraph(attributePaths = "application")
     @Query("""
             select e
             from Environment e
