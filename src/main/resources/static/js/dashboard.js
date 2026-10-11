@@ -3258,6 +3258,8 @@
                     group.appendChild(row);
                     if (partitionRow) group.appendChild(partitionRow);
                 });
+                if (sortKey === "topic" && sortedRows.length)
+                    group.setAttribute("data-group-sort-topic", sortedRows[0].cells[topicColumnIndex].textContent.trim().toLowerCase());
             }
         });
         matchingGroups.sort(function (left, right)
