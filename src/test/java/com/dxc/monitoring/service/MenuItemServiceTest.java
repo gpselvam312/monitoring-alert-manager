@@ -88,6 +88,37 @@ class MenuItemServiceTest
         assertEquals("/dashboard", sections.get(0).getItems().get(0).getHref());
     }
 
+    @Test
+    void displaysConfiguredLocalRouteForCustomMenuKey()
+    {
+        MenuItem custom = item(14L, "CUSTOM_TOOL", "Custom Tool", "/administration/custom-tool",
+                null, "SYSTEM_CONFIG");
+        when(menuItemRepository.findByEnabledTrueOrderByDisplayOrderAscIdAsc())
+                .thenReturn(List.of(custom));
+
+        var authentication = new UsernamePasswordAuthenticationToken("admin", "n/a",
+                List.of(new SimpleGrantedAuthority("SYSTEM_CONFIG"), new SimpleGrantedAuthority("ROLE_ADMIN")));
+
+        List<MenuItemService.SidebarSection> sections = menuItemService.getVisibleSections(authentication);
+
+        assertEquals(1, sections.size());
+        assertEquals("/administration/custom-tool", sections.get(0).getItems().get(0).getHref());
+    }
+
+    @Test
+    void doesNotDisplayExternalMenuUrls()
+    {
+        MenuItem external = item(15L, "EXTERNAL_TOOL", "External Tool", "https://example.com",
+                null, "MONITORING_VIEW");
+        when(menuItemRepository.findByEnabledTrueOrderByDisplayOrderAscIdAsc())
+                .thenReturn(List.of(external));
+
+        var authentication = new UsernamePasswordAuthenticationToken("viewer", "n/a",
+                List.of(new SimpleGrantedAuthority("MONITORING_VIEW")));
+
+        assertEquals(0, menuItemService.getVisibleSections(authentication).size());
+    }
+
     private MenuItem item(Long id, String key, String name, String url, Long parentId, String permission)
     {
         MenuItem item = new MenuItem();

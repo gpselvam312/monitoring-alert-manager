@@ -17,24 +17,8 @@ import java.util.stream.Collectors;
 @Service
 public class MenuItemService
 {
-    /*
-     * Only application routes implemented by controllers are exposed. Menu text,
-     * ordering, enabled state, hierarchy and required permission remain database-driven.
-     */
-    private static final Map<String, String> ROUTES = Map.ofEntries(
-            Map.entry("DASHBOARD", "/dashboard"),
-            Map.entry("MONITORING_JOBS", "/monitoring/jobs"),
-            Map.entry("STREAMING_JOBS", "/monitoring/streaming-jobs"),
-            Map.entry("MACHINES", "/monitoring/machines"),
-            Map.entry("SCHEDULES", "/scheduling/schedules"),
-            Map.entry("APPLICATIONS", "/administration/applications"),
-            Map.entry("ENVIRONMENTS", "/administration/environments"),
-            Map.entry("DASHBOARD_CONFIGURATION", "/administration/dashboard"),
-            Map.entry("USERS", "/administration/users"),
-            Map.entry("ROLES", "/administration/roles"),
-            Map.entry("SETTINGS", "/administration/settings"));
-
-    private static final Set<String> ADMIN_ONLY_MENUS = Set.of("USERS", "ROLES");
+    private static final Set<String> ADMIN_ONLY_MENUS = Set.of("USERS", "ROLES", "MENU_MANAGEMENT");
+    private static final Set<String> NOT_YET_SUPPORTED_MENUS = Set.of("ACTIVE_ALERTS", "ALERT_HISTORY", "AUDIT_LOG");
 
     private final MenuItemRepository menuItemRepository;
 
@@ -112,11 +96,20 @@ public class MenuItemService
 
     private String routeFor(MenuItem item)
     {
-        if (item.getUrl() == null || item.getUrl().isBlank())
+        if (item.getUrl() == null || item.getUrl().isBlank()
+                || NOT_YET_SUPPORTED_MENUS.contains(item.getMenuKey()))
         {
             return null;
         }
-        return ROUTES.get(item.getMenuKey());
+
+        String url = item.getUrl().trim();
+        // Only allow local application paths; do not allow external URLs or script schemes.
+        if (!url.startsWith("/") || url.startsWith("//") || url.contains("..")
+                || url.contains("\\") || url.contains("\r") || url.contains("\n"))
+        {
+            return null;
+        }
+        return url;
     }
 
     private String rootSection(String menuKey)
