@@ -4537,11 +4537,91 @@ textarea.form-control {
 }
 
 
-/* Final dark-theme overrides for native Bootstrap form checks and status badges. */
-[data-theme="orange-dark"] .form-check-input:not(:checked),
-[data-theme="blue-dark"] .form-check-input:not(:checked) {
+/* Final theme-aware form controls and dropdowns. Keep these rules after
+   Bootstrap and component styles so theme variables win consistently. */
+.form-check-input:not(:checked) {
     background-color: var(--input-bg) !important;
     border-color: var(--border-color) !important;
+}
+
+.form-check-input:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
+}
+
+.form-select {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.form-select option,
+.form-select optgroup {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+}
+
+.form-select:focus {
+    border-color: var(--theme-primary);
+    box-shadow: 0 0 0 0.2rem var(--theme-focus);
+}
+
+[data-theme="orange-dark"],
+[data-theme="blue-dark"] {
+    color-scheme: dark;
+    --bs-body-color: var(--text-primary);
+    --bs-body-bg: var(--app-bg);
+    --bs-secondary-color: var(--text-secondary);
+    --bs-tertiary-bg: var(--app-dark-soft);
+    --bs-border-color: var(--border-color);
+    --bs-form-check-bg: var(--input-bg);
+    --bs-form-check-input-bg: var(--input-bg);
+}
+
+[data-theme="orange-dark"] .dropdown-menu,
+[data-theme="blue-dark"] .dropdown-menu {
+    color: var(--text-primary);
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+[data-theme="orange-dark"] .dropdown-item,
+[data-theme="blue-dark"] .dropdown-item {
+    color: var(--text-primary);
+}
+
+[data-theme="orange-dark"] .dropdown-item:hover,
+[data-theme="orange-dark"] .dropdown-item:focus,
+[data-theme="blue-dark"] .dropdown-item:hover,
+[data-theme="blue-dark"] .dropdown-item:focus {
+    color: var(--text-primary);
+    background-color: var(--app-dark-soft);
+}
+
+[data-theme="orange-dark"] .dropdown-item:active,
+[data-theme="blue-dark"] .dropdown-item:active {
+    color: #ffffff;
+    background-color: var(--theme-primary);
+}
+
+[data-theme="orange-dark"] .dropdown-item.disabled,
+[data-theme="orange-dark"] .dropdown-item:disabled,
+[data-theme="blue-dark"] .dropdown-item.disabled,
+[data-theme="blue-dark"] .dropdown-item:disabled,
+[data-theme="orange-dark"] .dropdown-header,
+[data-theme="blue-dark"] .dropdown-header {
+    color: var(--text-secondary);
+}
+
+[data-theme="orange-dark"] .dropdown-divider,
+[data-theme="blue-dark"] .dropdown-divider {
+    border-top-color: var(--border-color);
+    opacity: 1;
+}
+
+[data-theme="orange-dark"] .machine-enabled-option,
+[data-theme="blue-dark"] .machine-enabled-option {
+    background-color: var(--card-bg);
 }
 
 [data-theme="orange-dark"] .status-badge.status-disabled,
