@@ -61,10 +61,6 @@ public class MenuItemService
         }
 
         List<MenuItem> items = menuItemRepository.findByEnabledTrueOrderByDisplayOrderAscIdAsc();
-        Map<Long, MenuItem> byId = items.stream()
-                .filter(item -> item.getId() != null)
-                .collect(Collectors.toMap(MenuItem::getId, item -> item, (first, second) -> first));
-
         Map<String, SidebarSection> sections = new LinkedHashMap<>();
         for (MenuItem item : items)
         {
