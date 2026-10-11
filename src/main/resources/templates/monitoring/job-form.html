@@ -463,6 +463,23 @@
                 </div>
 
 
+                <!-- Approved SHA-256 -->
+                <div class="col-md-8">
+                    <label for="approvedSha256" class="form-label">Approved SHA-256</label>
+                    <input type="text"
+                           id="approvedSha256"
+                           th:field="*{approvedSha256}"
+                           class="form-control form-control-code"
+                           maxlength="64"
+                           pattern="[a-fA-F0-9]{64}"
+                           placeholder="64-character SHA-256 hash"
+                           autocomplete="off"
+                           aria-describedby="approvedSha256Help">
+                    <div id="approvedSha256Help" class="form-text">
+                        Required for script execution. Recalculate and update this value whenever the approved script changes.
+                    </div>
+                </div>
+
                 <!-- Working Directory -->
 
                 <div class="col-md-4">
