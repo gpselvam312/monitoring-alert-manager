@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('Menu', ~{::content})}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Menu</h1>
+            <p class="page-subtitle">Manage the sidebar menu entries and their visibility.</p>
+        </div>
+        <div class="page-header-actions">
+            <a th:href="@{/administration/menus/new}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Add Menu
+            </a>
+        </div>
+    </div>
+
+    <div th:if="${successMessage}" class="alert alert-success" role="status" th:text="${successMessage}">Saved.</div>
+    <div class="app-card">
+        <div class="app-card-body p-0" id="menusTableWrapper">
+            <div th:replace="~{fragments/data-table :: controls('menuSearch','menuPageSize','Search menus...',${pageSize},${search})}"></div>
+            <div id="menusTableContainer">
+                <div th:fragment="menusTable">
+                    <div th:if="${menuPage.totalElements == 0}" class="empty-state">
+                        <div class="empty-state-icon"><i class="bi bi-list-nested"></i></div>
+                        <h6 th:text="${search != null and !search.isBlank() ? 'No menu items match your search' : 'No menu items configured'}">No menu items configured</h6>
+                        <p>Menu entries control the navigation displayed in the sidebar.</p>
+                        <a th:unless="${search != null and !search.isBlank()}" th:href="@{/administration/menus/new}" class="btn btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i>Add Menu
+                        </a>
+                    </div>
+                    <div th:if="${menuPage.totalElements > 0}" class="table-responsive">
+                        <table class="table app-table align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th><button type="button" class="table-sort" data-config="menuTableConfig" data-sort="key" onclick="DataTable.sort(this)">Menu Key <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                                <th><button type="button" class="table-sort" data-config="menuTableConfig" data-sort="name" onclick="DataTable.sort(this)">Menu Name <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                                <th>URL</th>
+                                <th>Parent Menu</th>
+                                <th><button type="button" class="table-sort" data-config="menuTableConfig" data-sort="order" onclick="DataTable.sort(this)">Order <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                                <th>Required Permission</th>
+                                <th><button type="button" class="table-sort" data-config="menuTableConfig" data-sort="enabled" onclick="DataTable.sort(this)">Status <i class="bi bi-caret-up-fill table-sort-icon"></i></button></th>
+                                <th class="text-end table-actions-column">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="menu : ${menuPage.content}">
+                                <td><div class="table-primary-text" th:text="${menu.menuKey}">DASHBOARD</div></td>
+                                <td>
+                                    <div class="table-primary-text" th:text="${menu.menuName}">Dashboard</div>
+                                    <span th:if="${menu.icon != null and !menu.icon.isBlank()}" class="table-secondary-text" th:text="${menu.icon}">bi-grid</span>
+                                </td>
+                                <td><code th:if="${menu.url != null and !menu.url.isBlank()}" th:text="${menu.url}">/dashboard</code><span th:unless="${menu.url != null and !menu.url.isBlank()}" class="text-muted">Grouping menu</span></td>
+                                <td><span th:if="${menu.parentId != null}" th:text="${parentNames[menu.parentId]}">Administration</span><span th:unless="${menu.parentId != null}" class="text-muted">Top level</span></td>
+                                <td th:text="${menu.displayOrder}">10</td>
+                                <td><code th:if="${menu.requiredPermission != null and !menu.requiredPermission.isBlank()}" th:text="${menu.requiredPermission}">MONITORING_VIEW</code><span th:unless="${menu.requiredPermission != null and !menu.requiredPermission.isBlank()}" class="text-muted">—</span></td>
+                                <td>
+                                    <span th:if="${menu.enabled}" class="status-badge status-healthy"><span class="status-dot"></span>ENABLED</span>
+                                    <span th:unless="${menu.enabled}" class="status-badge status-disabled"><span class="status-dot"></span>DISABLED</span>
+                                </td>
+                                <td class="text-end table-actions-column">
+                                    <div class="table-actions table-actions-text">
+                                        <a th:href="@{/administration/menus/{id}/edit(id=${menu.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i><span>Edit</span></a>
+                                        <form method="post" th:action="@{/administration/menus/{id}/toggle(id=${menu.id})}">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning" th:title="${menu.enabled ? 'Disable' : 'Enable'}">
+                                                <i th:class="${menu.enabled ? 'bi bi-pause-circle' : 'bi bi-play-circle'}"></i>
+                                                <span th:text="${menu.enabled ? 'Disable' : 'Enable'}">Disable</span>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="table-actions table-actions-icons">
+                                        <a th:href="@{/administration/menus/{id}/edit(id=${menu.id})}" class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                                        <form method="post" th:action="@{/administration/menus/{id}/toggle(id=${menu.id})}">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning" th:title="${menu.enabled ? 'Disable' : 'Enable'}" th:attr="aria-label=${menu.enabled ? 'Disable' : 'Enable'}">
+                                                <i th:class="${menu.enabled ? 'bi bi-pause-circle' : 'bi bi-play-circle'}"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div th:replace="~{fragments/data-table :: pagination(${menuPage},${pageSize},'menuTableConfig')}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script th:inline="javascript">
+        window.menuTableConfig = {
+            endpoint: '/administration/menus/table',
+            searchId: 'menuSearch',
+            clearSearchId: 'clear-menuSearch',
+            pageSizeId: 'menuPageSize',
+            containerId: 'menusTableContainer',
+            sort: 'order',
+            direction: 'asc'
+        };
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.DataTable) {
+                window.DataTable.init('menuTableConfig', window.menuTableConfig);
+                window.DataTable.updateCompactActions(window.menuTableConfig);
+            }
+        });
+    </script>
+</div>
+</body>
+</html>

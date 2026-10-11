@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Menu')}"></head>
+<body th:attr="data-theme=${applicationTheme}">
+<div class="app-shell">
+    <div th:replace="~{fragments/sidebar :: sidebar}"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <main class="app-main">
+        <div th:replace="~{fragments/header :: header('Menu')}"></div>
+        <div class="app-content">
+            <div class="page-header">
+                <div class="page-header-left">
+                    <div class="page-header-icon"><i class="bi bi-list-nested"></i></div>
+                    <div><h1 class="page-title" th:text="${pageTitle}">Menu</h1><p class="page-subtitle">Configure a sidebar menu entry.</p></div>
+                </div>
+                <div class="page-header-actions"><a th:href="@{/administration/menus}" class="btn btn-outline-secondary">Back to Menu</a></div>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">Unable to save menu</div>
+            <div class="app-card">
+                <div class="app-card-header"><h2 class="app-card-title">Menu Details</h2></div>
+                <div class="app-card-body">
+                    <form th:action="@{/administration/menus/save}" method="post">
+                        <input type="hidden" name="id" th:value="${menuItem.id}">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label for="menuKey" class="form-label">Menu Key</label>
+                                <input id="menuKey" name="menuKey" class="form-control" maxlength="80" required pattern="[A-Za-z][A-Za-z0-9_]{1,79}" th:value="${menuItem.menuKey}">
+                                <div class="form-text">Unique key using letters, numbers, and underscores. It is stored in uppercase.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="menuName" class="form-label">Menu Name</label>
+                                <input id="menuName" name="menuName" class="form-control" maxlength="100" required th:value="${menuItem.menuName}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="url" class="form-label">URL</label>
+                                <input id="url" name="url" class="form-control" maxlength="500" placeholder="/administration/example" th:value="${menuItem.url}">
+                                <div class="form-text">Use a local application path. Leave blank for a grouping menu.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="icon" class="form-label">Bootstrap Icon Class</label>
+                                <input id="icon" name="icon" class="form-control" maxlength="80" placeholder="bi-grid" th:value="${menuItem.icon}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="parentId" class="form-label">Parent Menu</label>
+                                <select id="parentId" name="parentId" class="form-select">
+                                    <option value="">Top level</option>
+                                    <option th:each="parent : ${parentMenus}" th:value="${parent.id}" th:selected="${menuItem.parentId != null and menuItem.parentId.equals(parent.id)}" th:text="${parent.menuName}">Administration</option>
+                                </select>
+                                <div class="form-text">Child entries appear under the selected grouping menu.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="displayOrder" class="form-label">Display Order</label>
+                                <input id="displayOrder" name="displayOrder" type="number" class="form-control" min="0" required th:value="${menuItem.displayOrder}">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="requiredPermission" class="form-label">Required Permission</label>
+                                <input id="requiredPermission" name="requiredPermission" class="form-control" maxlength="100" placeholder="SYSTEM_CONFIG" th:value="${menuItem.requiredPermission}">
+                                <div class="form-text">Must match an authority granted to the signed-in user.</div>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="form-check form-switch mt-4">
+                                    <input id="enabled" name="enabled" type="checkbox" value="true" class="form-check-input" th:checked="${menuItem.enabled}">
+                                    <label for="enabled" class="form-check-label">Enabled</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <a th:href="@{/administration/menus}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary save-action-button"><i class="bi bi-check-lg me-1"></i><span>Save Menu</span></button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<div th:replace="~{fragments/footer :: footer}"></div>
+<div th:replace="~{fragments/scripts :: scripts}"></div>
+</body>
+</html>

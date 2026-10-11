@@ -651,6 +651,19 @@ body {
     gap: 12px;
     padding: 16px 18px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: inherit;
+    text-decoration: none;
+}
+
+.sidebar-brand:hover,
+.sidebar-brand:focus {
+    color: inherit;
+    text-decoration: none;
+}
+
+.sidebar-brand:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: -3px;
 }
 
 .sidebar-logo {
