@@ -146,6 +146,7 @@
             case "GREEN":
             case "HEALTHY":
             case "SUCCESS":
+            case "UP":
                 return "dashboard-status-green";
 
             case "YELLOW":
@@ -155,6 +156,8 @@
             case "RED":
             case "CRITICAL":
             case "FAILED":
+            case "FAILURE":
+            case "DOWN":
                 return "dashboard-status-red";
 
             default:
@@ -173,6 +176,7 @@
             case "GREEN":
             case "HEALTHY":
             case "SUCCESS":
+            case "UP":
                 return "Healthy";
 
             case "YELLOW":
@@ -182,6 +186,8 @@
             case "RED":
             case "CRITICAL":
             case "FAILED":
+            case "FAILURE":
+            case "DOWN":
                 return "Critical";
 
             case "GRAY":
@@ -201,6 +207,7 @@
             case "GREEN":
             case "HEALTHY":
             case "SUCCESS":
+            case "UP":
                 return "bi-check-circle-fill";
 
             case "YELLOW":
@@ -210,6 +217,8 @@
             case "RED":
             case "CRITICAL":
             case "FAILED":
+            case "FAILURE":
+            case "DOWN":
                 return "bi-x-circle-fill";
 
             default:
