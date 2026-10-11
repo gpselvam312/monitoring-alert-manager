@@ -33,7 +33,27 @@ The default per-request timeout is four seconds. Configure the SCRIPT job timeou
 
 1. Create a SCRIPT monitoring job using this collector.
 2. Configure the script path, command arguments, execution timeout, and environment credentials.
-3. Add a dashboard widget with type Elasticsearch and data source Monitoring Job, then select the collector job.
+3. Add a dashboard widget with type Elasticsearch and data source Monitoring Job, then select the collector job. This dedicated widget type is intentional because it renders a cluster overview and three-column node cards rather than a standard table.
 4. Configure refresh/scheduling according to the desired monitoring cadence.
 
 Cluster health is shown as GREEN, YELLOW, RED, or UNKNOWN from the cluster-health API. Missing node metrics are not treated as healthy. The three node cards show UP, WARNING, CRITICAL, or UNKNOWN based on the collected metrics and configured thresholds.
+
+## Reusable TABLE widget
+
+Use the existing `TABLE` widget when the output should be tabular. Search, sorting, and pagination are shared table features and can be controlled in the JSON Field / Column Configuration. For example:
+
+~~~json
+{
+  "rowPath": "data.nodes",
+  "columns": [
+    { "field": "name", "label": "Node", "sortable": true, "searchable": true },
+    { "field": "cpuPercent", "label": "CPU", "format": "percent", "sortable": true },
+    { "field": "status", "label": "Status", "format": "status", "searchable": true }
+  ],
+  "sorting": { "enabled": true, "defaultField": "cpuPercent", "direction": "desc" },
+  "search": { "enabled": true, "placeholder": "Search Elasticsearch nodes..." },
+  "pagination": { "enabled": true, "pageSize": 10 }
+}
+~~~
+
+The `columns` list controls visible columns and their order. Supported common options include `field` (or `key`), `label`, `visible`, `sortable`, `searchable`, and `format`. Search and pagination are enabled by default; set their `enabled` property to `false` to disable them. Sorting can be disabled globally or for an individual column.
