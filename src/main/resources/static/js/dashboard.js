@@ -1746,6 +1746,7 @@
     function renderTableWidget(result, widget)
     {
         const config = parseWidgetFieldConfig(widget);
+        if (String(config.renderer || '').toUpperCase() === 'SUMMARY_TABLE' && window.SummaryTableWidget) return window.SummaryTableWidget.render(result, widget);
         if (String(config.renderer || '').toUpperCase() === 'SERVER_HEALTH') return renderServerHealthCards(result, widget, config);
         if (String(config.renderer || '').toUpperCase() === 'KAFKA_CONSUMER_HEALTH') return renderKafkaConsumerHealthWidget(result, widget);
         let columns = !config.rowPath && Array.isArray(result.columns)
@@ -2132,6 +2133,13 @@
             String(widget.widgetType || "")
                 .toUpperCase();
 
+        const fieldConfig = parseWidgetFieldConfig(widget);
+        const isSummaryTable = widgetType === "TABLE" && String(fieldConfig.renderer || "").toUpperCase() === "SUMMARY_TABLE";
+        const summaryHeader = fieldConfig.header && typeof fieldConfig.header === "object" ? fieldConfig.header : {};
+        const hideWidgetHeader = isSummaryTable && summaryHeader.enabled === false;
+        const widgetTitle = isSummaryTable && summaryHeader.title ? summaryHeader.title : (widget.name || "Widget");
+        const widgetDescription = isSummaryTable && Object.prototype.hasOwnProperty.call(summaryHeader, "description")
+            ? summaryHeader.description : widget.description;
 
         let valueHtml = "";
 
@@ -2397,7 +2405,7 @@
                 getWidgetSizeClass((widgetType === "SYSTEM_METRICS" || widgetType === "ELASTICSEARCH") ? "FULL" : widget.size) +
             '">' +
 
-                '<div class="dashboard-widget h-100">' +
+                '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
 
 
                     '<div class="dashboard-widget-header">' +
@@ -2422,18 +2430,17 @@
                                 '<h5 class="dashboard-widget-title">' +
 
                                     escapeHtml(
-                                        widget.name ||
-                                        "Widget"
+                                        widgetTitle
                                     ) +
 
                                 '</h5>' +
 
                                 (
-                                    widget.description
+                                    widgetDescription
                                         ? (
                                             '<span class="dashboard-widget-description" title="' +
-                                                escapeHtml(widget.description) + '">' +
-                                                escapeHtml(widget.description) +
+                                                escapeHtml(widgetDescription) + '">' +
+                                                escapeHtml(widgetDescription) +
                                             '</span>'
                                         )
                                         : ""
