@@ -130,6 +130,12 @@ public class StreamingJobService
         return views;
     }
 
+    public boolean hasActiveRun(Long jobId)
+    {
+        ClaimRow claim = readClaim(jobId);
+        return claim != null && isActiveStatus(claim.status);
+    }
+
     public void start(Long jobId, String username)
     {
         MonitoringJob job = jobRepository.findByIdForDetails(jobId)
