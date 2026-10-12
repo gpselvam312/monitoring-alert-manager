@@ -31,21 +31,47 @@
 
     function getRows(result, config) {
         const payload = result && result.payload;
-        let configured = config.rowPath ? path(payload, config.rowPath) : undefined;
-        // Script JSON may already use an envelope such as {"payload":{"hosts":[...]}}.
-        // DashboardService preserves that envelope as result.payload, so retry the
-        // configured rowPath inside the nested payload before falling back to discovery.
-        if (!Array.isArray(configured) && payload && payload.payload && typeof payload.payload === "object") {
-            configured = config.rowPath ? path(payload.payload, config.rowPath) : undefined;
+        const validRows = rows => Array.isArray(rows)
+            ? rows.filter(row => row && typeof row === "object" && !Array.isArray(row))
+            : null;
+
+        // DashboardService wraps script output as result.payload.data, while the
+        // script itself can return an envelope such as {"payload":{"hosts":[...]}}.
+        // Try the configured rowPath against each supported envelope without
+        // changing the mapping saved by the user.
+        if (config.rowPath) {
+            const candidates = [
+                payload,
+                payload && payload.data,
+                payload && payload.payload,
+                payload && payload.data && payload.data.payload,
+                payload && payload.data && payload.data.data
+            ];
+            for (const candidate of candidates) {
+                const rows = validRows(path(candidate, config.rowPath));
+                if (rows) return rows;
+            }
         }
-        if (Array.isArray(configured)) return configured.filter(row => row && typeof row === "object" && !Array.isArray(row));
-        if (Array.isArray(payload)) return payload.filter(row => row && typeof row === "object" && !Array.isArray(row));
-        if (Array.isArray(result && result.rows)) return result.rows;
-        const data = payload && Object.prototype.hasOwnProperty.call(payload, "data") ? payload.data : payload;
-        if (Array.isArray(data)) return data.filter(row => row && typeof row === "object" && !Array.isArray(row));
-        if (data && typeof data === "object") {
-            const arrays = Object.values(data).filter(value => Array.isArray(value) && value.some(row => row && typeof row === "object"));
-            if (arrays.length) return arrays[0].filter(row => row && typeof row === "object" && !Array.isArray(row));
+
+        const directPayloadRows = validRows(payload);
+        if (directPayloadRows) return directPayloadRows;
+        const resultRows = validRows(result && result.rows);
+        if (resultRows) return resultRows;
+
+        // Fallback discovery supports unconfigured sources, including one or more
+        // standard data/payload envelopes around an array of row objects.
+        const queue = [payload];
+        const visited = new Set();
+        while (queue.length) {
+            const current = queue.shift();
+            if (!current || typeof current !== "object" || visited.has(current)) continue;
+            visited.add(current);
+            const rows = validRows(current);
+            if (rows) return rows;
+            if (Array.isArray(current)) continue;
+            ["data", "payload", "rows", "results", "items", "hosts"].forEach(key => {
+                if (current[key] && typeof current[key] === "object") queue.push(current[key]);
+            });
         }
         return [];
     }
