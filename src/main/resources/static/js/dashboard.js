@@ -318,6 +318,7 @@
 	            return "bi-speedometer2";
 
 	        case "TABLE":
+	        case "SUMMARY_TABLE":
 	            return "bi-table";
 
 	        case "CHART":
@@ -2134,7 +2135,7 @@
                 .toUpperCase();
 
         const fieldConfig = parseWidgetFieldConfig(widget);
-        const isSummaryTable = widgetType === "TABLE" && String(fieldConfig.renderer || "").toUpperCase() === "SUMMARY_TABLE";
+        const isSummaryTable = widgetType === "SUMMARY_TABLE" || (widgetType === "TABLE" && String(fieldConfig.renderer || "").toUpperCase() === "SUMMARY_TABLE");
         const summaryHeader = fieldConfig.header && typeof fieldConfig.header === "object" ? fieldConfig.header : {};
         const hideWidgetHeader = isSummaryTable && summaryHeader.enabled === false;
         const widgetTitle = isSummaryTable && summaryHeader.title ? summaryHeader.title : (widget.name || "Widget");
@@ -2321,6 +2322,12 @@
         {
             widgetContentHtml = renderElasticsearchWidget(result, widget, parseWidgetFieldConfig(widget));
         }
+        else if (widgetType === "SUMMARY_TABLE")
+        {
+            widgetContentHtml = window.SummaryTableWidget
+                ? window.SummaryTableWidget.render(result, widget)
+                : '<div class="text-muted small p-3">Summary Table renderer is unavailable.</div>';
+        }
         else if (widgetType === "TABLE")
         {
             widgetContentHtml =
@@ -2402,7 +2409,7 @@
         return (
 
             '<div class="' +
-                getWidgetSizeClass((widgetType === "SYSTEM_METRICS" || widgetType === "ELASTICSEARCH") ? "FULL" : widget.size) +
+                getWidgetSizeClass((widgetType === "SYSTEM_METRICS" || widgetType === "ELASTICSEARCH" || widgetType === "SUMMARY_TABLE") ? "FULL" : widget.size) +
             '">' +
 
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
