@@ -237,15 +237,25 @@
             cards.push({ label, value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field, filterType: "field" });
         });
         if (!cards.length) return "";
-        return '<div class="summary-table-cards dashboard-stat-metrics">' + cards.map(card => {
+        return '<div class="server-health-summary summary-table-cards">' + cards.map(card => {
             const active = state.cardFilter && state.cardFilter.type === card.filterType
                 && state.cardFilter.field === card.filterField;
-            return '<button type="button" class="dashboard-stat-metric summary-table-card ' + esc(card.cls || "") +
-                (active ? ' is-selected' : '') + '" data-card-filter-type="' + esc(card.filterType) +
-                '" data-card-filter-field="' + esc(card.filterField || '') + '" aria-pressed="' + Boolean(active) + '">' +
-                '<span class="dashboard-stat-metric-label summary-table-card-label">' + esc(card.label) + '</span>' +
-                '<span class="dashboard-stat-metric-value summary-table-card-value">' + esc(display(card.value)) +
-                '</span></button>';
+            const status = card.filterType === "overall" ? "total"
+                : String(card.cls || "").includes("critical") ? "critical"
+                : String(card.cls || "").includes("warning") ? "warning"
+                : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
+            const icon = status === "total" ? "bi-hdd-rack"
+                : status === "healthy" ? "bi-check-circle"
+                : status === "warning" ? "bi-exclamation-triangle"
+                : status === "critical" ? "bi-x-circle" : "bi-diagram-3";
+            return '<button type="button" class="server-health-summary-item server-health-summary-' + status +
+                ' server-health-summary-filter summary-table-card' + (active ? ' is-active' : '') +
+                '" data-card-filter-type="' + esc(card.filterType) +
+                '" data-card-filter-field="' + esc(card.filterField || '') + '" aria-label="Filter rows by ' +
+                esc(card.label) + '" aria-pressed="' + Boolean(active) + '">' +
+                '<span><i class="bi ' + icon + '" aria-hidden="true"></i> ' + esc(card.label) + '</span>' +
+                '<strong class="summary-table-card-value">' + esc(display(card.value)) +
+                '</strong></button>';
         }).join("") + '</div>';
     }
 
@@ -324,13 +334,20 @@
             (state.page + 1) + ' / ' + pageCount + '</span><button type="button" class="btn btn-sm btn-outline-secondary summary-table-next"' + (state.page >= pageCount - 1 ? ' disabled' : '') + ' aria-label="Next page"><i class="bi bi-chevron-right"></i></button></div></div>';
         const groupableColumns = state.columns.filter(column => column.groupable !== false);
         const selectedGroupFields = Array.isArray(groupConfig.fields) ? groupConfig.fields.map(String) : [];
-        const groupSelector = groupableColumns.length ? '<div class="summary-table-controls">' +
-            '<label for="summary-table-group-by-' + esc(String(state.widget && state.widget.id || "widget")) + '">Group by</label>' +
-            '<select multiple class="form-select form-select-sm summary-table-group-by" id="summary-table-group-by-' +
-            esc(String(state.widget && state.widget.id || "widget")) + '" aria-label="Group rows by fields">' +
-            groupableColumns.map(column => '<option value="' + esc(column.field) + '"' +
-                (selectedGroupFields.includes(column.field) ? ' selected' : '') + '>' + esc(column.label) + '</option>').join("") +
-            '</select><span class="small text-muted">Select one or more fields; clear selection to remove grouping.</span></div>' : "";
+        const groupLabel = selectedGroupFields.length
+            ? selectedGroupFields.map(field => (state.columnMap.get(field) || {}).label || field).join(" → ")
+            : "Group by";
+        const groupSelector = groupableColumns.length ? '<div class="summary-table-controls"><div class="dropdown">' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle summary-table-group-toggle-menu" data-bs-toggle="dropdown" aria-expanded="false">' +
+            '<i class="bi bi-layers me-1" aria-hidden="true"></i>' + esc(groupLabel) + '</button>' +
+            '<div class="dropdown-menu p-2 summary-table-group-menu">' +
+            '<div class="small text-muted px-2 pb-2">Group rows by</div>' +
+            groupableColumns.map(column => '<label class="dropdown-item d-flex align-items-center gap-2">' +
+                '<input type="checkbox" class="form-check-input mt-0 summary-table-group-field" value="' + esc(column.field) + '"' +
+                (selectedGroupFields.includes(column.field) ? ' checked' : '') + '>' +
+                '<span>' + esc(column.label) + '</span></label>').join("") +
+            '<div class="dropdown-divider"></div><button type="button" class="dropdown-item small summary-table-group-clear">' +
+            '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>Clear grouping</button></div></div></div>' : "";
         return renderCards(state) + toolbar + groupSelector + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
     }
@@ -397,10 +414,10 @@
     });
 
     document.addEventListener("change", function (event) {
-        if (event.target.matches(".summary-table-group-by")) {
+        if (event.target.matches(".summary-table-group-field")) {
             const found = stateFor(event.target);
             if (!found || !found.state) return;
-            const selected = Array.from(event.target.selectedOptions).map(option => option.value);
+            const selected = Array.from(found.root.querySelectorAll(".summary-table-group-field:checked")).map(input => input.value);
             const state = found.state;
             state.config.details = state.config.details || {};
             state.config.details.groupBy = state.config.details.groupBy || state.config.groupBy || {};
@@ -425,9 +442,10 @@
         const sortButton = event.target.closest(".summary-table-sort");
         const groupButton = event.target.closest(".summary-table-group-toggle");
         const cardButton = event.target.closest(".summary-table-card");
+        const groupClearButton = event.target.closest(".summary-table-group-clear");
         const prev = event.target.closest(".summary-table-prev");
         const next = event.target.closest(".summary-table-next");
-        if (!sortButton && !groupButton && !cardButton && !prev && !next) return;
+        if (!sortButton && !groupButton && !cardButton && !groupClearButton && !prev && !next) return;
         const found = stateFor(event.target);
         if (!found || !found.state) return;
         const state = found.state;
@@ -444,6 +462,12 @@
             const field = sortButton.getAttribute("data-sort-field");
             if (state.sortField === field) state.sortDirection = state.sortDirection === "asc" ? "desc" : "asc";
             else { state.sortField = field; state.sortDirection = "asc"; }
+            state.page = 0;
+        } else if (groupClearButton) {
+            state.config.details = state.config.details || {};
+            state.config.details.groupBy = state.config.details.groupBy || state.config.groupBy || {};
+            state.config.details.groupBy.fields = [];
+            state.config.details.groupBy.enabled = false;
             state.page = 0;
         } else if (groupButton) {
             const id = groupButton.getAttribute("data-group-id");
