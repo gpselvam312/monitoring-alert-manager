@@ -21,3 +21,7 @@ VALUES
      'Trusted directories for SCRIPT monitoring jobs, as a JSON array of absolute directory paths. An empty array uses MONITORING_SCRIPT_ALLOWED_DIRECTORIES or the application default.',
      60)
 ON CONFLICT (setting_key) DO NOTHING;
+
+UPDATE ra_fcb.system_settings
+SET description = 'Global application theme. Supported values: orange, orange-dark, blue, blue-dark, green, purple.'
+WHERE setting_key = 'THEME';
