@@ -229,17 +229,24 @@
             } else {
                 overall = numericFields.reduce((sum, field) => sum + (totals[field] || 0), 0);
             }
-            cards.push({ label: summary.totalCard.label || "Overall Total", value: overall || 0, cls: summaryClass(overall || 0, summary.totalCard.thresholds) });
+            cards.push({ label: summary.totalCard.label || "Overall Total", value: overall || 0, cls: summaryClass(overall || 0, summary.totalCard.thresholds), filterField: null, filterType: "overall" });
         }
         const excluded = new Set(Array.isArray(summary.excludedFields) ? summary.excludedFields.map(String) : []);
         numericFields.filter(field => !excluded.has(field)).forEach(field => {
             const label = labels[field] || (state.columnMap.get(field) || {}).label || field;
-            cards.push({ label, value: totals[field], cls: summaryClass(totals[field], rules[field]) });
+            cards.push({ label, value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field, filterType: "field" });
         });
         if (!cards.length) return "";
-        return '<div class="summary-table-cards">' + cards.map(card =>
-            '<div class="summary-table-card ' + esc(card.cls || "") + '"><div class="summary-table-card-label">' + esc(card.label) +
-            '</div><div class="summary-table-card-value">' + esc(display(card.value)) + '</div></div>').join("") + '</div>';
+        return '<div class="summary-table-cards">' + cards.map(card => {
+            const active = state.cardFilter && state.cardFilter.type === card.filterType
+                && state.cardFilter.field === card.filterField;
+            return '<button type="button" class="summary-table-card ' + esc(card.cls || "") +
+                (active ? ' is-selected' : '') + '" data-card-filter-type="' + esc(card.filterType) +
+                '" data-card-filter-field="' + esc(card.filterField || '') + '" aria-pressed="' + Boolean(active) + '">' +
+                '<span class="dashboard-stat-metric-label summary-table-card-label">' + esc(card.label) + '</span>' +
+                '<span class="dashboard-stat-metric-value summary-table-card-value">' + esc(display(card.value)) +
+                '</span></button>';
+        }).join("") + '</div>';
     }
 
     function renderContent(state) {
@@ -252,6 +259,14 @@
         const sortConfig = details.sorting || config.sorting || {};
         const pageConfig = details.pagination || config.pagination || {};
         let rows = state.detailRows.slice();
+        if (state.cardFilter) {
+            if (state.cardFilter.type === "field" && state.cardFilter.field) {
+                const field = state.cardFilter.field;
+                rows = rows.filter(row => (numeric(rowValue(row, field)) || 0) > 0);
+            } else if (state.cardFilter.type === "overall") {
+                rows = rows.filter(row => state.numericFields.some(field => (numeric(rowValue(row, field)) || 0) > 0));
+            }
+        }
         if (state.search && searchConfig.enabled !== false) {
             const requested = Array.isArray(searchConfig.fields) ? searchConfig.fields.map(String) : state.columns.filter(column => column.searchable !== false).map(column => column.field);
             rows = rows.filter(row => {
@@ -307,7 +322,15 @@
             [5, 10, 20, 50, 100, pageSize].filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b).map(size => '<option value="' + size + '"' + (size === pageSize ? ' selected' : '') + '>' + size + '</option>').join("") +
             '</select></label><button type="button" class="btn btn-sm btn-outline-secondary summary-table-prev"' + (state.page <= 0 ? ' disabled' : '') + ' aria-label="Previous page"><i class="bi bi-chevron-left"></i></button><span class="small">' +
             (state.page + 1) + ' / ' + pageCount + '</span><button type="button" class="btn btn-sm btn-outline-secondary summary-table-next"' + (state.page >= pageCount - 1 ? ' disabled' : '') + ' aria-label="Next page"><i class="bi bi-chevron-right"></i></button></div></div>';
-        const groupSelector = groupConfig.enabled === true && groupFields.length ? '<div class="summary-table-grouping-label"><i class="bi bi-layers me-1"></i>Grouped by ' + groupFields.map(field => esc((state.columnMap.get(field) || {}).label || field)).join(' → ') + '</div>' : "";
+        const groupableColumns = state.columns.filter(column => column.groupable !== false);
+        const selectedGroupFields = Array.isArray(groupConfig.fields) ? groupConfig.fields.map(String) : [];
+        const groupSelector = groupableColumns.length ? '<div class="summary-table-controls">' +
+            '<label for="summary-table-group-by-' + esc(String(state.widget && state.widget.id || "widget")) + '">Group by</label>' +
+            '<select multiple class="form-select form-select-sm summary-table-group-by" id="summary-table-group-by-' +
+            esc(String(state.widget && state.widget.id || "widget")) + '" aria-label="Group rows by fields">' +
+            groupableColumns.map(column => '<option value="' + esc(column.field) + '"' +
+                (selectedGroupFields.includes(column.field) ? ' selected' : '') + '>' + esc(column.label) + '</option>').join("") +
+            '</select><span class="small text-muted">Select one or more fields; clear selection to remove grouping.</span></div>' : "";
         return renderCards(state) + toolbar + groupSelector + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
     }
@@ -332,7 +355,7 @@
             config, widget, result, columns, columnMap, detailRows, totalRow, numericFields,
             search: "", sortField: ((config.details || {}).sorting || {}).defaultField || "",
             sortDirection: String((((config.details || {}).sorting || {}).direction) || "asc").toLowerCase() === "desc" ? "desc" : "asc",
-            page: 0, collapsed: new Set()
+            page: 0, collapsed: new Set(), cardFilter: null
         };
         const groupConfig = (config.details || {}).groupBy || config.groupBy || {};
         if (groupConfig.initialState === "COLLAPSED" && Array.isArray(groupConfig.fields) && groupConfig.fields.length) {
@@ -374,6 +397,20 @@
     });
 
     document.addEventListener("change", function (event) {
+        if (event.target.matches(".summary-table-group-by")) {
+            const found = stateFor(event.target);
+            if (!found || !found.state) return;
+            const selected = Array.from(event.target.selectedOptions).map(option => option.value);
+            const state = found.state;
+            state.config.details = state.config.details || {};
+            state.config.details.groupBy = state.config.details.groupBy || state.config.groupBy || {};
+            state.config.details.groupBy.fields = selected;
+            state.config.details.groupBy.enabled = selected.length > 0;
+            state.config.details.groupBy.showAggregates = state.config.details.groupBy.showAggregates === true;
+            state.page = 0;
+            rerender(found.root, state);
+            return;
+        }
         if (!event.target.matches(".summary-table-page-size")) return;
         const found = stateFor(event.target);
         if (!found || !found.state) return;
@@ -387,13 +424,23 @@
     document.addEventListener("click", function (event) {
         const sortButton = event.target.closest(".summary-table-sort");
         const groupButton = event.target.closest(".summary-table-group-toggle");
+        const cardButton = event.target.closest(".summary-table-card");
         const prev = event.target.closest(".summary-table-prev");
         const next = event.target.closest(".summary-table-next");
-        if (!sortButton && !groupButton && !prev && !next) return;
+        if (!sortButton && !groupButton && !cardButton && !prev && !next) return;
         const found = stateFor(event.target);
         if (!found || !found.state) return;
         const state = found.state;
-        if (sortButton) {
+        if (cardButton) {
+            const type = cardButton.getAttribute("data-card-filter-type");
+            const field = cardButton.getAttribute("data-card-filter-field") || null;
+            if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field) {
+                state.cardFilter = null;
+            } else {
+                state.cardFilter = { type, field };
+            }
+            state.page = 0;
+        } else if (sortButton) {
             const field = sortButton.getAttribute("data-sort-field");
             if (state.sortField === field) state.sortDirection = state.sortDirection === "asc" ? "desc" : "asc";
             else { state.sortField = field; state.sortDirection = "asc"; }
