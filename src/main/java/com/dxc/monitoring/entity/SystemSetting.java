@@ -23,6 +23,9 @@ public class SystemSetting
     @Column(name = "description", length = 500)
     private String description;
 
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 100;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -80,6 +83,16 @@ public class SystemSetting
     public void setDescription(String description)
     {
         this.description = description;
+    }
+
+    public Integer getSortOrder()
+    {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder)
+    {
+        this.sortOrder = sortOrder;
     }
 
     public OffsetDateTime getCreatedAt()
