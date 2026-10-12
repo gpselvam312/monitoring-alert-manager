@@ -11,6 +11,8 @@
 
     <div id="executionHistoryTableContainer">
 
+        <div th:fragment="executionHistoryTable">
+
         <div th:if="${executions.totalElements == 0}"
              class="empty-state">
 
@@ -54,11 +56,11 @@
 
                     <thead>
                         <tr>
-                            <th>Started</th>
-                            <th>Completed</th>
-                            <th>Duration</th>
-                            <th>Attempt</th>
-                            <th>Execution</th>
+                            <th><button type="button" class="execution-sort-button" data-config="executionTableConfig" data-sort="startedAt" onclick="DataTable.sort(this)">Started <i class="bi bi-arrow-down-up"></i></button></th>
+                            <th><button type="button" class="execution-sort-button" data-config="executionTableConfig" data-sort="completedAt" onclick="DataTable.sort(this)">Completed <i class="bi bi-arrow-down-up"></i></button></th>
+                            <th><button type="button" class="execution-sort-button" data-config="executionTableConfig" data-sort="durationMs" onclick="DataTable.sort(this)">Duration <i class="bi bi-arrow-down-up"></i></button></th>
+                            <th><button type="button" class="execution-sort-button" data-config="executionTableConfig" data-sort="attemptNumber" onclick="DataTable.sort(this)">Attempt <i class="bi bi-arrow-down-up"></i></button></th>
+                            <th><button type="button" class="execution-sort-button" data-config="executionTableConfig" data-sort="status" onclick="DataTable.sort(this)">Execution <i class="bi bi-arrow-down-up"></i></button></th>
                             <th>Result</th>
                             <th>Action</th>
                         </tr>
@@ -181,6 +183,8 @@
 
         </div>
 
+        </div>
+
     </div>
 
 </div>
@@ -192,9 +196,9 @@
         searchId: 'executionSearch',
         clearSearchId: 'clear-executionSearch',
         pageSizeId: 'executionPageSize',
-        containerId: 'executionHistoryTableContainer'
+        containerId: 'executionHistoryTableContainer',
+        sort: 'startedAt',
+        direction: 'desc'
     };
-
-    DataTable.init(window.executionTableConfig);
 
 </script>
