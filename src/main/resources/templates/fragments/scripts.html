@@ -15,6 +15,24 @@
 
         document.addEventListener("DOMContentLoaded", function () {
 
+            // Reference-data cache is scoped to the current browser session.
+            // Clear it before logout so the next login fetches fresh values.
+            const logoutForm = document.querySelector('form[action$="/logout"]');
+            if (logoutForm) {
+                logoutForm.addEventListener("submit", function () {
+                    try {
+                        sessionStorage.removeItem("mam.dashboard.applications.v1");
+                        Object.keys(sessionStorage).filter(function (key) {
+                            return key.startsWith("mam.dashboard.environments.v1:");
+                        }).forEach(function (key) {
+                            sessionStorage.removeItem(key);
+                        });
+                    } catch (exception) {
+                        // Logout must proceed even if browser storage is unavailable.
+                    }
+                });
+            }
+
             /* =====================================================
                Data Tables
                ===================================================== */
