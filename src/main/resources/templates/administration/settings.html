@@ -48,15 +48,15 @@
                                           th:text="${setting.description != null ? setting.description : 'No description provided.'}"></span>
                                 </td>
                                 <td>
-                                    <div th:switch="${setting.dataType}">
-                                        <select th:case="'BOOLEAN'" class="form-select"
+                                    <div>
+                                        <select th:if="${setting.dataType == 'BOOLEAN'}" class="form-select"
                                                 th:id="|value_${setting.settingKey}|"
                                                 th:name="|value_${setting.settingKey}|" required>
                                             <option value="true" th:selected="${setting.settingValue.equalsIgnoreCase('true')}">Enabled / True</option>
                                             <option value="false" th:selected="${setting.settingValue.equalsIgnoreCase('false')}">Disabled / False</option>
                                         </select>
-                                        <select th:case="'STRING'" th:if="${setting.settingKey == 'THEME'}"
-                                                class="form-select" th:id="|value_${setting.settingKey}|"
+                                        <select th:if="${setting.settingKey == 'THEME'}" class="form-select"
+                                                th:id="|value_${setting.settingKey}|"
                                                 th:name="|value_${setting.settingKey}|" required>
                                             <option value="orange" th:selected="${setting.settingValue == 'orange'}">Orange</option>
                                             <option value="orange-dark" th:selected="${setting.settingValue == 'orange-dark'}">Orange Dark</option>
@@ -65,25 +65,25 @@
                                             <option value="green" th:selected="${setting.settingValue == 'green'}">Green</option>
                                             <option value="purple" th:selected="${setting.settingValue == 'purple'}">Purple</option>
                                         </select>
-                                        <textarea th:case="'JSON'" class="form-control font-monospace" rows="3"
+                                        <textarea th:if="${setting.dataType == 'JSON'}" class="form-control font-monospace" rows="3"
                                                   th:id="|value_${setting.settingKey}|"
                                                   th:name="|value_${setting.settingKey}|"
                                                   th:text="${setting.settingValue}" required></textarea>
-                                        <input th:case="'INTEGER'" type="number" class="form-control"
+                                        <input th:if="${setting.dataType == 'INTEGER'}" type="number" class="form-control"
                                                th:id="|value_${setting.settingKey}|"
                                                th:name="|value_${setting.settingKey}|"
                                                th:value="${setting.settingValue}" required>
-                                        <textarea th:case="'STRING'" th:if="${setting.settingKey == 'MAINTENANCE_MESSAGE'}"
+                                        <textarea th:if="${setting.dataType == 'STRING' and setting.settingKey == 'MAINTENANCE_MESSAGE'}"
                                                   class="form-control" rows="3" maxlength="500"
                                                   th:id="|value_${setting.settingKey}|"
                                                   th:name="|value_${setting.settingKey}|"
                                                   th:text="${setting.settingValue}" required></textarea>
-                                        <input th:case="'STRING'" th:unless="${setting.settingKey == 'THEME' or setting.settingKey == 'MAINTENANCE_MESSAGE'}"
+                                        <input th:if="${setting.dataType == 'STRING' and setting.settingKey != 'THEME' and setting.settingKey != 'MAINTENANCE_MESSAGE'}"
                                                type="text" class="form-control" maxlength="500"
                                                th:id="|value_${setting.settingKey}|"
                                                th:name="|value_${setting.settingKey}|"
                                                th:value="${setting.settingValue}" required>
-                                    </div>
+                                    </div>/div>
                                 </td>
                                 <td><span class="badge text-bg-secondary" th:text="${setting.dataType}"></span></td>
                             </tr>
