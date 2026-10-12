@@ -594,7 +594,9 @@ public class MonitoringJobController
     @GetMapping("/{id}/executions")
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
     public String executionHistory(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search, Model model)
+            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "startedAt") String sort, @RequestParam(defaultValue = "desc") String direction,
+            Model model)
     {
         if (page < 0)
         {
@@ -624,10 +626,27 @@ public class MonitoringJobController
         return "monitoring/execution-history :: executionHistory";
     }
 
+    private Sort buildExecutionSort(String sort, String direction)
+    {
+        Map<String, String> allowedFields = Map.of(
+                "startedAt", "startedAt",
+                "completedAt", "completedAt",
+                "durationMs", "durationMs",
+                "attemptNumber", "attemptNumber",
+                "status", "status");
+        String field = allowedFields.getOrDefault(sort, "startedAt");
+        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return Sort.by(sortDirection, field).and(Sort.by(Sort.Direction.DESC, "startedAt"))
+                .and(Sort.by(Sort.Direction.DESC, "id"));
+    }
+
     @GetMapping("/{id}/executions/table")
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
     public String executionHistoryTable(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search, Model model)
+            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "startedAt") String sort, @RequestParam(defaultValue = "desc") String direction,
+            Model model)
     {
         if (page < 0)
         {
@@ -654,7 +673,7 @@ public class MonitoringJobController
         model.addAttribute("resultStatuses", resultStatuses);
         model.addAttribute("jobId", id);
 
-        return "monitoring/execution-history :: executionHistory";
+        return "monitoring/execution-history :: executionHistoryTable";
     }
 
     @GetMapping("/{jobId}/executions/{executionId}")
