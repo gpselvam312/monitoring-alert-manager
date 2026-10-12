@@ -56,8 +56,8 @@
             return String(rowValue(row, totalConfig.identifyBy)).toLowerCase() === String(totalConfig.value || "TOTAL").toLowerCase();
         }
         const fields = Object.keys(row);
-        const labelField = fields.find(field => numeric(rowValue(row, field)) === null);
-        return labelField ? String(rowValue(row, labelField) || "").trim().toLowerCase() === "total" : false;
+        return fields.some(field => numeric(rowValue(row, field)) === null
+            && String(rowValue(row, field) || "").trim().toLowerCase() === "total");
     }
 
     function inferColumns(rows, configured) {
