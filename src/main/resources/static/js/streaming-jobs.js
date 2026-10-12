@@ -192,6 +192,22 @@
                 editLink.innerHTML = '<i class="bi bi-pencil"></i><span class="ms-1">Edit</span>';
                 editLink.addEventListener('click', event => event.stopPropagation());
                 textActions.appendChild(editLink);
+
+                const toggleForm = document.createElement('form');
+                toggleForm.method = 'post';
+                toggleForm.action = '/monitoring/jobs/' + encodeURIComponent(job.id) + '/toggle?mode=STREAMING';
+                toggleForm.dataset.appConfirm = job.enabled ? 'disable' : 'enable';
+                toggleForm.dataset.appActionTitle = job.enabled ? 'Disable Streaming Job' : 'Enable Streaming Job';
+                toggleForm.dataset.appConfirmText = job.enabled ? 'Disable' : 'Enable';
+                toggleForm.addEventListener('click', event => event.stopPropagation());
+                const toggleButton = document.createElement('button');
+                toggleButton.type = 'submit';
+                toggleButton.className = 'btn btn-sm btn-outline-warning';
+                toggleButton.title = job.enabled ? 'Disable' : 'Enable';
+                toggleButton.setAttribute('aria-label', toggleButton.title);
+                toggleButton.innerHTML = '<i class="bi ' + (job.enabled ? 'bi-pause-circle' : 'bi-play-circle') + '"></i><span class="ms-1">' + (job.enabled ? 'Disable' : 'Enable') + '</span>';
+                toggleForm.appendChild(toggleButton);
+                textActions.appendChild(toggleForm);
             }
             actionCell.appendChild(textActions);
 
@@ -228,6 +244,22 @@
                 editIconLink.innerHTML = '<i class="bi bi-pencil"></i>';
                 editIconLink.addEventListener('click', event => event.stopPropagation());
                 iconActions.appendChild(editIconLink);
+
+                const toggleForm = document.createElement('form');
+                toggleForm.method = 'post';
+                toggleForm.action = '/monitoring/jobs/' + encodeURIComponent(job.id) + '/toggle?mode=STREAMING';
+                toggleForm.dataset.appConfirm = job.enabled ? 'disable' : 'enable';
+                toggleForm.dataset.appActionTitle = job.enabled ? 'Disable Streaming Job' : 'Enable Streaming Job';
+                toggleForm.dataset.appConfirmText = job.enabled ? 'Disable' : 'Enable';
+                toggleForm.addEventListener('click', event => event.stopPropagation());
+                const toggleButton = document.createElement('button');
+                toggleButton.type = 'submit';
+                toggleButton.className = 'btn btn-sm btn-outline-warning';
+                toggleButton.title = job.enabled ? 'Disable' : 'Enable';
+                toggleButton.setAttribute('aria-label', toggleButton.title);
+                toggleButton.innerHTML = '<i class="bi ' + (job.enabled ? 'bi-pause-circle' : 'bi-play-circle') + '"></i>';
+                toggleForm.appendChild(toggleButton);
+                iconActions.appendChild(toggleForm);
             }
             actionCell.appendChild(iconActions);
             row.appendChild(actionCell);
