@@ -388,7 +388,7 @@
 
                                             <!-- Enable / Disable -->
                                             <form th:action="@{/monitoring/machines/{id}/toggle(id=${machine.id})}"
-                                                  method="post">
+                                                  method="post" th:data-app-confirm="${machine.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${machine.enabled ? 'Disable Machine' : 'Enable Machine'}" th:data-app-action-message="${machine.enabled ? 'Disable this machine?' : 'Enable this machine?'}" th:data-app-confirm-text="${machine.enabled ? 'Disable' : 'Enable'}">
 
                                                 <button type="submit"
                                                         class="btn btn-sm btn-outline-warning"
@@ -476,7 +476,7 @@
 
                                             <!-- Enable / Disable -->
                                             <form th:action="@{/monitoring/machines/{id}/toggle(id=${machine.id})}"
-                                                  method="post">
+                                                  method="post" th:data-app-confirm="${machine.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${machine.enabled ? 'Disable Machine' : 'Enable Machine'}" th:data-app-action-message="${machine.enabled ? 'Disable this machine?' : 'Enable this machine?'}" th:data-app-confirm-text="${machine.enabled ? 'Disable' : 'Enable'}">
 
                                                 <button type="submit"
                                                         class="btn btn-sm btn-outline-warning"

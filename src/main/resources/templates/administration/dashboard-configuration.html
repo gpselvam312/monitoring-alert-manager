@@ -295,7 +295,7 @@
 
 
                                         <form th:action="@{/administration/dashboard/tabs/toggle}"
-                                              method="post">
+                                              method="post" th:data-app-confirm="${tab.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${tab.enabled ? 'Disable Dashboard' : 'Enable Dashboard'}" th:data-app-action-message="${tab.enabled ? 'Disable this dashboard?' : 'Enable this dashboard?'}" th:data-app-confirm-text="${tab.enabled ? 'Disable' : 'Enable'}">
 
                                             <input type="hidden"
                                                    name="id"
@@ -365,7 +365,7 @@
 
 
                                         <form th:action="@{/administration/dashboard/tabs/toggle}"
-                                              method="post">
+                                              method="post" th:data-app-confirm="${tab.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${tab.enabled ? 'Disable Dashboard' : 'Enable Dashboard'}" th:data-app-action-message="${tab.enabled ? 'Disable this dashboard?' : 'Enable this dashboard?'}" th:data-app-confirm-text="${tab.enabled ? 'Disable' : 'Enable'}">
 
                                             <input type="hidden"
                                                    name="id"

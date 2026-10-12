@@ -39,7 +39,7 @@
                             <td class="text-end table-actions-column">
                                 <div class="table-actions table-actions-text">
                                     <a th:href="@{/administration/users/{id}/edit(id=${user.id})}" class="btn btn-sm btn-outline-primary" title="Edit User" aria-label="Edit User"><i class="bi bi-pencil"></i><span class="ms-1">Edit</span></a>
-                                    <form th:unless="${platformAdminIds.contains(user.id)}" th:action="@{/administration/users/{id}/toggle(id=${user.id})}" method="post">
+                                    <form th:unless="${platformAdminIds.contains(user.id)}" th:action="@{/administration/users/{id}/toggle(id=${user.id})}" method="post" th:data-app-confirm="${user.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${user.enabled ? 'Disable User' : 'Enable User'}" th:data-app-action-message="${user.enabled ? 'Disable this user?' : 'Enable this user?'}" th:data-app-confirm-text="${user.enabled ? 'Disable' : 'Enable'}">
                                         <button type="submit" class="btn btn-sm btn-outline-secondary" th:title="${user.enabled ? 'Deactivate User' : 'Activate User'}" th:attr="aria-label=${user.enabled ? 'Deactivate User' : 'Activate User'}">
                                             <i th:if="${user.enabled}" class="bi bi-person-dash"></i><i th:unless="${user.enabled}" class="bi bi-person-check"></i><span class="ms-1" th:text="${user.enabled ? 'Deactivate' : 'Activate'}">Deactivate</span>
                                         </button>
@@ -48,7 +48,7 @@
                                 </div>
                                 <div class="table-actions table-actions-icons">
                                     <a th:href="@{/administration/users/{id}/edit(id=${user.id})}" class="btn btn-sm btn-outline-primary" title="Edit User" aria-label="Edit User"><i class="bi bi-pencil"></i></a>
-                                    <form th:unless="${platformAdminIds.contains(user.id)}" th:action="@{/administration/users/{id}/toggle(id=${user.id})}" method="post">
+                                    <form th:unless="${platformAdminIds.contains(user.id)}" th:action="@{/administration/users/{id}/toggle(id=${user.id})}" method="post" th:data-app-confirm="${user.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${user.enabled ? 'Disable User' : 'Enable User'}" th:data-app-action-message="${user.enabled ? 'Disable this user?' : 'Enable this user?'}" th:data-app-confirm-text="${user.enabled ? 'Disable' : 'Enable'}">
                                         <button type="submit" class="btn btn-sm btn-outline-secondary" th:title="${user.enabled ? 'Deactivate User' : 'Activate User'}" th:attr="aria-label=${user.enabled ? 'Deactivate User' : 'Activate User'}"><i th:if="${user.enabled}" class="bi bi-person-dash"></i><i th:unless="${user.enabled}" class="bi bi-person-check"></i></button>
                                     </form>
                                     <button th:if="${platformAdminIds.contains(user.id)}" type="button" class="btn btn-sm btn-outline-secondary" disabled title="Platform administrator cannot be deactivated" aria-label="Platform administrator cannot be deactivated"><i class="bi bi-person-dash"></i></button>

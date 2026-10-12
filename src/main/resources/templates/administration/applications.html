@@ -252,7 +252,7 @@
 									
 									    <!-- Enable / Disable -->
 									    <form th:action="@{/administration/applications/{id}/toggle(id=${appName.id})}"
-									          method="post">
+									          method="post" th:data-app-confirm="${appName.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${appName.enabled ? 'Disable Application' : 'Enable Application'}" th:data-app-action-message="${appName.enabled ? 'Disable this application?' : 'Enable this application?'}" th:data-app-confirm-text="${appName.enabled ? 'Disable' : 'Enable'}">
 									
 									        <button type="submit"
 									                class="btn btn-sm btn-outline-warning"
@@ -313,7 +313,7 @@
 									
 									    <!-- Enable / Disable -->
 									    <form th:action="@{/administration/applications/{id}/toggle(id=${appName.id})}"
-									          method="post">
+									          method="post" th:data-app-confirm="${appName.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${appName.enabled ? 'Disable Application' : 'Enable Application'}" th:data-app-action-message="${appName.enabled ? 'Disable this application?' : 'Enable this application?'}" th:data-app-confirm-text="${appName.enabled ? 'Disable' : 'Enable'}">
 									
 									        <button type="submit"
 									                class="btn btn-sm btn-outline-warning"
