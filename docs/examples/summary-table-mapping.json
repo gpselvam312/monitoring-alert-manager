@@ -1,0 +1,170 @@
+{
+  "header": {
+    "enabled": true,
+    "title": "GDS Connection Counts",
+    "description": "Connection counts by machine and partner port"
+  },
+  "rowPath": "hosts",
+  "labels": {
+    "7889": "7889 · f1",
+    "7890": "7890 · eseam",
+    "7891": "7891 · 1a",
+    "7892": "7892 · shb",
+    "7893": "7893 · 1u",
+    "7894": "7894 · 1g",
+    "7895": "7895 · 1p",
+    "7896": "7896 · 0a",
+    "7897": "7897 · 1s",
+    "7898": "7898 · 1v",
+    "7899": "7899 · sha"
+  },
+  "summary": {
+    "enabled": true,
+    "excludedFields": [
+      "Machine"
+    ],
+    "totalCard": {
+      "enabled": true,
+      "label": "Overall Connections"
+    },
+    "totalRow": {
+      "mode": "AUTHORITATIVE_ROW",
+      "identifyBy": "Machine",
+      "value": "Total"
+    }
+  },
+  "details": {
+    "enabled": true,
+    "columns": [
+      {
+        "field": "Machine",
+        "label": "Machine",
+        "visible": true,
+        "sortable": true,
+        "groupable": true,
+        "searchable": true
+      },
+      {
+        "field": "7889",
+        "label": "7889 (f1)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7890",
+        "label": "7890 (eseam)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7891",
+        "label": "7891 (1a)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7892",
+        "label": "7892 (shb)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7893",
+        "label": "7893 (1u)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7894",
+        "label": "7894 (1g)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7895",
+        "label": "7895 (1p)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7896",
+        "label": "7896 (0a)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7897",
+        "label": "7897 (1s)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7898",
+        "label": "7898 (1v)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      },
+      {
+        "field": "7899",
+        "label": "7899 (sha)",
+        "visible": true,
+        "sortable": true,
+        "groupable": false,
+        "searchable": false
+      }
+    ],
+    "search": {
+      "enabled": true,
+      "placeholder": "Search machine...",
+      "fields": [
+        "Machine"
+      ]
+    },
+    "sorting": {
+      "enabled": true,
+      "defaultField": "Machine",
+      "direction": "asc"
+    },
+    "pagination": {
+      "enabled": true,
+      "pageSize": 10
+    },
+    "groupBy": {
+      "enabled": false,
+      "fields": [],
+      "initialState": "EXPANDED",
+      "order": "VALUE_ASC",
+      "showAggregates": true
+    },
+    "rowStatus": {
+      "enabled": false,
+      "field": "Status",
+      "mappings": {
+        "HEALTHY": "SUCCESS",
+        "WARNING": "WARNING",
+        "CRITICAL": "ERROR",
+        "UNKNOWN": "NEUTRAL"
+      }
+    }
+  }
+}
