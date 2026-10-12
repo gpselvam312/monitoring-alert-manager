@@ -616,7 +616,7 @@ public class MonitoringJobController
 
         String normalizedSearch = search == null ? "" : search.trim();
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, buildExecutionSort(sort, direction));
 
         Page<MonitoringExecution> executions = monitoringExecutionService.findByJobId(id, normalizedSearch, pageable);
 
@@ -666,7 +666,7 @@ public class MonitoringJobController
 
         String normalizedSearch = search == null ? "" : search.trim();
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, buildExecutionSort(sort, direction));
 
         Page<MonitoringExecution> executions = monitoringExecutionService.findByJobId(id, normalizedSearch, pageable);
 
