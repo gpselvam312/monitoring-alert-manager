@@ -549,10 +549,16 @@ public class MonitoringJobController
      */
     @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
     @PostMapping("/{id}/toggle")
-    public String toggleEnabled(@PathVariable Long id)
+    public String toggleEnabled(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
+        MonitoringJob job = monitoringJobService.findById(id);
+        boolean enabling = !job.isEnabled();
+        String jobName = job.getName();
+
         monitoringJobService.toggleEnabled(id);
 
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Monitoring job '" + jobName + "' was " + (enabling ? "enabled" : "disabled") + " successfully.");
         return "redirect:/monitoring/jobs";
     }
 
