@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.dxc.monitoring.entity.MonitoringJob;
+import com.dxc.monitoring.service.SystemSettingService;
 
 /**
  * Fail-closed checks for monitoring scripts. Static scanning is defense in depth,
@@ -34,18 +35,27 @@ public class ScriptSecurityValidator
             + "|(^|[;&|()\\s])\\S+\\.sh(?=\\s|$)"
             + "|(?:curl|wget)\\b[^\\n]*\\|\\s*(?:ba)?sh\\b");
 
-    private final Path[] allowedDirectories;
+    private final Path[] fallbackAllowedDirectories;
+    private final SystemSettingService systemSettingService;
 
     public ScriptSecurityValidator(
-            @Value("${monitoring.security.script.allowed-directories:${user.dir}/scripts}") String allowedDirectories)
+            @Value("${monitoring.security.script.allowed-directories:${user.dir}/scripts}") String allowedDirectories,
+            SystemSettingService systemSettingService)
     {
-        this.allowedDirectories = Arrays.stream(allowedDirectories.split(","))
-                .map(String::trim)
-                .filter(value -> !value.isBlank())
-                .map(Path::of)
-                .map(Path::toAbsolutePath)
-                .map(Path::normalize)
-                .toArray(Path[]::new);
+        this.fallbackAllowedDirectories = toPaths(Arrays.asList(allowedDirectories.split(",")));
+        this.systemSettingService = systemSettingService;
+    }
+
+    private Path[] toPaths(java.util.List<String> directories)
+    {
+        return directories.stream().map(String::trim).filter(value -> !value.isBlank())
+                .map(Path::of).map(Path::toAbsolutePath).map(Path::normalize).toArray(Path[]::new);
+    }
+
+    private Path[] getAllowedDirectories()
+    {
+        java.util.List<String> configured = systemSettingService.getScriptAllowedDirectories();
+        return configured.isEmpty() ? fallbackAllowedDirectories : toPaths(configured);
     }
 
     public Path validate(MonitoringJob job) throws IOException
@@ -96,7 +106,7 @@ public class ScriptSecurityValidator
 
     private Path findAllowedRoot(Path realScript) throws IOException
     {
-        for (Path configuredRoot : allowedDirectories)
+        for (Path configuredRoot : getAllowedDirectories())
         {
             if (!Files.isDirectory(configuredRoot))
                 continue;
