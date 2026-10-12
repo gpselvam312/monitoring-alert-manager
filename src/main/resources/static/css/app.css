@@ -4787,11 +4787,5 @@ textarea.form-control {
     .app-message-close { margin-right: -.3rem; }
 }
 
-/* Keep keyboard-focused flash messages visible without overriding theme colors. */
-.app-message:focus {
-    outline: 2px solid var(--theme-primary);
-    outline-offset: 3px;
-}
-
 .execution-sort-button.active { color: var(--theme-primary); }
 .execution-sort-button.active .table-sort-icon { color: var(--theme-primary); }
