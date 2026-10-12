@@ -38,7 +38,7 @@
         <form sec:authorize="hasAuthority('MONITORING_CONFIG')"
               th:action="@{/administration/environments/save}"
               th:object="${environment}"
-              method="post">
+              method="post" th:data-app-confirm="${environment.id == null ? 'save' : 'update'}" th:data-app-action-title="${environment.id == null ? 'Create Environment' : 'Update Environment'}" th:data-app-action-message="${environment.id == null ? 'Create this environment?' : 'Update this environment?'}" th:data-app-confirm-text="${environment.id == null ? 'Create' : 'Update'}">
 
             <input type="hidden" th:field="*{id}">
 

@@ -39,7 +39,7 @@
 <form sec:authorize="hasAuthority('MACHINE_CONFIG')"
       th:action="@{/monitoring/machines}"
       th:object="${machine}"
-      method="post">
+      method="post" th:data-app-confirm="${machine.id == null ? 'save' : 'update'}" th:data-app-action-title="${machine.id == null ? 'Create Machine' : 'Update Machine'}" th:data-app-action-message="${machine.id == null ? 'Create this machine?' : 'Update this machine?'}" th:data-app-confirm-text="${machine.id == null ? 'Create' : 'Update'}">
 
     <input type="hidden"
            th:field="*{id}">
