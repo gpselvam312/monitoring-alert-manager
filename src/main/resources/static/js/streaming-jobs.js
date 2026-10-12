@@ -275,12 +275,13 @@
         const form = document.createElement('form');
         form.method = 'post';
         form.action = '/monitoring/jobs/' + encodeURIComponent(job.id) + '/' + action + '?mode=STREAMING';
-        form.dataset.appConfirm = confirmation;
         if (confirmation === 'delete') {
+            form.dataset.appAction = 'delete';
             form.dataset.appActionTitle = 'Delete Streaming Job';
             form.dataset.appActionMessage = 'Are you sure you want to delete this streaming job?';
             form.dataset.appActionDescription = 'This action cannot be undone.';
         } else {
+            form.dataset.appConfirm = confirmation;
             form.dataset.appActionTitle = job.enabled ? 'Disable Streaming Job' : 'Enable Streaming Job';
             form.dataset.appConfirmText = job.enabled ? 'Disable' : 'Enable';
         }
