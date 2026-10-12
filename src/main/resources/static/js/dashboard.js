@@ -13,6 +13,31 @@
     const applicationsApiUrl = "/api/dashboard/applications";
     const environmentsApiUrl = "/api/dashboard/environments";
 
+    const APPLICATIONS_CACHE_KEY = "mam.dashboard.applications.v1";
+    const ENVIRONMENTS_CACHE_PREFIX = "mam.dashboard.environments.v1:";
+
+    function readSessionCache(key)
+    {
+        try
+        {
+            const value = sessionStorage.getItem(key);
+            if (!value) return null;
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : null;
+        }
+        catch (exception)
+        {
+            return null;
+        }
+    }
+
+    function writeSessionCache(key, value)
+    {
+        try { sessionStorage.setItem(key, JSON.stringify(value)); }
+        catch (exception) { /* Continue if browser storage is unavailable or full. */ }
+    }
+
+
 
     /*
      * ------------------------------------------------------------
@@ -3275,9 +3300,13 @@
 
     async function loadApplications()
     {
-        const response = await fetch(applicationsApiUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
-        if (!response.ok) throw new Error('Unable to load applications (' + response.status + ')');
-        const items = await response.json();
+        let items = readSessionCache(APPLICATIONS_CACHE_KEY);
+        if (!items) {
+            const response = await fetch(applicationsApiUrl, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+            if (!response.ok) throw new Error('Unable to load applications (' + response.status + ')');
+            items = await response.json();
+            writeSessionCache(APPLICATIONS_CACHE_KEY, items);
+        }
         applicationFilter.innerHTML = '';
         items.forEach(function (item) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; applicationFilter.appendChild(option); });
         applicationFilter.disabled = items.length <= 1;
@@ -3293,9 +3322,15 @@
         environmentFilter.disabled = true;
         environmentFilter.innerHTML = '';
         if (!applicationFilter.value) { showState('empty'); return; }
-        const response = await fetch(environmentsApiUrl + '?applicationId=' + encodeURIComponent(applicationFilter.value), { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
-        if (!response.ok) throw new Error('Unable to load environments (' + response.status + ')');
-        const items = await response.json();
+
+        const cacheKey = ENVIRONMENTS_CACHE_PREFIX + applicationFilter.value;
+        let items = readSessionCache(cacheKey);
+        if (!items) {
+            const response = await fetch(environmentsApiUrl + '?applicationId=' + encodeURIComponent(applicationFilter.value), { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
+            if (!response.ok) throw new Error('Unable to load environments (' + response.status + ')');
+            items = await response.json();
+            writeSessionCache(cacheKey, items);
+        }
         items.forEach(function (item) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; environmentFilter.appendChild(option); });
         if (!items.length) { dashboardData = []; showState('empty'); return; }
         const prod = items.find(function (item) { return String(item.name).toUpperCase() === 'PROD'; });
