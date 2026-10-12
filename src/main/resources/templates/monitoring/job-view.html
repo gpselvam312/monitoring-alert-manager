@@ -44,12 +44,14 @@
                   th:action="@{/monitoring/jobs/{id}/run(id=${job.id})}"
                   method="post"
                   sec:authorize="hasAuthority('MONITORING_RUN')"
+                  data-app-confirm="run"
+                  data-app-action-title="Run Monitoring Job"
+                  data-app-confirm-text="Run Now"
                   style="display: inline;">
 
                 <button type="submit"
                         class="btn btn-success"
-                        th:disabled="${!job.manualRunEnabled or !job.enabled}"
-                        onclick="return confirm('Run this monitoring job now?');">
+                        th:disabled="${!job.manualRunEnabled or !job.enabled}">
 
                     <i class="bi bi-play-fill me-1"></i>
                     Run Now
