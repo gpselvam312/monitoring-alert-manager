@@ -244,16 +244,12 @@
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
-            const icon = status === "total" ? "bi-hdd-rack"
-                : status === "healthy" ? "bi-check-circle"
-                : status === "warning" ? "bi-exclamation-triangle"
-                : status === "critical" ? "bi-x-circle" : "bi-diagram-3";
             return '<button type="button" class="server-health-summary-item server-health-summary-' + status +
                 ' server-health-summary-filter summary-table-card' + (active ? ' is-active' : '') +
                 '" data-card-filter-type="' + esc(card.filterType) +
                 '" data-card-filter-field="' + esc(card.filterField || '') + '" aria-label="Filter rows by ' +
                 esc(card.label) + '" aria-pressed="' + Boolean(active) + '">' +
-                '<span><i class="bi ' + icon + '" aria-hidden="true"></i> ' + esc(card.label) + '</span>' +
+                '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
                 '<strong class="summary-table-card-value">' + esc(display(card.value)) +
                 '</strong></button>';
         }).join("") + '</div>';
@@ -348,7 +344,9 @@
                 '<span>' + esc(column.label) + '</span></label>').join("") +
             '<div class="dropdown-divider"></div><button type="button" class="dropdown-item small summary-table-group-clear">' +
             '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>Clear grouping</button></div></div></div>' : "";
-        return renderCards(state) + toolbar + groupSelector + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
+        const tableControls = toolbar || groupSelector
+            ? '<div class="summary-table-control-row">' + toolbar + groupSelector + '</div>' : "";
+        return renderCards(state) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
     }
 
