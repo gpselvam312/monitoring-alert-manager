@@ -4673,6 +4673,7 @@ textarea.form-control {
     flex-direction: column;
     gap: .75rem;
     width: 100%;
+    max-width: 720px;
     min-width: 0;
     margin: 0 0 1rem;
 }
