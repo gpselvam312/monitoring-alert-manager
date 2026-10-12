@@ -50,3 +50,101 @@
 .summary-table-card.is-active { outline:2px solid var(--theme-primary, var(--bs-primary)); outline-offset:1px; }
 .summary-table-controls .dropdown-menu { min-width:220px; max-height:300px; overflow-y:auto; }
 .summary-table-group-menu .dropdown-item { cursor:pointer; }
+
+
+/* Summary Table: align search and grouping controls on one row. */
+.summary-table-control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin: .5rem 0 .75rem;
+}
+.summary-table-control-row .summary-table-toolbar {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+}
+.summary-table-control-row .summary-table-search {
+    width: 100%;
+    max-width: 360px;
+}
+.summary-table-control-row .summary-table-controls {
+    flex: 0 0 auto;
+    margin: 0;
+}
+.summary-table-group-toggle-menu { white-space: nowrap; }
+
+/* Kafka-inspired count cards with an individual accent border per card. */
+.summary-table-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
+    gap: .65rem;
+    margin-bottom: .85rem;
+}
+.summary-table-card {
+    --summary-card-accent: var(--theme-primary, #0d6efd);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .55rem;
+    min-width: 0;
+    min-height: 86px;
+    padding: .8rem .9rem;
+    overflow: hidden;
+    text-align: left;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--summary-card-accent) 9%, var(--card-bg)), var(--card-bg) 78%);
+    border: 1px solid color-mix(in srgb, var(--summary-card-accent) 38%, var(--border-color));
+    border-left: 4px solid var(--summary-card-accent);
+    border-radius: .65rem;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.summary-table-card:nth-child(6n + 1) { --summary-card-accent: var(--theme-primary, #0d6efd); }
+.summary-table-card:nth-child(6n + 2) { --summary-card-accent: var(--success, #198754); }
+.summary-table-card:nth-child(6n + 3) { --summary-card-accent: var(--info, #0dcaf0); }
+.summary-table-card:nth-child(6n + 4) { --summary-card-accent: var(--warning, #ffc107); }
+.summary-table-card:nth-child(6n + 5) { --summary-card-accent: var(--danger, #dc3545); }
+.summary-table-card:nth-child(6n) { --summary-card-accent: #8b5cf6; }
+.summary-table-card:hover,
+.summary-table-card:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--summary-card-accent) 15%, transparent);
+}
+.summary-table-card > span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: .78rem;
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+.summary-table-card > strong {
+    align-self: flex-end;
+    color: var(--summary-card-accent);
+    font-size: 1.45rem;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+.summary-table-card.is-active {
+    border-color: var(--summary-card-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--summary-card-accent) 22%, transparent);
+}
+.summary-table-card.server-health-summary-critical { --summary-card-accent: var(--danger, #dc3545); }
+.summary-table-card.server-health-summary-warning { --summary-card-accent: var(--warning, #ffc107); }
+.summary-table-card.server-health-summary-healthy { --summary-card-accent: var(--success, #198754); }
+.summary-table-card.server-health-summary-total { --summary-card-accent: var(--theme-primary, #0d6efd); }
+
+@media (max-width: 576px) {
+    .summary-table-control-row { align-items: stretch; }
+    .summary-table-control-row .summary-table-search { max-width: none; }
+    .summary-table-control-row .summary-table-toolbar { flex: 1 1 100%; }
+    .summary-table-control-row .summary-table-controls { flex: 0 0 auto; }
+    .summary-table-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 400px) {
+    .summary-table-control-row { flex-direction: column; }
+    .summary-table-control-row .summary-table-controls { align-self: flex-end; }
+}
