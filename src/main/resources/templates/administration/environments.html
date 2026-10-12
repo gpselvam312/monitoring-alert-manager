@@ -308,7 +308,7 @@
                                         <!-- Enable / Disable -->
 
                                         <form th:action="@{/administration/environments/{id}/toggle(id=${environment.id})}"
-                                              method="post">
+                                              method="post" th:data-app-confirm="${environment.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${environment.enabled ? 'Disable Environment' : 'Enable Environment'}" th:data-app-action-message="${environment.enabled ? 'Disable this environment?' : 'Enable this environment?'}" th:data-app-confirm-text="${environment.enabled ? 'Disable' : 'Enable'}">
 
                                             <button type="submit"
                                                     class="btn btn-sm btn-outline-warning"
@@ -378,7 +378,7 @@
                                         <!-- Enable / Disable -->
 
                                         <form th:action="@{/administration/environments/{id}/toggle(id=${environment.id})}"
-                                              method="post">
+                                              method="post" th:data-app-confirm="${environment.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${environment.enabled ? 'Disable Environment' : 'Enable Environment'}" th:data-app-action-message="${environment.enabled ? 'Disable this environment?' : 'Enable this environment?'}" th:data-app-confirm-text="${environment.enabled ? 'Disable' : 'Enable'}">
 
                                             <button type="submit"
                                                     class="btn btn-sm btn-outline-warning"

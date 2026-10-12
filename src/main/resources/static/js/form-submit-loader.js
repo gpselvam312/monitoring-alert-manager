@@ -51,20 +51,17 @@
 	        return button.dataset.loadingText;
 	    }
 
-	    const action =
-	        (form.dataset.appAction || '').toLowerCase();
+        const action =
+            (form.dataset.appConfirm || form.dataset.appAction || '').toLowerCase();
 
-	    switch (action) {
-
-	        case 'delete':
-	            return 'Deleting...';
-
-	        case 'enable':
-	            return 'Enabling...';
-
-	        case 'disable':
-	            return 'Disabling...';
-	    }
+        switch (action) {
+            case 'delete': return 'Deleting...';
+            case 'enable': return 'Enabling...';
+            case 'disable': return 'Disabling...';
+            case 'run': return 'Running...';
+            case 'update': return 'Updating...';
+            case 'save': return 'Saving...';
+        }
 
 	    /*
 	     * For buttons such as Enable / Disable where the action

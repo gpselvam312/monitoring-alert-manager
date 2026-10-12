@@ -295,7 +295,7 @@
 
 
                                         <form th:action="@{/administration/dashboard/tabs/toggle}"
-                                              method="post">
+                                              method="post" th:data-app-confirm="${tab.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${tab.enabled ? 'Disable Dashboard' : 'Enable Dashboard'}" th:data-app-action-message="${tab.enabled ? 'Disable this dashboard?' : 'Enable this dashboard?'}" th:data-app-confirm-text="${tab.enabled ? 'Disable' : 'Enable'}">
 
                                             <input type="hidden"
                                                    name="id"
@@ -365,7 +365,7 @@
 
 
                                         <form th:action="@{/administration/dashboard/tabs/toggle}"
-                                              method="post">
+                                              method="post" th:data-app-confirm="${tab.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${tab.enabled ? 'Disable Dashboard' : 'Enable Dashboard'}" th:data-app-action-message="${tab.enabled ? 'Disable this dashboard?' : 'Enable this dashboard?'}" th:data-app-confirm-text="${tab.enabled ? 'Disable' : 'Enable'}">
 
                                             <input type="hidden"
                                                    name="id"
@@ -827,7 +827,7 @@
 
 
                                         <form th:action="@{/administration/dashboard/widgets/toggle}"
-                                              method="post">
+                                              method="post" th:data-app-confirm="${widget.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${widget.enabled ? 'Disable Dashboard Widget' : 'Enable Dashboard Widget'}" th:data-app-action-message="${widget.enabled ? 'Disable this dashboard widget?' : 'Enable this dashboard widget?'}" th:data-app-confirm-text="${widget.enabled ? 'Disable' : 'Enable'}">
 
                                             <input type="hidden"
                                                    name="id"
@@ -894,7 +894,7 @@
 
 
                                         <form th:action="@{/administration/dashboard/widgets/toggle}"
-                                              method="post">
+                                              method="post" th:data-app-confirm="${widget.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${widget.enabled ? 'Disable Dashboard Widget' : 'Enable Dashboard Widget'}" th:data-app-action-message="${widget.enabled ? 'Disable this dashboard widget?' : 'Enable this dashboard widget?'}" th:data-app-confirm-text="${widget.enabled ? 'Disable' : 'Enable'}">
 
                                             <input type="hidden"
                                                    name="id"
@@ -981,7 +981,11 @@
 
                 <form th:action="@{/administration/dashboard/tabs/save}"
                       method="post"
-                      id="dashboardTabForm">
+                      id="dashboardTabForm"
+                      data-app-confirm="save"
+                      data-app-action-title="Save Dashboard Tab"
+                      data-app-action-message="Save this dashboard tab?"
+                      data-app-confirm-text="Save">
 
                     <input type="hidden"
                            name="id"
@@ -1143,7 +1147,11 @@
                 <form th:action="@{/administration/dashboard/widgets/save}"
 				      method="post"
 				      id="dashboardWidgetForm"
-				      th:object="${dashboardWidgetForm}">
+				      th:object="${dashboardWidgetForm}"
+                      data-app-confirm="save"
+                      data-app-action-title="Save Dashboard Widget"
+                      data-app-action-message="Save this dashboard widget?"
+                      data-app-confirm-text="Save">
 
                     <input type="hidden"
 				       th:field="*{id}"

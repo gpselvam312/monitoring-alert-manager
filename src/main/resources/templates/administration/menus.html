@@ -61,7 +61,7 @@
                                 <td class="text-end table-actions-column">
                                     <div class="table-actions table-actions-text">
                                         <a th:href="@{/administration/menus/{id}/edit(id=${menu.id})}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i><span>Edit</span></a>
-                                        <form method="post" th:action="@{/administration/menus/{id}/toggle(id=${menu.id})}">
+                                        <form method="post" th:action="@{/administration/menus/{id}/toggle(id=${menu.id})}" th:data-app-confirm="${menu.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${menu.enabled ? 'Disable Menu' : 'Enable Menu'}" th:data-app-action-message="${menu.enabled ? 'Disable this menu?' : 'Enable this menu?'}" th:data-app-confirm-text="${menu.enabled ? 'Disable' : 'Enable'}">
                                             <button type="submit" class="btn btn-sm btn-outline-warning" th:title="${menu.enabled ? 'Disable' : 'Enable'}">
                                                 <i th:class="${menu.enabled ? 'bi bi-pause-circle' : 'bi bi-play-circle'}"></i>
                                                 <span th:text="${menu.enabled ? 'Disable' : 'Enable'}">Disable</span>
@@ -70,7 +70,7 @@
                                     </div>
                                     <div class="table-actions table-actions-icons">
                                         <a th:href="@{/administration/menus/{id}/edit(id=${menu.id})}" class="btn btn-sm btn-outline-primary" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
-                                        <form method="post" th:action="@{/administration/menus/{id}/toggle(id=${menu.id})}">
+                                        <form method="post" th:action="@{/administration/menus/{id}/toggle(id=${menu.id})}" th:data-app-confirm="${menu.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${menu.enabled ? 'Disable Menu' : 'Enable Menu'}" th:data-app-action-message="${menu.enabled ? 'Disable this menu?' : 'Enable this menu?'}" th:data-app-confirm-text="${menu.enabled ? 'Disable' : 'Enable'}">
                                             <button type="submit" class="btn btn-sm btn-outline-warning" th:title="${menu.enabled ? 'Disable' : 'Enable'}" th:attr="aria-label=${menu.enabled ? 'Disable' : 'Enable'}">
                                                 <i th:class="${menu.enabled ? 'bi bi-pause-circle' : 'bi bi-play-circle'}"></i>
                                             </button>

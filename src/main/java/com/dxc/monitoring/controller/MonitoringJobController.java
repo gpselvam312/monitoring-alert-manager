@@ -33,6 +33,7 @@ import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.service.MonitoringExecutionManager;
 import com.dxc.monitoring.service.MonitoringExecutionService;
 import com.dxc.monitoring.service.MonitoringJobService;
+import com.dxc.monitoring.service.StreamingJobService;
 import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
@@ -42,6 +43,7 @@ public class MonitoringJobController
 {
 
     private final MonitoringJobService monitoringJobService;
+    private final StreamingJobService streamingJobService;
     private final MachineRepository machineRepository;
     private final ScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
@@ -60,7 +62,7 @@ public class MonitoringJobController
                 "machine.name", "machine.name", "type", "type", "severity", "severity", "schedule.name",
                 "schedule.name", "enabled", "enabled");
 
-    public MonitoringJobController(MonitoringJobService monitoringJobService, MachineRepository machineRepository,
+    public MonitoringJobController(MonitoringJobService monitoringJobService, StreamingJobService streamingJobService, MachineRepository machineRepository,
             ScheduleRepository scheduleRepository, UserRepository userRepository,
             ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
             MonitoringExecutionManager monitoringExecutionManager,
@@ -68,6 +70,7 @@ public class MonitoringJobController
             DashboardAccessService accessService)
     {
         this.monitoringJobService = monitoringJobService;
+        this.streamingJobService = streamingJobService;
         this.machineRepository = machineRepository;
         this.scheduleRepository = scheduleRepository;
         this.userRepository = userRepository;
@@ -268,7 +271,8 @@ public class MonitoringJobController
         User currentUser = userRepository.findByUsername(authentication.getName()).orElseThrow(
                 () -> new IllegalArgumentException("Logged-in user not found: " + authentication.getName()));
 
-        if (job.getId() != null)
+        boolean updatingJob = job.getId() != null;
+        if (updatingJob)
         {
             /*
              * EDIT EXISTING JOB
@@ -400,6 +404,12 @@ public class MonitoringJobController
 
             monitoringJobService.save(job);
         }
+
+        String jobLabel = job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
+                ? "Streaming job" : "Monitoring job";
+        redirectAttributes.addFlashAttribute("successMessage",
+                jobLabel + " '" + job.getName() + "' was "
+                        + (updatingJob ? "updated" : "created") + " successfully.");
 
         return "STREAMING".equalsIgnoreCase(mode)
                 ? "redirect:/monitoring/streaming-jobs"
@@ -549,30 +559,59 @@ public class MonitoringJobController
      */
     @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
     @PostMapping("/{id}/toggle")
-    public String toggleEnabled(@PathVariable Long id)
+    public String toggleEnabled(@PathVariable Long id, @RequestParam(required = false) String mode,
+            RedirectAttributes redirectAttributes)
     {
+        MonitoringJob job = monitoringJobService.findById(id);
+        boolean streamingContext = "STREAMING".equalsIgnoreCase(mode);
+        if (streamingContext)
+        {
+            if (job.getExecutionMode() != MonitoringJob.ExecutionMode.STREAMING)
+                throw new IllegalArgumentException("Only streaming jobs can be managed from the Streaming Jobs page.");
+            if (job.getApplication() != null)
+                accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_CONFIG");
+        }
+        boolean enabling = !job.isEnabled();
+        String jobName = job.getName();
+
         monitoringJobService.toggleEnabled(id);
 
-        return "redirect:/monitoring/jobs";
+        String jobLabel = streamingContext ? "Streaming job" : "Monitoring job";
+        redirectAttributes.addFlashAttribute("successMessage",
+                jobLabel + " '" + jobName + "' was " + (enabling ? "enabled" : "disabled") + " successfully.");
+        return streamingContext ? "redirect:/monitoring/streaming-jobs" : "redirect:/monitoring/jobs";
     }
 
     /*
      * DELETE
      */
     @PostMapping("/{id}/delete")
-    public String deleteJob(@PathVariable Long id, RedirectAttributes redirectAttributes)
+    public String deleteJob(@PathVariable Long id, @RequestParam(required = false) String mode,
+            RedirectAttributes redirectAttributes)
     {
+        boolean streamingContext = "STREAMING".equalsIgnoreCase(mode);
+        if (streamingContext)
+        {
+            MonitoringJob streamingJob = monitoringJobService.findById(id);
+            if (streamingJob.getExecutionMode() != MonitoringJob.ExecutionMode.STREAMING)
+                throw new IllegalArgumentException("Only streaming jobs can be deleted from the Streaming Jobs page.");
+            if (streamingJob.getApplication() != null)
+                accessService.assertCanAccessApplication(streamingJob.getApplication().getId(), "MONITORING_CONFIG");
+            if (streamingJobService.hasActiveRun(id))
+                throw new IllegalStateException("Stop the streaming job and resolve any recovery state before removing it.");
+        }
         String jobName = monitoringJobService.delete(id);
+        String jobLabel = streamingContext ? "Streaming job" : "Monitoring job";
 
         redirectAttributes.addFlashAttribute("successMessage",
-                "Monitoring job '" + jobName + "' was deleted successfully.");
+                jobLabel + " '" + jobName + "' was deleted successfully.");
 
-        return "redirect:/monitoring/jobs";
+        return streamingContext ? "redirect:/monitoring/streaming-jobs" : "redirect:/monitoring/jobs";
     }
 
     @PreAuthorize("hasAuthority('MONITORING_RUN')")
     @PostMapping("/{id}/run")
-    public String runNow(@PathVariable Long id)
+    public String runNow(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         MonitoringJob job = monitoringJobService.findById(id);
 
@@ -587,6 +626,8 @@ public class MonitoringJobController
         }
 
         monitoringExecutionManager.execute(job);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Manual execution was started for monitoring job '" + job.getName() + "'.");
 
         return "redirect:/monitoring/jobs/" + id;
     }
@@ -594,7 +635,9 @@ public class MonitoringJobController
     @GetMapping("/{id}/executions")
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
     public String executionHistory(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search, Model model)
+            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "startedAt") String sort, @RequestParam(defaultValue = "desc") String direction,
+            Model model)
     {
         if (page < 0)
         {
@@ -608,7 +651,7 @@ public class MonitoringJobController
 
         String normalizedSearch = search == null ? "" : search.trim();
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, buildExecutionSort(sort, direction));
 
         Page<MonitoringExecution> executions = monitoringExecutionService.findByJobId(id, normalizedSearch, pageable);
 
@@ -624,10 +667,27 @@ public class MonitoringJobController
         return "monitoring/execution-history :: executionHistory";
     }
 
+    private Sort buildExecutionSort(String sort, String direction)
+    {
+        Map<String, String> allowedFields = Map.of(
+                "startedAt", "startedAt",
+                "completedAt", "completedAt",
+                "durationMs", "durationMs",
+                "attemptNumber", "attemptNumber",
+                "status", "status");
+        String field = allowedFields.getOrDefault(sort, "startedAt");
+        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return Sort.by(sortDirection, field).and(Sort.by(Sort.Direction.DESC, "startedAt"))
+                .and(Sort.by(Sort.Direction.DESC, "id"));
+    }
+
     @GetMapping("/{id}/executions/table")
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
     public String executionHistoryTable(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search, Model model)
+            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "startedAt") String sort, @RequestParam(defaultValue = "desc") String direction,
+            Model model)
     {
         if (page < 0)
         {
@@ -641,7 +701,7 @@ public class MonitoringJobController
 
         String normalizedSearch = search == null ? "" : search.trim();
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, buildExecutionSort(sort, direction));
 
         Page<MonitoringExecution> executions = monitoringExecutionService.findByJobId(id, normalizedSearch, pageable);
 
@@ -654,7 +714,7 @@ public class MonitoringJobController
         model.addAttribute("resultStatuses", resultStatuses);
         model.addAttribute("jobId", id);
 
-        return "monitoring/execution-history :: executionHistory";
+        return "monitoring/execution-history :: executionHistoryTable";
     }
 
     @GetMapping("/{jobId}/executions/{executionId}")

@@ -37,7 +37,7 @@
 <form sec:authorize="hasAuthority('SCHEDULE_CONFIG')"
       th:action="@{/scheduling/schedules}"
       th:object="${schedule}"
-      method="post">
+      method="post" th:data-app-confirm="${schedule.id == null ? 'save' : 'update'}" th:data-app-action-title="${schedule.id == null ? 'Create Schedule' : 'Update Schedule'}" th:data-app-action-message="${schedule.id == null ? 'Create this schedule?' : 'Update this schedule?'}" th:data-app-confirm-text="${schedule.id == null ? 'Create' : 'Update'}">
 
     <div th:if="${formError}" class="alert alert-danger" role="alert" th:text="${formError}"></div>
 

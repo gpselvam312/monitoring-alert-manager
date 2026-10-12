@@ -19,7 +19,7 @@
             <div class="app-card">
                 <div class="app-card-header"><h2 class="app-card-title">Menu Details</h2></div>
                 <div class="app-card-body">
-                    <form th:action="@{/administration/menus/save}" method="post">
+                    <form th:action="@{/administration/menus/save}" method="post" th:data-app-confirm="${menuItem.id == null ? 'save' : 'update'}" th:data-app-action-title="${menuItem.id == null ? 'Create Menu' : 'Update Menu'}" th:data-app-action-message="${menuItem.id == null ? 'Create this menu?' : 'Update this menu?'}" th:data-app-confirm-text="${menuItem.id == null ? 'Create' : 'Update'}">
                         <input type="hidden" name="id" th:value="${menuItem.id}">
                         <div class="row g-4">
                             <div class="col-md-6">

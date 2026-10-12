@@ -44,12 +44,14 @@
                   th:action="@{/monitoring/jobs/{id}/run(id=${job.id})}"
                   method="post"
                   sec:authorize="hasAuthority('MONITORING_RUN')"
+                  data-app-confirm="run"
+                  data-app-action-title="Run Monitoring Job"
+                  data-app-confirm-text="Run Now"
                   style="display: inline;">
 
                 <button type="submit"
                         class="btn btn-success"
-                        th:disabled="${!job.manualRunEnabled or !job.enabled}"
-                        onclick="return confirm('Run this monitoring job now?');">
+                        th:disabled="${!job.manualRunEnabled or !job.enabled}">
 
                     <i class="bi bi-play-fill me-1"></i>
                     Run Now
@@ -1217,7 +1219,15 @@
     <script th:inline="javascript">
 
         window.monitoringJobId = /*[[${job.id}]]*/ 0;
-
+        window.executionTableConfig = {
+            endpoint: `/monitoring/jobs/${window.monitoringJobId}/executions/table`,
+            searchId: 'executionSearch',
+            clearSearchId: 'clear-executionSearch',
+            pageSizeId: 'executionPageSize',
+            containerId: 'executionHistoryTableContainer',
+            sort: 'startedAt',
+            direction: 'desc'
+        };
 
         window.loadExecutionHistory = function(page, size) {
 
@@ -1235,8 +1245,10 @@
             `;
 
 
-            const url =
-                `/monitoring/jobs/${window.monitoringJobId}/executions?page=${page}&size=${size}`;
+            const search = document.getElementById('executionSearch');
+            const sizeSelect = document.getElementById('executionPageSize');
+            const pageSize = sizeSelect ? Number(sizeSelect.value) : size;
+            const url = `/monitoring/jobs/${window.monitoringJobId}/executions?page=${page}&size=${pageSize}`;
 
 
             fetch(url)
@@ -1258,6 +1270,7 @@
                 .then(function(html) {
 
                     historyContainer.innerHTML = html;
+                    DataTable.init('executionTableConfig', window.executionTableConfig);
 
                 })
 

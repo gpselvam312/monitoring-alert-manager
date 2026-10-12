@@ -19,7 +19,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
 
-        <form id="settingsForm" method="post" th:action="@{/administration/settings}">
+        <form id="settingsForm" method="post" th:action="@{/administration/settings}" th:data-app-confirm="'save'" th:data-app-action-title="'Save Settings'" th:data-app-action-message="'Save these settings?'" th:data-app-confirm-text="'Save'">
             <div id="settingsDirtyInputs"></div>
             <div class="app-card">
                 <div class="app-card-header d-flex align-items-center justify-content-between">

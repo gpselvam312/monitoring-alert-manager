@@ -39,7 +39,7 @@
         <form sec:authorize="hasAuthority('SYSTEM_CONFIG')"
               th:action="@{/administration/applications/save}"
               th:object="${appName}"
-              method="post">
+              method="post" th:data-app-confirm="${appName.id == null ? 'save' : 'update'}" th:data-app-action-title="${appName.id == null ? 'Create Application' : 'Update Application'}" th:data-app-action-message="${appName.id == null ? 'Create this application?' : 'Update this application?'}" th:data-app-confirm-text="${appName.id == null ? 'Create' : 'Update'}">
 
             <input type="hidden"
                    th:field="*{id}">

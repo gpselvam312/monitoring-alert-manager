@@ -371,7 +371,7 @@
 
                                             <!-- Enable / Disable -->
                                             <form th:action="@{/scheduling/schedules/{id}/toggle(id=${schedule.id})}"
-                                                  method="post">
+                                                  method="post" th:data-app-confirm="${schedule.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${schedule.enabled ? 'Disable Schedule' : 'Enable Schedule'}" th:data-app-action-message="${schedule.enabled ? 'Disable this schedule?' : 'Enable this schedule?'}" th:data-app-confirm-text="${schedule.enabled ? 'Disable' : 'Enable'}">
 
                                                 <button type="submit"
                                                         class="btn btn-sm btn-outline-warning"
@@ -458,7 +458,7 @@
 
                                             <!-- Enable / Disable -->
                                             <form th:action="@{/scheduling/schedules/{id}/toggle(id=${schedule.id})}"
-                                                  method="post">
+                                                  method="post" th:data-app-confirm="${schedule.enabled ? 'disable' : 'enable'}" th:data-app-action-title="${schedule.enabled ? 'Disable Schedule' : 'Enable Schedule'}" th:data-app-action-message="${schedule.enabled ? 'Disable this schedule?' : 'Enable this schedule?'}" th:data-app-confirm-text="${schedule.enabled ? 'Disable' : 'Enable'}">
 
                                                 <button type="submit"
                                                         class="btn btn-sm btn-outline-warning"
