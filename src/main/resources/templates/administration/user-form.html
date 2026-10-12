@@ -90,7 +90,7 @@
                 <form th:if="${user.id == null}"
                       th:action="@{/administration/users/save}"
                       th:object="${user}"
-                      method="post">
+                      method="post" th:data-app-confirm="'save'" th:data-app-action-title="'Create User'" th:data-app-action-message="'Create this user?'" th:data-app-confirm-text="'Create'">
 
                     <div class="row g-4">
 
@@ -405,7 +405,7 @@
                 <form th:if="${user.id != null}"
                       th:action="@{/administration/users/{id}/update(id=${user.id})}"
                       th:object="${user}"
-                      method="post">
+                      method="post" th:data-app-confirm="'update'" th:data-app-action-title="'Update User'" th:data-app-action-message="'Update this user?'" th:data-app-confirm-text="'Update'">
 
                     <div class="row g-4">
 
