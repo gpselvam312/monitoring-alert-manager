@@ -79,6 +79,13 @@
     const dashboardCharts = new Map();
     let dateRangeEventsBound = false;
     let dateRangeInitialized = false;
+    let pageIsUnloading = false;
+
+    window.addEventListener("pagehide", function ()
+    {
+        pageIsUnloading = true;
+        clearAutoRefreshTimers();
+    });
 
 
     /*
@@ -3299,8 +3306,20 @@
 
     async function initializeDashboard()
     {
-        try { const items = await loadApplications(); if (!items.length) { showState('empty'); return; } await loadEnvironments(true); }
-        catch (error) { errorMessageElement.textContent = error && error.message ? error.message : 'Unable to initialize dashboard filters.'; showState('error'); }
+        try
+        {
+            const items = await loadApplications();
+            if (pageIsUnloading) return;
+            if (!items.length) { showState('empty'); return; }
+            await loadEnvironments(true);
+        }
+        catch (error)
+        {
+            // Navigation can abort an in-flight fetch; do not render a stale error during page unload.
+            if (pageIsUnloading) return;
+            errorMessageElement.textContent = error && error.message ? error.message : 'Unable to initialize dashboard filters.';
+            showState('error');
+        }
     }
 
     /*
@@ -3379,6 +3398,9 @@
         }
         catch (error)
         {
+            // A navigation away from this page can cancel fetch requests. That is not a dashboard failure.
+            if (pageIsUnloading) return;
+
             console.error(
                 "Unable to load dashboard",
                 error
