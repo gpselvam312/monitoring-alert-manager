@@ -281,6 +281,11 @@
 
                     }
 
+                    if (confirmButton) {
+                        confirmButton.classList.remove("btn-primary", "btn-danger", "btn-warning");
+                        confirmButton.classList.add(options.confirmClass || "btn-primary");
+                    }
+
 
                     if (bodyIconElement) {
 
@@ -346,37 +351,90 @@
  
             document.addEventListener("submit", function (event) {
 
-                const form = event.target.closest(
-                    'form[data-app-action="delete"]'
-                );
+                const form = event.target.closest("form[data-app-confirm], form[data-app-action=\"delete\"]");
 
-                if (!form) {
+                if (!form || form.dataset.confirmationBypassed === "true") {
+                    return;
+                }
+
+                const action = (form.dataset.appConfirm || form.dataset.appAction || "").toLowerCase();
+                if (!action) {
                     return;
                 }
 
                 event.preventDefault();
 
-                AppModal.show({
-                    title:
-                        form.dataset.appActionTitle ||
-                        "Delete",
-                    message:
-                        form.dataset.appActionMessage ||
-                        "Are you sure you want to delete this item?",
-                    description:
-                        form.dataset.appActionDescription ||
-                        "This action cannot be undone.",
-                    icon: "bi-trash",
+                // Do not lock the form while the dialog is open. Cancel must leave
+                // the form untouched; loading starts only after explicit confirmation.
+                const options = {
+                    save: {
+                        title: form.dataset.appActionTitle || "Save Monitoring Job",
+                        message: form.dataset.appActionMessage || "Save these changes?",
+                        description: form.dataset.appActionDescription || "Please confirm before continuing.",
+                        icon: "bi-save",
+                        confirmText: form.dataset.appConfirmText || "Save",
+                        confirmIcon: "bi-check-lg",
+                        confirmClass: "btn-primary"
+                    },
+                    update: {
+                        title: form.dataset.appActionTitle || "Update Monitoring Job",
+                        message: form.dataset.appActionMessage || "Update this monitoring job?",
+                        description: form.dataset.appActionDescription || "Your changes will be saved.",
+                        icon: "bi-pencil-square",
+                        confirmText: form.dataset.appConfirmText || "Update",
+                        confirmIcon: "bi-check-lg",
+                        confirmClass: "btn-primary"
+                    },
+                    delete: {
+                        title: form.dataset.appActionTitle || "Delete Monitoring Job",
+                        message: form.dataset.appActionMessage || "Are you sure you want to delete this item?",
+                        description: form.dataset.appActionDescription || "This action cannot be undone.",
+                        icon: "bi-trash",
+                        confirmText: form.dataset.appConfirmText || "Delete",
+                        confirmIcon: "bi-trash",
+                        confirmClass: "btn-danger"
+                    },
+                    enable: {
+                        title: form.dataset.appActionTitle || "Enable Monitoring Job",
+                        message: form.dataset.appActionMessage || "Enable this monitoring job?",
+                        description: form.dataset.appActionDescription || "The job will be eligible to run according to its configuration.",
+                        icon: "bi-play-circle",
+                        confirmText: form.dataset.appConfirmText || "Enable",
+                        confirmIcon: "bi-play-fill",
+                        confirmClass: "btn-primary"
+                    },
+                    disable: {
+                        title: form.dataset.appActionTitle || "Disable Monitoring Job",
+                        message: form.dataset.appActionMessage || "Disable this monitoring job?",
+                        description: form.dataset.appActionDescription || "Scheduled execution will be prevented while the job is disabled.",
+                        icon: "bi-pause-circle",
+                        confirmText: form.dataset.appConfirmText || "Disable",
+                        confirmIcon: "bi-pause-fill",
+                        confirmClass: "btn-warning"
+                    },
+                    run: {
+                        title: form.dataset.appActionTitle || "Run Monitoring Job",
+                        message: form.dataset.appActionMessage || "Run this monitoring job now?",
+                        description: form.dataset.appActionDescription || "This starts a manual execution.",
+                        icon: "bi-play-circle",
+                        confirmText: form.dataset.appConfirmText || "Run Now",
+                        confirmIcon: "bi-play-fill",
+                        confirmClass: "btn-primary"
+                    }
+                };
+                const config = options[action];
+                if (!config) {
+                    return;
+                }
+                AppModal.show(Object.assign({}, config, {
                     showCancel: true,
                     cancelText: "Cancel",
                     showConfirm: true,
-                    confirmText: "Delete",
-                    confirmIcon: "bi-trash",
                     onConfirm: function () {
                         FormSubmitLoader.show(form);
                         form.submit();
                     }
-                });
+                }));
             });
 
 
@@ -397,10 +455,7 @@
                  * above and explicitly call the loader after
                  * confirmation.
                  */
-                if (
-                    (form.dataset.appAction || "").toLowerCase()
-                    === "delete"
-                ) {
+                if (form.dataset.appConfirm || (form.dataset.appAction || "").toLowerCase() === "delete") {
                     return;
                 }
 
@@ -420,71 +475,22 @@
                Flash Messages
                ===================================================== */
 
-            const successMessage =
-                document.querySelector(
-                    ".app-message-success .app-message-text"
-                );
-
-            const errorMessage =
-                document.querySelector(
-                    ".app-message-error .app-message-text"
-                );
-
-
-            if (successMessage) {
-
-                const message =
-                    successMessage.textContent.trim();
-
-                successMessage
-                    .closest(".app-message")
-                    .remove();
-
-                AppModal.show({
-
-                    title: "Success",
-
-                    message: message,
-
-                    icon: "bi-check-circle",
-
-                    showCancel: false,
-
-                    showConfirm: true,
-
-                    confirmText: "OK",
-
-                    confirmIcon: "bi-check-lg"
-
-                });
-
-            } else if (errorMessage) {
-
-                const message =
-                    errorMessage.textContent.trim();
-
-                errorMessage
-                    .closest(".app-message")
-                    .remove();
-
-                AppModal.show({
-
-                    title: "Unable to Complete Request",
-
-                    message: message,
-
-                    icon: "bi-exclamation-circle",
-
-                    showCancel: false,
-
-                    showConfirm: true,
-
-                    confirmText: "OK",
-
-                    confirmIcon: "bi-check-lg"
-
-                });
-
+            /* Keep flash messages visible at the top of the page instead of
+               moving them into a modal. Focus/scroll only when the message is
+               outside the viewport; errors remain until dismissed. */
+            const message = document.querySelector(".app-message");
+            if (message) {
+                const rect = message.getBoundingClientRect();
+                if (rect.top < 0 || rect.bottom > window.innerHeight) {
+                    message.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+                message.setAttribute("tabindex", "-1");
+                message.focus({ preventScroll: true });
+                if (message.classList.contains("app-message-success")) {
+                    window.setTimeout(function () {
+                        if (message.isConnected) message.remove();
+                    }, 8000);
+                }
             }
 
         });
