@@ -338,7 +338,7 @@
             ? selectedGroupFields.map(field => (state.columnMap.get(field) || {}).label || field).join(" → ")
             : "Group by";
         const groupSelector = groupableColumns.length ? '<div class="summary-table-controls"><div class="dropdown">' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle summary-table-group-toggle-menu" data-bs-toggle="dropdown" aria-expanded="false">' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle summary-table-group-toggle-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">' +
             '<i class="bi bi-layers me-1" aria-hidden="true"></i>' + esc(groupLabel) + '</button>' +
             '<div class="dropdown-menu p-2 summary-table-group-menu">' +
             '<div class="small text-muted px-2 pb-2">Group rows by</div>' +
