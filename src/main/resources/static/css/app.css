@@ -4628,3 +4628,45 @@ textarea.form-control {
         transform: none;
     }
 }
+
+
+/* Execution history sorting controls */
+.execution-sort-button {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .2rem 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 650;
+    text-align: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.execution-sort-button:hover,
+.execution-sort-button:focus-visible {
+    color: var(--theme-primary);
+}
+.execution-sort-button:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 3px;
+    border-radius: 3px;
+}
+.execution-sort-button i {
+    color: var(--text-secondary);
+    font-size: .75rem;
+}
+.execution-sort-button.is-active {
+    color: var(--theme-primary);
+}
+.execution-sort-button.is-active i {
+    color: var(--theme-primary);
+}
+
+/* Keep keyboard-focused flash messages visible without overriding theme colors. */
+.app-message:focus {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 3px;
+}
