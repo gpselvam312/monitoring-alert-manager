@@ -353,7 +353,7 @@
 
                 const form = event.target.closest("form[data-app-confirm], form[data-app-action=\"delete\"]");
 
-                if (!form || form.dataset.confirmationBypassed === "true") {
+                if (!form || event.defaultPrevented || form.dataset.confirmationBypassed === "true") {
                     return;
                 }
 
