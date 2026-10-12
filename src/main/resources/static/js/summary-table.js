@@ -144,7 +144,8 @@
                 return;
             }
             const collapsed = state.collapsed.has(node.id);
-            const showAggregates = config.groupBy && config.groupBy.showAggregates === true;
+            const groupConfig = (config.details && config.details.groupBy) || config.groupBy || config;
+            const showAggregates = groupConfig.showAggregates === true;
             const count = node.rows.length;
             let aggregate = "";
             if (showAggregates) {
@@ -258,7 +259,7 @@
             state.page = Math.min(state.page, pageCount - 1);
             const visibleNodes = pageConfig.enabled === false ? nodes : nodes.slice(state.page * pageSize, (state.page + 1) * pageSize);
             const rendered = [];
-            flattenNodes(visibleNodes, groupConfig, state, columns, rendered);
+            flattenNodes(visibleNodes, config, state, columns, rendered);
             body = rendered.join("");
             totalCount = nodes.length;
         } else {
