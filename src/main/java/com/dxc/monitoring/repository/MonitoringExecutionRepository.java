@@ -35,6 +35,8 @@ public interface MonitoringExecutionRepository extends JpaRepository<MonitoringE
                         LOWER(CONCAT('%', :search, '%'))
                     OR CAST(e.attemptNumber AS string) LIKE
                         CONCAT('%', :search, '%')
+                    OR LOWER(CAST(e.monitoringJob.type AS string)) LIKE
+                        LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(COALESCE(e.errorMessage, '')) LIKE
                         LOWER(CONCAT('%', :search, '%'))
                     OR EXISTS (
