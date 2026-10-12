@@ -3451,83 +3451,6 @@ textarea.form-control {
     font-weight: 600;
 }
 
-.dashboard-table-wrapper {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.dashboard-table {
-    width: 100%;
-    min-width: 500px;
-    color: var(--text-primary);
-    font-size: 0.82rem;
-}
-
-.dashboard-table thead th {
-    color: var(--text-secondary);
-    background: var(--theme-primary-light);
-    border-bottom: 1px solid var(--border-color);
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.dashboard-table tbody td {
-    color: var(--text-primary);
-    border-color: var(--border-color);
-    vertical-align: middle;
-}
-
-.dashboard-table tbody tr:last-child td {
-    border-bottom: 0;
-}
-
-.dashboard-table-empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-height: 140px;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-/* =========================================================
-   Dashboard Charts
-   ========================================================= */
-
-.dashboard-chart-wrapper {
-    position: relative;
-    width: 100%;
-    height: 260px;
-}
-
-.dashboard-chart-wrapper canvas {
-    display: block;
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.dashboard-chart-empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    min-height: 180px;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.dashboard-chart-empty i {
-    color: var(--theme-primary);
-    font-size: 1.2rem;
-}
-
-@media (max-width: 767.98px) {
-    .dashboard-chart-wrapper {
-        height: 220px;
-    }
-}
-
 /* ============================================================
    Dashboard Tables
    ============================================================ */
@@ -3613,6 +3536,7 @@ textarea.form-control {
 
 .dashboard-chart-empty i {
     color: var(--theme-primary);
+    font-size: 1.2rem;
 }
 
 
@@ -4596,4 +4520,57 @@ textarea.form-control {
 [data-theme="blue-dark"] .status-badge.status-disabled {
     background-color: var(--status-disabled-bg) !important;
     color: var(--status-disabled-text) !important;
+}
+
+
+/* =========================================================
+   Shared Responsive Layout Refinements
+   ========================================================= */
+.page-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: .5rem;
+    min-width: 0;
+}
+
+.page-header-actions > .btn {
+    white-space: normal;
+}
+
+@media (max-width: 767.98px) {
+    .page-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .page-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .app-card-header {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .page-header-actions > .btn {
+        flex: 1 1 auto;
+    }
+
+    .dashboard-scope-filter {
+        padding: 12px;
+    }
+
+    .dashboard-scope-filter .col-lg-5 > .d-flex {
+        align-items: stretch !important;
+        flex-direction: column;
+    }
+
+    .dashboard-scope-filter .form-select {
+        width: 100%;
+        min-width: 0;
+    }
 }
