@@ -1,8 +1,10 @@
 package com.dxc.monitoring.security;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -27,10 +29,12 @@ public class MaintenanceFilter extends OncePerRequestFilter
     private static final String MAINTENANCE_PATH = "/maintenance";
 
     private final SystemSettingService systemSettingService;
+    private final ObjectMapper objectMapper;
 
-    public MaintenanceFilter(SystemSettingService systemSettingService)
+    public MaintenanceFilter(SystemSettingService systemSettingService, ObjectMapper objectMapper)
     {
         this.systemSettingService = systemSettingService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -103,40 +107,17 @@ public class MaintenanceFilter extends OncePerRequestFilter
 
     private List<String> parseIps(String json)
     {
-        String trimmed = json.trim();
-
-        if (!trimmed.startsWith("[") || !trimmed.endsWith("]"))
+        try
         {
+            List<String> ips = objectMapper.readValue(json, new TypeReference<List<String>>() {});
+            return ips == null ? List.of() : ips.stream()
+                    .filter(StringUtils::hasText).map(String::trim).toList();
+        }
+        catch (com.fasterxml.jackson.core.JsonProcessingException exception)
+        {
+            log.warn("Maintenance bypass IP configuration is invalid JSON.");
             return List.of();
         }
-
-        String content = trimmed.substring(1, trimmed.length() - 1).trim();
-
-        if (content.isEmpty())
-        {
-            return List.of();
-        }
-
-        String[] values = content.split(",");
-
-        List<String> ips = new ArrayList<>();
-
-        for (String value : values)
-        {
-            String ip = value.trim();
-
-            if (ip.startsWith("\"") && ip.endsWith("\""))
-            {
-                ip = ip.substring(1, ip.length() - 1);
-            }
-
-            if (StringUtils.hasText(ip))
-            {
-                ips.add(ip);
-            }
-        }
-
-        return ips;
     }
 
 }

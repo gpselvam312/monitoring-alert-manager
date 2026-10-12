@@ -1,100 +1,256 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
-	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
-<div
-	th:replace="~{fragments/layout :: layout('Settings', ~{::content})}">
-	<div th:fragment="content">
-		<div
-			class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-4">
-			<div>
-				<h2 class="mb-1">Settings</h2>
-				<p class="text-muted mb-0">Manage application-wide
-					configuration.</p>
-			</div>
-		</div>
-		<form method="post" th:action="@{/administration/settings}">
-			<div class="row g-4">
-				<!-- Application -->
-				<div class="col-12 col-xl-6">
-					<div class="card h-100">
-						<div class="card-header">
-							<h5 class="mb-0">
-								<i class="bi bi-window"></i> Application
-							</h5>
-						</div>
-						<div class="card-body">
-							<div class="mb-3">
-								<label for="applicationName" class="form-label">
-									Application Name </label> <input type="text" class="form-control"
-									id="applicationName" name="applicationName" maxlength="100"
-									required th:value="${applicationName}">
-							</div>
-							<div class="mb-0">
-								<label for="theme" class="form-label"> Theme </label> <select
-									class="form-select" id="theme" name="theme" required>
-									<option value="orange" th:selected="${theme == 'orange'}">
-										Orange</option>
-									<option value="blue" th:selected="${theme == 'blue'}">
-										Blue</option>
-									<option value="green" th:selected="${theme == 'green'}">
-										Green</option>
-									<option value="purple" th:selected="${theme == 'purple'}">
-										Purple</option>
-									<option value="orange-dark" th:selected="${theme == 'orange-dark'}">
-										Orange Dark</option>
-									<option value="blue-dark" th:selected="${theme == 'blue-dark'}">
-										Blue Dark</option>
-								</select>
-								<div class="form-text">The selected theme is applied
-									across the application.</div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<!-- Site Maintenance -->
-				<div class="col-12 col-xl-6">
-					<div class="card h-100">
-						<div class="card-header">
-							<h5 class="mb-0">
-								<i class="bi bi-tools"></i> Site Maintenance
-							</h5>
-						</div>
-						<div class="card-body">
-							<div class="form-check form-switch mb-4">
-								<input class="form-check-input" type="checkbox" role="switch"
-									id="siteOffline" name="siteOffline" value="true"
-									th:checked="${siteOffline}"> <label
-									class="form-check-label" for="siteOffline"> Site
-									Offline </label>
-								<div class="form-text">Places the application into
-									maintenance mode.</div>
-							</div>
-							<div class="mb-3">
-								<label for="maintenanceMessage" class="form-label">
-									Maintenance Message </label>
-								<textarea class="form-control" id="maintenanceMessage"
-									name="maintenanceMessage" rows="3" maxlength="500" required
-									th:text="${maintenanceMessage}"> </textarea>
-							</div>
-							<div class="mb-0">
-								<label for="maintenanceBypassIps" class="form-label">
-									Maintenance Bypass IPs </label>
-								<textarea class="form-control" id="maintenanceBypassIps"
-									name="maintenanceBypassIps" rows="3"
-									placeholder='["127.0.0.1"]' th:text="${maintenanceBypassIps}"> </textarea>
-								<div class="form-text">JSON array of IP addresses allowed
-									during maintenance.</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="d-flex justify-content-end mt-4">
-				<button type="submit" class="btn btn-primary">
-					<i class="bi bi-check-lg"></i> Save Settings
-				</button>
-			</div>
-		</form>
-	</div>
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<div th:replace="~{fragments/layout :: layout('Global Settings', ~{::content})}">
+    <div th:fragment="content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Global Settings</h1>
+                <p class="page-subtitle">Manage application-wide configuration values.</p>
+            </div>
+        </div>
+
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <form id="settingsForm" method="post" th:action="@{/administration/settings}">
+            <div id="settingsDirtyInputs"></div>
+            <div class="app-card">
+                <div class="app-card-header d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="mb-1">Configuration</h5>
+                        <p class="text-muted small mb-0">Edit values below and save your changes.</p>
+                    </div>
+                </div>
+
+                <div class="app-card-body p-0" id="settingsTableWrapper">
+                    <div th:replace="~{fragments/data-table :: controls(
+                            'settingsSearch',
+                            'settingsPageSize',
+                            'Search settings...',
+                            ${pageSize},
+                            ${search}
+                    )}">
+                    </div>
+
+                    <div id="settingsTableContainer">
+                        <div th:fragment="settingsTable">
+                            <div th:if="${settings.totalElements == 0}" class="empty-state">
+                                <div class="empty-state-icon">
+                                    <i th:if="${search != null and !search.isBlank()}" class="bi bi-search"></i>
+                                    <i th:unless="${search != null and !search.isBlank()}" class="bi bi-sliders"></i>
+                                </div>
+                                <div th:if="${search != null and !search.isBlank()}">
+                                    <h6>No settings match your search</h6>
+                                    <p>Try a different search term or clear the search.</p>
+                                </div>
+                                <div th:unless="${search != null and !search.isBlank()}">
+                                    <h6>No settings registered</h6>
+                                    <p>Configuration settings will appear here when registered.</p>
+                                </div>
+                            </div>
+
+                            <div th:if="${settings.totalElements > 0}" class="table-responsive">
+                                <table class="table app-table align-middle mb-0">
+                                    <thead>
+                                    <tr>
+                                        <th>
+                                            <button type="button" class="table-sort"
+                                                    data-config="settingsTableConfig" data-sort="settingKey"
+                                                    onclick="DataTable.sort(this)">
+                                                Setting
+                                                <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                            </button>
+                                        </th>
+                                        <th>
+                                            <button type="button" class="table-sort"
+                                                    data-config="settingsTableConfig" data-sort="description"
+                                                    onclick="DataTable.sort(this)">
+                                                Description
+                                                <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                            </button>
+                                        </th>
+                                        <th style="min-width: 280px;">
+                                            <button type="button" class="table-sort"
+                                                    data-config="settingsTableConfig" data-sort="settingValue"
+                                                    onclick="DataTable.sort(this)">
+                                                Value
+                                                <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                            </button>
+                                        </th>
+                                        <th>
+                                            <button type="button" class="table-sort"
+                                                    data-config="settingsTableConfig" data-sort="dataType"
+                                                    onclick="DataTable.sort(this)">
+                                                Type
+                                                <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                            </button>
+                                        </th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="setting : ${settings.content}">
+                                        <td>
+                                            <label class="table-primary-text fw-semibold mb-1"
+                                                   th:for="|value_${setting.settingKey}|"
+                                                   th:text="${setting.settingKey}">SETTING_KEY</label>
+                                        </td>
+                                        <td>
+                                            <span class="table-secondary-text"
+                                                  th:if="${setting.description != null and !setting.description.isBlank()}"
+                                                  th:text="${setting.description}">Description</span>
+                                            <span class="text-muted"
+                                                  th:unless="${setting.description != null and !setting.description.isBlank()}">—</span>
+                                        </td>
+                                        <td>
+                                            <select th:if="${setting.dataType == 'BOOLEAN'}"
+                                                    class="form-select"
+                                                    th:id="|value_${setting.settingKey}|"
+                                                    th:name="|value_${setting.settingKey}|"
+                                                    th:attr="data-setting-key=${setting.settingKey},data-original-value=${setting.settingValue}"
+                                                    required>
+                                                <option value="true" th:selected="${setting.settingValue.equalsIgnoreCase('true')}">Enabled / True</option>
+                                                <option value="false" th:selected="${setting.settingValue.equalsIgnoreCase('false')}">Disabled / False</option>
+                                            </select>
+                                            <select th:if="${setting.settingKey == 'THEME'}"
+                                                    class="form-select"
+                                                    th:id="|value_${setting.settingKey}|"
+                                                    th:name="|value_${setting.settingKey}|"
+                                                    th:attr="data-setting-key=${setting.settingKey},data-original-value=${setting.settingValue}"
+                                                    required>
+                                                <option value="orange" th:selected="${setting.settingValue == 'orange'}">Orange</option>
+                                                <option value="orange-dark" th:selected="${setting.settingValue == 'orange-dark'}">Orange Dark</option>
+                                                <option value="blue" th:selected="${setting.settingValue == 'blue'}">Blue</option>
+                                                <option value="blue-dark" th:selected="${setting.settingValue == 'blue-dark'}">Blue Dark</option>
+                                                <option value="green" th:selected="${setting.settingValue == 'green'}">Green</option>
+                                                <option value="purple" th:selected="${setting.settingValue == 'purple'}">Purple</option>
+                                            </select>
+                                            <textarea th:if="${setting.dataType == 'JSON'}"
+                                                      class="form-control font-monospace" rows="3"
+                                                      th:id="|value_${setting.settingKey}|"
+                                                      th:name="|value_${setting.settingKey}|"
+                                                      th:attr="data-setting-key=${setting.settingKey},data-original-value=${setting.settingValue}"
+                                                      th:text="${setting.settingValue}" required></textarea>
+                                            <input th:if="${setting.dataType == 'INTEGER'}"
+                                                   type="number" class="form-control"
+                                                   th:id="|value_${setting.settingKey}|"
+                                                   th:name="|value_${setting.settingKey}|"
+                                                   th:attr="data-setting-key=${setting.settingKey},data-original-value=${setting.settingValue}"
+                                                   th:value="${setting.settingValue}" required>
+                                            <textarea th:if="${setting.dataType == 'STRING' and setting.settingKey == 'MAINTENANCE_MESSAGE'}"
+                                                      class="form-control" rows="3" maxlength="500"
+                                                      th:id="|value_${setting.settingKey}|"
+                                                      th:name="|value_${setting.settingKey}|"
+                                                      th:attr="data-setting-key=${setting.settingKey},data-original-value=${setting.settingValue}"
+                                                      th:text="${setting.settingValue}" required></textarea>
+                                            <input th:if="${setting.dataType == 'STRING' and setting.settingKey != 'THEME' and setting.settingKey != 'MAINTENANCE_MESSAGE'}"
+                                                   type="text" class="form-control" maxlength="500"
+                                                   th:id="|value_${setting.settingKey}|"
+                                                   th:name="|value_${setting.settingKey}|"
+                                                   th:attr="data-setting-key=${setting.settingKey},data-original-value=${setting.settingValue}"
+                                                   th:value="${setting.settingValue}" required>
+                                        </td>
+                                        <td>
+                                            <span class="status-badge status-info" th:text="${setting.dataType}">STRING</span>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div th:replace="~{fragments/data-table :: pagination(
+                                    ${settings},
+                                    ${pageSize},
+                                    'settingsTableConfig'
+                            )}"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="app-card-footer d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 p-3">
+                    <span class="text-muted small">Setting keys and metadata are managed through database migrations.</span>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Save Settings
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <script th:inline="javascript">
+            window.settingsTableConfig = {
+                endpoint: '/administration/settings/table',
+                searchId: 'settingsSearch',
+                clearSearchId: 'clear-settingsSearch',
+                pageSizeId: 'settingsPageSize',
+                containerId: 'settingsTableContainer',
+                sort: /*[[${sort}]]*/ 'settingKey',
+                direction: /*[[${direction}]]*/ 'asc'
+            };
+
+            window.settingsDirtyValues = {};
+
+            document.addEventListener('DOMContentLoaded', function () {
+                if (window.DataTable) {
+                    window.DataTable.init('settingsTableConfig', window.settingsTableConfig);
+                    window.DataTable.updateCompactActions(window.settingsTableConfig);
+                }
+
+                const tableContainer = document.getElementById('settingsTableContainer');
+                const settingsForm = document.getElementById('settingsForm');
+                const hiddenInputs = document.getElementById('settingsDirtyInputs');
+
+                function rememberDirtyValue(event) {
+                    const field = event.target;
+                    if (!field || !field.name || !field.name.startsWith('value_')) {
+                        return;
+                    }
+
+                    const key = field.name.substring('value_'.length);
+                    const originalValue = field.getAttribute('data-original-value') || '';
+                    if (field.value === originalValue) {
+                        delete window.settingsDirtyValues[key];
+                    } else {
+                        window.settingsDirtyValues[key] = field.value;
+                    }
+                }
+
+                function restoreDirtyValues() {
+                    tableContainer.querySelectorAll('[data-setting-key]').forEach(function (field) {
+                        const key = field.getAttribute('data-setting-key');
+                        if (Object.prototype.hasOwnProperty.call(window.settingsDirtyValues, key)) {
+                            field.value = window.settingsDirtyValues[key];
+                        }
+                    });
+                }
+
+                tableContainer.addEventListener('input', rememberDirtyValue);
+                tableContainer.addEventListener('change', rememberDirtyValue);
+
+                const observer = new MutationObserver(restoreDirtyValues);
+                observer.observe(tableContainer, { childList: true, subtree: true });
+
+                settingsForm.addEventListener('submit', function () {
+                    tableContainer.querySelectorAll('[name^="value_"]').forEach(function (field) {
+                        field.removeAttribute('name');
+                    });
+
+                    hiddenInputs.replaceChildren();
+                    Object.entries(window.settingsDirtyValues).forEach(function (entry) {
+                        const hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = 'value_' + entry[0];
+                        hidden.value = entry[1];
+                        hiddenInputs.appendChild(hidden);
+                    });
+                });
+            });
+        </script>
+    </div>
 </div>
 </html>
