@@ -37,8 +37,14 @@ public interface MonitoringExecutionRepository extends JpaRepository<MonitoringE
                         CONCAT('%', :search, '%')
                     OR LOWER(COALESCE(e.errorMessage, '')) LIKE
                         LOWER(CONCAT('%', :search, '%'))
+                    OR EXISTS (
+                        SELECT r.id
+                        FROM MonitoringResult r
+                        WHERE r.execution = e
+                          AND LOWER(COALESCE(r.message, '')) LIKE
+                              LOWER(CONCAT('%', :search, '%'))
+                    )
                   )
-            ORDER BY e.startedAt DESC
             """)
     Page<MonitoringExecution> findByMonitoringJobId(@Param("monitoringJobId") Long monitoringJobId,
             @Param("search") String search, Pageable pageable);
