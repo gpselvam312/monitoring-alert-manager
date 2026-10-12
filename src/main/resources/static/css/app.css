@@ -4665,6 +4665,114 @@ textarea.form-control {
     color: var(--theme-primary);
 }
 
+/* ==============================
+   Shared flash / success messages
+   ============================== */
+.app-message-container {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    width: 100%;
+    min-width: 0;
+    margin: 0 0 1rem;
+}
+
+.app-message {
+    --app-message-accent: var(--info);
+    display: flex;
+    align-items: flex-start;
+    gap: .8rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: .9rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--app-message-accent) 32%, var(--border-color));
+    border-left: 4px solid var(--app-message-accent);
+    border-radius: .65rem;
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--app-message-accent) 7%, var(--card-bg));
+    box-shadow: 0 2px 8px color-mix(in srgb, #000 5%, transparent);
+}
+
+.app-message-success { --app-message-accent: var(--success); }
+.app-message-warning { --app-message-accent: var(--warning); }
+.app-message-error { --app-message-accent: var(--danger); }
+.app-message-info { --app-message-accent: var(--info); }
+
+.app-message-icon {
+    display: inline-flex;
+    flex: 0 0 1.35rem;
+    align-items: center;
+    justify-content: center;
+    padding-top: .1rem;
+    color: var(--app-message-accent);
+    font-size: 1.15rem;
+    line-height: 1.35;
+}
+
+.app-message-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.app-message-title {
+    margin: 0 0 .2rem;
+    color: var(--app-message-accent);
+    font-size: .9rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.app-message-text {
+    min-width: 0;
+    color: var(--text-primary);
+    font-size: .875rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.app-message-close {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin: -.25rem -.35rem 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: .4rem;
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+    opacity: .8;
+}
+
+.app-message-close:hover {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+    opacity: 1;
+}
+
+.app-message-close:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
+}
+
+@media (max-width: 575.98px) {
+    .app-message-container { gap: .6rem; }
+    .app-message {
+        gap: .6rem;
+        padding: .75rem .8rem;
+        border-radius: .55rem;
+    }
+    .app-message-icon { flex-basis: 1.2rem; font-size: 1.05rem; }
+    .app-message-title { font-size: .85rem; }
+    .app-message-text { font-size: .825rem; }
+    .app-message-close { margin-right: -.3rem; }
+}
+
 /* Keep keyboard-focused flash messages visible without overriding theme colors. */
 .app-message:focus {
     outline: 2px solid var(--theme-primary);
