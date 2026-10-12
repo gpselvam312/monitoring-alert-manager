@@ -268,7 +268,8 @@ public class MonitoringJobController
         User currentUser = userRepository.findByUsername(authentication.getName()).orElseThrow(
                 () -> new IllegalArgumentException("Logged-in user not found: " + authentication.getName()));
 
-        if (job.getId() != null)
+        boolean updatingJob = job.getId() != null;
+        if (updatingJob)
         {
             /*
              * EDIT EXISTING JOB
@@ -400,6 +401,10 @@ public class MonitoringJobController
 
             monitoringJobService.save(job);
         }
+
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Monitoring job '" + job.getName() + "' was "
+                        + (updatingJob ? "updated" : "created") + " successfully.");
 
         return "STREAMING".equalsIgnoreCase(mode)
                 ? "redirect:/monitoring/streaming-jobs"
@@ -578,7 +583,7 @@ public class MonitoringJobController
 
     @PreAuthorize("hasAuthority('MONITORING_RUN')")
     @PostMapping("/{id}/run")
-    public String runNow(@PathVariable Long id)
+    public String runNow(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         MonitoringJob job = monitoringJobService.findById(id);
 
@@ -593,6 +598,8 @@ public class MonitoringJobController
         }
 
         monitoringExecutionManager.execute(job);
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Manual execution was started for monitoring job '" + job.getName() + "'.");
 
         return "redirect:/monitoring/jobs/" + id;
     }
