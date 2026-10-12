@@ -48,7 +48,7 @@ public class DashboardAccessService {
 
     @Transactional(readOnly = true)
     public List<Application> getApplicationsWithPermission(String permission) {
-        if (isPlatformAdmin()) return applications.findByEnabledTrueOrderByNameAsc();
+        if (isPlatformAdmin()) return referenceDataCache.getEnabledApplications();
         return assignments.findAssignmentsForUser(currentUserId()).stream()
                 .filter(a -> a.getApplication().isEnabled())
                 .filter(a -> hasPermission(a.getRole(), permission))
