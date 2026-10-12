@@ -148,3 +148,12 @@
     .summary-table-control-row { flex-direction: column; }
     .summary-table-control-row .summary-table-controls { align-self: flex-end; }
 }
+
+
+/* Selected cards use the same single accent border as the Kafka count cards. */
+.summary-table-card.is-active {
+    outline: none;
+    outline-offset: 0;
+    border-color: var(--summary-card-accent);
+    box-shadow: none;
+}
