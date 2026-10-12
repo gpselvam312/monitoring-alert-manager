@@ -32,7 +32,12 @@
     const activeStates = new Set(['STARTING', 'RUNNING', 'STOPPING', 'RECOVERY_REQUIRED']);
     let jobs = [];
     let selectedJobId = null;
+    let selectedJobData = null;
     let page = 0;
+    let totalElements = 0;
+    let totalPages = 1;
+    let requestSequence = 0;
+    let searchTimer = null;
     let sortKey = 'name';
     let sortDirection = 'asc';
     let eventSource = null;
@@ -64,7 +69,9 @@
     }
 
     function selectedJob() {
-        return jobs.find(job => String(job.id) === String(selectedJobId)) || null;
+        const current = jobs.find(job => String(job.id) === String(selectedJobId));
+        if (current) selectedJobData = current;
+        return current || (selectedJobData && String(selectedJobData.id) === String(selectedJobId) ? selectedJobData : null);
     }
 
     function statusClass(status) {
@@ -94,28 +101,9 @@
         return value == null ? '' : String(value).toLocaleLowerCase();
     }
 
-    function visibleJobs() {
-        const query = searchInput.value.trim().toLocaleLowerCase();
-        return jobs.filter(job => !query || [
-            job.name, job.application, job.environment, job.machine, job.type, job.severity, job.schedule,
-            job.enabled ? 'enabled' : 'disabled', job.status, job.description
-        ].some(value => value != null && String(value).toLocaleLowerCase().includes(query)))
-        .sort((a, b) => {
-            const left = getSortValue(a, sortKey);
-            const right = getSortValue(b, sortKey);
-            const comparison = typeof left === 'number' && typeof right === 'number'
-                ? left - right : String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: 'base' });
-            return sortDirection === 'asc' ? comparison : -comparison;
-        });
-    }
-
     function renderTable() {
-        const filtered = visibleJobs();
         const pageSize = Number(pageSizeSelect.value) || 5;
-        const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
-        page = Math.min(page, pageCount - 1);
-        const start = page * pageSize;
-        const pageJobs = filtered.slice(start, start + pageSize);
+        const pageJobs = jobs;
 
         tableBody.replaceChildren();
         for (const job of pageJobs) {
@@ -162,17 +150,7 @@
             actionCell.className = 'text-end table-actions-column';
             const textActions = document.createElement('div');
             textActions.className = 'table-actions table-actions-text';
-            const selectButton = document.createElement('button');
-            selectButton.type = 'button';
-            selectButton.className = 'btn btn-sm ' + (String(job.id) === String(selectedJobId) ? 'btn-primary' : 'btn-outline-primary');
-            selectButton.disabled = !job.enabled;
-            selectButton.innerHTML = '<i class="bi bi-play-circle"></i><span class="ms-1">'
-                + (String(job.id) === String(selectedJobId) ? 'Selected' : 'Select') + '</span>';
-            selectButton.addEventListener('click', event => {
-                event.stopPropagation();
-                selectJob(job.id);
-            });
-            textActions.appendChild(selectButton);
+
             if (canView) {
                 const viewLink = document.createElement('a');
                 viewLink.className = 'btn btn-sm btn-outline-secondary';
@@ -193,13 +171,7 @@
                 editLink.addEventListener('click', event => event.stopPropagation());
                 textActions.appendChild(editLink);
 
-                const toggleForm = document.createElement('form');
-                toggleForm.method = 'post';
-                toggleForm.action = '/monitoring/jobs/' + encodeURIComponent(job.id) + '/toggle?mode=STREAMING';
-                toggleForm.dataset.appConfirm = job.enabled ? 'disable' : 'enable';
-                toggleForm.dataset.appActionTitle = job.enabled ? 'Disable Streaming Job' : 'Enable Streaming Job';
-                toggleForm.dataset.appConfirmText = job.enabled ? 'Disable' : 'Enable';
-                toggleForm.addEventListener('click', event => event.stopPropagation());
+                const toggleForm = createActionForm(job, 'toggle', job.enabled ? 'disable' : 'enable');
                 const toggleButton = document.createElement('button');
                 toggleButton.type = 'submit';
                 toggleButton.className = 'btn btn-sm btn-outline-warning';
@@ -208,23 +180,21 @@
                 toggleButton.innerHTML = '<i class="bi ' + (job.enabled ? 'bi-pause-circle' : 'bi-play-circle') + '"></i><span class="ms-1">' + (job.enabled ? 'Disable' : 'Enable') + '</span>';
                 toggleForm.appendChild(toggleButton);
                 textActions.appendChild(toggleForm);
+
+                const deleteForm = createActionForm(job, 'delete', 'delete');
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'submit';
+                deleteButton.className = 'btn btn-sm btn-outline-danger';
+                deleteButton.title = 'Delete';
+                deleteButton.setAttribute('aria-label', 'Delete');
+                deleteButton.innerHTML = '<i class="bi bi-trash"></i><span class="ms-1">Delete</span>';
+                deleteForm.appendChild(deleteButton);
+                textActions.appendChild(deleteForm);
             }
             actionCell.appendChild(textActions);
 
             const iconActions = document.createElement('div');
             iconActions.className = 'table-actions table-actions-icons';
-            const selectIconButton = document.createElement('button');
-            selectIconButton.type = 'button';
-            selectIconButton.className = 'btn btn-sm ' + (String(job.id) === String(selectedJobId) ? 'btn-primary' : 'btn-outline-primary');
-            selectIconButton.disabled = !job.enabled;
-            selectIconButton.title = String(job.id) === String(selectedJobId) ? 'Selected' : 'Select';
-            selectIconButton.setAttribute('aria-label', selectIconButton.title);
-            selectIconButton.innerHTML = '<i class="bi bi-play-circle"></i>';
-            selectIconButton.addEventListener('click', event => {
-                event.stopPropagation();
-                selectJob(job.id);
-            });
-            iconActions.appendChild(selectIconButton);
             if (canView) {
                 const viewIconLink = document.createElement('a');
                 viewIconLink.className = 'btn btn-sm btn-outline-secondary';
@@ -245,13 +215,7 @@
                 editIconLink.addEventListener('click', event => event.stopPropagation());
                 iconActions.appendChild(editIconLink);
 
-                const toggleForm = document.createElement('form');
-                toggleForm.method = 'post';
-                toggleForm.action = '/monitoring/jobs/' + encodeURIComponent(job.id) + '/toggle?mode=STREAMING';
-                toggleForm.dataset.appConfirm = job.enabled ? 'disable' : 'enable';
-                toggleForm.dataset.appActionTitle = job.enabled ? 'Disable Streaming Job' : 'Enable Streaming Job';
-                toggleForm.dataset.appConfirmText = job.enabled ? 'Disable' : 'Enable';
-                toggleForm.addEventListener('click', event => event.stopPropagation());
+                const toggleForm = createActionForm(job, 'toggle', job.enabled ? 'disable' : 'enable');
                 const toggleButton = document.createElement('button');
                 toggleButton.type = 'submit';
                 toggleButton.className = 'btn btn-sm btn-outline-warning';
@@ -260,6 +224,16 @@
                 toggleButton.innerHTML = '<i class="bi ' + (job.enabled ? 'bi-pause-circle' : 'bi-play-circle') + '"></i>';
                 toggleForm.appendChild(toggleButton);
                 iconActions.appendChild(toggleForm);
+
+                const deleteForm = createActionForm(job, 'delete', 'delete');
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'submit';
+                deleteButton.className = 'btn btn-sm btn-outline-danger';
+                deleteButton.title = 'Delete';
+                deleteButton.setAttribute('aria-label', 'Delete');
+                deleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+                deleteForm.appendChild(deleteButton);
+                iconActions.appendChild(deleteForm);
             }
             actionCell.appendChild(iconActions);
             row.appendChild(actionCell);
@@ -274,25 +248,52 @@
             tableBody.appendChild(row);
         }
 
-        if (count) count.textContent = filtered.length + (filtered.length === 1 ? ' job' : ' jobs');
+        if (count) count.textContent = totalElements + (totalElements === 1 ? ' job' : ' jobs');
         loading.classList.add('d-none');
-        const hasJobs = jobs.length > 0;
-        const hasMatches = filtered.length > 0;
-        empty.classList.toggle('d-none', hasJobs);
-        noResults.classList.toggle('d-none', !hasJobs || hasMatches);
+        const hasJobs = totalElements > 0;
+        const hasMatches = jobs.length > 0;
+        empty.classList.toggle('d-none', hasJobs || searchInput.value.trim() !== '');
+        noResults.classList.toggle('d-none', hasJobs || searchInput.value.trim() === '');
         tableWrapper.classList.toggle('d-none', !hasMatches);
-        pagination.classList.toggle('d-none', !hasMatches);
-        pageSummary.textContent = filtered.length
-            ? 'Showing ' + (start + 1) + '–' + Math.min(start + pageSize, filtered.length) + ' of ' + filtered.length
-            : 'No jobs match your search';
-        firstButton.disabled = page <= 0;
-        previousButton.disabled = page <= 0;
-        nextButton.disabled = page >= pageCount - 1;
-        lastButton.disabled = page >= pageCount - 1;
+        pagination.classList.toggle('d-none', !hasJobs);
+        const firstItem = totalElements === 0 ? 0 : page * pageSize + 1;
+        const lastItem = Math.min((page + 1) * pageSize, totalElements);
+        pageSummary.textContent = hasJobs
+            ? 'Showing ' + firstItem + '–' + lastItem + ' of ' + totalElements
+            : (searchInput.value.trim() ? 'No jobs match your search' : 'No streaming jobs configured');
+        firstButton.disabled = page <= 0 || !hasJobs;
+        previousButton.disabled = page <= 0 || !hasJobs;
+        nextButton.disabled = page >= totalPages - 1 || !hasJobs;
+        lastButton.disabled = page >= totalPages - 1 || !hasJobs;
         updateSortIndicators();
         if (window.DataTable) {
             window.DataTable.updateCompactActions({ containerId: 'streamingJobsTableWrapper' });
         }
+    }
+
+    function createActionForm(job, action, confirmation) {
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '/monitoring/jobs/' + encodeURIComponent(job.id) + '/' + action + '?mode=STREAMING';
+        form.dataset.appConfirm = confirmation;
+        if (confirmation === 'delete') {
+            form.dataset.appActionTitle = 'Delete Streaming Job';
+            form.dataset.appActionMessage = 'Are you sure you want to delete this streaming job?';
+            form.dataset.appActionDescription = 'This action cannot be undone.';
+        } else {
+            form.dataset.appActionTitle = job.enabled ? 'Disable Streaming Job' : 'Enable Streaming Job';
+            form.dataset.appConfirmText = job.enabled ? 'Disable' : 'Enable';
+        }
+        form.addEventListener('click', event => event.stopPropagation());
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        if (token) {
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = '_csrf';
+            csrf.value = token;
+            form.appendChild(csrf);
+        }
+        return form;
     }
 
     function updateSortIndicators() {
@@ -406,43 +407,51 @@
     }
 
     async function refresh(showLoading = true) {
+        const sequence = ++requestSequence;
         if (showLoading) loading.classList.remove('d-none');
         hideError();
         try {
-            const response = await request('/api/streaming-jobs');
-            jobs = Array.isArray(response) ? response : (Array.isArray(response.content) ? response.content : []);
-            if (selectedJobId != null && !jobs.some(job => String(job.id) === String(selectedJobId))) {
-                selectedJobId = null;
-                closeEventSource();
-                outputLines = [];
-                output.textContent = 'Select a streaming job to view its status and output.';
-            }
+            const params = new URLSearchParams({
+                page: String(page),
+                size: String(Number(pageSizeSelect.value) || 5),
+                search: searchInput.value.trim(),
+                sort: sortKey,
+                direction: sortDirection
+            });
+            const response = await request('/api/streaming-jobs?' + params.toString());
+            if (sequence !== requestSequence) return;
+            jobs = Array.isArray(response.content) ? response.content : [];
+            totalElements = Number(response.totalElements || 0);
+            totalPages = Math.max(1, Number(response.totalPages || 0));
+            page = Number(response.number || 0);
+            const selectedOnPage = jobs.find(job => String(job.id) === String(selectedJobId));
+            if (selectedOnPage) selectedJobData = selectedOnPage;
             renderTable();
             updateDetails(selectedJob());
         } catch (e) {
             loading.classList.add('d-none');
-            // Navigating away can cancel an in-flight fetch; that is not a user-facing error.
-            if (!pageLeaving) showError(e.message);
+            if (!pageLeaving && sequence === requestSequence) showError(e.message);
         }
     }
 
     searchInput.addEventListener('input', () => {
         page = 0;
         if (clearSearchButton) clearSearchButton.classList.toggle('d-none', searchInput.value.trim() === '');
-        renderTable();
+        window.clearTimeout(searchTimer);
+        searchTimer = window.setTimeout(() => refresh(), 300);
     });
     if (clearSearchButton) {
         clearSearchButton.addEventListener('click', () => {
             searchInput.value = '';
             clearSearchButton.classList.add('d-none');
             page = 0;
-            renderTable();
+            refresh();
             searchInput.focus();
         });
     }
     pageSizeSelect.addEventListener('change', () => {
         page = 0;
-        renderTable();
+        refresh();
     });
     document.querySelectorAll('#streamingJobsTable [data-sort]').forEach(button => {
         button.addEventListener('click', () => {
@@ -452,28 +461,14 @@
                 sortKey = button.dataset.sort;
                 sortDirection = 'asc';
             }
-            renderTable();
+            page = 0;
+            refresh();
         });
     });
-    firstButton.addEventListener('click', () => {
-        page = 0;
-        renderTable();
-    });
-    previousButton.addEventListener('click', () => {
-        if (page > 0) {
-            page--;
-            renderTable();
-        }
-    });
-    nextButton.addEventListener('click', () => {
-        page++;
-        renderTable();
-    });
-    lastButton.addEventListener('click', () => {
-        const pageSize = Number(pageSizeSelect.value) || 5;
-        page = Math.max(0, Math.ceil(visibleJobs().length / pageSize) - 1);
-        renderTable();
-    });
+    firstButton.addEventListener('click', () => { page = 0; refresh(); });
+    previousButton.addEventListener('click', () => { if (page > 0) { page--; refresh(); } });
+    nextButton.addEventListener('click', () => { if (page < totalPages - 1) { page++; refresh(); } });
+    lastButton.addEventListener('click', () => { page = Math.max(0, totalPages - 1); refresh(); });
     document.getElementById('refreshStreamingJobs').addEventListener('click', () => refresh());
     if (startButton) startButton.addEventListener('click', () => runAction('start'));
     if (stopButton) stopButton.addEventListener('click', () => runAction('stop'));
