@@ -556,17 +556,27 @@ public class MonitoringJobController
      */
     @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
     @PostMapping("/{id}/toggle")
-    public String toggleEnabled(@PathVariable Long id, RedirectAttributes redirectAttributes)
+    public String toggleEnabled(@PathVariable Long id, @RequestParam(required = false) String mode,
+            RedirectAttributes redirectAttributes)
     {
         MonitoringJob job = monitoringJobService.findById(id);
+        boolean streamingContext = "STREAMING".equalsIgnoreCase(mode);
+        if (streamingContext)
+        {
+            if (job.getExecutionMode() != MonitoringJob.ExecutionMode.STREAMING)
+                throw new IllegalArgumentException("Only streaming jobs can be managed from the Streaming Jobs page.");
+            if (job.getApplication() != null)
+                accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_CONFIG");
+        }
         boolean enabling = !job.isEnabled();
         String jobName = job.getName();
 
         monitoringJobService.toggleEnabled(id);
 
+        String jobLabel = streamingContext ? "Streaming job" : "Monitoring job";
         redirectAttributes.addFlashAttribute("successMessage",
-                "Monitoring job '" + jobName + "' was " + (enabling ? "enabled" : "disabled") + " successfully.");
-        return "redirect:/monitoring/jobs";
+                jobLabel + " '" + jobName + "' was " + (enabling ? "enabled" : "disabled") + " successfully.");
+        return streamingContext ? "redirect:/monitoring/streaming-jobs" : "redirect:/monitoring/jobs";
     }
 
     /*
