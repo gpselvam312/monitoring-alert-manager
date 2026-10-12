@@ -33,6 +33,16 @@ public class GlobalExceptionHandler
     public String handleUnexpectedException(Exception exception, HttpServletRequest request,
             HttpServletResponse response, RedirectAttributes redirectAttributes)
     {
+        // A browser can abandon a request (for example, when navigating away) while the
+        // server is writing the response. The resulting broken pipe is not an application
+        // failure, and attempting to render an error page can cause another failed write.
+        if (isClientDisconnect(exception))
+        {
+            log.debug("Client disconnected while responding to {} {}", request.getMethod(),
+                    request.getRequestURI());
+            return null;
+        }
+
         log.error("Unhandled application error for {} {}", request.getMethod(), request.getRequestURI(), exception);
 
         String method = request.getMethod().toUpperCase(Locale.ROOT);
@@ -52,6 +62,37 @@ public class GlobalExceptionHandler
         // Render a standalone fallback so the user never sees Spring Boot's Whitelabel Error Page.
         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         return "error/general";
+    }
+
+    private boolean isClientDisconnect(Exception exception)
+    {
+        boolean knownDisconnectException = false;
+        boolean brokenConnection = false;
+
+        for (Throwable cause = exception; cause != null; cause = cause.getCause())
+        {
+            String type = cause.getClass().getSimpleName();
+            if ("AsyncRequestNotUsableException".equals(type) || "ClientAbortException".equals(type))
+            {
+                knownDisconnectException = true;
+            }
+
+            String message = cause.getMessage();
+            if (message != null)
+            {
+                String normalizedMessage = message.toLowerCase(Locale.ROOT);
+                if (normalizedMessage.contains("broken pipe")
+                        || normalizedMessage.contains("connection reset by peer")
+                        || normalizedMessage.contains("forcibly closed by the remote host"))
+                {
+                    brokenConnection = true;
+                }
+            }
+        }
+
+        // Require both a known response/client-abort exception and a recognizable disconnect
+        // message so unrelated application exceptions continue through normal error handling.
+        return knownDisconnectException && brokenConnection;
     }
 
     private String safeReturnPath(String referer, HttpServletRequest request)
