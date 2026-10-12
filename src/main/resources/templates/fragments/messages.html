@@ -10,7 +10,7 @@
 		<div class="app-message-container">
 
 			<div th:if="${successMessage}"
-				class="app-message app-message-success" role="status" aria-live="polite" tabindex="-1">
+				class="app-message app-message-success" role="status" aria-live="polite">
 
 				<div class="app-message-icon">
 					<i class="bi bi-check-circle-fill"></i>
@@ -31,7 +31,7 @@
 			</div>
 
 			<div th:if="${errorMessage}" class="app-message app-message-error"
-				role="alert" aria-live="assertive" tabindex="-1">
+				role="alert" aria-live="assertive">
 
 				<div class="app-message-icon">
 					<i class="bi bi-x-circle-fill"></i>
@@ -52,7 +52,7 @@
 			</div>
 
 			<div th:if="${warningMessage}"
-				class="app-message app-message-warning" role="alert" aria-live="polite" tabindex="-1">
+				class="app-message app-message-warning" role="alert" aria-live="polite">
 
 				<div class="app-message-icon">
 					<i class="bi bi-exclamation-triangle-fill"></i>
