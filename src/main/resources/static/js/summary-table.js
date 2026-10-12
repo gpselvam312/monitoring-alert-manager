@@ -31,7 +31,13 @@
 
     function getRows(result, config) {
         const payload = result && result.payload;
-        const configured = config.rowPath ? path(payload, config.rowPath) : undefined;
+        let configured = config.rowPath ? path(payload, config.rowPath) : undefined;
+        // Script JSON may already use an envelope such as {"payload":{"hosts":[...]}}.
+        // DashboardService preserves that envelope as result.payload, so retry the
+        // configured rowPath inside the nested payload before falling back to discovery.
+        if (!Array.isArray(configured) && payload && payload.payload && typeof payload.payload === "object") {
+            configured = config.rowPath ? path(payload.payload, config.rowPath) : undefined;
+        }
         if (Array.isArray(configured)) return configured.filter(row => row && typeof row === "object" && !Array.isArray(row));
         if (Array.isArray(payload)) return payload.filter(row => row && typeof row === "object" && !Array.isArray(row));
         if (Array.isArray(result && result.rows)) return result.rows;
