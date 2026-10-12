@@ -4672,10 +4672,10 @@ textarea.form-control {
     display: flex;
     flex-direction: column;
     gap: .75rem;
-    width: 100%;
-    max-width: 720px;
+    width: calc(100% - 2rem);
+    max-width: 520px;
     min-width: 0;
-    margin: 0 0 1rem;
+    margin: 1rem auto 1rem;
 }
 
 .app-message {
