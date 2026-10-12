@@ -283,6 +283,9 @@
         } else {
             form.dataset.appConfirm = confirmation;
             form.dataset.appActionTitle = job.enabled ? 'Disable Streaming Job' : 'Enable Streaming Job';
+            form.dataset.appActionMessage = job.enabled
+                ? 'Disable this streaming job?'
+                : 'Enable this streaming job?';
             form.dataset.appConfirmText = job.enabled ? 'Disable' : 'Enable';
         }
         form.addEventListener('click', event => event.stopPropagation());
