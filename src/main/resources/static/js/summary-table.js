@@ -287,7 +287,8 @@
         const columns = inferColumns(getRows(result || {}, config), config.details && config.details.columns || config.columns);
         const totalConfig = config.summary && config.summary.totalRow || {};
         const rawRows = getRows(result || {}, config);
-        const totalRow = rawRows.find(row => isTotalRow(row, totalConfig, columns)) || null;
+        const detectedTotalRow = rawRows.find(row => isTotalRow(row, totalConfig, columns)) || null;
+        const totalRow = String(totalConfig.mode || "").toUpperCase() === "AUTHORITATIVE_ROW" ? detectedTotalRow : null;
         const detailRows = rawRows.filter(row => !isTotalRow(row, totalConfig, columns));
         const columnMap = new Map(columns.map(column => [column.field, column]));
         const configuredExcluded = new Set(config.summary && Array.isArray(config.summary.excludedFields) ? config.summary.excludedFields.map(String) : []);
