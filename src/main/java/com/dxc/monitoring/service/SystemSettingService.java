@@ -107,7 +107,8 @@ public class SystemSettingService
                 if (value == null)
                 {
                     value = loadValue(THEME);
-                    cachedTheme = ALLOWED_THEMES.contains(value) ? value : "orange";
+                    value = ALLOWED_THEMES.contains(value) ? value : "orange";
+                    cachedTheme = value;
                 }
             }
         }
