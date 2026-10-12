@@ -67,8 +67,15 @@ public class ScriptSecurityValidator
     {
         if (systemSettingService == null)
             return fallbackAllowedDirectories;
-        java.util.List<String> configured = systemSettingService.getScriptAllowedDirectories();
-        return configured.isEmpty() ? fallbackAllowedDirectories : toPaths(configured);
+        try
+        {
+            java.util.List<String> configured = systemSettingService.getScriptAllowedDirectories();
+            return configured.isEmpty() ? fallbackAllowedDirectories : toPaths(configured);
+        }
+        catch (IllegalStateException exception)
+        {
+            throw new IllegalArgumentException("Script security configuration is invalid.");
+        }
     }
 
     public Path validate(MonitoringJob job) throws IOException
