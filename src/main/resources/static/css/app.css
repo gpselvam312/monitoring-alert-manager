@@ -4688,6 +4688,13 @@ textarea.form-control {
     pointer-events: auto;
 }
 
+/* Flash messages are not interactive controls and should never show a focus ring. */
+.app-message:focus,
+.app-message:focus-visible {
+    outline: none !important;
+    box-shadow: 0 2px 8px color-mix(in srgb, #000 5%, transparent) !important;
+}
+
 .app-message {
     --app-message-accent: var(--info);
     display: flex;
