@@ -237,10 +237,10 @@
             cards.push({ label, value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field, filterType: "field" });
         });
         if (!cards.length) return "";
-        return '<div class="summary-table-cards">' + cards.map(card => {
+        return '<div class="summary-table-cards dashboard-stat-metrics">' + cards.map(card => {
             const active = state.cardFilter && state.cardFilter.type === card.filterType
                 && state.cardFilter.field === card.filterField;
-            return '<button type="button" class="summary-table-card ' + esc(card.cls || "") +
+            return '<button type="button" class="dashboard-stat-metric summary-table-card ' + esc(card.cls || "") +
                 (active ? ' is-selected' : '') + '" data-card-filter-type="' + esc(card.filterType) +
                 '" data-card-filter-field="' + esc(card.filterField || '') + '" aria-pressed="' + Boolean(active) + '">' +
                 '<span class="dashboard-stat-metric-label summary-table-card-label">' + esc(card.label) + '</span>' +
