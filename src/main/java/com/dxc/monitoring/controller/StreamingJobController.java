@@ -2,7 +2,12 @@ package com.dxc.monitoring.controller;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -10,6 +15,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -39,9 +45,28 @@ public class StreamingJobController
     @GetMapping("/api/streaming-jobs")
     @ResponseBody
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
-    public List<StreamingJobView> list()
+    public Page<StreamingJobView> list(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "name") String sort,
+            @RequestParam(defaultValue = "asc") String direction)
     {
-        return streamingJobService.listJobs();
+        int normalizedPage = Math.max(0, page);
+        int normalizedSize = (size == 5 || size == 10 || size == 25) ? size : 5;
+        Map<String, String> allowedFields = Map.of(
+                "name", "name",
+                "application", "application.name",
+                "environment", "environment.name",
+                "machine", "machine.name",
+                "type", "type",
+                "severity", "severity",
+                "schedule", "schedule.name",
+                "enabled", "enabled");
+        String sortField = allowedFields.getOrDefault(sort, "name");
+        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction)
+                ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(normalizedPage, normalizedSize,
+                Sort.by(sortDirection, sortField).and(Sort.by(Sort.Direction.ASC, "id")));
+        return streamingJobService.listJobs(search, pageable);
     }
 
     @PostMapping("/api/streaming-jobs/{id}/start")
