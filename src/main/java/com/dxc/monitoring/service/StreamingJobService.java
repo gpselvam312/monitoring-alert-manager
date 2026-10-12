@@ -22,6 +22,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -70,6 +72,33 @@ public class StreamingJobService
         this.jdbcTemplate = jdbcTemplate;
         this.accessService = accessService;
         this.scriptSecurityValidator = scriptSecurityValidator;
+    }
+
+    public Page<StreamingJobView> listJobs(String search, Pageable pageable)
+    {
+        List<Long> applicationIds = accessService.getAccessibleApplications().stream()
+                .map(com.dxc.monitoring.entity.Application::getId).toList();
+        if (applicationIds.isEmpty()) return Page.empty(pageable);
+        String normalizedSearch = search == null ? "" : search.trim();
+        Page<MonitoringJob> jobs = jobRepository.findAllForApplications(normalizedSearch,
+                MonitoringJob.ExecutionMode.STREAMING, applicationIds, pageable);
+        return jobs.map(job -> {
+            ClaimRow claim = readClaim(job.getId());
+            return new StreamingJobView(job.getId(), job.getName(), job.getDescription(),
+                    job.getApplication() == null ? null : job.getApplication().getName(),
+                    job.getEnvironment() == null ? null : job.getEnvironment().getName(),
+                    job.getMachine() == null ? null : job.getMachine().getName(),
+                    job.getType() == null ? null : job.getType().name(),
+                    job.getSeverity() == null ? null : job.getSeverity().name(),
+                    job.getSchedule() == null ? null : job.getSchedule().getName(),
+                    job.isEnabled(), job.isManualRunEnabled(),
+                    claim == null ? "IDLE" : claim.status,
+                    claim == null ? null : claim.startedBy,
+                    claim == null ? null : claim.startedAt,
+                    claim == null ? null : claim.processId,
+                    job.getMaxStreamingRuntimeSeconds() == null ? 300 : job.getMaxStreamingRuntimeSeconds(),
+                    claim == null ? null : claim.terminalMessage);
+        });
     }
 
     public List<StreamingJobView> listJobs()
