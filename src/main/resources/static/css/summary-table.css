@@ -1,8 +1,11 @@
 .summary-table-widget { min-width: 0; }
 .summary-table-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
-.summary-table-card { min-width: 0; border: 1px solid var(--border-color, #dee2e6); border-radius: .65rem; padding: .85rem 1rem; background: var(--card-bg, var(--bs-body-bg, #fff)); }
-.summary-table-card-label { color: var(--text-secondary, #6c757d); font-size: .8rem; line-height: 1.3; overflow-wrap: anywhere; }
-.summary-table-card-value { color: var(--text-primary, var(--bs-body-color, #212529)); font-size: 1.65rem; font-weight: 700; line-height: 1.35; margin-top: .2rem; }
+.summary-table-card { min-width: 0; width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: .35rem; text-align: left; cursor: pointer; border: 1px solid var(--border-color, #dee2e6); border-radius: .65rem; padding: .85rem 1rem; background: var(--card-bg, var(--bs-body-bg, #fff)); color: inherit; font: inherit; }
+.summary-table-card-label { overflow-wrap: anywhere; }
+.summary-table-card-value { display: block; }
+.summary-table-card:hover { border-color: var(--theme-primary, var(--bs-primary, #0d6efd)); }
+.summary-table-card:focus-visible { outline: 2px solid var(--theme-primary, var(--bs-primary, #0d6efd)); outline-offset: 2px; }
+.summary-table-card.is-selected { border-color: var(--theme-primary, var(--bs-primary, #0d6efd)); box-shadow: inset 0 0 0 1px var(--theme-primary, var(--bs-primary, #0d6efd)); }
 .summary-table-card.is-healthy { border-left: 3px solid var(--success, #198754); }
 .summary-table-card.is-warning { border-left: 3px solid var(--warning, #ffc107); }
 .summary-table-card.is-critical { border-left: 3px solid var(--danger, #dc3545); }
@@ -34,3 +37,7 @@
 .summary-table-empty, .summary-table-empty-cell { color: var(--text-secondary, #6c757d); text-align: center; padding: 1rem; }
 .dashboard-widget-no-header > .dashboard-widget-header { display: none; }
 @media (max-width: 576px) { .summary-table-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .summary-table-pagination { align-items: flex-start; } .summary-table-group-aggregate { flex-basis: 100%; margin-left: 1.6rem; } }
+.summary-table-controls { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .75rem; margin: .5rem 0 .75rem; }
+.summary-table-controls > label { margin: 0; font-size: .875rem; font-weight: 600; }
+.summary-table-group-by { width: min(320px, 100%); min-height: 2.25rem; }
+.summary-table-controls .small { flex-basis: 100%; }
