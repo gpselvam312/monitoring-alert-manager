@@ -10,6 +10,7 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -38,12 +39,22 @@ public class ScriptSecurityValidator
     private final Path[] fallbackAllowedDirectories;
     private final SystemSettingService systemSettingService;
 
+    @Autowired
     public ScriptSecurityValidator(
             @Value("${monitoring.security.script.allowed-directories:${user.dir}/scripts}") String allowedDirectories,
             SystemSettingService systemSettingService)
     {
         this.fallbackAllowedDirectories = toPaths(Arrays.asList(allowedDirectories.split(",")));
         this.systemSettingService = systemSettingService;
+    }
+
+    /**
+     * Compatibility constructor for isolated validator tests using only the configured property.
+     */
+    ScriptSecurityValidator(String allowedDirectories)
+    {
+        this.fallbackAllowedDirectories = toPaths(Arrays.asList(allowedDirectories.split(",")));
+        this.systemSettingService = null;
     }
 
     private Path[] toPaths(java.util.List<String> directories)
@@ -54,6 +65,8 @@ public class ScriptSecurityValidator
 
     private Path[] getAllowedDirectories()
     {
+        if (systemSettingService == null)
+            return fallbackAllowedDirectories;
         java.util.List<String> configured = systemSettingService.getScriptAllowedDirectories();
         return configured.isEmpty() ? fallbackAllowedDirectories : toPaths(configured);
     }
