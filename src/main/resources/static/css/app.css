@@ -4574,3 +4574,57 @@ textarea.form-control {
         min-width: 0;
     }
 }
+
+
+/* Elasticsearch widget: match Kafka and System Metrics hover feedback. */
+.elasticsearch-cluster-banner,
+.elasticsearch-summary-item,
+.elasticsearch-node-card,
+.elasticsearch-cluster-health {
+    transition: border-color .15s ease, background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+
+.elasticsearch-cluster-banner:hover {
+    border-color: color-mix(in srgb, var(--es-accent) 48%, var(--border-color));
+    box-shadow: 0 5px 16px color-mix(in srgb, var(--es-accent) 10%, transparent);
+}
+
+.elasticsearch-summary-item {
+    cursor: default;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.elasticsearch-summary-item:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--es-summary-accent) 55%, var(--border-color));
+    box-shadow: 0 5px 14px color-mix(in srgb, var(--es-summary-accent) 15%, transparent);
+}
+
+.elasticsearch-node-card {
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+
+.elasticsearch-node-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--es-node-accent) 55%, var(--border-color));
+    box-shadow: 0 5px 16px color-mix(in srgb, var(--es-node-accent) 14%, transparent);
+}
+
+.elasticsearch-node-card:hover .elasticsearch-node-title > i,
+.elasticsearch-summary-item:hover > span i {
+    filter: brightness(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .elasticsearch-cluster-banner,
+    .elasticsearch-summary-item,
+    .elasticsearch-node-card,
+    .elasticsearch-cluster-health {
+        transition: none;
+    }
+
+    .elasticsearch-summary-item:hover,
+    .elasticsearch-node-card:hover {
+        transform: none;
+    }
+}
