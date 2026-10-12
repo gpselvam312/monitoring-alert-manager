@@ -55,7 +55,7 @@
         if (totalConfig && totalConfig.identifyBy) {
             return String(rowValue(row, totalConfig.identifyBy)).toLowerCase() === String(totalConfig.value || "TOTAL").toLowerCase();
         }
-        const fields = columns.length ? columns.map(column => column.field || column.key).filter(Boolean) : Object.keys(row);
+        const fields = Object.keys(row);
         const labelField = fields.find(field => numeric(rowValue(row, field)) === null);
         return labelField ? String(rowValue(row, labelField) || "").trim().toLowerCase() === "total" : false;
     }
@@ -113,7 +113,7 @@
         return result || "";
     }
 
-    function makeGroups(rows, fields, level, config, state) {
+    function makeGroups(rows, fields, level, config, state, prefix) {
         if (level >= fields.length) return rows.map(row => ({ type: "row", row }));
         const field = fields[level];
         const grouped = new Map();
@@ -131,8 +131,8 @@
             return String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true });
         });
         return entries.map(entry => {
-            const id = fields.slice(0, level + 1).join("|") + "=" + entry[0];
-            return { type: "group", id, field, value: entry[0], rows: entry[1], children: makeGroups(entry[1], fields, level + 1, config, state), level };
+            const id = (prefix ? prefix + "|" : "") + field + "=" + entry[0];
+            return { type: "group", id, field, value: entry[0], rows: entry[1], children: makeGroups(entry[1], fields, level + 1, config, state, id), level };
         });
     }
 
@@ -213,15 +213,15 @@
         const details = config.details || {};
         const groupConfig = details.groupBy || config.groupBy || {};
         const grouping = groupConfig.enabled === true;
-        const groupFields = Array.isArray(groupConfig.fields) ? groupConfig.fields.map(String).filter(Boolean) : [];
+        const groupFields = Array.isArray(groupConfig.fields) ? groupConfig.fields.map(String).filter(field => field && (!state.columnMap.has(field) || state.columnMap.get(field).groupable !== false)) : [];
         const searchConfig = details.search || config.search || {};
         const sortConfig = details.sorting || config.sorting || {};
         const pageConfig = details.pagination || config.pagination || {};
         let rows = state.detailRows.slice();
         if (state.search && searchConfig.enabled !== false) {
-            const requested = Array.isArray(searchConfig.fields) ? searchConfig.fields.map(String) : null;
+            const requested = Array.isArray(searchConfig.fields) ? searchConfig.fields.map(String) : state.columns.filter(column => column.searchable !== false).map(column => column.field);
             rows = rows.filter(row => {
-                const fields = requested || Object.keys(row);
+                const fields = requested;
                 return fields.some(field => String(display(rowValue(row, field))).toLowerCase().includes(state.search.toLowerCase()));
             });
         }
@@ -241,7 +241,7 @@
             return renderCards(state);
         }
         if (details.enabled === false) return renderCards(state);
-        if (!columns.length && !rows.length) return renderCards(state) + '<div class="summary-table-empty">No detail data available.</div>';
+        if (!columns.length) return renderCards(state) + '<div class="summary-table-empty">No visible detail columns configured.</div>';
         const header = columns.map(column => {
             const canSort = sortConfig.enabled !== false && column.sortable !== false;
             const active = state.sortField === column.field;
@@ -252,7 +252,7 @@
         let pageCount = 1, totalCount = rows.length, pageRows = rows;
         const pageSize = Math.max(1, Math.min(500, Number(pageConfig.pageSize) || 10));
         if (grouping && groupFields.length) {
-            const nodes = makeGroups(rows, groupFields, 0, groupConfig, state);
+            const nodes = makeGroups(rows, groupFields, 0, groupConfig, state, "");
             pageCount = Math.max(1, Math.ceil(nodes.length / pageSize));
             state.page = Math.min(state.page, pageCount - 1);
             const visibleNodes = pageConfig.enabled === false ? nodes : nodes.slice(state.page * pageSize, (state.page + 1) * pageSize);
@@ -300,9 +300,12 @@
             page: 0, collapsed: new Set()
         };
         const groupConfig = (config.details || {}).groupBy || config.groupBy || {};
-        if (groupConfig.initialState === "COLLAPSED") {
-            // Groups are collapsed when created; the first render lazily records the actual group ids.
-            state.collapseInitially = true;
+        if (groupConfig.initialState === "COLLAPSED" && Array.isArray(groupConfig.fields) && groupConfig.fields.length) {
+            const initialNodes = makeGroups(detailRows, groupConfig.fields.map(String), 0, groupConfig, state, "");
+            const collapseAll = nodes => nodes.forEach(node => {
+                if (node.type === "group") { state.collapsed.add(node.id); collapseAll(node.children); }
+            });
+            collapseAll(initialNodes);
         }
         const widgetId = String(widget && widget.id || "summary-table");
         states.set(widgetId, state);
