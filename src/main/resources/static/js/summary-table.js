@@ -98,9 +98,10 @@
     }
 
     function rowClass(row, config) {
-        const rowStatus = config.rowStatus || {};
+        const rowStatus = (config.details && config.details.rowStatus) || config.rowStatus || {};
         if (rowStatus.enabled !== false && rowStatus.field) return statusClass(rowValue(row, rowStatus.field), rowStatus);
-        const thresholds = config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {};
+        const thresholds = (config.details && config.details.thresholds && typeof config.details.thresholds === "object")
+            ? config.details.thresholds : (config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {});
         for (const field of Object.keys(thresholds)) {
             const result = thresholdClass(rowValue(row, field), thresholds[field]);
             if (result === "is-critical" || result === "is-warning") return result;
@@ -164,7 +165,7 @@
             columns.map(column => {
                 const value = rowValue(row, column.field);
                 if (String(column.format).toLowerCase() === "status") {
-                    const cls = statusClass(value, (config.rowStatus || {}));
+                    const cls = statusClass(value, (config.details && config.details.rowStatus) || config.rowStatus || {});
                     return '<td><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
                 }
                 return '<td>' + esc(display(value)) + '</td>';
