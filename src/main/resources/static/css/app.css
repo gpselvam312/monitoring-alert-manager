@@ -4670,3 +4670,6 @@ textarea.form-control {
     outline: 2px solid var(--theme-primary);
     outline-offset: 3px;
 }
+
+.execution-sort-button.active { color: var(--theme-primary); }
+.execution-sort-button.active .table-sort-icon { color: var(--theme-primary); }
