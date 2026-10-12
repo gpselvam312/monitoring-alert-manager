@@ -33,6 +33,7 @@ import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.service.MonitoringExecutionManager;
 import com.dxc.monitoring.service.MonitoringExecutionService;
 import com.dxc.monitoring.service.MonitoringJobService;
+import com.dxc.monitoring.service.StreamingJobService;
 import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
@@ -42,6 +43,7 @@ public class MonitoringJobController
 {
 
     private final MonitoringJobService monitoringJobService;
+    private final StreamingJobService streamingJobService;
     private final MachineRepository machineRepository;
     private final ScheduleRepository scheduleRepository;
     private final UserRepository userRepository;
@@ -60,7 +62,7 @@ public class MonitoringJobController
                 "machine.name", "machine.name", "type", "type", "severity", "severity", "schedule.name",
                 "schedule.name", "enabled", "enabled");
 
-    public MonitoringJobController(MonitoringJobService monitoringJobService, MachineRepository machineRepository,
+    public MonitoringJobController(MonitoringJobService monitoringJobService, StreamingJobService streamingJobService, MachineRepository machineRepository,
             ScheduleRepository scheduleRepository, UserRepository userRepository,
             ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
             MonitoringExecutionManager monitoringExecutionManager,
@@ -68,6 +70,7 @@ public class MonitoringJobController
             DashboardAccessService accessService)
     {
         this.monitoringJobService = monitoringJobService;
+        this.streamingJobService = streamingJobService;
         this.machineRepository = machineRepository;
         this.scheduleRepository = scheduleRepository;
         this.userRepository = userRepository;
@@ -583,14 +586,27 @@ public class MonitoringJobController
      * DELETE
      */
     @PostMapping("/{id}/delete")
-    public String deleteJob(@PathVariable Long id, RedirectAttributes redirectAttributes)
+    public String deleteJob(@PathVariable Long id, @RequestParam(required = false) String mode,
+            RedirectAttributes redirectAttributes)
     {
+        boolean streamingContext = "STREAMING".equalsIgnoreCase(mode);
+        if (streamingContext)
+        {
+            MonitoringJob streamingJob = monitoringJobService.findById(id);
+            if (streamingJob.getExecutionMode() != MonitoringJob.ExecutionMode.STREAMING)
+                throw new IllegalArgumentException("Only streaming jobs can be deleted from the Streaming Jobs page.");
+            if (streamingJob.getApplication() != null)
+                accessService.assertCanAccessApplication(streamingJob.getApplication().getId(), "MONITORING_CONFIG");
+            if (streamingJobService.hasActiveRun(id))
+                throw new IllegalStateException("Stop the streaming job and resolve any recovery state before removing it.");
+        }
         String jobName = monitoringJobService.delete(id);
+        String jobLabel = streamingContext ? "Streaming job" : "Monitoring job";
 
         redirectAttributes.addFlashAttribute("successMessage",
-                "Monitoring job '" + jobName + "' was deleted successfully.");
+                jobLabel + " '" + jobName + "' was deleted successfully.");
 
-        return "redirect:/monitoring/jobs";
+        return streamingContext ? "redirect:/monitoring/streaming-jobs" : "redirect:/monitoring/jobs";
     }
 
     @PreAuthorize("hasAuthority('MONITORING_RUN')")
