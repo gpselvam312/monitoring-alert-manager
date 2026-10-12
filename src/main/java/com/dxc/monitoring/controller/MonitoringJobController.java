@@ -402,8 +402,10 @@ public class MonitoringJobController
             monitoringJobService.save(job);
         }
 
+        String jobLabel = job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
+                ? "Streaming job" : "Monitoring job";
         redirectAttributes.addFlashAttribute("successMessage",
-                "Monitoring job '" + job.getName() + "' was "
+                jobLabel + " '" + job.getName() + "' was "
                         + (updatingJob ? "updated" : "created") + " successfully.");
 
         return "STREAMING".equalsIgnoreCase(mode)
