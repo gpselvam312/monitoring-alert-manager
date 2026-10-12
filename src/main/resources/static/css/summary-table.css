@@ -41,3 +41,12 @@
 .summary-table-controls > label { margin: 0; font-size: .875rem; font-weight: 600; }
 .summary-table-group-by { width: min(320px, 100%); min-height: 2.25rem; }
 .summary-table-controls .small { flex-basis: 100%; }
+
+/* Summary count buttons follow the shared server-health summary pattern. */
+.summary-table-cards { display:flex; flex-wrap:wrap; gap:.65rem; }
+.summary-table-card { flex:1 1 140px; min-width:130px; }
+.summary-table-card > span { display:flex; align-items:center; gap:.4rem; }
+.summary-table-card > strong { font-size:1.35rem; }
+.summary-table-card.is-active { outline:2px solid var(--theme-primary, var(--bs-primary)); outline-offset:1px; }
+.summary-table-controls .dropdown-menu { min-width:220px; max-height:300px; overflow-y:auto; }
+.summary-table-group-menu .dropdown-item { cursor:pointer; }
