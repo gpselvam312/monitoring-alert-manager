@@ -44,8 +44,8 @@
       th:object="${job}"
       method="post"
       th:attr="data-app-confirm=${job.id == null ? 'save' : 'update'},
-               data-app-action-title=${job.id == null ? 'Create Monitoring Job' : 'Update Monitoring Job'},
-               data-app-action-message=${job.id == null ? 'Create this monitoring job?' : 'Update this monitoring job?'},
+               data-app-action-title=${executionModeLocked ? (job.id == null ? 'Create Streaming Job' : 'Update Streaming Job') : (job.id == null ? 'Create Monitoring Job' : 'Update Monitoring Job')},
+               data-app-action-message=${executionModeLocked ? (job.id == null ? 'Create this streaming job?' : 'Update this streaming job?') : (job.id == null ? 'Create this monitoring job?' : 'Update this monitoring job?')},
                data-app-confirm-text=${submitLabel}">
 
     <input type="hidden" th:field="*{id}">
