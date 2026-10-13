@@ -32,6 +32,12 @@ public class GlobalModelAttributes
         return systemSettingService.getTheme();
     }
 
+    @ModelAttribute("dateTimeFormat")
+    public String dateTimeFormat()
+    {
+        return systemSettingService.getDateTimeFormat();
+    }
+
     @ModelAttribute("sidebarSections")
     public List<MenuItemService.SidebarSection> sidebarSections(Authentication authentication)
     {
