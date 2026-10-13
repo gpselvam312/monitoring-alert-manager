@@ -52,6 +52,16 @@
             return value;
         }
 
+        if (type === "PLAIN_TEXT") {
+            const lines = text.split(/\\r?\\n/);
+            const rows = lines.filter(line => line.trim() !== "").map((line, index) => ({
+                lineNumber: index + 1,
+                text: line
+            }));
+            if (!rows.length) throw new Error("No text lines were found in the sample.");
+            return { rows };
+        }
+
         if (type === "DELIMITED") {
             const delimiter = String(parser.delimiter === undefined ? "|" : parser.delimiter);
             if (!delimiter) throw new Error("Enter a non-empty delimiter.");
@@ -261,7 +271,7 @@
             select.disabled = false;
             const parserType = String((config.responseParser || {}).type || "AUTO").toUpperCase();
             const preferRoot = ["STAT", "STATUS", "TEXT", "ELASTICSEARCH"].includes(currentWidgetType())
-                && !["DELIMITED", "KEY_VALUE", "REGEX"].includes(parserType);
+                && !["DELIMITED", "KEY_VALUE", "REGEX", "PLAIN_TEXT"].includes(parserType);
             const preferredPath = rowPath && collections.some(item => item.path === rowPath)
                 ? rowPath
                 : (preferRoot && collections.some(item => item.path === "") ? "" :
@@ -430,8 +440,34 @@
 
     function refreshConfigFromEditor() {
         const type = currentWidgetType();
-        if (type === "SUMMARY_TABLE" && state.sample && selectedCollection()) {
-            setConfig(buildConfig());
+        if (type === "SUMMARY_TABLE") {
+            if (state.sample && selectedCollection()) {
+                setConfig(buildConfig());
+                return;
+            }
+            const summaryConfig = getConfig();
+            summaryConfig.responseParser = currentParserConfig();
+            summaryConfig.details = summaryConfig.details && typeof summaryConfig.details === "object" ? summaryConfig.details : {};
+            summaryConfig.details.search = Object.assign({}, summaryConfig.details.search || {}, {
+                enabled: byId("summaryTableSearchEnabled").checked
+            });
+            summaryConfig.details.sorting = Object.assign({}, summaryConfig.details.sorting || {}, {
+                enabled: true,
+                direction: byId("summaryTableSortDirection").value,
+                defaultField: byId("summaryTableDefaultSort").value
+            });
+            summaryConfig.details.pagination = Object.assign({}, summaryConfig.details.pagination || {}, {
+                enabled: true,
+                pageSize: Number(byId("summaryTablePageSize").value) || 10
+            });
+            summaryConfig.details.groupBy = Object.assign({}, summaryConfig.details.groupBy || {}, {
+                enabled: byId("summaryTableGroupByEnabled").checked,
+                fields: Array.from(byId("summaryTableGroupByFields").selectedOptions).map(option => option.value),
+                initialState: byId("summaryTableGroupByInitialState").value,
+                order: byId("summaryTableGroupByOrder").value,
+                showAggregates: byId("summaryTableGroupByAggregates").checked
+            });
+            setConfig(summaryConfig);
             return;
         }
         const config = getConfig();
@@ -628,7 +664,7 @@
         byId("widgetFieldMappingHeading").textContent = isSummary ? "Column mapping" : "Field mapping";
         const config = getConfig();
         const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
-        byId("summaryTableResponseFormat").value = ["AUTO", "JSON", "DELIMITED", "KEY_VALUE", "REGEX"].includes(String(parser.type || "AUTO").toUpperCase())
+        byId("summaryTableResponseFormat").value = ["AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX"].includes(String(parser.type || "AUTO").toUpperCase())
             ? String(parser.type || "AUTO").toUpperCase() : "AUTO";
         const delimiterValue = parser.delimiter || "|";
         byId("summaryTableDelimiter").value = ["|", ",", ";"].includes(delimiterValue)
