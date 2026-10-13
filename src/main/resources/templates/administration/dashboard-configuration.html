@@ -1469,7 +1469,7 @@
                                     Optional JSON: TABLE widgets support rowPath, columns (field/key, label, visible, sortable, searchable, format: number/percentage/status/datetime/duration), visibleFields, labels, order, formats, sorting (enabled, defaultField, direction), search (enabled, placeholder) and pagination (enabled, pageSize);
                                     charts use rowPath, categoryField, valueField and optional seriesField;
                                     STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields (logical-to-JSON mappings) and labels; standard metrics use built-in percentage, load and duration formatting.
-                                    Summary Table uses renderer SUMMARY_TABLE with optional summary cards/overall total, details columns (including hidden groupable fields), search, sorting, pagination, multi-field grouping and row-status/threshold mappings;
+                                    Summary Table uses renderer SUMMARY_TABLE with optional summary cards/overall total, details columns (including hidden groupable fields), search, sorting, pagination, multi-field grouping, row-status/threshold mappings, and column formats number/percentage/datetime/duration/status (duration is in seconds);
                                     Kafka health uses TABLE with "renderer":"KAFKA_CONSUMER_HEALTH", clusterPath and cluster metric fields,
                                     rowPath, groupNameField, groupStatusField, groupLagField, topicsField, topicNameField, topicCurrentField,
                                     topicEndField, topicLagField, partitionsField, partitionIdField, partitionCurrentField, partitionEndField and partitionLagField.
