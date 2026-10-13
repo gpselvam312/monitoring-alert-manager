@@ -86,3 +86,34 @@ For a monitoring job that returns rows like {"Machine":"zuccmravp09","0A":2,"CM"
 - Set header.enabled to false to hide the standard widget header; summary cards and the details table remain independent.
 
 The current implementation is client-rendered. It expects structured JSON for reliable field mapping; fixed-width shell output should be converted to JSON by the script or a wrapper.
+
+## Response interpretation in Dashboard Configuration
+
+The Summary Table editor includes a guided response-format selector and sample preview. The sample is only used to discover collections/fields and preview column mappings; it is not stored as monitoring history or used as a runtime fallback.
+
+Response parser settings are saved inside the widget's `fieldConfigJson` under `responseParser`, so separate widgets can interpret the same raw output differently:
+
+```json
+{
+  "renderer": "SUMMARY_TABLE",
+  "responseParser": {
+    "type": "DELIMITED",
+    "delimiter": "|",
+    "headerRow": true,
+    "trim": true,
+    "ignoreBlankLines": true,
+    "commentPrefix": "#"
+  },
+  "rowPath": "rows",
+  "details": {
+    "columns": [
+      {"field": "group", "label": "Consumer Group", "visible": true},
+      {"field": "lag", "label": "Lag", "visible": true, "format": "number"}
+    ]
+  }
+}
+```
+
+Supported parser types are `AUTO`, `JSON`, `DELIMITED`, `KEY_VALUE`, and `REGEX`. Delimited parsing supports delimiter/header/trim/comment handling but currently uses a simple delimiter split, not full CSV quoting or multiline semantics. Key-value parsing supports a separator and ignored line prefixes. Regex parsing defines a `fields` array with `key`, `pattern`, optional numeric `group`, `type`, and `required`.
+
+At dashboard runtime, widget-specific parser settings are applied to the stored raw output without changing the persisted execution history. If the raw output is unavailable, the renderer falls back to the normalized result data.
