@@ -1459,24 +1459,83 @@
                                 </div>
                             </div>
 
-                            <div class="col-12">
-                                <label for="dashboardWidgetFieldConfigJson" class="form-label">JSON Field / Column Configuration</label>
-                                <textarea class="form-control font-monospace" rows="5"
-                                          th:field="*{fieldConfigJson}" id="dashboardWidgetFieldConfigJson"
-                                          maxlength="10000"
-                                          placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
-                                <div class="form-text">
-                                    Optional JSON: TABLE widgets support rowPath, columns (field/key, label, visible, sortable, searchable, format: number/percentage/status/datetime/duration), visibleFields, labels, order, formats, sorting (enabled, defaultField, direction), search (enabled, placeholder) and pagination (enabled, pageSize);
-                                    charts use rowPath, categoryField, valueField and optional seriesField;
-                                    STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields (logical-to-JSON mappings) and labels; standard metrics use built-in percentage, load and duration formatting.
-                                    Summary Table uses renderer SUMMARY_TABLE with optional summary cards/overall total, details columns (including hidden groupable fields), search, sorting, pagination, multi-field grouping, row-status/threshold mappings, and column formats number/percentage/datetime/duration/status (duration is in seconds);
-                                    Kafka health uses TABLE with "renderer":"KAFKA_CONSUMER_HEALTH", clusterPath and cluster metric fields,
-                                    rowPath, groupNameField, groupStatusField, groupLagField, topicsField, topicNameField, topicCurrentField,
-                                    topicEndField, topicLagField, partitionsField, partitionIdField, partitionCurrentField, partitionEndField and partitionLagField.
-                                    For date-filtered API jobs add "dateRange":{"enabled":true} and use {{startDate}}/{{endDate}}
-                                    placeholders in the API URL or request body. Leave as {} to infer table fields automatically.
+                            <div class="col-12" id="summaryTableConfigurator" hidden>
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                                        <div>
+                                            <h6 class="mb-1">Summary Table data and columns</h6>
+                                            <p class="text-muted small mb-0">Paste a representative JSON response to discover collections and fields, configure columns, and preview the table. The sample is used for preview only and is not saved as monitoring history.</p>
+                                        </div>
+                                    </div>
+                                    <label for="summaryTableSampleJson" class="form-label">Sample JSON response</label>
+                                    <textarea class="form-control font-monospace mb-2" id="summaryTableSampleJson" rows="5"
+                                              placeholder='{"consumers":[{"group":"orders","lag":1200,"status":"WARNING"}]}'></textarea>
+                                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableDiscoverFields">Discover fields</button>
+                                        <span class="small text-muted" id="summaryTableDiscoveryMessage" aria-live="polite">Paste valid JSON to begin.</span>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label for="summaryTableRowPath" class="form-label">Rows / collection</label>
+                                            <select class="form-select" id="summaryTableRowPath" disabled>
+                                                <option value="">Root array</option>
+                                            </select>
+                                            <div class="form-text">Choose the array containing the rows to display.</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="summaryTableDefaultSort" class="form-label">Default sort field</label>
+                                            <select class="form-select" id="summaryTableDefaultSort" disabled>
+                                                <option value="">No default sort</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="summaryTableSortDirection" class="form-label">Sort direction</label>
+                                            <select class="form-select" id="summaryTableSortDirection">
+                                                <option value="asc">Ascending</option>
+                                                <option value="desc">Descending</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="summaryTablePageSize" class="form-label">Rows per page</label>
+                                            <select class="form-select" id="summaryTablePageSize">
+                                                <option value="5">5</option>
+                                                <option value="10" selected>10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-end">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="summaryTableSearchEnabled" checked>
+                                                <label class="form-check-label" for="summaryTableSearchEnabled">Enable table search</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="summaryTableFieldEditor" class="mb-3">
+                                        <div class="text-muted small">Discovered fields will appear here.</div>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <h6 class="mb-0">Preview</h6>
+                                        <span class="small text-muted" id="summaryTablePreviewCount"></span>
+                                    </div>
+                                    <div class="table-responsive border rounded" id="summaryTablePreview">
+                                        <div class="text-muted small p-3">Discover fields to preview the selected columns.</div>
+                                    </div>
                                 </div>
-                                <div class="invalid-feedback">Enter a valid JSON object.</div>
+                            </div>
+
+                            <div class="col-12">
+                                <details id="dashboardWidgetAdvancedConfig">
+                                    <summary class="form-label mb-2">Advanced JSON field / column configuration</summary>
+                                    <textarea class="form-control font-monospace mt-2" rows="5"
+                                              th:field="*{fieldConfigJson}" id="dashboardWidgetFieldConfigJson"
+                                              maxlength="10000"
+                                              placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
+                                    <div class="form-text">
+                                        Advanced JSON is available for options not exposed by the guided editor. TABLE widgets support rowPath, columns, visibleFields, labels, formats, sorting, search and pagination; charts use rowPath, categoryField, valueField and optional seriesField; STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields and labels. Summary Table supports details columns, search, sorting, pagination, grouping, row status, thresholds, summary cards and total-row configuration. Kafka health continues to use its dedicated TABLE renderer configuration. For date-filtered API jobs, use "dateRange":{"enabled":true} and {{startDate}}/{{endDate}} placeholders in the API URL or request body. Leave as {} to infer fields automatically.
+                                    </div>
+                                    <div class="invalid-feedback">Enter a valid JSON object.</div>
+                                </details>
                             </div>
 
                             <div class="col-md-4">
@@ -1568,6 +1627,8 @@
 
     </div>
 
+
+    <script th:src="@{/js/summary-table-configurator.js}"></script>
 
     <script th:inline="javascript">
 
