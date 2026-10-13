@@ -777,8 +777,7 @@
                         conditionalFormatting: { enabled: true, rules: [] },
                         summaryCards: []
                     },
-                    summary: { enabled: true, cards: [] },
-                    summary: { enabled: true }
+                    summary: { enabled: true, cards: [] }
                 };
             case "TABLE":
                 return { renderer: "TABLE", responseParser: { type: "AUTO" }, rowPath: "", columns: [], visibleFields: [], labels: {}, sorting: { enabled: true }, search: { enabled: true }, pagination: { enabled: true, pageSize: 10 } };
