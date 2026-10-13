@@ -280,8 +280,10 @@
         ];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
-            '<thead><tr><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th></tr></thead><tbody>' +
-            fields.map(item => '<tr data-field="' + escapeHtml(item.field) + '">' +
+            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th></tr></thead><tbody>' +
+            fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '">' +
+                '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
+                '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
                 '<td><input class="form-check-input summary-config-visible" type="checkbox" aria-label="Show ' + escapeHtml(item.field) + '"' + (item.visible ? ' checked' : '') + '></td>' +
                 '<td><code>' + escapeHtml(item.field) + '</code></td>' +
                 '<td><input class="form-control form-control-sm summary-config-label" type="text" maxlength="120" value="' + escapeHtml(item.label) + '" aria-label="Label for ' + escapeHtml(item.field) + '"></td>' +
@@ -486,6 +488,22 @@
         });
         byId("summaryTableRowPath").addEventListener("change", function () {
             renderFields();
+            refreshConfigFromEditor();
+        });
+        byId("summaryTableFieldEditor").addEventListener("click", function (event) {
+            const button = event.target.closest(".summary-config-move-up, .summary-config-move-down");
+            if (!button) return;
+            const row = button.closest("tr[data-field]");
+            if (!row) return;
+            if (button.classList.contains("summary-config-move-up") && row.previousElementSibling) {
+                row.parentElement.insertBefore(row, row.previousElementSibling);
+            } else if (button.classList.contains("summary-config-move-down") && row.nextElementSibling) {
+                row.parentElement.insertBefore(row.nextElementSibling, row);
+            }
+            Array.from(row.parentElement.querySelectorAll("tr[data-field]")).forEach((item, index, rows) => {
+                item.querySelector(".summary-config-move-up").disabled = index === 0;
+                item.querySelector(".summary-config-move-down").disabled = index === rows.length - 1;
+            });
             refreshConfigFromEditor();
         });
         byId("summaryTableFieldEditor").addEventListener("change", function () {
