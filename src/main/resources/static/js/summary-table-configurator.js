@@ -451,6 +451,7 @@
         sort.value = allFields.includes(previousSort) ? previousSort : "";
         renderGroupByOptions(config, fields);
         renderConditionalRules(config);
+        renderSummaryCards(config);
         renderTypeMappingOptions();
         renderPreview();
     }
@@ -466,6 +467,47 @@
             format: row.querySelector(".summary-config-format").value,
             displayStyle: row.querySelector(".summary-config-display-style").value,
             aggregation: row.querySelector(".summary-config-aggregation").value
+        }));
+    }
+
+
+    function renderSummaryCards(config) {
+        const host = byId("summaryTableSummaryCards");
+        if (!host) return;
+        const summary = config.summary && typeof config.summary === "object" ? config.summary : {};
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const cards = Array.isArray(details.summaryCards) ? details.summaryCards : (Array.isArray(summary.cards) ? summary.cards : []);
+        const fields = Array.from(new Set([...(state.fields || []), ...cards.map(card => String(card.field || "")).filter(Boolean)]));
+        const operations = [["COUNT_ROWS","Count rows"],["COUNT_NON_EMPTY","Count non-empty values"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
+        const options = selected => '<option value="">No field / all rows</option>' + fields.map(field =>
+            '<option value="' + escapeHtml(field) + '"' + (String(selected || "") === field ? " selected" : "") + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("");
+        host.innerHTML = cards.map((card, index) => '<div class="border rounded p-2 mb-2" data-summary-card><div class="row g-2 align-items-end">' +
+            '<div class="col-md-3"><label class="form-label small">Card label</label><input class="form-control form-control-sm summary-card-label" maxlength="100" value="' + escapeHtml(card.label || "") + '"></div>' +
+            '<div class="col-md-3"><label class="form-label small">Field</label><select class="form-select form-select-sm summary-card-field">' + options(card.field) + '</select></div>' +
+            '<div class="col-md-3"><label class="form-label small">Calculation</label><select class="form-select form-select-sm summary-card-operation">' +
+            operations.map(op => '<option value="' + op[0] + '"' + (String(card.operation || "COUNT_ROWS") === op[0] ? " selected" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
+            '<div class="col-md-2"><label class="form-label small">Format</label><select class="form-select form-select-sm summary-card-format">' +
+            [["","Default"],["number","Number"],["percentage","Percentage"],["duration","Duration"]].map(op => '<option value="' + op[0] + '"' + (String(card.format || "") === op[0] ? " selected" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
+            '<div class="col-md-1"><button type="button" class="btn btn-outline-danger btn-sm summary-card-remove" aria-label="Remove summary card ' + (index + 1) + '">×</button></div>' +
+            '<div class="col-md-4"><label class="form-label small">Filter field (optional)</label><select class="form-select form-select-sm summary-card-filter-field"><option value="">No filter</option>' +
+            fields.map(field => '<option value="' + escapeHtml(field) + '"' + (String(card.filterField || "") === field ? " selected" : "") + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("") + '</select></div>' +
+            '<div class="col-md-3"><label class="form-label small">Filter condition</label><select class="form-select form-select-sm summary-card-filter-operator">' +
+            [["equals","Equals"],["not_equals","Not equals"],["contains","Contains"],["gt","Greater than"],["gte","At least"],["lt","Less than"],["lte","At most"]].map(op => '<option value="' + op[0] + '"' + (String(card.filterOperator || "equals") === op[0] ? " selected" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
+            '<div class="col-md-5"><label class="form-label small">Filter value</label><input class="form-control form-control-sm summary-card-filter-value" value="' + escapeHtml(card.filterValue == null ? "" : card.filterValue) + '" placeholder="e.g. CRITICAL"></div>' +
+            '</div></div>').join("") || '<div class="text-muted small">No summary cards configured. Add cards to choose which metrics appear.</div>';
+    }
+
+    function readSummaryCards() {
+        const host = byId("summaryTableSummaryCards");
+        if (!host) return [];
+        return Array.from(host.querySelectorAll("[data-summary-card]")).map(row => ({
+            label: row.querySelector(".summary-card-label").value.trim() || "Summary",
+            field: row.querySelector(".summary-card-field").value,
+            operation: row.querySelector(".summary-card-operation").value,
+            format: row.querySelector(".summary-card-format").value,
+            filterField: row.querySelector(".summary-card-filter-field").value,
+            filterOperator: row.querySelector(".summary-card-filter-operator").value,
+            filterValue: row.querySelector(".summary-card-filter-value").value
         }));
     }
 
@@ -495,7 +537,9 @@
             showAggregates: byId("summaryTableGroupByAggregates").checked
         });
         config.details.conditionalFormatting = readConditionalFormatting();
+        config.details.summaryCards = readSummaryCards();
         config.summary = Object.assign({}, config.summary || {});
+        config.summary.cards = config.details.summaryCards;
         if (config.summary.enabled === undefined) config.summary.enabled = true;
         return config;
     }
@@ -716,8 +760,10 @@
                         sorting: { enabled: true, defaultField: "", direction: "asc" },
                         pagination: { enabled: true, pageSize: 10 },
                         groupBy: { enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true },
-                        conditionalFormatting: { enabled: true, rules: [] }
+                        conditionalFormatting: { enabled: true, rules: [] },
+                        summaryCards: []
                     },
+                    summary: { enabled: true, cards: [] },
                     summary: { enabled: true }
                 };
             case "TABLE":
@@ -986,6 +1032,28 @@
         });
         byId("summaryTableConditionalRules").addEventListener("input", function (event) {
             if (event.target.classList.contains("summary-conditional-value")) refreshConfigFromEditor();
+        });
+        byId("summaryTableAddSummaryCard").addEventListener("click", function () {
+            const config = getConfig();
+            config.summary = Object.assign({}, config.summary || {});
+            const cards = Array.isArray(config.summary.cards) ? config.summary.cards.slice() : [];
+            cards.push({ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "" });
+            config.summary.cards = cards;
+            config.details = config.details && typeof config.details === "object" ? config.details : {};
+            config.details.summaryCards = cards;
+            setConfig(config);
+            renderSummaryCards(config);
+            refreshConfigFromEditor();
+        });
+        byId("summaryTableSummaryCards").addEventListener("click", function (event) {
+            const button = event.target.closest(".summary-card-remove");
+            if (!button) return;
+            button.closest("[data-summary-card]").remove();
+            refreshConfigFromEditor();
+        });
+        byId("summaryTableSummaryCards").addEventListener("change", refreshConfigFromEditor);
+        byId("summaryTableSummaryCards").addEventListener("input", function (event) {
+            if (event.target.matches("input")) refreshConfigFromEditor();
         });
         byId("summaryTableConditionalFormattingEnabled").addEventListener("change", function () {
             const config = getConfig();
