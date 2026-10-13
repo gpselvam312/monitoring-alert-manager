@@ -156,6 +156,10 @@
     <!-- script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script -->
 
 
+    <script th:inline="javascript">
+        window.monitoringDateTimeFormat = /*[[${dateTimeFormat}]]*/ 'MM/dd/yyyy hh:mm:ss a';
+    </script>
+
     <!-- Summary Table renderer must load before dashboard.js dispatches table widgets. -->
     <script th:src="@{/js/summary-table.js}"></script>
 
