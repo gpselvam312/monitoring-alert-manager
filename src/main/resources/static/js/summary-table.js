@@ -178,7 +178,7 @@
         const details = config.details && typeof config.details === "object" ? config.details : {};
         const formatting = details.conditionalFormatting && typeof details.conditionalFormatting === "object" ? details.conditionalFormatting : (config.conditionalFormatting || {});
         if (formatting.enabled === false || !Array.isArray(formatting.rules)) return "";
-        const ranks = { info: 1, warning: 2, critical: 3 };
+        const ranks = { info: 1, healthy: 1, warning: 2, critical: 3 };
         let selected = "";
         formatting.rules.forEach(rule => {
             if (!rule || String(rule.scope || "row").toLowerCase() !== scope) return;
@@ -249,11 +249,22 @@
             const count = node.rows.length;
             let aggregate = "";
             if (showAggregates) {
-                const numericColumns = columns.filter(column => node.rows.some(row => numeric(rowValue(row, column.field)) !== null));
-                aggregate = numericColumns.map(column => {
-                    const total = node.rows.reduce((sum, row) => sum + (numeric(rowValue(row, column.field)) || 0), 0);
-                    return esc(column.label) + ": " + esc(total.toLocaleString());
-                }).join(" · ");
+                const aggregateColumns = columns.filter(column => String(column.aggregation || "none").toLowerCase() !== "none");
+                aggregate = aggregateColumns.map(column => {
+                    const operation = String(column.aggregation || "none").toLowerCase();
+                    const values = node.rows.map(row => rowValue(row, column.field)).filter(value => value !== null && value !== undefined && value !== "");
+                    let result;
+                    if (operation === "count") result = values.length;
+                    else {
+                        const numbers = values.map(numeric).filter(value => value !== null);
+                        if (!numbers.length) return "";
+                        if (operation === "sum") result = numbers.reduce((sum, value) => sum + value, 0);
+                        else if (operation === "avg") result = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+                        else if (operation === "max") result = Math.max(...numbers);
+                        else if (operation === "min") result = Math.min(...numbers);
+                    }
+                    return esc(column.label) + " (" + esc(operation.toUpperCase()) + "): " + esc(result === undefined ? "—" : Number.isFinite(result) ? result.toLocaleString() : result);
+                }).filter(Boolean).join(" · ");
             }
             htmlRows.push('<tr class="summary-table-group-row"><td colspan="' + columns.length + '"><button type="button" class="summary-table-group-toggle" data-group-id="' + esc(node.id) + '" aria-expanded="' + (!collapsed) + '"><i class="bi ' + (collapsed ? "bi-chevron-right" : "bi-chevron-down") + '"></i><strong>' + esc(node.field) + ': ' + esc(node.value) + '</strong><span class="summary-table-group-count">' + count + ' rows</span>' + (aggregate ? '<span class="summary-table-group-aggregate">' + aggregate + '</span>' : '') + '</button></td></tr>');
             if (!collapsed) flattenNodes(node.children, config, state, columns, htmlRows);
@@ -266,6 +277,15 @@
             columns.map(column => {
                 const value = rowValue(row, column.field);
                 const cellClass = conditionalRuleClass(row, config, "cell", column.field);
+                const isBoolean = value === true || value === false || (typeof value === "string" && /^(true|false)$/i.test(value.trim()));
+                const boolValue = value === true || (typeof value === "string" && value.trim().toLowerCase() === "true");
+                const displayStyle = String(column.displayStyle || "text").toLowerCase();
+                if (isBoolean && displayStyle === "checkbox") {
+                    return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><input class="form-check-input summary-table-boolean" type="checkbox" disabled aria-label="' + esc(column.label || column.field) + '" ' + (boolValue ? 'checked' : '') + '></td>';
+                }
+                if (isBoolean && displayStyle === "toggle") {
+                    return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '" role="img" aria-label="' + esc(column.label || column.field) + ': ' + (boolValue ? 'true' : 'false') + '"><span></span></span></td>';
+                }
                 if (String(column.format).toLowerCase() === "status") {
                     const cls = statusClass(value, (config.details && config.details.rowStatus) || config.rowStatus || {});
                     return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
@@ -277,50 +297,79 @@
     function renderCards(state) {
         const summary = state.config.summary || {};
         if (summary.enabled === false) return "";
-        const numericFields = state.numericFields;
-        const labels = state.config.labels && typeof state.config.labels === "object" ? state.config.labels : {};
-        const rules = summary.thresholds && typeof summary.thresholds === "object" ? summary.thresholds : {};
+        const configured = Array.isArray(summary.cards) ? summary.cards : [];
         const cards = [];
-        const totalConfig = summary.totalRow || {};
-        const sourceTotals = state.totalRow;
-        const totals = {};
-        const calculatedTotal = field => state.detailRows.reduce(
-            (sum, row) => sum + (numeric(rowValue(row, field)) || 0), 0);
-        numericFields.forEach(field => {
-            const authoritativeValue = sourceTotals ? numeric(rowValue(sourceTotals, field)) : null;
-            totals[field] = authoritativeValue !== null ? authoritativeValue : calculatedTotal(field);
-        });
-        if (summary.totalCard && summary.totalCard.enabled === true) {
-            let overall;
-            if (summary.totalCard.field) {
-                const authoritativeValue = sourceTotals ? numeric(rowValue(sourceTotals, summary.totalCard.field)) : null;
-                overall = authoritativeValue !== null ? authoritativeValue : calculatedTotal(summary.totalCard.field);
-            } else {
-                overall = numericFields.reduce((sum, field) => sum + (totals[field] || 0), 0);
+        if (configured.length) {
+            const matches = (row, card) => {
+                if (!card.filterField) return true;
+                const actual = rowValue(row, card.filterField);
+                const actualText = actual == null ? "" : String(actual);
+                const expected = card.filterValue == null ? "" : String(card.filterValue);
+                const op = String(card.filterOperator || "equals").toLowerCase();
+                const a = numeric(actual), b = numeric(expected);
+                if (op === "contains") return actualText.toLowerCase().includes(expected.toLowerCase());
+                if (["gt", "gte", "lt", "lte"].includes(op) && a !== null && b !== null)
+                    return op === "gt" ? a > b : op === "gte" ? a >= b : op === "lt" ? a < b : a <= b;
+                return op === "not_equals" ? actualText.toLowerCase() !== expected.toLowerCase()
+                    : actualText.toLowerCase() === expected.toLowerCase();
+            };
+            configured.forEach((card, index) => {
+                const subset = state.detailRows.filter(row => matches(row, card));
+                const field = String(card.field || "");
+                const operation = String(card.operation || "COUNT_ROWS").toUpperCase();
+                const values = field ? subset.map(row => rowValue(row, field)) : [];
+                let value = 0;
+                if (operation === "COUNT_ROWS") value = subset.length;
+                else if (operation === "COUNT_NON_EMPTY") value = values.filter(item => item !== null && item !== undefined && item !== "").length;
+                else if (operation === "COUNT_TRUE") value = values.filter(item => item === true || String(item).toLowerCase() === "true").length;
+                else if (operation === "COUNT_FALSE") value = values.filter(item => item === false || String(item).toLowerCase() === "false").length;
+                else {
+                    const numbers = values.map(numeric).filter(item => item !== null);
+                    if (operation === "SUM") value = numbers.reduce((sum, item) => sum + item, 0);
+                    else if (operation === "AVG") value = numbers.length ? numbers.reduce((sum, item) => sum + item, 0) / numbers.length : null;
+                    else if (operation === "MAX") value = numbers.length ? Math.max(...numbers) : null;
+                    else if (operation === "MIN") value = numbers.length ? Math.min(...numbers) : null;
+                }
+                cards.push({ label: card.label || (operation === "COUNT_ROWS" ? "Total Rows" : field || "Summary"),
+                    value: value === null ? "—" : formatValue(value, card.format), cls: "", filterField: null, filterType: "custom-" + index });
+            });
+        } else {
+            const numericFields = state.numericFields;
+            const labels = state.config.labels && typeof state.config.labels === "object" ? state.config.labels : {};
+            const rules = summary.thresholds && typeof summary.thresholds === "object" ? summary.thresholds : {};
+            const sourceTotals = state.totalRow;
+            const totals = {};
+            const calculatedTotal = field => state.detailRows.reduce((sum, row) => sum + (numeric(rowValue(row, field)) || 0), 0);
+            numericFields.forEach(field => {
+                const authoritativeValue = sourceTotals ? numeric(rowValue(sourceTotals, field)) : null;
+                totals[field] = authoritativeValue !== null ? authoritativeValue : calculatedTotal(field);
+            });
+            if (summary.totalCard && summary.totalCard.enabled === true) {
+                const authoritativeValue = sourceTotals && summary.totalCard.field ? numeric(rowValue(sourceTotals, summary.totalCard.field)) : null;
+                const overall = summary.totalCard.field ? (authoritativeValue !== null ? authoritativeValue : calculatedTotal(summary.totalCard.field))
+                    : numericFields.reduce((sum, field) => sum + (totals[field] || 0), 0);
+                cards.push({ label: summary.totalCard.label || "Overall Total", value: overall || 0,
+                    cls: summaryClass(overall || 0, summary.totalCard.thresholds), filterField: null, filterType: "overall" });
             }
-            cards.push({ label: summary.totalCard.label || "Overall Total", value: overall || 0, cls: summaryClass(overall || 0, summary.totalCard.thresholds), filterField: null, filterType: "overall" });
+            const excluded = new Set(Array.isArray(summary.excludedFields) ? summary.excludedFields.map(String) : []);
+            numericFields.filter(field => !excluded.has(field)).forEach(field => {
+                cards.push({ label: labels[field] || (state.columnMap.get(field) || {}).label || field,
+                    value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field, filterType: "field" });
+            });
         }
-        const excluded = new Set(Array.isArray(summary.excludedFields) ? summary.excludedFields.map(String) : []);
-        numericFields.filter(field => !excluded.has(field)).forEach(field => {
-            const label = labels[field] || (state.columnMap.get(field) || {}).label || field;
-            cards.push({ label, value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field, filterType: "field" });
-        });
         if (!cards.length) return "";
         return '<div class="server-health-summary summary-table-cards">' + cards.map(card => {
-            const active = state.cardFilter && state.cardFilter.type === card.filterType
-                && state.cardFilter.field === card.filterField;
+            const active = state.cardFilter && state.cardFilter.type === card.filterType && state.cardFilter.field === card.filterField;
             const status = card.filterType === "overall" ? "total"
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
             return '<button type="button" class="server-health-summary-item server-health-summary-' + status +
                 ' server-health-summary-filter summary-table-card' + (active ? ' is-active' : '') +
-                '" data-card-filter-type="' + esc(card.filterType) +
-                '" data-card-filter-field="' + esc(card.filterField || '') + '" aria-label="Filter rows by ' +
-                esc(card.label) + '" aria-pressed="' + Boolean(active) + '">' +
+                '" data-card-filter-type="' + esc(card.filterType) + '" data-card-filter-field="' + esc(card.filterField || '') +
+                '" aria-label="' + esc(card.label) + '" aria-pressed="' + Boolean(active) + '">' +
                 '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
-                '<strong class="summary-table-card-value">' + esc(display(card.value)) +
-                '</strong></button>';
+                '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong></button>';
         }).join("") + '</div>';
     }
 
