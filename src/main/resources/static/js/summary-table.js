@@ -126,7 +126,6 @@
                 groupable: column.groupable !== false,
                 searchable: column.searchable !== false,
                 format: column.format || "",
-                displayStyle: column.displayStyle || "text",
                 aggregation: column.aggregation || "none"
             }));
         }
@@ -285,11 +284,7 @@
                     "unhealthy", "down", "inactive", "disabled", "error", "failed", "fail", "critical", "red", "0", "no"].includes(statusValue);
                 const boolValue = rawBoolean ? (value === true || String(value).trim().toLowerCase() === "true")
                     : ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes"].includes(statusValue);
-                const displayStyle = String(column.displayStyle || "text").toLowerCase();
-                if (isBoolean && displayStyle === "checkbox") {
-                    return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><input class="form-check-input summary-table-boolean" type="checkbox" disabled aria-label="' + esc(column.label || column.field) + '" ' + (boolValue ? 'checked' : '') + '></td>';
-                }
-                if (isBoolean && displayStyle === "toggle") {
+                if (isBoolean) {
                     return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '" role="img" aria-label="' + esc(column.label || column.field) + ': ' + (boolValue ? 'true' : 'false') + '"><span></span></span></td>';
                 }
                 if (String(column.format).toLowerCase() === "status") {
