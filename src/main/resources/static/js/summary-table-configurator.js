@@ -434,13 +434,11 @@
             syncParserSettings();
         });
         byId("summaryTableRegexFields").addEventListener("input", function () {
-            if (sample.value.trim()) discover();
-            else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+            syncParserSettings();
         });
         responseFormat.addEventListener("change", function () {
             syncParserOptionVisibility();
-            if (sample.value.trim()) discover();
-            else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+            syncParserSettings();
         });
         ["summaryTableDelimiter", "summaryTableHasHeader", "summaryTableKeyValueSeparator", "summaryTableIgnoredPrefixes",
             "summaryTableCustomDelimiter", "summaryTableCustomSeparator", "summaryTableCommentPrefix"].forEach(id => {
