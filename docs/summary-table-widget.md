@@ -79,6 +79,7 @@ For a monitoring job that returns rows like {"Machine":"zuccmravp09","0A":2,"CM"
 - summary.totalCard.enabled controls the optional overall total card. The overall total is the sum of eligible column totals unless summary.totalCard.field specifies a numeric field.
 - summary.totalRow identifies a source total row. That row is used as the authoritative value for each numeric summary card and is not rendered as a machine detail row. If a total row is not supplied, totals are calculated from detail rows.
 - Each field in details.columns can be visible or hidden. Hidden fields remain available for grouping, search, sorting, and status rules when configured for those purposes.
+- Column `format` supports `number`, `percentage`/`percent`, `datetime`, `duration` (seconds rendered as `HH:MM:SS`), and `status`; other values are displayed as supplied.
 - details.search, details.sorting, and details.pagination can each be enabled or disabled independently.
 - details.groupBy.fields supports multiple grouping levels, including hidden fields. groupable: false prevents a configured column from being used for grouping.
 - details.rowStatus maps source status values to healthy, warning, critical, or neutral row styles. thresholds can define numeric warning/critical boundaries by field.
