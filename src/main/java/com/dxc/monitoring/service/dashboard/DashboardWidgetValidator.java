@@ -1,12 +1,18 @@
 package com.dxc.monitoring.service.dashboard;
 
 import java.util.Set;
+import java.util.Map;
+import java.util.List;
+
+import tools.jackson.databind.ObjectMapper;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 public class DashboardWidgetValidator implements ConstraintValidator<ValidDashboardWidget, DashboardWidgetForm>
 {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Set<String> RESPONSE_PARSER_TYPES = Set.of("AUTO", "JSON", "DELIMITED", "KEY_VALUE", "REGEX");
     private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "SUMMARY_TABLE", "CHART", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH");
     private static final Set<String> CHART_TYPES = Set.of("LINE", "BAR", "PIE", "DONUT");
     private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB");
@@ -69,6 +75,8 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
             valid = false;
         }
 
+        valid &= validateFieldConfiguration(form, context);
+
         if ("CHART".equals(form.getWidgetType()))
         {
             if (isBlank(form.getChartType()) || !CHART_TYPES.contains(form.getChartType()))
@@ -79,6 +87,83 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
         }
 
         return valid;
+    }
+
+
+    private boolean validateFieldConfiguration(DashboardWidgetForm form, ConstraintValidatorContext context)
+    {
+        String json = form.getFieldConfigJson();
+        if (isBlank(json))
+        {
+            return true;
+        }
+
+        Object parsed;
+        try
+        {
+            parsed = OBJECT_MAPPER.readValue(json, Object.class);
+        }
+        catch (Exception exception)
+        {
+            addFieldError(context, "fieldConfigJson", "Field configuration must be valid JSON.");
+            return false;
+        }
+
+        if (!(parsed instanceof Map<?, ?> config))
+        {
+            addFieldError(context, "fieldConfigJson", "Field configuration must be a JSON object.");
+            return false;
+        }
+
+        Object parserValue = config.get("responseParser");
+        if (parserValue == null)
+        {
+            return true;
+        }
+        if (!(parserValue instanceof Map<?, ?> parser))
+        {
+            addFieldError(context, "fieldConfigJson", "responseParser must be a JSON object.");
+            return false;
+        }
+
+        String type = String.valueOf(parser.getOrDefault("type", "AUTO")).trim().toUpperCase();
+        if (!RESPONSE_PARSER_TYPES.contains(type))
+        {
+            addFieldError(context, "fieldConfigJson", "Select a supported response parser type.");
+            return false;
+        }
+        if ("DELIMITED".equals(type) && isBlank(String.valueOf(parser.getOrDefault("delimiter", ""))))
+        {
+            addFieldError(context, "fieldConfigJson", "Delimited response parsing requires a delimiter.");
+            return false;
+        }
+        if ("KEY_VALUE".equals(type) && isBlank(String.valueOf(parser.getOrDefault("separator", ""))))
+        {
+            addFieldError(context, "fieldConfigJson", "Key-value response parsing requires a separator.");
+            return false;
+        }
+        if ("REGEX".equals(type))
+        {
+            Object fieldsValue = parser.get("fields");
+            if (!(fieldsValue instanceof List<?> fields) || fields.isEmpty())
+            {
+                addFieldError(context, "fieldConfigJson", "Regex response parsing requires at least one field.");
+                return false;
+            }
+            for (Object fieldValue : fields)
+            {
+                if (!(fieldValue instanceof Map<?, ?> field)
+                        || isBlank(String.valueOf(field.getOrDefault("key", "")))
+                        || isBlank(String.valueOf(field.getOrDefault("pattern", "")))
+                        || (field.containsKey("group") && !(field.get("group") instanceof Number)))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "Each regex parser field requires a key, pattern, and numeric capture group when specified.");
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private void addFieldError(ConstraintValidatorContext context, String field, String message)
