@@ -215,17 +215,17 @@
         const totalConfig = summary.totalRow || {};
         const sourceTotals = state.totalRow;
         const totals = {};
+        const calculatedTotal = field => state.detailRows.reduce(
+            (sum, row) => sum + (numeric(rowValue(row, field)) || 0), 0);
         numericFields.forEach(field => {
-            totals[field] = sourceTotals
-                ? numeric(rowValue(sourceTotals, field))
-                : state.detailRows.reduce((sum, row) => sum + (numeric(rowValue(row, field)) || 0), 0);
-            if (totals[field] === null || totals[field] === undefined) totals[field] = 0;
+            const authoritativeValue = sourceTotals ? numeric(rowValue(sourceTotals, field)) : null;
+            totals[field] = authoritativeValue !== null ? authoritativeValue : calculatedTotal(field);
         });
         if (summary.totalCard && summary.totalCard.enabled === true) {
             let overall;
             if (summary.totalCard.field) {
-                overall = sourceTotals ? numeric(rowValue(sourceTotals, summary.totalCard.field))
-                    : state.detailRows.reduce((sum, row) => sum + (numeric(rowValue(row, summary.totalCard.field)) || 0), 0);
+                const authoritativeValue = sourceTotals ? numeric(rowValue(sourceTotals, summary.totalCard.field)) : null;
+                overall = authoritativeValue !== null ? authoritativeValue : calculatedTotal(summary.totalCard.field);
             } else {
                 overall = numericFields.reduce((sum, field) => sum + (totals[field] || 0), 0);
             }
@@ -260,7 +260,9 @@
         const details = config.details || {};
         const groupConfig = details.groupBy || config.groupBy || {};
         const grouping = groupConfig.enabled === true;
-        const groupFields = Array.isArray(groupConfig.fields) ? groupConfig.fields.map(String).filter(field => field && (!state.columnMap.has(field) || state.columnMap.get(field).groupable !== false)) : [];
+        const groupFields = grouping && Array.isArray(groupConfig.fields)
+            ? groupConfig.fields.map(String).filter(field => field && (!state.columnMap.has(field) || state.columnMap.get(field).groupable !== false))
+            : [];
         const searchConfig = details.search || config.search || {};
         const sortConfig = details.sorting || config.sorting || {};
         const pageConfig = details.pagination || config.pagination || {};
@@ -329,7 +331,7 @@
             '</select></label><button type="button" class="btn btn-sm btn-outline-secondary summary-table-prev"' + (state.page <= 0 ? ' disabled' : '') + ' aria-label="Previous page"><i class="bi bi-chevron-left"></i></button><span class="small">' +
             (state.page + 1) + ' / ' + pageCount + '</span><button type="button" class="btn btn-sm btn-outline-secondary summary-table-next"' + (state.page >= pageCount - 1 ? ' disabled' : '') + ' aria-label="Next page"><i class="bi bi-chevron-right"></i></button></div></div>';
         const groupableColumns = state.columns.filter(column => column.groupable !== false);
-        const selectedGroupFields = Array.isArray(groupConfig.fields) ? groupConfig.fields.map(String) : [];
+        const selectedGroupFields = groupFields;
         const groupLabel = selectedGroupFields.length
             ? selectedGroupFields.map(field => (state.columnMap.get(field) || {}).label || field).join(" → ")
             : "Group by";
@@ -365,7 +367,9 @@
         const columnMap = new Map(columns.map(column => [column.field, column]));
         const configuredExcluded = new Set(config.summary && Array.isArray(config.summary.excludedFields) ? config.summary.excludedFields.map(String) : []);
         const numericFields = columns.map(column => column.field).filter(field =>
-            !configuredExcluded.has(field) && detailRows.some(row => numeric(rowValue(row, field)) !== null));
+            !configuredExcluded.has(field) &&
+            (detailRows.some(row => numeric(rowValue(row, field)) !== null) ||
+                (totalRow && numeric(rowValue(totalRow, field)) !== null)));
         const state = {
             config, widget, result, columns, columnMap, detailRows, totalRow, numericFields,
             search: "", sortField: ((config.details || {}).sorting || {}).defaultField || "",
@@ -373,7 +377,7 @@
             page: 0, collapsed: new Set(), cardFilter: null
         };
         const groupConfig = (config.details || {}).groupBy || config.groupBy || {};
-        if (groupConfig.initialState === "COLLAPSED" && Array.isArray(groupConfig.fields) && groupConfig.fields.length) {
+        if (groupConfig.enabled === true && groupConfig.initialState === "COLLAPSED" && Array.isArray(groupConfig.fields) && groupConfig.fields.length) {
             const initialNodes = makeGroups(detailRows, groupConfig.fields.map(String), 0, groupConfig, state, "");
             const collapseAll = nodes => nodes.forEach(node => {
                 if (node.type === "group") { state.collapsed.add(node.id); collapseAll(node.children); }
@@ -424,6 +428,10 @@
             state.config.details.groupBy.showAggregates = state.config.details.groupBy.showAggregates === true;
             state.page = 0;
             rerender(found.root, state);
+            const groupToggle = found.root.querySelector(".summary-table-group-toggle-menu");
+            if (groupToggle && window.bootstrap && window.bootstrap.Dropdown) {
+                window.bootstrap.Dropdown.getOrCreateInstance(groupToggle).show();
+            }
             return;
         }
         if (!event.target.matches(".summary-table-page-size")) return;
