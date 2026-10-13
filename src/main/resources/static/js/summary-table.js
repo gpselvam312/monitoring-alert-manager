@@ -125,7 +125,9 @@
                 sortable: column.sortable !== false,
                 groupable: column.groupable !== false,
                 searchable: column.searchable !== false,
-                format: column.format || ""
+                format: column.format || "",
+                displayStyle: column.displayStyle || "text",
+                aggregation: column.aggregation || "none"
             }));
         }
         const keys = Array.from(new Set(rows.reduce((all, row) => all.concat(Object.keys(row)), [])));
@@ -297,9 +299,11 @@
     function renderCards(state) {
         const summary = state.config.summary || {};
         if (summary.enabled === false) return "";
-        const configured = Array.isArray(summary.cards) ? summary.cards : [];
+        const details = state.config.details && typeof state.config.details === "object" ? state.config.details : {};
+        const hasConfiguredCards = Array.isArray(summary.cards) || Array.isArray(details.summaryCards);
+        const configured = Array.isArray(summary.cards) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : []);
         const cards = [];
-        if (configured.length) {
+        if (hasConfiguredCards) {
             const matches = (row, card) => {
                 if (!card.filterField) return true;
                 const actual = rowValue(row, card.filterField);
