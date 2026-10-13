@@ -304,6 +304,39 @@
             }
         }
 
+        function countCaptureGroups(pattern) {
+            let count = 0;
+            let escaped = false;
+            let inCharacterClass = false;
+            for (let index = 0; index < pattern.length; index++) {
+                const character = pattern[index];
+                if (escaped) {
+                    escaped = false;
+                    continue;
+                }
+                if (character === "\\") {
+                    escaped = true;
+                    continue;
+                }
+                if (character === "[" && !inCharacterClass) {
+                    inCharacterClass = true;
+                    continue;
+                }
+                if (character === "]" && inCharacterClass) {
+                    inCharacterClass = false;
+                    continue;
+                }
+                if (character !== "(" || inCharacterClass) continue;
+                if (pattern[index + 1] !== "?") {
+                    count++;
+                } else if (pattern[index + 2] === "<"
+                        && pattern[index + 3] !== "=" && pattern[index + 3] !== "!") {
+                    count++;
+                }
+            }
+            return count;
+        }
+
         function validateConfig(config) {
             if (config.type === "DELIMITED" && (!config.delimiter || !String(config.delimiter).length)) {
                 return "Enter a delimiter for delimited output.";
@@ -324,6 +357,11 @@
                         new RegExp(field.pattern, "m");
                     } catch (error) {
                         return "Invalid regular expression for field '" + field.key + "'.";
+                    }
+                    const captureGroups = countCaptureGroups(field.pattern);
+                    const selectedGroup = field.group == null ? 1 : field.group;
+                    if (selectedGroup > captureGroups) {
+                        return "Capture group " + selectedGroup + " does not exist in the pattern for field '" + field.key + "'.";
                     }
                 }
             }
@@ -396,14 +434,24 @@
         });
 
         let initialConfig = {};
+        let initialConfigInvalid = false;
         try {
             const parsed = JSON.parse(storedConfig.value || "{}");
             if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) initialConfig = parsed;
+            else initialConfigInvalid = true;
         } catch (error) {
-            showError("The saved parser configuration is invalid JSON. Review it under Advanced JSON.");
-            advancedJson.value = storedConfig.value || "";
+            initialConfigInvalid = true;
         }
         loadConfig(initialConfig);
-        syncFromControls();
+        if (initialConfigInvalid) {
+            advancedJson.value = storedConfig.value || "";
+            advancedIsOpen = true;
+            advancedOptions.classList.remove("d-none");
+            toggleAdvanced.setAttribute("aria-expanded", "true");
+            toggleAdvanced.textContent = "Hide advanced JSON";
+            showError("The saved parser configuration is invalid JSON. Review it under Advanced JSON.");
+        } else {
+            syncFromControls();
+        }
     });
 })();
