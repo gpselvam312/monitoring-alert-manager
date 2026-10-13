@@ -342,8 +342,6 @@
             field: row.getAttribute("data-field"),
             label: row.querySelector(".summary-config-label").value.trim() || humanize(row.getAttribute("data-field")),
             visible: row.querySelector(".summary-config-visible").checked,
-            sortable: true,
-            searchable: true,
             groupable: row.querySelector(".summary-config-groupable").checked,
             sortable: row.getAttribute("data-sortable") !== "false",
             searchable: row.getAttribute("data-searchable") !== "false",
