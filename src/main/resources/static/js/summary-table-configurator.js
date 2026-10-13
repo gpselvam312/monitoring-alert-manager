@@ -390,7 +390,20 @@
             if (state.sample) renderFields();
         });
         const modal = byId("dashboardWidgetModal");
-        if (modal) modal.addEventListener("shown.bs.modal", showForSelectedType);
+        if (modal) {
+            modal.addEventListener("shown.bs.modal", showForSelectedType);
+            modal.addEventListener("hidden.bs.modal", function () {
+                sample.value = "";
+                state.sample = null;
+                state.collections = [];
+                state.rows = [];
+                state.fields = [];
+                byId("summaryTableDiscoveryMessage").textContent = "Paste valid JSON or text to begin.";
+                byId("summaryTableFieldEditor").innerHTML = '<div class="text-muted small">Discovered fields will appear here.</div>';
+                byId("summaryTablePreview").innerHTML = '<div class="text-muted small p-3">Discover fields to preview the table.</div>';
+                byId("summaryTablePreviewCount").textContent = "";
+            });
+        }
         showForSelectedType();
     });
 })();
