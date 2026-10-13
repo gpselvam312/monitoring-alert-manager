@@ -1,0 +1,274 @@
+(function () {
+    "use strict";
+
+    const byId = id => document.getElementById(id);
+    const state = { sample: null, collections: [], rows: [], fields: [] };
+
+    function escapeHtml(value) {
+        return String(value === null || value === undefined ? "" : value)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function humanize(value) {
+        return String(value).replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+            .replace(/[._-]+/g, " ").replace(/^./, c => c.toUpperCase());
+    }
+
+    function parseObject(text) {
+        const value = JSON.parse(text);
+        if (value === null || typeof value !== "object") {
+            throw new Error("The sample must be a JSON object or array.");
+        }
+        return value;
+    }
+
+    function getConfig() {
+        const field = byId("dashboardWidgetFieldConfigJson");
+        try {
+            const value = JSON.parse(field.value || "{}");
+            return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function setConfig(config) {
+        byId("dashboardWidgetFieldConfigJson").value = JSON.stringify(config, null, 2);
+        byId("dashboardWidgetFieldConfigJson").dispatchEvent(new Event("input", { bubbles: true }));
+        renderPreview();
+    }
+
+    function findCollections(root) {
+        const found = [];
+        const visited = new Set();
+        function visit(value, path, depth) {
+            if (depth > 12 || value === null || typeof value !== "object" || visited.has(value)) return;
+            visited.add(value);
+            if (Array.isArray(value)) {
+                const rows = value.filter(item => item && typeof item === "object" && !Array.isArray(item));
+                if (rows.length) found.push({ path, rows, label: path || "(root array)" });
+                value.forEach((item, index) => {
+                    if (item && typeof item === "object" && !Array.isArray(item)) visit(item, path ? path + "." + index : String(index), depth + 1);
+                });
+                return;
+            }
+            Object.keys(value).forEach(key => {
+                const nextPath = path ? path + "." + key : key;
+                visit(value[key], nextPath, depth + 1);
+            });
+        }
+        visit(root, "", 0);
+        return found;
+    }
+
+    function selectedCollection() {
+        const path = byId("summaryTableRowPath").value;
+        return state.collections.find(item => item.path === path) || null;
+    }
+
+    function configuredColumns(config) {
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const configured = Array.isArray(details.columns) ? details.columns : (Array.isArray(config.columns) ? config.columns : []);
+        return new Map(configured.filter(item => item && (item.field || item.key))
+            .map(item => [String(item.field || item.key), item]));
+    }
+
+    function discover() {
+        const message = byId("summaryTableDiscoveryMessage");
+        try {
+            const sample = parseObject(byId("summaryTableSampleJson").value);
+            const collections = findCollections(sample);
+            if (Array.isArray(sample) && sample.some(row => row && typeof row === "object" && !Array.isArray(row))
+                && !collections.some(item => item.path === "")) {
+                collections.unshift({ path: "", rows: sample.filter(row => row && typeof row === "object" && !Array.isArray(row)), label: "(root array)" });
+            }
+            if (!collections.length) {
+                throw new Error("No array of JSON objects was found. Use a response containing an array of row objects for a Summary Table.");
+            }
+
+            state.sample = sample;
+            state.collections = collections;
+            const config = getConfig();
+            const rowPath = String(config.rowPath || "");
+            const select = byId("summaryTableRowPath");
+            select.innerHTML = collections.map(item =>
+                '<option value="' + escapeHtml(item.path) + '">' + escapeHtml(item.label) + ' (' + item.rows.length + ' rows)</option>'
+            ).join("");
+            select.disabled = false;
+            select.value = collections.some(item => item.path === rowPath) ? rowPath : collections[0].path;
+
+            const details = config.details && typeof config.details === "object" ? config.details : {};
+            const search = details.search || config.search || {};
+            const sorting = details.sorting || config.sorting || {};
+            const pagination = details.pagination || config.pagination || {};
+            byId("summaryTableSearchEnabled").checked = search.enabled !== false;
+            byId("summaryTableSortDirection").value = String(sorting.direction || "asc").toLowerCase() === "desc" ? "desc" : "asc";
+            byId("summaryTablePageSize").value = ["5", "10", "25", "50"].includes(String(pagination.pageSize)) ? String(pagination.pageSize) : "10";
+
+            renderFields();
+            message.textContent = "Found " + collections.length + " collection(s). Select the row collection and columns.";
+            message.classList.remove("text-danger");
+            message.classList.add("text-muted");
+        } catch (error) {
+            state.sample = null;
+            state.collections = [];
+            state.rows = [];
+            state.fields = [];
+            byId("summaryTableFieldEditor").innerHTML = '<div class="text-muted small">No fields available.</div>';
+            byId("summaryTablePreview").innerHTML = '<div class="text-muted small p-3">Preview is unavailable until the sample JSON is valid.</div>';
+            byId("summaryTablePreviewCount").textContent = "";
+            message.textContent = error.message || "Unable to read sample JSON.";
+            message.classList.remove("text-muted");
+            message.classList.add("text-danger");
+        }
+    }
+
+    function renderFields() {
+        const collection = selectedCollection();
+        if (!collection) return;
+        state.rows = collection.rows;
+        const allFields = Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])));
+        state.fields = allFields;
+        const config = getConfig();
+        const existing = configuredColumns(config);
+        const anyExisting = existing.size > 0;
+        const fields = allFields.map(field => {
+            const saved = existing.get(field);
+            return {
+                field,
+                label: saved && saved.label ? saved.label : humanize(field),
+                visible: saved ? saved.visible !== false : (!anyExisting || true),
+                format: saved && saved.format ? saved.format : "",
+                sortable: saved ? saved.sortable !== false : true,
+                searchable: saved ? saved.searchable !== false : true,
+                groupable: saved ? saved.groupable !== false : true
+            };
+        });
+        const formats = [
+            ["", "Default"], ["number", "Number"], ["percentage", "Percentage"],
+            ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]
+        ];
+        byId("summaryTableFieldEditor").innerHTML = fields.length ? 
+            '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
+            '<thead><tr><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th></tr></thead><tbody>' +
+            fields.map(item => '<tr data-field="' + escapeHtml(item.field) + '">' +
+                '<td><input class="form-check-input summary-config-visible" type="checkbox" aria-label="Show ' + escapeHtml(item.field) + '"' + (item.visible ? ' checked' : '') + '></td>' +
+                '<td><code>' + escapeHtml(item.field) + '</code></td>' +
+                '<td><input class="form-control form-control-sm summary-config-label" type="text" maxlength="120" value="' + escapeHtml(item.label) + '" aria-label="Label for ' + escapeHtml(item.field) + '"></td>' +
+                '<td><select class="form-select form-select-sm summary-config-format" aria-label="Format for ' + escapeHtml(item.field) + '">' +
+                formats.map(option => '<option value="' + option[0] + '"' + (item.format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
+                '</select></td></tr>').join("") +
+            '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
+            : '<div class="text-muted small">No fields were found in this collection.</div>';
+
+        const sort = byId("summaryTableDefaultSort");
+        const previousSort = (config.details && config.details.sorting && config.details.sorting.defaultField)
+            || (config.sorting && config.sorting.defaultField) || "";
+        sort.innerHTML = '<option value="">No default sort</option>' + fields.map(item =>
+            '<option value="' + escapeHtml(item.field) + '">' + escapeHtml(item.label) + ' (' + escapeHtml(item.field) + ')</option>'
+        ).join("");
+        sort.disabled = fields.length === 0;
+        sort.value = allFields.includes(previousSort) ? previousSort : "";
+        renderPreview();
+    }
+
+    function readFieldEditor() {
+        return Array.from(byId("summaryTableFieldEditor").querySelectorAll("tr[data-field]")).map(row => ({
+            field: row.getAttribute("data-field"),
+            label: row.querySelector(".summary-config-label").value.trim() || humanize(row.getAttribute("data-field")),
+            visible: row.querySelector(".summary-config-visible").checked,
+            sortable: true,
+            searchable: true,
+            groupable: true,
+            format: row.querySelector(".summary-config-format").value
+        }));
+    }
+
+    function buildConfig() {
+        const config = getConfig();
+        config.renderer = "SUMMARY_TABLE";
+        const rowPath = byId("summaryTableRowPath").value;
+        if (rowPath) config.rowPath = rowPath;
+        else delete config.rowPath;
+
+        config.details = config.details && typeof config.details === "object" ? config.details : {};
+        config.details.columns = readFieldEditor();
+        config.details.search = Object.assign({}, config.details.search || {}, { enabled: byId("summaryTableSearchEnabled").checked });
+        const defaultField = byId("summaryTableDefaultSort").value;
+        config.details.sorting = Object.assign({}, config.details.sorting || {}, {
+            enabled: true, defaultField, direction: byId("summaryTableSortDirection").value
+        });
+        config.details.pagination = Object.assign({}, config.details.pagination || {}, {
+            enabled: true, pageSize: Number(byId("summaryTablePageSize").value) || 10
+        });
+        config.summary = Object.assign({}, config.summary || {});
+        if (config.summary.enabled === undefined) config.summary.enabled = true;
+        return config;
+    }
+
+    function renderPreview() {
+        const collection = selectedCollection();
+        if (!collection) return;
+        const rows = collection.rows;
+        const columns = readFieldEditor().filter(column => column.visible);
+        byId("summaryTablePreviewCount").textContent = rows.length + " sample row(s)";
+        if (!columns.length) {
+            byId("summaryTablePreview").innerHTML = '<div class="text-muted small p-3">Select at least one visible column to preview the table.</div>';
+            return;
+        }
+        const previewRows = rows.slice(0, 10);
+        byId("summaryTablePreview").innerHTML = '<table class="table table-sm table-striped align-middle mb-0"><thead><tr>' +
+            columns.map(column => '<th>' + escapeHtml(column.label) + '</th>').join("") +
+            '</tr></thead><tbody>' + previewRows.map(row => '<tr>' + columns.map(column => {
+                let value = row[column.field];
+                if (value !== null && typeof value === "object") value = JSON.stringify(value);
+                if (value === null || value === undefined) value = "";
+                if (column.format === "percentage" && value !== "") value = String(value) + "%";
+                if (column.format === "number" && value !== "" && Number.isFinite(Number(value))) value = Number(value).toLocaleString();
+                return '<td>' + escapeHtml(value) + '</td>';
+            }).join("") + '</tr>').join("") + '</tbody></table>' +
+            (rows.length > previewRows.length ? '<div class="small text-muted p-2">Preview limited to the first 10 rows.</div>' : "");
+    }
+
+    function refreshConfigFromEditor() {
+        if (!state.sample || !selectedCollection()) return;
+        setConfig(buildConfig());
+    }
+
+    function showForSelectedType() {
+        const isSummary = byId("dashboardWidgetType").value === "SUMMARY_TABLE";
+        byId("summaryTableConfigurator").hidden = !isSummary;
+        byId("dashboardWidgetAdvancedConfig").open = !isSummary;
+        if (isSummary && state.sample) renderFields();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const type = byId("dashboardWidgetType");
+        const sample = byId("summaryTableSampleJson");
+        const discoverButton = byId("summaryTableDiscoverFields");
+        if (!type || !sample || !discoverButton) return;
+
+        discoverButton.addEventListener("click", discover);
+        byId("summaryTableRowPath").addEventListener("change", function () {
+            renderFields();
+            refreshConfigFromEditor();
+        });
+        byId("summaryTableFieldEditor").addEventListener("change", function () {
+            refreshConfigFromEditor();
+        });
+        byId("summaryTableFieldEditor").addEventListener("input", function (event) {
+            if (event.target.classList.contains("summary-config-label")) refreshConfigFromEditor();
+        });
+        ["summaryTableDefaultSort", "summaryTableSortDirection", "summaryTablePageSize", "summaryTableSearchEnabled"].forEach(id => {
+            byId(id).addEventListener("change", refreshConfigFromEditor);
+        });
+        type.addEventListener("change", showForSelectedType);
+        byId("dashboardWidgetFieldConfigJson").addEventListener("change", function () {
+            if (state.sample) renderFields();
+        });
+        const modal = byId("dashboardWidgetModal");
+        if (modal) modal.addEventListener("shown.bs.modal", showForSelectedType);
+        showForSelectedType();
+    });
+})();
