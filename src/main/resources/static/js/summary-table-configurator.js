@@ -413,6 +413,42 @@
         if (!type || !sample || !discoverButton) return;
 
         discoverButton.addEventListener("click", discover);
+        byId("summaryTableLoadLatest").addEventListener("click", async function () {
+            const jobId = byId("dashboardWidgetJobSourceId").value;
+            const message = byId("summaryTableDiscoveryMessage");
+            if (!jobId) {
+                message.textContent = "Select a Monitoring Job before loading its latest output.";
+                message.classList.remove("text-muted");
+                message.classList.add("text-danger");
+                return;
+            }
+            message.textContent = "Loading the latest saved result…";
+            message.classList.remove("text-danger");
+            message.classList.add("text-muted");
+            try {
+                const response = await fetch("/administration/dashboard/widgets/source-sample?jobId=" + encodeURIComponent(jobId), {
+                    method: "GET",
+                    headers: { "Accept": "application/json" },
+                    credentials: "same-origin"
+                });
+                if (!response.ok) throw new Error("Unable to load the latest result (HTTP " + response.status + ").");
+                const result = await response.json();
+                const output = String(result.rawOutput || "").trim() ? result.rawOutput : (result.resultData || "");
+                if (!String(output).trim()) {
+                    message.textContent = result.message || "No saved output is available. Run the job or paste a sample response.";
+                    return;
+                }
+                sample.value = output;
+                discover();
+                if (result.createdAt) {
+                    message.textContent = message.textContent + " Loaded saved output from " + result.createdAt + ".";
+                }
+            } catch (error) {
+                message.textContent = error.message || "Unable to load the latest result.";
+                message.classList.remove("text-muted");
+                message.classList.add("text-danger");
+            }
+        });
         const responseFormat = byId("summaryTableResponseFormat");
         renderRegexFields();
         byId("summaryTableAddRegexField").addEventListener("click", function () {
