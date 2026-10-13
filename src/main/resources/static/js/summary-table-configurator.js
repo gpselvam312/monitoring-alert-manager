@@ -1050,7 +1050,7 @@
         byId("summaryTableAddSummaryCard").addEventListener("click", function () {
             const config = getConfig();
             config.summary = Object.assign({}, config.summary || {});
-            const cards = Array.isArray(config.summary.cards) ? config.summary.cards.slice() : [];
+            const cards = readSummaryCards();
             cards.push({ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "" });
             config.summary.cards = cards;
             config.details = config.details && typeof config.details === "object" ? config.details : {};
