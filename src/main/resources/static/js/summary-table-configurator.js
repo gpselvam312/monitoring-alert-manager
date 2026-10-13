@@ -366,6 +366,13 @@
         setConfig(buildConfig());
     }
 
+    function syncParserSettings() {
+        const config = getConfig();
+        config.responseParser = currentParserConfig();
+        setConfig(config);
+        if (byId("summaryTableSampleJson").value.trim()) discover();
+    }
+
     function syncParserOptionVisibility() {
         const typeValue = byId("summaryTableResponseFormat").value;
         byId("summaryTableDelimitedOptions").hidden = typeValue !== "DELIMITED";
@@ -421,12 +428,10 @@
         byId("summaryTableRegexFields").addEventListener("click", function (event) {
             if (!event.target.closest(".summary-regex-remove")) return;
             event.target.closest("[data-regex-field]").remove();
-            if (sample.value.trim()) discover();
-            else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+            syncParserSettings();
         });
         byId("summaryTableRegexFields").addEventListener("change", function () {
-            if (sample.value.trim()) discover();
-            else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+            syncParserSettings();
         });
         byId("summaryTableRegexFields").addEventListener("input", function () {
             if (sample.value.trim()) discover();
@@ -442,8 +447,7 @@
             byId(id).addEventListener("change", function () {
                 byId("summaryTableCustomDelimiter").hidden = byId("summaryTableDelimiter").value !== "custom";
                 byId("summaryTableCustomSeparator").hidden = byId("summaryTableKeyValueSeparator").value !== "custom";
-                if (sample.value.trim()) discover();
-                else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+                syncParserSettings();
             });
         });
         byId("summaryTableRowPath").addEventListener("change", function () {
