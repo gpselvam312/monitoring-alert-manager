@@ -394,8 +394,10 @@
         const discoveredFields = Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])));
         const config = getConfig();
         const existing = configuredColumns(config);
+        // Keep saved mappings even when a field is absent from the current sample/latest job response.
+        // Otherwise a partial or changing response silently drops display and aggregation settings.
         const allFields = [
-            ...Array.from(existing.keys()).filter(field => discoveredFields.includes(field)),
+            ...Array.from(existing.keys()),
             ...discoveredFields.filter(field => !existing.has(field))
         ];
         state.fields = allFields;
@@ -406,9 +408,9 @@
                 field,
                 label: saved && saved.label ? saved.label : humanize(field),
                 visible: saved ? saved.visible !== false : true,
-                format: saved && saved.format ? saved.format : "",
-                displayStyle: saved && saved.displayStyle ? saved.displayStyle : "text",
-                aggregation: saved && saved.aggregation ? saved.aggregation : "none",
+                format: saved && saved.format ? String(saved.format).toLowerCase() : "",
+                displayStyle: saved && saved.displayStyle ? String(saved.displayStyle).toLowerCase() : "text",
+                aggregation: saved && saved.aggregation ? String(saved.aggregation).toLowerCase() : "none",
                 sortable: saved ? saved.sortable !== false : true,
                 searchable: saved ? saved.searchable !== false : true,
                 groupable: saved ? saved.groupable !== false : true
