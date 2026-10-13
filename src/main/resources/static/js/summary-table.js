@@ -207,7 +207,7 @@
             if (!baseClass && hasWarning) baseClass = "is-warning";
         }
         const conditional = conditionalRuleClass(row, config, "row");
-        const rank = { "": 0, "is-unknown": 0, "is-info": 1, "is-warning": 2, "is-critical": 3, "is-healthy": 0 };
+        const rank = { "": 0, "is-unknown": 0, "is-info": 1, "is-healthy": 1, "is-warning": 2, "is-critical": 3 };
         return (rank[conditional] || 0) > (rank[baseClass] || 0) ? conditional : baseClass;
     }
 
@@ -279,8 +279,12 @@
             columns.map(column => {
                 const value = rowValue(row, column.field);
                 const cellClass = conditionalRuleClass(row, config, "cell", column.field);
-                const isBoolean = value === true || value === false || (typeof value === "string" && /^(true|false)$/i.test(value.trim()));
-                const boolValue = value === true || (typeof value === "string" && value.trim().toLowerCase() === "true");
+                const rawBoolean = value === true || value === false || (typeof value === "string" && /^(true|false)$/i.test(value.trim()));
+                const statusValue = String(value == null ? "" : value).trim().toLowerCase();
+                const isBoolean = rawBoolean || ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes",
+                    "unhealthy", "down", "inactive", "disabled", "error", "failed", "fail", "critical", "red", "0", "no"].includes(statusValue);
+                const boolValue = rawBoolean ? (value === true || String(value).trim().toLowerCase() === "true")
+                    : ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes"].includes(statusValue);
                 const displayStyle = String(column.displayStyle || "text").toLowerCase();
                 if (isBoolean && displayStyle === "checkbox") {
                     return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><input class="form-check-input summary-table-boolean" type="checkbox" disabled aria-label="' + esc(column.label || column.field) + '" ' + (boolValue ? 'checked' : '') + '></td>';
