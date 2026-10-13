@@ -23,13 +23,16 @@
         const parser = Object.assign({}, existing, { type });
         if (type === "DELIMITED") {
             const selectedDelimiter = byId("summaryTableDelimiter").value;
-            parser.delimiter = selectedDelimiter === "\\t" ? "\t" : selectedDelimiter;
+            parser.delimiter = selectedDelimiter === "custom" ? byId("summaryTableCustomDelimiter").value
+                : (selectedDelimiter === "\\t" ? "\t" : selectedDelimiter);
+            parser.commentPrefix = byId("summaryTableCommentPrefix").value;
             parser.headerRow = byId("summaryTableHasHeader").checked;
             parser.trim = true;
             parser.ignoreBlankLines = true;
         } else if (type === "KEY_VALUE") {
             const selectedSeparator = byId("summaryTableKeyValueSeparator").value;
-            parser.separator = selectedSeparator === "\\t" ? "\t" : selectedSeparator;
+            parser.separator = selectedSeparator === "custom" ? byId("summaryTableCustomSeparator").value
+                : (selectedSeparator === "\\t" ? "\t" : selectedSeparator);
             parser.ignorePrefixes = byId("summaryTableIgnoredPrefixes").value
                 .split(/\r?\n/).map(value => value.trim()).filter(Boolean);
         }
@@ -48,7 +51,8 @@
         }
 
         if (type === "DELIMITED") {
-            const delimiter = String(parser.delimiter || "|");
+            const delimiter = String(parser.delimiter === undefined ? "|" : parser.delimiter);
+            if (!delimiter) throw new Error("Enter a non-empty delimiter.");
             const lines = text.split(/\r?\n/)
                 .filter(line => line.trim() !== "" && !(parser.commentPrefix && line.trim().startsWith(parser.commentPrefix)))
                 .map(line => line.split(delimiter).map(value => parser.trim === false ? value : value.trim()));
@@ -67,7 +71,8 @@
         }
 
         if (type === "KEY_VALUE") {
-            const separator = String(parser.separator || ":");
+            const separator = String(parser.separator === undefined ? ":" : parser.separator);
+            if (!separator) throw new Error("Enter a non-empty key-value separator.");
             const ignored = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes : [];
             const row = {};
             text.split(/\r?\n/).forEach(line => {
@@ -345,9 +350,18 @@
         const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
         byId("summaryTableResponseFormat").value = ["AUTO", "JSON", "DELIMITED", "KEY_VALUE", "REGEX"].includes(String(parser.type || "AUTO").toUpperCase())
             ? String(parser.type || "AUTO").toUpperCase() : "AUTO";
-        if (parser.delimiter) byId("summaryTableDelimiter").value = parser.delimiter === "\t" ? "\\t" : parser.delimiter;
+        const delimiterValue = parser.delimiter || "|";
+        byId("summaryTableDelimiter").value = ["|", ",", ";"].includes(delimiterValue)
+            ? delimiterValue : (delimiterValue === "\t" ? "\\t" : "custom");
+        byId("summaryTableCustomDelimiter").value = byId("summaryTableDelimiter").value === "custom" ? delimiterValue : "";
+        byId("summaryTableCustomDelimiter").hidden = byId("summaryTableDelimiter").value !== "custom";
+        byId("summaryTableCommentPrefix").value = parser.commentPrefix || "";
         byId("summaryTableHasHeader").checked = parser.headerRow !== false;
-        if (parser.separator) byId("summaryTableKeyValueSeparator").value = parser.separator === "\t" ? "\\t" : parser.separator;
+        const separatorValue = parser.separator || ":";
+        byId("summaryTableKeyValueSeparator").value = [":", "="].includes(separatorValue)
+            ? separatorValue : (separatorValue === "\t" ? "\\t" : "custom");
+        byId("summaryTableCustomSeparator").value = byId("summaryTableKeyValueSeparator").value === "custom" ? separatorValue : "";
+        byId("summaryTableCustomSeparator").hidden = byId("summaryTableKeyValueSeparator").value !== "custom";
         byId("summaryTableIgnoredPrefixes").value = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes.join("\n") : "";
         syncParserOptionVisibility();
         if (isSummary && state.sample) renderFields();
@@ -366,8 +380,11 @@
             if (sample.value.trim()) discover();
             else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
         });
-        ["summaryTableDelimiter", "summaryTableHasHeader", "summaryTableKeyValueSeparator", "summaryTableIgnoredPrefixes"].forEach(id => {
+        ["summaryTableDelimiter", "summaryTableHasHeader", "summaryTableKeyValueSeparator", "summaryTableIgnoredPrefixes",
+            "summaryTableCustomDelimiter", "summaryTableCustomSeparator", "summaryTableCommentPrefix"].forEach(id => {
             byId(id).addEventListener("change", function () {
+                byId("summaryTableCustomDelimiter").hidden = byId("summaryTableDelimiter").value !== "custom";
+                byId("summaryTableCustomSeparator").hidden = byId("summaryTableKeyValueSeparator").value !== "custom";
                 if (sample.value.trim()) discover();
                 else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
             });
