@@ -404,6 +404,7 @@
         sort.disabled = fields.length === 0;
         sort.value = allFields.includes(previousSort) ? previousSort : "";
         renderGroupByOptions(config, fields);
+        renderConditionalRules(config);
         renderTypeMappingOptions();
         renderPreview();
     }
@@ -934,7 +935,11 @@
             if (event.target.classList.contains("summary-conditional-value")) refreshConfigFromEditor();
         });
         byId("summaryTableConditionalFormattingEnabled").addEventListener("change", function () {
-            renderConditionalRules(getConfig());
+            const config = getConfig();
+            config.details = config.details && typeof config.details === "object" ? config.details : {};
+            config.details.conditionalFormatting = readConditionalFormatting();
+            setConfig(config);
+            renderConditionalRules(config);
             refreshConfigFromEditor();
         });
         byId("summaryTableGroupByEnabled").addEventListener("change", function () {
