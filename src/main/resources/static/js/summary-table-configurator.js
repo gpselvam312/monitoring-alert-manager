@@ -107,6 +107,7 @@
             byId("summaryTablePageSize").value = ["5", "10", "25", "50"].includes(String(pagination.pageSize)) ? String(pagination.pageSize) : "10";
 
             renderFields();
+            refreshConfigFromEditor();
             message.textContent = "Found " + collections.length + " collection(s). Select the row collection and columns.";
             message.classList.remove("text-danger");
             message.classList.add("text-muted");
@@ -138,7 +139,7 @@
             return {
                 field,
                 label: saved && saved.label ? saved.label : humanize(field),
-                visible: saved ? saved.visible !== false : (!anyExisting || true),
+                visible: saved ? saved.visible !== false : true,
                 format: saved && saved.format ? saved.format : "",
                 sortable: saved ? saved.sortable !== false : true,
                 searchable: saved ? saved.searchable !== false : true,
