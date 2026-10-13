@@ -597,11 +597,15 @@
                 return '<tr class="' + rowClass + '">' + columns.map(column => {
                     let value = row[column.field];
                     if (value !== null && typeof value === "object") value = JSON.stringify(value);
-                    const bool = value === true || value === false || (typeof value === "string" && /^(true|false)$/i.test(String(value).trim()));
-                    const boolValue = value === true || (typeof value === "string" && String(value).trim().toLowerCase() === "true");
+                    const rawBoolean = value === true || value === false || (typeof value === "string" && /^(true|false)$/i.test(String(value).trim()));
+                    const statusValue = String(value == null ? "" : value).trim().toLowerCase();
+                    const isBoolean = rawBoolean || ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes",
+                        "unhealthy", "down", "inactive", "disabled", "error", "failed", "fail", "critical", "red", "0", "no"].includes(statusValue);
+                    const boolValue = rawBoolean ? (value === true || String(value).trim().toLowerCase() === "true")
+                        : ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes"].includes(statusValue);
                     const cellClass = conditionalPreviewClass(row, previewConfig, "cell", column.field);
-                    if (bool && column.displayStyle === "checkbox") return '<td class="' + cellClass + '"><input class="form-check-input summary-table-boolean" type="checkbox" disabled ' + (boolValue ? 'checked' : '') + '></td>';
-                    if (bool && column.displayStyle === "toggle") return '<td class="' + cellClass + '"><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '"><span></span></span></td>';
+                    if (isBoolean && String(column.displayStyle || "text").toLowerCase() === "checkbox") return '<td class="' + cellClass + '"><input class="form-check-input summary-table-boolean" type="checkbox" disabled ' + (boolValue ? 'checked' : '') + '></td>';
+                    if (isBoolean && String(column.displayStyle || "text").toLowerCase() === "toggle") return '<td class="' + cellClass + '"><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '"><span></span></span></td>';
                     if (value === null || value === undefined) value = "";
                     if (column.format === "percentage" && value !== "") value = String(value) + "%";
                     if (column.format === "number" && value !== "" && Number.isFinite(Number(value))) value = Number(value).toLocaleString();
