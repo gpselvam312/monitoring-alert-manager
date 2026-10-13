@@ -1293,7 +1293,7 @@
                             
 
 
-                            <div class="col-md-4">
+                            <div class="col-md-3">
 
                                 <label for="dashboardWidgetSize"
                                        class="form-label">
@@ -1324,7 +1324,7 @@
                             </div>
 
 
-                            <div class="col-md-4">
+                            <div class="col-md-3">
 
                                 <label for="dashboardWidgetIcon"
                                        class="form-label">
@@ -1343,35 +1343,83 @@
                             </div>
 
 
-                          <div class="col-md-4" id="dashboardWidgetChartTypeGroup">
-							
-							    <label for="dashboardWidgetChartType"
-							           class="form-label">
-							        Chart Type
-							    </label>
-							
-							   <select class="form-select"
-								        id="dashboardWidgetChartType"
-								        th:field="*{chartType}"
-								        th:classappend="${#fields.hasErrors('chartType')} ? ' is-invalid' : ''">
-								
-								    <option value="">Not applicable</option>
-								    <option value="LINE">Line</option>
-								    <option value="BAR">Bar</option>
-								    <option value="PIE">Pie</option>
-								    <option value="DONUT">Donut</option>
-								</select>
-								
-								<div class="invalid-feedback"
-								     th:if="${#fields.hasErrors('chartType')}"
-								     th:errors="*{chartType}">
-								    Chart type is required for chart widgets.
-								</div>
-							
-							</div>
+                          <div class="row g-3 align-items-end mb-2">
+<div class="col-md-2">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   th:field="*{enabled}" id="dashboardWidgetEnabled">
+                                            <label class="form-check-label" for="dashboardWidgetEnabled">Enabled</label>
+                                        </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   th:field="*{detailsEnabled}" id="dashboardWidgetDetailsEnabled">
+                                            <label class="form-check-label" for="dashboardWidgetDetailsEnabled">Details Enabled</label>
+                                        </div>
+                                    </div>
+
+                            <div class="col-md-2">
+                                <div class="form-check mt-2 text-nowrap">
+                                    <input class="form-check-input" type="checkbox"
+                                           th:field="*{autoRefresh}" id="dashboardWidgetAutoRefresh">
+                                    <label class="form-check-label" for="dashboardWidgetAutoRefresh">Auto Refresh</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-2"
+                                 id="dashboardWidgetRefreshIntervalGroup">
+
+                                <label for="dashboardWidgetRefreshInterval"
+                                       class="form-label">
+
+                                    Refresh Interval
+
+                                </label>
+
+                                <input type="number"
+								       class="form-control"
+								       th:field="*{refreshInterval}"
+								       id="dashboardWidgetRefreshInterval"
+								       min="1">
+
+                            </div>
 
 
-                            <div class="col-md-6">
+                            <div class="col-md-3"
+                                 id="dashboardWidgetRefreshUnitGroup">
+
+                                <label for="dashboardWidgetRefreshIntervalUnit"
+                                       class="form-label">
+
+                                    Refresh Unit
+
+                                </label>
+
+                                <select class="form-select"
+								        th:field="*{refreshIntervalUnit}"
+								        id="dashboardWidgetRefreshIntervalUnit">
+
+                                    <option value="">
+                                        Select unit
+                                    </option>
+
+                                    <option value="SECONDS">
+                                        Seconds
+                                    </option>
+
+                                    <option value="MINUTES">
+                                        Minutes
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+
+</div>
+
+<div class="col-md-6">
                                 <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
                                 <select class="form-select"
                                         id="dashboardWidgetDataSourceType"
@@ -1406,84 +1454,7 @@
                                      th:errors="*{dataSourceId}">Select a monitoring job.</div>
                             </div>
 
-                            <div class="col-12">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <div class="form-check mt-2">
-                                            <input class="form-check-input" type="checkbox"
-                                                   th:field="*{enabled}" id="dashboardWidgetEnabled">
-                                            <label class="form-check-label" for="dashboardWidgetEnabled">Enabled</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-check mt-2">
-                                            <input class="form-check-input" type="checkbox"
-                                                   th:field="*{detailsEnabled}" id="dashboardWidgetDetailsEnabled">
-                                            <label class="form-check-label" for="dashboardWidgetDetailsEnabled">Details Enabled</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="form-check mt-4">
-                                    <input class="form-check-input" type="checkbox"
-                                           th:field="*{autoRefresh}" id="dashboardWidgetAutoRefresh">
-                                    <label class="form-check-label" for="dashboardWidgetAutoRefresh">Auto Refresh</label>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4"
-                                 id="dashboardWidgetRefreshIntervalGroup">
-
-                                <label for="dashboardWidgetRefreshInterval"
-                                       class="form-label">
-
-                                    Refresh Interval
-
-                                </label>
-
-                                <input type="number"
-								       class="form-control"
-								       th:field="*{refreshInterval}"
-								       id="dashboardWidgetRefreshInterval"
-								       min="1">
-
-                            </div>
-
-
-                            <div class="col-md-4"
-                                 id="dashboardWidgetRefreshUnitGroup">
-
-                                <label for="dashboardWidgetRefreshIntervalUnit"
-                                       class="form-label">
-
-                                    Refresh Unit
-
-                                </label>
-
-                                <select class="form-select"
-								        th:field="*{refreshIntervalUnit}"
-								        id="dashboardWidgetRefreshIntervalUnit">
-
-                                    <option value="">
-                                        Select unit
-                                    </option>
-
-                                    <option value="SECONDS">
-                                        Seconds
-                                    </option>
-
-                                    <option value="MINUTES">
-                                        Minutes
-                                    </option>
-
-                                </select>
-
-                            </div>
-
-
-<div class="col-md-6">
+                            <div class="col-md-6">
 
                                 <label for="dashboardWidgetType"
                                        class="form-label">
@@ -1519,7 +1490,35 @@
 
                             </div>
 
-<div class="col-12" id="summaryTableConfigurator" hidden>
+<div class="col-md-4" id="dashboardWidgetChartTypeGroup">
+							
+							    <label for="dashboardWidgetChartType"
+							           class="form-label">
+							        Chart Type
+							    </label>
+							
+							   <select class="form-select"
+								        id="dashboardWidgetChartType"
+								        th:field="*{chartType}"
+								        th:classappend="${#fields.hasErrors('chartType')} ? ' is-invalid' : ''">
+								
+								    <option value="">Not applicable</option>
+								    <option value="LINE">Line</option>
+								    <option value="BAR">Bar</option>
+								    <option value="PIE">Pie</option>
+								    <option value="DONUT">Donut</option>
+								</select>
+								
+								<div class="invalid-feedback"
+								     th:if="${#fields.hasErrors('chartType')}"
+								     th:errors="*{chartType}">
+								    Chart type is required for chart widgets.
+								</div>
+							
+							</div>
+
+
+                            <div class="col-12" id="summaryTableConfigurator" hidden>
                                 <div class="border rounded p-3 mb-3">
                                     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
                                         <div>
