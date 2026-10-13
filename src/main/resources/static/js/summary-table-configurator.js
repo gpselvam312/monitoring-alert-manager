@@ -206,22 +206,27 @@
         const details = config.details && typeof config.details === "object" ? config.details : {};
         const groupBy = details.groupBy && typeof details.groupBy === "object" ? details.groupBy : {};
         const selected = Array.isArray(groupBy.fields) ? groupBy.fields.map(String) : [];
+        const eligibleFields = fields.filter(item => item.groupable !== false);
         const select = byId("summaryTableGroupByFields");
-        select.innerHTML = fields.map(item =>
+        select.innerHTML = eligibleFields.map(item =>
             '<option value="' + escapeHtml(item.field) + '"' + (selected.includes(item.field) ? " selected" : "") + '>' +
             escapeHtml(item.label) + ' (' + escapeHtml(item.field) + ')</option>'
         ).join("");
-        select.disabled = fields.length === 0;
         byId("summaryTableGroupByEnabled").checked = groupBy.enabled === true;
         byId("summaryTableGroupByInitialState").value = ["EXPANDED", "COLLAPSED"].includes(String(groupBy.initialState || "").toUpperCase())
             ? String(groupBy.initialState).toUpperCase() : "EXPANDED";
         byId("summaryTableGroupByOrder").value = ["VALUE_ASC", "VALUE_DESC", "COUNT_ASC", "COUNT_DESC"].includes(String(groupBy.order || "").toUpperCase())
             ? String(groupBy.order).toUpperCase() : "VALUE_ASC";
         byId("summaryTableGroupByAggregates").checked = groupBy.showAggregates !== false;
-        select.disabled = fields.length === 0 || !byId("summaryTableGroupByEnabled").checked;
-        byId("summaryTableGroupByInitialState").disabled = !byId("summaryTableGroupByEnabled").checked;
-        byId("summaryTableGroupByOrder").disabled = !byId("summaryTableGroupByEnabled").checked;
-        byId("summaryTableGroupByAggregates").disabled = !byId("summaryTableGroupByEnabled").checked;
+        syncGroupByControlState();
+    }
+
+    function syncGroupByControlState() {
+        const enabled = byId("summaryTableGroupByEnabled").checked;
+        byId("summaryTableGroupByFields").disabled = state.fields.length === 0 || !enabled;
+        byId("summaryTableGroupByInitialState").disabled = !enabled;
+        byId("summaryTableGroupByOrder").disabled = !enabled;
+        byId("summaryTableGroupByAggregates").disabled = !enabled;
     }
 
     function discover() {
@@ -306,8 +311,8 @@
         ];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
-            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th></tr></thead><tbody>' +
-            fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '">' +
+            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Groupable</th></tr></thead><tbody>' +
+            fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
                 '<td><input class="form-check-input summary-config-visible" type="checkbox" aria-label="Show ' + escapeHtml(item.field) + '"' + (item.visible ? ' checked' : '') + '></td>' +
@@ -315,7 +320,8 @@
                 '<td><input class="form-control form-control-sm summary-config-label" type="text" maxlength="120" value="' + escapeHtml(item.label) + '" aria-label="Label for ' + escapeHtml(item.field) + '"></td>' +
                 '<td><select class="form-select form-select-sm summary-config-format" aria-label="Format for ' + escapeHtml(item.field) + '">' +
                 formats.map(option => '<option value="' + option[0] + '"' + (item.format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
-                '</select></td></tr>').join("") +
+                '</select></td>' +
+                '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td></tr>').join("") +
             '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
             : '<div class="text-muted small">No fields were found in this collection.</div>';
 
@@ -338,7 +344,9 @@
             visible: row.querySelector(".summary-config-visible").checked,
             sortable: true,
             searchable: true,
-            groupable: true,
+            groupable: row.querySelector(".summary-config-groupable").checked,
+            sortable: row.getAttribute("data-sortable") !== "false",
+            searchable: row.getAttribute("data-searchable") !== "false",
             format: row.querySelector(".summary-config-format").value
         }));
     }
@@ -485,6 +493,14 @@
         byId("summaryTableCustomSeparator").hidden = byId("summaryTableKeyValueSeparator").value !== "custom";
         byId("summaryTableIgnoredPrefixes").value = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes.join("\n") : "";
         renderRegexFields();
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const groupBy = details.groupBy && typeof details.groupBy === "object" ? details.groupBy : {};
+        byId("summaryTableGroupByEnabled").checked = groupBy.enabled === true;
+        byId("summaryTableGroupByInitialState").value = String(groupBy.initialState || "EXPANDED").toUpperCase() === "COLLAPSED" ? "COLLAPSED" : "EXPANDED";
+        byId("summaryTableGroupByOrder").value = ["VALUE_ASC", "VALUE_DESC", "COUNT_ASC", "COUNT_DESC"].includes(String(groupBy.order || "").toUpperCase())
+            ? String(groupBy.order).toUpperCase() : "VALUE_ASC";
+        byId("summaryTableGroupByAggregates").checked = groupBy.showAggregates !== false;
+        syncGroupByControlState();
         syncParserOptionVisibility();
         if (isSummary && state.sample) renderFields();
     }
@@ -621,11 +637,7 @@
             }
         });
         byId("summaryTableGroupByEnabled").addEventListener("change", function () {
-            const config = getConfig();
-            renderGroupByOptions(config, state.fields.map(field => {
-                const saved = configuredColumns(config).get(field);
-                return { field, label: saved && saved.label ? saved.label : humanize(field) };
-            }));
+            syncGroupByControlState();
             refreshConfigFromEditor();
         });
         ["summaryTableGroupByFields", "summaryTableGroupByInitialState", "summaryTableGroupByOrder", "summaryTableGroupByAggregates"].forEach(id => {
@@ -644,6 +656,7 @@
                 byId("summaryTableFieldEditor").innerHTML = '<div class="text-muted small">Discovered fields will appear here.</div>';
                 byId("summaryTablePreview").innerHTML = '<div class="text-muted small p-3">Discover fields to preview the table.</div>';
                 byId("summaryTablePreviewCount").textContent = "";
+                lastWidgetType = type.value;
             });
         }
         showForSelectedType();
