@@ -524,7 +524,7 @@
         delete config.details.summaryCards;
         config.summary = Object.assign({}, config.summary || {});
         config.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
-        config.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }] : []), ...editedColumns.filter(column => column.summaryCard).map(column => {
+        config.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
             const aggregate = String(column.aggregation || "none").toLowerCase();
             const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate]
                 || (isNumericSummaryField(column.field) ? "SUM" : "COUNT_NON_EMPTY");
@@ -612,7 +612,7 @@
             summaryConfig.summary = Object.assign({}, summaryConfig.summary || {});
             const editedColumns = readFieldEditor();
             summaryConfig.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
-            summaryConfig.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }] : []), ...editedColumns.filter(column => column.summaryCard).map(column => {
+            summaryConfig.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
                 const aggregate = String(column.aggregation || "none").toLowerCase();
                 const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate]
                     || (isNumericSummaryField(column.field) ? "SUM" : "COUNT_NON_EMPTY");
