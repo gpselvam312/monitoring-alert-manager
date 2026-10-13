@@ -284,7 +284,7 @@
                     "unhealthy", "down", "inactive", "disabled", "error", "failed", "fail", "critical", "red", "0", "no"].includes(statusValue);
                 const boolValue = rawBoolean ? (value === true || String(value).trim().toLowerCase() === "true")
                     : ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes"].includes(statusValue);
-                if (isBoolean) {
+                if (String(column.format || "").toLowerCase() === "toggle") {
                     return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '" role="img" aria-label="' + esc(column.label || column.field) + ': ' + (boolValue ? 'true' : 'false') + '"><span></span></span></td>';
                 }
                 if (String(column.format).toLowerCase() === "status") {
@@ -334,7 +334,8 @@
                     else if (operation === "MIN") value = numbers.length ? Math.min(...numbers) : null;
                 }
                 cards.push({ label: card.label || (operation === "COUNT_ROWS" ? "Total Rows" : field || "Summary"),
-                    value: value === null ? "—" : formatValue(value, card.format), cls: "", filterField: null, filterType: "custom-" + index });
+                    value: value === null ? "—" : formatValue(value, card.format), cls: "", filterField: field || null,
+                    filterType: field ? "custom-field" : "all", filterOperation: operation });
             });
         } else {
             const numericFields = state.numericFields;
@@ -369,13 +370,10 @@
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
             const content = '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
                 '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong>';
-            if (String(card.filterType || "").startsWith("custom-")) {
-                return '<div class="server-health-summary-item server-health-summary-' + status + ' summary-table-card summary-table-card-static">' + content + '</div>';
-            }
             return '<button type="button" class="server-health-summary-item server-health-summary-' + status +
                 ' server-health-summary-filter summary-table-card' + (active ? ' is-active' : '') +
                 '" data-card-filter-type="' + esc(card.filterType) + '" data-card-filter-field="' + esc(card.filterField || '') +
-                '" aria-label="' + esc(card.label) + '" aria-pressed="' + Boolean(active) + '">' + content + '</button>';
+                '" aria-label="' + esc(card.label) + '" data-card-filter-operation="' + esc(card.filterOperation || '') + '" aria-pressed="' + Boolean(active) + '">' + content + '</button>';
         }).join("") + '</div>';
     }
 
@@ -397,6 +395,17 @@
                 rows = rows.filter(row => (numeric(rowValue(row, field)) || 0) > 0);
             } else if (state.cardFilter.type === "overall") {
                 rows = rows.filter(row => state.numericFields.some(field => (numeric(rowValue(row, field)) || 0) > 0));
+            } else if (state.cardFilter.type === "custom-field" && state.cardFilter.field) {
+                const field = state.cardFilter.field;
+                const operation = String(state.cardFilter.operation || "").toUpperCase();
+                rows = rows.filter(row => {
+                    const value = rowValue(row, field);
+                    if (operation === "COUNT_TRUE") return value === true || String(value).toLowerCase() === "true";
+                    if (operation === "COUNT_FALSE") return value === false || String(value).toLowerCase() === "false";
+                    if (operation === "COUNT_NON_EMPTY") return value !== null && value !== undefined && value !== "";
+                    const number = numeric(value);
+                    return number !== null && number > 0;
+                });
             }
         }
         if (state.search && searchConfig.enabled !== false) {
@@ -582,10 +591,11 @@
         if (cardButton) {
             const type = cardButton.getAttribute("data-card-filter-type");
             const field = cardButton.getAttribute("data-card-filter-field") || null;
-            if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field) {
+            const operation = cardButton.getAttribute("data-card-filter-operation") || "";
+            if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field && state.cardFilter.operation === operation) {
                 state.cardFilter = null;
             } else {
-                state.cardFilter = { type, field };
+                state.cardFilter = { type, field, operation };
             }
             state.page = 0;
         } else if (sortButton) {
