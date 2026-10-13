@@ -145,9 +145,7 @@
             if (Array.isArray(value)) {
                 const rows = value.filter(item => item && typeof item === "object" && !Array.isArray(item));
                 if (rows.length) found.push({ path, rows, label: path || "(root array)" });
-                value.forEach((item, index) => {
-                    if (item && typeof item === "object" && !Array.isArray(item)) visit(item, path ? path + "." + index : String(index), depth + 1);
-                });
+                // Do not expose array-index paths such as consumers.0.topics as reusable row paths.
                 return;
             }
             Object.keys(value).forEach(key => {
