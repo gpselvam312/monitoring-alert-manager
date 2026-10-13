@@ -921,9 +921,16 @@
                     message.textContent = "The latest job response was empty or invalid.";
                     return;
                 }
-                const rawOutput = typeof result.rawOutput === "string" ? result.rawOutput : "";
-                const resultData = typeof result.resultData === "string" ? result.resultData : "";
-                const output = rawOutput.trim() ? rawOutput : resultData;
+                const candidates = [result.rawOutput, result.resultData, result.output, result.responseBody,
+                    result.payload, result.data];
+                let output = "";
+                for (const candidate of candidates) {
+                    if (typeof candidate === "string" && candidate.trim()) { output = candidate; break; }
+                    if (candidate !== null && typeof candidate === "object") {
+                        try { output = JSON.stringify(candidate); } catch (ignore) { output = ""; }
+                        if (output) break;
+                    }
+                }
                 if (!output.trim()) {
                     message.textContent = result.message || "No saved output is available. Run the job or paste a sample response.";
                     return;
@@ -1022,6 +1029,26 @@
                 lastWidgetType = nextType;
             }
             showForSelectedType();
+            const sourceType = byId("dashboardWidgetDataSourceType");
+            const jobSelect = byId("dashboardWidgetJobSourceId");
+            if (nextType === "SUMMARY_TABLE" && sourceType && sourceType.value === "MONITORING_JOB"
+                && jobSelect && String(jobSelect.value || "").trim()) {
+                byId("summaryTableLoadLatest").click();
+            }
+        });
+        const jobSelectForLatest = byId("dashboardWidgetJobSourceId");
+        const sourceTypeForLatest = byId("dashboardWidgetDataSourceType");
+        if (jobSelectForLatest) jobSelectForLatest.addEventListener("change", function () {
+            if (currentWidgetType() === "SUMMARY_TABLE" && sourceTypeForLatest
+                && sourceTypeForLatest.value === "MONITORING_JOB" && String(jobSelectForLatest.value || "").trim()) {
+                byId("summaryTableLoadLatest").click();
+            }
+        });
+        if (sourceTypeForLatest) sourceTypeForLatest.addEventListener("change", function () {
+            if (currentWidgetType() === "SUMMARY_TABLE" && sourceTypeForLatest.value === "MONITORING_JOB"
+                && jobSelectForLatest && String(jobSelectForLatest.value || "").trim()) {
+                byId("summaryTableLoadLatest").click();
+            }
         });
         byId("dashboardWidgetFieldConfigJson").addEventListener("change", function () {
             const config = getConfig();
