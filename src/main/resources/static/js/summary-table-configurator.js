@@ -404,7 +404,33 @@
     }
 
     function refreshConfigFromEditor() {
-        if (!state.sample || !selectedCollection()) return;
+        if (!state.sample || !selectedCollection()) {
+            const config = getConfig();
+            config.details = config.details && typeof config.details === "object" ? config.details : {};
+            config.details.search = Object.assign({}, config.details.search || {}, {
+                enabled: byId("summaryTableSearchEnabled").checked
+            });
+            const sorting = Object.assign({}, config.details.sorting || {});
+            sorting.enabled = sorting.enabled !== false;
+            sorting.direction = byId("summaryTableSortDirection").value;
+            if (!byId("summaryTableDefaultSort").disabled) {
+                sorting.defaultField = byId("summaryTableDefaultSort").value;
+            }
+            config.details.sorting = sorting;
+            config.details.pagination = Object.assign({}, config.details.pagination || {}, {
+                enabled: true,
+                pageSize: Number(byId("summaryTablePageSize").value) || 10
+            });
+            config.details.groupBy = Object.assign({}, config.details.groupBy || {}, {
+                enabled: byId("summaryTableGroupByEnabled").checked,
+                fields: Array.from(byId("summaryTableGroupByFields").selectedOptions).map(option => option.value),
+                initialState: byId("summaryTableGroupByInitialState").value,
+                order: byId("summaryTableGroupByOrder").value,
+                showAggregates: byId("summaryTableGroupByAggregates").checked
+            });
+            setConfig(config);
+            return;
+        }
         setConfig(buildConfig());
     }
 
