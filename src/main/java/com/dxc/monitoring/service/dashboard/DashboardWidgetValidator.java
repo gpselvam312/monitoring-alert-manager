@@ -13,7 +13,7 @@ import jakarta.validation.ConstraintValidatorContext;
 public class DashboardWidgetValidator implements ConstraintValidator<ValidDashboardWidget, DashboardWidgetForm>
 {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final Set<String> RESPONSE_PARSER_TYPES = Set.of("AUTO", "JSON", "DELIMITED", "KEY_VALUE", "REGEX");
+    private static final Set<String> RESPONSE_PARSER_TYPES = Set.of("AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX");
     private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "SUMMARY_TABLE", "CHART", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH");
     private static final Set<String> CHART_TYPES = Set.of("LINE", "BAR", "PIE", "DONUT");
     private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB");
