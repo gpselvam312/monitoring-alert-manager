@@ -1519,12 +1519,12 @@
 							</div>
 
 
-                            <div class="col-12" id="summaryTableConfigurator" hidden>
-                                <div class="border rounded p-3 mb-3">
+                            <div class="col-12" id="summaryTableConfigurator">
+                                <div class="border rounded p-3 mb-3>
                                     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
                                         <div>
-                                            <h6 class="mb-1">Summary Table data and columns</h6>
-                                            <p class="text-muted small mb-0">Paste a representative JSON response to discover collections and fields, configure columns, and preview the table. The sample is used for preview only and is not saved as monitoring history.</p>
+                                            <h6 class="mb-1" id="widgetMappingHeading">Widget data and mapping</h6>
+                                            <p class="text-muted small mb-0">Configure how this widget parses and displays the selected Monitoring Job response. Paste a sample or load the latest saved output to discover available fields. Samples are used for preview only.</p>
                                         </div>
                                     </div>
                                     <div class="row g-3 mb-3">
@@ -1588,7 +1588,7 @@
                                         <span class="small text-muted" id="summaryTableDiscoveryMessage" aria-live="polite">Paste a sample or load the latest job output.</span>
                                     </div>
                                     <div class="row g-3 mb-3">
-                                        <div class="col-md-6">
+                                        <div class="col-md-6" id="summaryTableRowPathGroup">
                                             <label for="summaryTableRowPath" class="form-label">Rows / collection</label>
                                             <select class="form-select" id="summaryTableRowPath" disabled>
                                                 <option value="">Load sample data to discover rows</option>
@@ -1596,10 +1596,54 @@
                                             <div class="form-text">Choose the array containing the rows to display.</div>
                                         </div>
                                     </div>
-                                    <div class="mb-4" id="summaryTableFieldEditor">
+                                                                        <div class="border rounded p-3 mb-4" id="widgetTypeMappingOptions" hidden>
+                                        <h6 class="mb-3" id="widgetTypeMappingTitle">Widget-specific mapping</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-4" data-mapping-for="CHART">
+                                                <label for="widgetCategoryField" class="form-label">Category field</label>
+                                                <select class="form-select" id="widgetCategoryField"><option value="">Select field</option></select>
+                                            </div>
+                                            <div class="col-md-4" data-mapping-for="CHART">
+                                                <label for="widgetValueField" class="form-label">Value field</label>
+                                                <select class="form-select" id="widgetValueField"><option value="">Select field</option></select>
+                                            </div>
+                                            <div class="col-md-4" data-mapping-for="CHART">
+                                                <label for="widgetSeriesField" class="form-label">Series field (optional)</label>
+                                                <select class="form-select" id="widgetSeriesField"><option value="">None</option></select>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="STAT STATUS">
+                                                <label for="widgetSingleValueField" class="form-label">Value field</label>
+                                                <select class="form-select" id="widgetSingleValueField"><option value="">Select field</option></select>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="STATUS">
+                                                <label for="widgetStatusField" class="form-label">Status field (optional)</label>
+                                                <select class="form-select" id="widgetStatusField"><option value="">None</option></select>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="TEXT">
+                                                <label for="widgetTextFields" class="form-label">Text fields</label>
+                                                <select class="form-select" id="widgetTextFields" multiple size="4"></select>
+                                                <div class="form-text">Select fields to display when no text template is supplied.</div>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="TEXT">
+                                                <label for="widgetTextTemplate" class="form-label">Text template (optional)</label>
+                                                <textarea class="form-control font-monospace" id="widgetTextTemplate" rows="4" placeholder="Host: {{HOST}}&#10;Status: {{STATUS}}"></textarea>
+                                                <div class="form-text">Use {{FIELD_NAME}} placeholders matching the response fields.</div>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="SYSTEM_METRICS">
+                                                <label for="widgetMetricFields" class="form-label">Metric fields</label>
+                                                <select class="form-select" id="widgetMetricFields" multiple size="4"></select>
+                                            </div>
+                                            <div class="col-12" data-mapping-for="ELASTICSEARCH">
+                                                <div class="alert alert-info mb-0">Elasticsearch widgets retain their dedicated renderer options. Use Advanced JSON for renderer-specific settings; response parsing and field discovery are available above.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+<div class="mb-4" id="summaryTableFieldEditorGroup">
+                                        <h6 class="mb-2" id="widgetFieldMappingHeading">Field mapping</h6>
+                                        <div id="summaryTableFieldEditor">
                                         <div class="text-muted small">Load sample data and discover fields to configure columns.</div>
                                     </div>
-                                    <section class="border rounded p-3 mb-4" aria-labelledby="summaryTableGroupByHeading">
+                                    <section class="border rounded p-3 mb-4" id="summaryTableGroupBySection" aria-labelledby="summaryTableGroupByHeading">
                                         <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
                                             <div>
                                                 <h6 class="mb-1" id="summaryTableGroupByHeading">Group By</h6>
@@ -1640,7 +1684,7 @@
                                             </div>
                                         </div>
                                     </section>
-                                    <div class="row g-3 mb-3">
+                                    <div class="row g-3 mb-3" id="summaryTableTableOptions">
                                         <div class="col-md-5">
                                             <label for="summaryTableDefaultSort" class="form-label">Default sort field</label>
                                             <select class="form-select" id="summaryTableDefaultSort" disabled>
