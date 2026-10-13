@@ -15,12 +15,104 @@
             .replace(/[._-]+/g, " ").replace(/^./, c => c.toUpperCase());
     }
 
-    function parseObject(text) {
-        const value = JSON.parse(text);
-        if (value === null || typeof value !== "object") {
-            throw new Error("The sample must be a JSON object or array.");
+    function currentParserConfig() {
+        const config = getConfig();
+        const existing = config.responseParser && typeof config.responseParser === "object"
+            ? config.responseParser : {};
+        const type = byId("summaryTableResponseFormat").value;
+        const parser = Object.assign({}, existing, { type });
+        if (type === "DELIMITED") {
+            const selectedDelimiter = byId("summaryTableDelimiter").value;
+            parser.delimiter = selectedDelimiter === "\\t" ? "\t" : selectedDelimiter;
+            parser.headerRow = byId("summaryTableHasHeader").checked;
+            parser.trim = true;
+            parser.ignoreBlankLines = true;
+        } else if (type === "KEY_VALUE") {
+            const selectedSeparator = byId("summaryTableKeyValueSeparator").value;
+            parser.separator = selectedSeparator === "\\t" ? "\t" : selectedSeparator;
+            parser.ignorePrefixes = byId("summaryTableIgnoredPrefixes").value
+                .split(/\\r?\\n/).map(value => value.trim()).filter(Boolean);
         }
-        return value;
+        return parser;
+    }
+
+    function parseSample(text) {
+        const parser = currentParserConfig();
+        const type = String(parser.type || "AUTO").toUpperCase();
+        if (type === "AUTO" || type === "JSON") {
+            const value = JSON.parse(text);
+            if (value === null || typeof value !== "object") {
+                throw new Error("The sample must be a JSON object or array.");
+            }
+            return value;
+        }
+
+        if (type === "DELIMITED") {
+            const delimiter = String(parser.delimiter || "|");
+            const lines = text.split(/\\r?\\n/)
+                .filter(line => line.trim() !== "" && !(parser.commentPrefix && line.trim().startsWith(parser.commentPrefix)))
+                .map(line => line.split(delimiter).map(value => parser.trim === false ? value : value.trim()));
+            if (!lines.length) throw new Error("No delimited rows were found.");
+            const headers = parser.headerRow === false
+                ? Array.from({ length: Math.max(...lines.map(line => line.length)) }, (_, index) => "column" + (index + 1))
+                : lines[0];
+            const firstData = parser.headerRow === false ? 0 : 1;
+            const rows = lines.slice(firstData).map(line => {
+                const row = {};
+                headers.forEach((header, index) => { row[String(header || ("column" + (index + 1)))] = line[index] === undefined ? "" : line[index]; });
+                return row;
+            });
+            if (!rows.length) throw new Error("No data rows were found. Check whether the sample contains a header row.");
+            return { rows };
+        }
+
+        if (type === "KEY_VALUE") {
+            const separator = String(parser.separator || ":");
+            const ignored = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes : [];
+            const row = {};
+            text.split(/\\r?\\n/).forEach(line => {
+                if (!line.trim() || ignored.some(prefix => line.trim().startsWith(prefix))) return;
+                const index = line.indexOf(separator);
+                if (index <= 0) return;
+                row[line.slice(0, index).trim()] = line.slice(index + separator.length).trim();
+            });
+            if (!Object.keys(row).length) throw new Error("No key-value entries were found.");
+            return { rows: [row] };
+        }
+
+        if (type === "REGEX") {
+            const fields = Array.isArray(parser.fields) ? parser.fields : [];
+            if (!fields.length) throw new Error("Configure responseParser.fields in Advanced JSON Configuration before using regex extraction.");
+            const row = {};
+            fields.forEach(field => {
+                if (!field || !field.key || !field.pattern) throw new Error("Each regex field requires a key and pattern.");
+                const match = new RegExp(field.pattern, "m").exec(text);
+                if (!match) {
+                    if (field.required === true) throw new Error("Required regex field was not found: " + field.key);
+                    return;
+                }
+                const group = Number.isInteger(field.group) ? field.group : 1;
+                if (group < 0 || group >= match.length) throw new Error("Invalid capture group for field: " + field.key);
+                let value = match[group];
+                const valueType = String(field.type || "string").toLowerCase();
+                if (["number", "decimal", "percentage"].includes(valueType)) {
+                    const number = Number(String(value).replace(/,/g, "").replace(/%/g, "").trim());
+                    if (!Number.isFinite(number)) throw new Error("Value for " + field.key + " is not numeric.");
+                    value = number;
+                } else if (["integer", "long"].includes(valueType)) {
+                    const number = Number(String(value).replace(/,/g, "").trim());
+                    if (!Number.isInteger(number)) throw new Error("Value for " + field.key + " is not an integer.");
+                    value = number;
+                } else if (valueType === "boolean") {
+                    value = String(value).toLowerCase() === "true";
+                }
+                row[field.key] = value;
+            });
+            if (!Object.keys(row).length) throw new Error("No configured regex fields matched the sample.");
+            return { rows: [row] };
+        }
+
+        throw new Error("Unsupported response format: " + type);
     }
 
     function getConfig() {
@@ -77,7 +169,7 @@
     function discover() {
         const message = byId("summaryTableDiscoveryMessage");
         try {
-            const sample = parseObject(byId("summaryTableSampleJson").value);
+            const sample = parseSample(byId("summaryTableSampleJson").value);
             const collections = findCollections(sample);
             if (Array.isArray(sample) && sample.some(row => row && typeof row === "object" && !Array.isArray(row))
                 && !collections.some(item => item.path === "")) {
@@ -189,6 +281,7 @@
     function buildConfig() {
         const config = getConfig();
         config.renderer = "SUMMARY_TABLE";
+        config.responseParser = currentParserConfig();
         const rowPath = byId("summaryTableRowPath").value;
         if (rowPath) config.rowPath = rowPath;
         else delete config.rowPath;
@@ -241,6 +334,15 @@
         const isSummary = byId("dashboardWidgetType").value === "SUMMARY_TABLE";
         byId("summaryTableConfigurator").hidden = !isSummary;
         byId("dashboardWidgetAdvancedConfig").open = !isSummary;
+        const config = getConfig();
+        const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
+        byId("summaryTableResponseFormat").value = ["AUTO", "JSON", "DELIMITED", "KEY_VALUE", "REGEX"].includes(String(parser.type || "AUTO").toUpperCase())
+            ? String(parser.type || "AUTO").toUpperCase() : "AUTO";
+        if (parser.delimiter) byId("summaryTableDelimiter").value = parser.delimiter === "\t" ? "\\t" : parser.delimiter;
+        byId("summaryTableHasHeader").checked = parser.headerRow !== false;
+        if (parser.separator) byId("summaryTableKeyValueSeparator").value = parser.separator === "\t" ? "\\t" : parser.separator;
+        byId("summaryTableIgnoredPrefixes").value = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes.join("\\n") : "";
+        syncParserOptionVisibility();
         if (isSummary && state.sample) renderFields();
     }
 
@@ -251,6 +353,24 @@
         if (!type || !sample || !discoverButton) return;
 
         discoverButton.addEventListener("click", discover);
+        const responseFormat = byId("summaryTableResponseFormat");
+        function syncParserOptionVisibility() {
+            const typeValue = responseFormat.value;
+            byId("summaryTableDelimitedOptions").hidden = typeValue !== "DELIMITED";
+            byId("summaryTableKeyValueOptions").hidden = typeValue !== "KEY_VALUE";
+            byId("summaryTableRegexOptions").hidden = typeValue !== "REGEX";
+        }
+        responseFormat.addEventListener("change", function () {
+            syncParserOptionVisibility();
+            if (sample.value.trim()) discover();
+            else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+        });
+        ["summaryTableDelimiter", "summaryTableHasHeader", "summaryTableKeyValueSeparator", "summaryTableIgnoredPrefixes"].forEach(id => {
+            byId(id).addEventListener("change", function () {
+                if (sample.value.trim()) discover();
+                else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+            });
+        });
         byId("summaryTableRowPath").addEventListener("change", function () {
             renderFields();
             refreshConfigFromEditor();
