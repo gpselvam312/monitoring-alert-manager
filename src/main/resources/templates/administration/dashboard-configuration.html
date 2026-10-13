@@ -1098,219 +1098,6 @@
 
                             </label>
 
-
-<div class="col-md-6">
-
-                                <label for="dashboardWidgetType"
-                                       class="form-label">
-
-                                    Widget Type
-                                    <span class="text-danger">*</span>
-
-                                </label>
-
-                               <select class="form-select"
-								        th:field="*{widgetType}"
-								        th:classappend="${#fields.hasErrors('widgetType')} ? ' is-invalid' : ''"
-								        id="dashboardWidgetType"
-								        required>
-							
-							    <option value="">Select widget type</option>
-							    <option value="STAT">Stat</option>
-							    <option value="STATUS">Status</option>
-							    <option value="TABLE">Table</option>
-							    <option value="SUMMARY_TABLE">Summary Table</option>
-							    <option value="CHART">Chart</option>
-							    <option value="TEXT">Text / Info</option>
-							    <option value="SYSTEM_METRICS">System Metrics</option>
-							    <option value="ELASTICSEARCH">Elasticsearch</option>
-							
-							</select>
-							
-							<div class="invalid-feedback"
-							     th:if="${#fields.hasErrors('widgetType')}"
-							     th:errors="*{widgetType}">
-							    Widget type is required.
-							</div>
-
-                            </div>
-
-<div class="col-12" id="summaryTableConfigurator" hidden>
-                                <div class="border rounded p-3 mb-3">
-                                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
-                                        <div>
-                                            <h6 class="mb-1">Summary Table data and columns</h6>
-                                            <p class="text-muted small mb-0">Paste a representative JSON response to discover collections and fields, configure columns, and preview the table. The sample is used for preview only and is not saved as monitoring history.</p>
-                                        </div>
-                                    </div>
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-md-6">
-                                            <label for="summaryTableResponseFormat" class="form-label">Response format</label>
-                                            <select class="form-select" id="summaryTableResponseFormat">
-                                                <option value="AUTO">Automatic / JSON</option>
-                                                <option value="JSON">JSON (strict)</option>
-                                                <option value="DELIMITED">Delimited text</option>
-                                                <option value="KEY_VALUE">Key-value text</option>
-                                                <option value="REGEX">Regex extraction</option>
-                                            </select>
-                                            <div class="form-text">Parsing settings belong to this widget; job execution settings remain on the Monitoring Job.</div>
-                                        </div>
-                                        <div class="col-md-6" id="summaryTableDelimitedOptions" hidden>
-                                            <label for="summaryTableDelimiter" class="form-label">Delimiter</label>
-                                            <select class="form-select" id="summaryTableDelimiter">
-                                                <option value="|">Pipe (|)</option>
-                                                <option value=",">Comma (,)</option>
-                                                <option value=";">Semicolon (;)</option>
-                                                <option value="\t">Tab</option>
-                                                <option value="custom">Custom</option>
-                                            </select>
-                                            <input type="text" class="form-control form-control-sm mt-2" id="summaryTableCustomDelimiter" placeholder="Custom delimiter" hidden>
-                                            <label for="summaryTableCommentPrefix" class="form-label mt-2">Comment prefix (optional)</label>
-                                            <input type="text" class="form-control form-control-sm" id="summaryTableCommentPrefix" maxlength="20" placeholder="#">
-                                            <div class="form-check mt-2">
-                                                <input class="form-check-input" type="checkbox" id="summaryTableHasHeader" checked>
-                                                <label class="form-check-label" for="summaryTableHasHeader">First row contains column names</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6" id="summaryTableKeyValueOptions" hidden>
-                                            <label for="summaryTableKeyValueSeparator" class="form-label">Key-value separator</label>
-                                            <select class="form-select" id="summaryTableKeyValueSeparator">
-                                                <option value=":">Colon (:)</option>
-                                                <option value="=">Equals (=)</option>
-                                                <option value="\t">Tab</option>
-                                                <option value="custom">Custom</option>
-                                            </select>
-                                            <input type="text" class="form-control form-control-sm mt-2" id="summaryTableCustomSeparator" placeholder="Custom separator" hidden>
-                                            <label for="summaryTableIgnoredPrefixes" class="form-label mt-2">Ignore lines starting with (optional)</label>
-                                            <textarea class="form-control" id="summaryTableIgnoredPrefixes" rows="2" placeholder="#, INFO"></textarea>
-                                        </div>
-                                        <div class="col-12" id="summaryTableRegexOptions" hidden>
-                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                                                <div>
-                                                    <label class="form-label mb-1">Extracted fields</label>
-                                                    <div class="form-text">Each pattern must contain the selected capture group. Use group 0 for the full match.</div>
-                                                </div>
-                                                <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableAddRegexField">Add regex field</button>
-                                            </div>
-                                            <div id="summaryTableRegexFields"></div>
-                                        </div>
-                                    </div>
-                                    <label for="summaryTableSampleJson" class="form-label">Sample response</label>
-                                    <textarea class="form-control font-monospace mb-2" id="summaryTableSampleJson" rows="5"
-                                              placeholder='{"consumers":[{"group":"orders","lag":1200,"status":"WARNING"}]}'></textarea>
-                                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="summaryTableLoadLatest">Load latest job output</button>
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableDiscoverFields">Discover fields / preview</button>
-                                        <span class="small text-muted" id="summaryTableDiscoveryMessage" aria-live="polite">Paste a sample or load the latest job output.</span>
-                                    </div>
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-md-6">
-                                            <label for="summaryTableRowPath" class="form-label">Rows / collection</label>
-                                            <select class="form-select" id="summaryTableRowPath" disabled>
-                                                <option value="">Load sample data to discover rows</option>
-                                            </select>
-                                            <div class="form-text">Choose the array containing the rows to display.</div>
-                                        </div>
-                                    </div>
-                                    <div class="mb-4" id="summaryTableFieldEditor">
-                                        <div class="text-muted small">Load sample data and discover fields to configure columns.</div>
-                                    </div>
-                                    <section class="border rounded p-3 mb-4" aria-labelledby="summaryTableGroupByHeading">
-                                        <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
-                                            <div>
-                                                <h6 class="mb-1" id="summaryTableGroupByHeading">Group By</h6>
-                                                <div class="form-text">Optionally group rows by one or more discovered fields. Hidden fields can also be used.</div>
-                                            </div>
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="summaryTableGroupByEnabled">
-                                                <label class="form-check-label" for="summaryTableGroupByEnabled">Enable grouping</label>
-                                            </div>
-                                        </div>
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label for="summaryTableGroupByFields" class="form-label">Group fields (select one or more)</label>
-                                                <select class="form-select" id="summaryTableGroupByFields" multiple size="4" disabled></select>
-                                                <div class="form-text">Use Ctrl (Windows/Linux) or Command (Mac) to select multiple fields.</div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <label for="summaryTableGroupByInitialState" class="form-label">Initial state</label>
-                                                <select class="form-select" id="summaryTableGroupByInitialState" disabled>
-                                                    <option value="EXPANDED">Expanded</option>
-                                                    <option value="COLLAPSED">Collapsed</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <label for="summaryTableGroupByOrder" class="form-label">Group order</label>
-                                                <select class="form-select" id="summaryTableGroupByOrder" disabled>
-                                                    <option value="VALUE_ASC">Value A–Z</option>
-                                                    <option value="VALUE_DESC">Value Z–A</option>
-                                                    <option value="COUNT_ASC">Count low–high</option>
-                                                    <option value="COUNT_DESC">Count high–low</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2 d-flex align-items-end">
-                                                <div class="form-check mb-2">
-                                                    <input class="form-check-input" type="checkbox" id="summaryTableGroupByAggregates" checked disabled>
-                                                    <label class="form-check-label" for="summaryTableGroupByAggregates">Show aggregates</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </section>
-                                    <div class="row g-3 mb-3">
-                                        <div class="col-md-6">
-                                            <label for="summaryTableDefaultSort" class="form-label">Default sort field</label>
-                                            <select class="form-select" id="summaryTableDefaultSort" disabled>
-                                                <option value="">No default sort</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label for="summaryTableSortDirection" class="form-label">Sort direction</label>
-                                            <select class="form-select" id="summaryTableSortDirection">
-                                                <option value="asc">Ascending</option>
-                                                <option value="desc">Descending</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label for="summaryTablePageSize" class="form-label">Rows per page</label>
-                                            <select class="form-select" id="summaryTablePageSize">
-                                                <option value="5">5</option>
-                                                <option value="10" selected>10</option>
-                                                <option value="25">25</option>
-                                                <option value="50">50</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2 d-flex align-items-end">
-                                            <div class="form-check mb-2">
-                                                <input class="form-check-input" type="checkbox" id="summaryTableSearchEnabled" checked>
-                                                <label class="form-check-label" for="summaryTableSearchEnabled">Enable search</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                                        <h6 class="mb-0">Preview</h6>
-                                        <span class="small text-muted" id="summaryTablePreviewCount"></span>
-                                    </div>
-                                    <div class="table-responsive border rounded" id="summaryTablePreview">
-                                        <div class="text-muted small p-3">Discover fields to preview the selected columns.</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <details id="dashboardWidgetAdvancedConfig">
-                                    <summary class="form-label mb-2">Advanced JSON field / column configuration</summary>
-                                    <textarea class="form-control font-monospace mt-2" rows="5"
-                                              th:field="*{fieldConfigJson}" id="dashboardWidgetFieldConfigJson"
-                                              maxlength="10000"
-                                              placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
-                                    <div class="form-text">
-                                        Advanced JSON is available for options not exposed by the guided editor. TABLE widgets support rowPath, columns, visibleFields, labels, formats, sorting, search and pagination; charts use rowPath, categoryField, valueField and optional seriesField; STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields and labels. Summary Table supports details columns, search, sorting, pagination, grouping, row status, thresholds, summary cards and total-row configuration. Kafka health continues to use its dedicated TABLE renderer configuration. For date-filtered API jobs, use "dateRange":{"enabled":true} and {{startDate}}/{{endDate}} placeholders in the API URL or request body. Leave as {} to infer fields automatically.
-                                    </div>
-                                    <div class="invalid-feedback">Enter a valid JSON object.</div>
-                                </details>
-                            </div>
-
-                            
                         </div>
 
                     </div>
@@ -1695,6 +1482,219 @@
 
                             </div>
 
+
+<div class="col-md-6">
+
+                                <label for="dashboardWidgetType"
+                                       class="form-label">
+
+                                    Widget Type
+                                    <span class="text-danger">*</span>
+
+                                </label>
+
+                               <select class="form-select"
+								        th:field="*{widgetType}"
+								        th:classappend="${#fields.hasErrors('widgetType')} ? ' is-invalid' : ''"
+								        id="dashboardWidgetType"
+								        required>
+							
+							    <option value="">Select widget type</option>
+							    <option value="STAT">Stat</option>
+							    <option value="STATUS">Status</option>
+							    <option value="TABLE">Table</option>
+							    <option value="SUMMARY_TABLE">Summary Table</option>
+							    <option value="CHART">Chart</option>
+							    <option value="TEXT">Text / Info</option>
+							    <option value="SYSTEM_METRICS">System Metrics</option>
+							    <option value="ELASTICSEARCH">Elasticsearch</option>
+							
+							</select>
+							
+							<div class="invalid-feedback"
+							     th:if="${#fields.hasErrors('widgetType')}"
+							     th:errors="*{widgetType}">
+							    Widget type is required.
+							</div>
+
+                            </div>
+
+<div class="col-12" id="summaryTableConfigurator" hidden>
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                                        <div>
+                                            <h6 class="mb-1">Summary Table data and columns</h6>
+                                            <p class="text-muted small mb-0">Paste a representative JSON response to discover collections and fields, configure columns, and preview the table. The sample is used for preview only and is not saved as monitoring history.</p>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label for="summaryTableResponseFormat" class="form-label">Response format</label>
+                                            <select class="form-select" id="summaryTableResponseFormat">
+                                                <option value="AUTO">Automatic / JSON</option>
+                                                <option value="JSON">JSON (strict)</option>
+                                                <option value="DELIMITED">Delimited text</option>
+                                                <option value="KEY_VALUE">Key-value text</option>
+                                                <option value="REGEX">Regex extraction</option>
+                                            </select>
+                                            <div class="form-text">Parsing settings belong to this widget; job execution settings remain on the Monitoring Job.</div>
+                                        </div>
+                                        <div class="col-md-6" id="summaryTableDelimitedOptions" hidden>
+                                            <label for="summaryTableDelimiter" class="form-label">Delimiter</label>
+                                            <select class="form-select" id="summaryTableDelimiter">
+                                                <option value="|">Pipe (|)</option>
+                                                <option value=",">Comma (,)</option>
+                                                <option value=";">Semicolon (;)</option>
+                                                <option value="\t">Tab</option>
+                                                <option value="custom">Custom</option>
+                                            </select>
+                                            <input type="text" class="form-control form-control-sm mt-2" id="summaryTableCustomDelimiter" placeholder="Custom delimiter" hidden>
+                                            <label for="summaryTableCommentPrefix" class="form-label mt-2">Comment prefix (optional)</label>
+                                            <input type="text" class="form-control form-control-sm" id="summaryTableCommentPrefix" maxlength="20" placeholder="#">
+                                            <div class="form-check mt-2">
+                                                <input class="form-check-input" type="checkbox" id="summaryTableHasHeader" checked>
+                                                <label class="form-check-label" for="summaryTableHasHeader">First row contains column names</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6" id="summaryTableKeyValueOptions" hidden>
+                                            <label for="summaryTableKeyValueSeparator" class="form-label">Key-value separator</label>
+                                            <select class="form-select" id="summaryTableKeyValueSeparator">
+                                                <option value=":">Colon (:)</option>
+                                                <option value="=">Equals (=)</option>
+                                                <option value="\t">Tab</option>
+                                                <option value="custom">Custom</option>
+                                            </select>
+                                            <input type="text" class="form-control form-control-sm mt-2" id="summaryTableCustomSeparator" placeholder="Custom separator" hidden>
+                                            <label for="summaryTableIgnoredPrefixes" class="form-label mt-2">Ignore lines starting with (optional)</label>
+                                            <textarea class="form-control" id="summaryTableIgnoredPrefixes" rows="2" placeholder="#, INFO"></textarea>
+                                        </div>
+                                        <div class="col-12" id="summaryTableRegexOptions" hidden>
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                                <div>
+                                                    <label class="form-label mb-1">Extracted fields</label>
+                                                    <div class="form-text">Each pattern must contain the selected capture group. Use group 0 for the full match.</div>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableAddRegexField">Add regex field</button>
+                                            </div>
+                                            <div id="summaryTableRegexFields"></div>
+                                        </div>
+                                    </div>
+                                    <label for="summaryTableSampleJson" class="form-label">Sample response</label>
+                                    <textarea class="form-control font-monospace mb-2" id="summaryTableSampleJson" rows="5"
+                                              placeholder="Paste a sample response or load the latest job output"></textarea>
+                                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="summaryTableLoadLatest">Load latest job output</button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableDiscoverFields">Discover fields / preview</button>
+                                        <span class="small text-muted" id="summaryTableDiscoveryMessage" aria-live="polite">Paste a sample or load the latest job output.</span>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label for="summaryTableRowPath" class="form-label">Rows / collection</label>
+                                            <select class="form-select" id="summaryTableRowPath" disabled>
+                                                <option value="">Load sample data to discover rows</option>
+                                            </select>
+                                            <div class="form-text">Choose the array containing the rows to display.</div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-4" id="summaryTableFieldEditor">
+                                        <div class="text-muted small">Load sample data and discover fields to configure columns.</div>
+                                    </div>
+                                    <section class="border rounded p-3 mb-4" aria-labelledby="summaryTableGroupByHeading">
+                                        <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                                            <div>
+                                                <h6 class="mb-1" id="summaryTableGroupByHeading">Group By</h6>
+                                                <div class="form-text">Optionally group rows by one or more discovered fields. Hidden fields can also be used.</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="summaryTableGroupByEnabled">
+                                                <label class="form-check-label" for="summaryTableGroupByEnabled">Enable grouping</label>
+                                            </div>
+                                        </div>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="summaryTableGroupByFields" class="form-label">Group fields (select one or more)</label>
+                                                <select class="form-select" id="summaryTableGroupByFields" multiple size="4" disabled></select>
+                                                <div class="form-text">Use Ctrl (Windows/Linux) or Command (Mac) to select multiple fields.</div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="summaryTableGroupByInitialState" class="form-label">Initial state</label>
+                                                <select class="form-select" id="summaryTableGroupByInitialState" disabled>
+                                                    <option value="EXPANDED">Expanded</option>
+                                                    <option value="COLLAPSED">Collapsed</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="summaryTableGroupByOrder" class="form-label">Group order</label>
+                                                <select class="form-select" id="summaryTableGroupByOrder" disabled>
+                                                    <option value="VALUE_ASC">Value A–Z</option>
+                                                    <option value="VALUE_DESC">Value Z–A</option>
+                                                    <option value="COUNT_ASC">Count low–high</option>
+                                                    <option value="COUNT_DESC">Count high–low</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="summaryTableGroupByAggregates" checked disabled>
+                                                    <label class="form-check-label" for="summaryTableGroupByAggregates">Show aggregates</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-5">
+                                            <label for="summaryTableDefaultSort" class="form-label">Default sort field</label>
+                                            <select class="form-select" id="summaryTableDefaultSort" disabled>
+                                                <option value="">No default sort</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label for="summaryTableSortDirection" class="form-label">Sort direction</label>
+                                            <select class="form-select" id="summaryTableSortDirection">
+                                                <option value="asc">Ascending</option>
+                                                <option value="desc">Descending</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label for="summaryTablePageSize" class="form-label">Rows per page</label>
+                                            <select class="form-select" id="summaryTablePageSize">
+                                                <option value="5">5</option>
+                                                <option value="10" selected>10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end">
+                                            <div class="form-check mb-2 text-nowrap">
+                                                <input class="form-check-input" type="checkbox" id="summaryTableSearchEnabled" checked>
+                                                <label class="form-check-label text-nowrap" for="summaryTableSearchEnabled">Enable search</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <h6 class="mb-0">Preview</h6>
+                                        <span class="small text-muted" id="summaryTablePreviewCount"></span>
+                                    </div>
+                                    <div class="table-responsive border rounded" id="summaryTablePreview">
+                                        <div class="text-muted small p-3">Discover fields to preview the selected columns.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <details id="dashboardWidgetAdvancedConfig">
+                                    <summary class="form-label mb-2">Advanced JSON field / column configuration</summary>
+                                    <textarea class="form-control font-monospace mt-2" rows="5"
+                                              th:field="*{fieldConfigJson}" id="dashboardWidgetFieldConfigJson"
+                                              maxlength="10000"
+                                              placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
+                                    <div class="form-text">
+                                        Advanced JSON is available for options not exposed by the guided editor. TABLE widgets support rowPath, columns, visibleFields, labels, formats, sorting, search and pagination; charts use rowPath, categoryField, valueField and optional seriesField; STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields and labels. Summary Table supports details columns, search, sorting, pagination, grouping, row status, thresholds, summary cards and total-row configuration. Kafka health continues to use its dedicated TABLE renderer configuration. For date-filtered API jobs, use "dateRange":{"enabled":true} and {{startDate}}/{{endDate}} placeholders in the API URL or request body. Leave as {} to infer fields automatically.
+                                    </div>
+                                    <div class="invalid-feedback">Enter a valid JSON object.</div>
+                                </details>
+                            </div>
+
+                            
                         </div>
 
                     </div>
