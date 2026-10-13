@@ -504,13 +504,17 @@
         const select = byId(id);
         if (!select) return;
         const multiple = select.multiple;
-        const selectedValuesSet = new Set((Array.isArray(selected) ? selected : [selected]).filter(Boolean).map(String));
+        const selectedValues = (Array.isArray(selected) ? selected : [selected]).filter(Boolean).map(String);
+        const selectedValuesSet = new Set(selectedValues);
+        const availableFields = Array.from(new Set([...(fields || []).map(String), ...selectedValues]));
         const prefix = multiple ? "" : '<option value="">' + escapeHtml(noneLabel || "Select field") + '</option>';
-        select.innerHTML = prefix + fields.map(field =>
-            '<option value="' + escapeHtml(field) + '"' + (selectedValuesSet.has(String(field)) ? " selected" : "") + '>' +
-            escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>'
-        ).join("");
-        if (!multiple && !fields.includes(String(selected || ""))) select.value = "";
+        select.innerHTML = prefix + availableFields.map(field => {
+            const missing = !(fields || []).map(String).includes(field);
+            const label = humanize(field) + ' (' + field + ')' + (missing ? ' — not in sample' : '');
+            return '<option value="' + escapeHtml(field) + '"' + (selectedValuesSet.has(field) ? " selected" : "") + '>' +
+                escapeHtml(label) + '</option>';
+        }).join("");
+        if (!multiple && !selectedValues.length) select.value = "";
     }
 
     function renderTypeMappingOptions() {
