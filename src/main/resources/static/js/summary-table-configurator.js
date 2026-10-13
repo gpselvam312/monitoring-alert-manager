@@ -1091,6 +1091,11 @@
                     operation.value = field ? "COUNT_NON_EMPTY" : "COUNT_ROWS";
                 }
                 const config = getConfig();
+                const currentCards = readSummaryCards();
+                config.summary = Object.assign({}, config.summary || {});
+                config.summary.cards = currentCards;
+                config.details = config.details && typeof config.details === "object" ? config.details : {};
+                config.details.summaryCards = currentCards;
                 renderSummaryCards(config);
             }
             refreshConfigFromEditor();
