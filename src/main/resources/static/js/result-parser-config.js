@@ -107,8 +107,8 @@
             input.className = "form-control form-control-sm";
             input.value = value == null ? "" : String(value);
             if (placeholder) input.placeholder = placeholder;
-            label.appendChild(input);
             wrapper.appendChild(label);
+            wrapper.appendChild(input);
             return { wrapper: wrapper, input: input };
         }
 
