@@ -243,6 +243,50 @@
         byId("summaryTableGroupByAggregates").disabled = !enabled;
     }
 
+    function readConditionalFormatting() {
+        const host = byId("summaryTableConditionalRules");
+        const rules = host ? Array.from(host.querySelectorAll("[data-conditional-rule]")).map(row => ({
+            field: row.querySelector(".summary-conditional-field").value,
+            operator: row.querySelector(".summary-conditional-operator").value,
+            value: row.querySelector(".summary-conditional-value").value,
+            severity: row.querySelector(".summary-conditional-severity").value,
+            scope: row.querySelector(".summary-conditional-scope").value
+        })).filter(rule => rule.field && rule.operator) : [];
+        return { enabled: byId("summaryTableConditionalFormattingEnabled").checked, rules };
+    }
+
+    function renderConditionalRules(config) {
+        const host = byId("summaryTableConditionalRules");
+        if (!host) return;
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const formatting = details.conditionalFormatting && typeof details.conditionalFormatting === "object" ? details.conditionalFormatting : (config.conditionalFormatting || {});
+        const rules = Array.isArray(formatting.rules) ? formatting.rules : [];
+        byId("summaryTableConditionalFormattingEnabled").checked = formatting.enabled !== false;
+        const fields = Array.from(new Set([...(state.fields || []), ...rules.map(rule => String(rule.field || "")).filter(Boolean)]));
+        const operators = [["equals","Equals"],["not_equals","Not equals"],["contains","Contains"],["gt","Greater than"],["gte","Greater than or equal"],["lt","Less than"],["lte","Less than or equal"],["empty","Is empty"],["missing","Is missing"]];
+        const severities = [["critical","Red — Critical"],["warning","Yellow — Warning"],["info","Blue — Info"]];
+        const scopes = [["row","Entire row"],["cell","Matching cell"]];
+        host.innerHTML = rules.length ? rules.map((rule,index) => {
+            const operator = String(rule.operator || "equals"), hideValue = ["empty","missing"].includes(operator);
+            return '<div class="row g-2 align-items-end mb-2" data-conditional-rule>' +
+                '<div class="col-md-3"><label class="form-label small">Field</label><select class="form-select form-select-sm summary-conditional-field"><option value="">Select field</option>' +
+                fields.map(field => '<option value="' + escapeHtml(field) + '"' + (String(rule.field || "") === field ? " selected" : "") + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')' + (!(state.fields || []).includes(field) ? ' — not in sample' : '') + '</option>').join("") +
+                '</select></div><div class="col-md-2"><label class="form-label small">Condition</label><select class="form-select form-select-sm summary-conditional-operator">' +
+                operators.map(option => '<option value="' + option[0] + '"' + (operator === option[0] ? " selected" : "") + '>' + option[1] + '</option>').join("") +
+                '</select></div><div class="col-md-2"><label class="form-label small">Value</label><input class="form-control form-control-sm summary-conditional-value" value="' + escapeHtml(rule.value == null ? "" : rule.value) + '" ' + (hideValue ? 'hidden ' : '') + 'placeholder="Value / threshold"></div>' +
+                '<div class="col-md-2"><label class="form-label small">Highlight</label><select class="form-select form-select-sm summary-conditional-severity">' +
+                severities.map(option => '<option value="' + option[0] + '"' + (String(rule.severity || "critical") === option[0] ? " selected" : "") + '>' + option[1] + '</option>').join("") +
+                '</select></div><div class="col-md-2"><label class="form-label small">Apply to</label><select class="form-select form-select-sm summary-conditional-scope">' +
+                scopes.map(option => '<option value="' + option[0] + '"' + (String(rule.scope || "row") === option[0] ? " selected" : "") + '>' + option[1] + '</option>').join("") +
+                '</select></div><div class="col-md-1"><button type="button" class="btn btn-outline-danger btn-sm summary-conditional-remove" aria-label="Remove rule ' + (index + 1) + '" title="Remove rule"><i class="bi bi-trash"></i></button></div></div>';
+        }).join("") : '<div class="text-muted small">No rules configured. Add a rule to highlight matching rows or cells.</div>';
+        host.querySelectorAll(".summary-conditional-operator").forEach(select => {
+            select.closest("[data-conditional-rule]").querySelector(".summary-conditional-value").hidden = ["empty","missing"].includes(select.value);
+        });
+        host.querySelectorAll("select, input").forEach(control => control.disabled = !byId("summaryTableConditionalFormattingEnabled").checked);
+        byId("summaryTableAddConditionalRule").disabled = !byId("summaryTableConditionalFormattingEnabled").checked;
+    }
+
     function discover() {
         const message = byId("summaryTableDiscoveryMessage");
         try {
@@ -401,6 +445,7 @@
             order: byId("summaryTableGroupByOrder").value,
             showAggregates: byId("summaryTableGroupByAggregates").checked
         });
+        config.details.conditionalFormatting = readConditionalFormatting();
         config.summary = Object.assign({}, config.summary || {});
         if (config.summary.enabled === undefined) config.summary.enabled = true;
         return config;
@@ -467,6 +512,7 @@
                 order: byId("summaryTableGroupByOrder").value,
                 showAggregates: byId("summaryTableGroupByAggregates").checked
             });
+            summaryConfig.details.conditionalFormatting = readConditionalFormatting();
             setConfig(summaryConfig);
             return;
         }
@@ -616,7 +662,8 @@
                         search: { enabled: true },
                         sorting: { enabled: true, defaultField: "", direction: "asc" },
                         pagination: { enabled: true, pageSize: 10 },
-                        groupBy: { enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true }
+                        groupBy: { enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true },
+                        conditionalFormatting: { enabled: true, rules: [] }
                     },
                     summary: { enabled: true }
                 };
@@ -663,6 +710,7 @@
         byId("summaryTableConfigurator").hidden = !type;
         byId("dashboardWidgetAdvancedConfig").open = false;
         byId("summaryTableGroupBySection").hidden = !isSummary;
+        byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
         byId("summaryTableFieldEditorGroup").hidden = !isTable;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
@@ -704,6 +752,7 @@
             }
         });
         renderGroupByOptions(config, savedColumns);
+        renderConditionalRules(config);
         syncGroupByControlState();
         syncParserOptionVisibility();
         renderTypeMappingOptions();
@@ -857,6 +906,36 @@
                 byId("summaryTableSortDirection").value = String(sorting.direction || "asc").toLowerCase() === "desc" ? "desc" : "asc";
                 byId("summaryTablePageSize").value = ["5", "10", "25", "50"].includes(String(pagination.pageSize)) ? String(pagination.pageSize) : "10";
             }
+        });
+        byId("summaryTableAddConditionalRule").addEventListener("click", function () {
+            if (!byId("summaryTableConditionalFormattingEnabled").checked) return;
+            const config = getConfig(), details = config.details && typeof config.details === "object" ? config.details : {};
+            const formatting = details.conditionalFormatting && typeof details.conditionalFormatting === "object" ? details.conditionalFormatting : { enabled: true, rules: [] };
+            const rules = Array.isArray(formatting.rules) ? formatting.rules.slice() : [];
+            rules.push({ field: (state.fields || [])[0] || "", operator: "equals", value: "", severity: "critical", scope: "row" });
+            details.conditionalFormatting = Object.assign({}, formatting, { enabled: true, rules });
+            config.details = details;
+            setConfig(config);
+            renderConditionalRules(config);
+        });
+        byId("summaryTableConditionalRules").addEventListener("click", function (event) {
+            const button = event.target.closest(".summary-conditional-remove");
+            if (!button) return;
+            button.closest("[data-conditional-rule]").remove();
+            refreshConfigFromEditor();
+        });
+        byId("summaryTableConditionalRules").addEventListener("change", function (event) {
+            if (event.target.classList.contains("summary-conditional-operator")) {
+                event.target.closest("[data-conditional-rule]").querySelector(".summary-conditional-value").hidden = ["empty","missing"].includes(event.target.value);
+            }
+            refreshConfigFromEditor();
+        });
+        byId("summaryTableConditionalRules").addEventListener("input", function (event) {
+            if (event.target.classList.contains("summary-conditional-value")) refreshConfigFromEditor();
+        });
+        byId("summaryTableConditionalFormattingEnabled").addEventListener("change", function () {
+            renderConditionalRules(getConfig());
+            refreshConfigFromEditor();
         });
         byId("summaryTableGroupByEnabled").addEventListener("change", function () {
             syncGroupByControlState();
