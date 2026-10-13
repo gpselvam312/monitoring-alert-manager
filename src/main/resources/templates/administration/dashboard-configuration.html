@@ -1181,6 +1181,13 @@
                         <div th:if="${dashboardWidgetSaveError != null}"
                              class="alert alert-danger" role="alert"
                              th:text="${dashboardWidgetSaveError}">Unable to save widget.</div>
+                        <div th:if="${#fields.hasErrors('*')}"
+                             class="alert alert-danger" role="alert">
+                            <div class="fw-semibold mb-1">The widget was not saved. Please correct the following:</div>
+                            <ul class="mb-0">
+                                <li th:each="error : ${#fields.errors('*')}" th:text="${error}">Validation error</li>
+                            </ul>
+                        </div>
                         <div id="dashboardWidgetValidationMessage"
                              class="alert alert-danger d-none" role="alert"></div>
 
