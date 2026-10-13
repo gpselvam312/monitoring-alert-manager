@@ -472,6 +472,18 @@
     }
 
 
+    function isNumericSummaryField(field) {
+        return !!field && (state.rows || []).some(row => {
+            const value = rowValueForConfigurator(row, field);
+            return value !== null && value !== undefined && value !== "" && typeof value !== "boolean" && Number.isFinite(Number(value));
+        });
+    }
+
+    function rowValueForConfigurator(row, field) {
+        if (row && Object.prototype.hasOwnProperty.call(row, field)) return row[field];
+        return String(field || "").split(".").reduce((value, key) => value == null ? undefined : value[key], row);
+    }
+
     function renderSummaryCards(config) {
         const host = byId("summaryTableSummaryCards");
         if (!host) return;
@@ -486,13 +498,19 @@
         }
         const fields = Array.from(new Set([...(state.fields || []), ...cards.map(card => String(card.field || "")).filter(Boolean)]));
         const operations = [["COUNT_ROWS","Count rows"],["COUNT_NON_EMPTY","Count non-empty values"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
+        const numericOnly = new Set(["SUM", "AVG", "MAX", "MIN"]);
+        const isNumericField = field => !!field && (state.rows || []).some(row => {
+            const value = rowValueForConfigurator(row, field);
+            return value !== null && value !== undefined && value !== "" && typeof value !== "boolean" && Number.isFinite(Number(value));
+        });
         const options = selected => '<option value="">No field / all rows</option>' + fields.map(field =>
             '<option value="' + escapeHtml(field) + '"' + (String(selected || "") === field ? " selected" : "") + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("");
         host.innerHTML = cards.map((card, index) => '<div class="border rounded p-2 mb-2" data-summary-card><div class="row g-2 align-items-end">' +
             '<div class="col-md-3"><label class="form-label small">Card label</label><input class="form-control form-control-sm summary-card-label" maxlength="100" value="' + escapeHtml(card.label || "") + '"></div>' +
             '<div class="col-md-3"><label class="form-label small">Field</label><select class="form-select form-select-sm summary-card-field">' + options(card.field) + '</select></div>' +
             '<div class="col-md-3"><label class="form-label small">Calculation</label><select class="form-select form-select-sm summary-card-operation">' +
-            operations.map(op => '<option value="' + op[0] + '"' + (String(card.operation || "COUNT_ROWS") === op[0] ? " selected" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
+            operations.map(op => '<option value="' + op[0] + '"' + (String(card.operation || "COUNT_ROWS") === op[0] ? " selected" : "") +
+                (numericOnly.has(op[0]) && !isNumericField(card.field) ? " disabled" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
             '<div class="col-md-2"><label class="form-label small">Format</label><select class="form-select form-select-sm summary-card-format">' +
             [["","Default"],["number","Number"],["percentage","Percentage"],["duration","Duration"]].map(op => '<option value="' + op[0] + '"' + (String(card.format || "") === op[0] ? " selected" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
             '<div class="col-md-1"><button type="button" class="btn btn-outline-danger btn-sm summary-card-remove" aria-label="Remove summary card ' + (index + 1) + '">×</button></div>' +
@@ -1064,7 +1082,19 @@
             button.closest("[data-summary-card]").remove();
             refreshConfigFromEditor();
         });
-        byId("summaryTableSummaryCards").addEventListener("change", refreshConfigFromEditor);
+        byId("summaryTableSummaryCards").addEventListener("change", function (event) {
+            if (event.target.matches(".summary-card-field")) {
+                const row = event.target.closest("[data-summary-card]");
+                const operation = row.querySelector(".summary-card-operation");
+                const field = event.target.value;
+                if (!isNumericSummaryField(field) && ["SUM", "AVG", "MAX", "MIN"].includes(operation.value)) {
+                    operation.value = field ? "COUNT_NON_EMPTY" : "COUNT_ROWS";
+                }
+                const config = getConfig();
+                renderSummaryCards(config);
+            }
+            refreshConfigFromEditor();
+        });
         byId("summaryTableSummaryCards").addEventListener("input", function (event) {
             if (event.target.matches("input")) refreshConfigFromEditor();
         });
