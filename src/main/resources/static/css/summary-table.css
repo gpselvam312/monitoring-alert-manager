@@ -192,3 +192,5 @@
 .summary-table-toggle > span { display: block; width: .9rem; height: .9rem; border-radius: 50%; background: #fff; }
 .summary-table-toggle.is-on { background: var(--success, #198754); justify-content: flex-end; }
 .summary-table-toggle.is-off { background: var(--secondary, #6c757d); justify-content: flex-start; }
+
+.summary-table-card-static { cursor: default; }
