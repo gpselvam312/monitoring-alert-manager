@@ -195,11 +195,11 @@
 }
 
 /* Cell rules are slightly more visible than row-level tints, without hardcoded text colors. */
-.summary-table-grid td.is-critical,
-#summaryTablePreview td.is-critical { background-color: color-mix(in srgb, var(--danger, #dc3545) 13%, var(--table-bg, var(--card-bg, #fff))) !important; }
-.summary-table-grid td.is-warning,
-#summaryTablePreview td.is-warning { background-color: color-mix(in srgb, var(--warning, #d99a00) 15%, var(--table-bg, var(--card-bg, #fff))) !important; }
-.summary-table-grid td.is-info,
-#summaryTablePreview td.is-info { background-color: color-mix(in srgb, var(--info, #0d6efd) 11%, var(--table-bg, var(--card-bg, #fff))) !important; }
-.summary-table-grid td.is-healthy,
-#summaryTablePreview td.is-healthy { background-color: color-mix(in srgb, var(--success, #198754) 11%, var(--table-bg, var(--card-bg, #fff))) !important; }
+.summary-table-grid tbody tr.summary-table-row > td.is-critical,
+#summaryTablePreview tbody tr > td.is-critical { background-color: color-mix(in srgb, var(--danger, #dc3545) 13%, var(--table-bg, var(--card-bg, #fff))) !important; }
+.summary-table-grid tbody tr.summary-table-row > td.is-warning,
+#summaryTablePreview tbody tr > td.is-warning { background-color: color-mix(in srgb, var(--warning, #d99a00) 15%, var(--table-bg, var(--card-bg, #fff))) !important; }
+.summary-table-grid tbody tr.summary-table-row > td.is-info,
+#summaryTablePreview tbody tr > td.is-info { background-color: color-mix(in srgb, var(--info, #0d6efd) 11%, var(--table-bg, var(--card-bg, #fff))) !important; }
+.summary-table-grid tbody tr.summary-table-row > td.is-healthy,
+#summaryTablePreview tbody tr > td.is-healthy { background-color: color-mix(in srgb, var(--success, #198754) 11%, var(--table-bg, var(--card-bg, #fff))) !important; }
