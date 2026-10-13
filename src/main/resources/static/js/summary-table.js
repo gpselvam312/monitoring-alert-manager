@@ -153,18 +153,60 @@
         return "is-healthy";
     }
 
+    function conditionalRuleMatches(row, rule) {
+        const field = String(rule.field || "");
+        const value = Object.prototype.hasOwnProperty.call(row, field) ? row[field] : field.split(".").reduce((current,key) => current == null ? undefined : current[key], row);
+        const operator = String(rule.operator || "equals").toLowerCase();
+        if (operator === "missing") return value === undefined;
+        if (operator === "empty") return value === undefined || value === null || String(value).trim() === "";
+        if (value === undefined || value === null) return false;
+        const actual = String(value).trim(), expected = String(rule.value == null ? "" : rule.value).trim();
+        if (["gt","gte","lt","lte"].includes(operator)) {
+            const number = numeric(actual), threshold = numeric(expected);
+            if (number === null || threshold === null) return false;
+            if (operator === "gt") return number > threshold;
+            if (operator === "gte") return number >= threshold;
+            if (operator === "lt") return number < threshold;
+            return number <= threshold;
+        }
+        if (operator === "contains") return actual.toLowerCase().includes(expected.toLowerCase());
+        if (operator === "not_equals") return actual.toLowerCase() !== expected.toLowerCase();
+        return actual.toLowerCase() === expected.toLowerCase();
+    }
+
+    function conditionalRuleClass(row, config, scope, field) {
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const formatting = details.conditionalFormatting && typeof details.conditionalFormatting === "object" ? details.conditionalFormatting : (config.conditionalFormatting || {});
+        if (formatting.enabled === false || !Array.isArray(formatting.rules)) return "";
+        const ranks = { info: 1, warning: 2, critical: 3 };
+        let selected = "";
+        formatting.rules.forEach(rule => {
+            if (!rule || String(rule.scope || "row").toLowerCase() !== scope) return;
+            if (scope === "cell" && String(rule.field || "") !== String(field || "")) return;
+            if (!conditionalRuleMatches(row, rule)) return;
+            const severity = String(rule.severity || "critical").toLowerCase();
+            if ((ranks[severity] || 0) > (ranks[selected] || 0)) selected = severity;
+        });
+        return selected ? "is-" + selected : "";
+    }
+
     function rowClass(row, config) {
         const rowStatus = (config.details && config.details.rowStatus) || config.rowStatus || {};
-        if (rowStatus.enabled !== false && rowStatus.field) return statusClass(rowValue(row, rowStatus.field), rowStatus);
-        const thresholds = (config.details && config.details.thresholds && typeof config.details.thresholds === "object")
-            ? config.details.thresholds : (config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {});
-        let hasWarning = false;
-        for (const field of Object.keys(thresholds)) {
-            const result = thresholdClass(rowValue(row, field), thresholds[field]);
-            if (result === "is-critical") return "is-critical";
-            if (result === "is-warning") hasWarning = true;
+        let baseClass = "";
+        if (rowStatus.enabled !== false && rowStatus.field) baseClass = statusClass(rowValue(row, rowStatus.field), rowStatus);
+        else {
+            const thresholds = (config.details && config.details.thresholds && typeof config.details.thresholds === "object") ? config.details.thresholds : (config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {});
+            let hasWarning = false;
+            for (const field of Object.keys(thresholds)) {
+                const result = thresholdClass(rowValue(row, field), thresholds[field]);
+                if (result === "is-critical") { baseClass = "is-critical"; break; }
+                if (result === "is-warning") hasWarning = true;
+            }
+            if (!baseClass && hasWarning) baseClass = "is-warning";
         }
-        return hasWarning ? "is-warning" : "";
+        const conditional = conditionalRuleClass(row, config, "row");
+        const rank = { "": 0, "is-unknown": 0, "is-info": 1, "is-warning": 2, "is-critical": 3, "is-healthy": 0 };
+        return (rank[conditional] || 0) > (rank[baseClass] || 0) ? conditional : baseClass;
     }
 
     function summaryClass(value, rules) {
@@ -223,11 +265,12 @@
         return '<tr' + (css ? ' class="summary-table-row ' + css + '"' : ' class="summary-table-row"') + '>' +
             columns.map(column => {
                 const value = rowValue(row, column.field);
+                const cellClass = conditionalRuleClass(row, config, "cell", column.field);
                 if (String(column.format).toLowerCase() === "status") {
                     const cls = statusClass(value, (config.details && config.details.rowStatus) || config.rowStatus || {});
-                    return '<td><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
+                    return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
                 }
-                return '<td>' + esc(formatValue(value, column.format)) + '</td>';
+                return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '>' + esc(formatValue(value, column.format)) + '</td>';
             }).join("") + '</tr>';
     }
 
