@@ -299,6 +299,14 @@
         const summary = state.config.summary || {};
         if (summary.enabled === false) return "";
         const details = state.config.details && typeof state.config.details === "object" ? state.config.details : {};
+        const searchConfig = details.search || state.config.search || {};
+        const requestedSearchFields = Array.isArray(searchConfig.fields)
+            ? searchConfig.fields.map(String)
+            : state.columns.filter(column => column.searchable !== false).map(column => column.field);
+        const summaryCountRows = state.search && searchConfig.enabled !== false
+            ? state.detailRows.filter(row => requestedSearchFields.some(field =>
+                String(display(rowValue(row, field))).toLowerCase().includes(state.search.toLowerCase())))
+            : state.detailRows;
         const hasConfiguredCards = Array.isArray(summary.cards) || Array.isArray(details.summaryCards);
         const configured = Array.isArray(summary.cards) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : []);
         const cards = [];
@@ -339,12 +347,12 @@
             });
             const groupedSummaryFields = Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
             if (groupedSummaryFields.length) {
-                cards.unshift({ label: "All", value: state.detailRows.length, cls: "",
+                cards.unshift({ label: "All", value: summaryCountRows.length, cls: "",
                     filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS" });
             }
             groupedSummaryFields.forEach(field => {
                 const counts = new Map();
-                state.detailRows.forEach(row => {
+                summaryCountRows.forEach(row => {
                     const raw = rowValue(row, field);
                     const key = raw === null || raw === undefined || String(raw).trim() === "" ? "" : String(raw);
                     counts.set(key, (counts.get(key) || 0) + 1);
