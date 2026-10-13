@@ -84,7 +84,7 @@ class MonitoringResultNormalizerTest
                 new TypeReference<Map<String, Object>>() {});
 
         assertEquals("orders", data.get("group"));
-        assertEquals(1200L, data.get("lag"));
+        assertEquals(1200, data.get("lag"));
         assertTrue(normalized.json().contains("\"schemaVersion\""));
     }
 
