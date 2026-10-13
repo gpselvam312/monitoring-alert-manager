@@ -477,7 +477,13 @@
         if (!host) return;
         const summary = config.summary && typeof config.summary === "object" ? config.summary : {};
         const details = config.details && typeof config.details === "object" ? config.details : {};
-        const cards = Array.isArray(details.summaryCards) ? details.summaryCards : (Array.isArray(summary.cards) ? summary.cards : []);
+        const hasSavedCards = Array.isArray(details.summaryCards) || Array.isArray(summary.cards);
+        const cards = Array.isArray(details.summaryCards) ? details.summaryCards.slice() : (Array.isArray(summary.cards) ? summary.cards.slice() : []);
+        if (!hasSavedCards && Array.isArray(state.rows) && state.rows.length) {
+            cards.push({ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "" });
+            (state.fields || []).filter(field => state.rows.some(row => row[field] !== null && row[field] !== undefined && row[field] !== "" && Number.isFinite(Number(row[field]))))
+                .forEach(field => cards.push({ label: humanize(field) + " Total", field, operation: "SUM", format: "number" }));
+        }
         const fields = Array.from(new Set([...(state.fields || []), ...cards.map(card => String(card.field || "")).filter(Boolean)]));
         const operations = [["COUNT_ROWS","Count rows"],["COUNT_NON_EMPTY","Count non-empty values"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
         const options = selected => '<option value="">No field / all rows</option>' + fields.map(field =>
