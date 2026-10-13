@@ -638,7 +638,9 @@
         byId("dashboardWidgetFieldConfigJson").addEventListener("change", function () {
             const config = getConfig();
             showForSelectedType();
-            if (state.sample) {
+            if (state.sample && byId("summaryTableSampleJson").value.trim()) {
+                discover();
+            } else {
                 const details = config.details && typeof config.details === "object" ? config.details : {};
                 const search = details.search || config.search || {};
                 const sorting = details.sorting || config.sorting || {};
@@ -646,7 +648,6 @@
                 byId("summaryTableSearchEnabled").checked = search.enabled !== false;
                 byId("summaryTableSortDirection").value = String(sorting.direction || "asc").toLowerCase() === "desc" ? "desc" : "asc";
                 byId("summaryTablePageSize").value = ["5", "10", "25", "50"].includes(String(pagination.pageSize)) ? String(pagination.pageSize) : "10";
-                renderFields();
             }
         });
         byId("summaryTableGroupByEnabled").addEventListener("change", function () {
