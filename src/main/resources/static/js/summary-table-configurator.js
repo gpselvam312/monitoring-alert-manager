@@ -31,7 +31,7 @@
             const selectedSeparator = byId("summaryTableKeyValueSeparator").value;
             parser.separator = selectedSeparator === "\\t" ? "\t" : selectedSeparator;
             parser.ignorePrefixes = byId("summaryTableIgnoredPrefixes").value
-                .split(/\\r?\\n/).map(value => value.trim()).filter(Boolean);
+                .split(/\r?\n/).map(value => value.trim()).filter(Boolean);
         }
         return parser;
     }
@@ -49,7 +49,7 @@
 
         if (type === "DELIMITED") {
             const delimiter = String(parser.delimiter || "|");
-            const lines = text.split(/\\r?\\n/)
+            const lines = text.split(/\r?\n/)
                 .filter(line => line.trim() !== "" && !(parser.commentPrefix && line.trim().startsWith(parser.commentPrefix)))
                 .map(line => line.split(delimiter).map(value => parser.trim === false ? value : value.trim()));
             if (!lines.length) throw new Error("No delimited rows were found.");
@@ -70,7 +70,7 @@
             const separator = String(parser.separator || ":");
             const ignored = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes : [];
             const row = {};
-            text.split(/\\r?\\n/).forEach(line => {
+            text.split(/\r?\n/).forEach(line => {
                 if (!line.trim() || ignored.some(prefix => line.trim().startsWith(prefix))) return;
                 const index = line.indexOf(separator);
                 if (index <= 0) return;
@@ -348,7 +348,7 @@
         if (parser.delimiter) byId("summaryTableDelimiter").value = parser.delimiter === "\t" ? "\\t" : parser.delimiter;
         byId("summaryTableHasHeader").checked = parser.headerRow !== false;
         if (parser.separator) byId("summaryTableKeyValueSeparator").value = parser.separator === "\t" ? "\\t" : parser.separator;
-        byId("summaryTableIgnoredPrefixes").value = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes.join("\\n") : "";
+        byId("summaryTableIgnoredPrefixes").value = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes.join("\n") : "";
         syncParserOptionVisibility();
         if (isSummary && state.sample) renderFields();
     }
