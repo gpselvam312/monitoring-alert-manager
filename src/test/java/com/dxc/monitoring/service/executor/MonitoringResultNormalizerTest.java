@@ -69,8 +69,8 @@ class MonitoringResultNormalizerTest
                 {
                   "type":"REGEX",
                   "fields":[
-                    {"key":"group","pattern":"group=(\\\\w+)","group":1,"type":"string","required":true},
-                    {"key":"lag","pattern":"lag=(\\\\d+)","group":1,"type":"integer","required":true}
+                    {"key":"group","pattern":"group=(\\w+)","group":1,"type":"string","required":true},
+                    {"key":"lag","pattern":"lag=(\\d+)","group":1,"type":"integer","required":true}
                   ]
                 }
                 """;
