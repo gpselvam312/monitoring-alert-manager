@@ -1531,24 +1531,70 @@
                                         <div class="col-md-6">
                                             <label for="summaryTableRowPath" class="form-label">Rows / collection</label>
                                             <select class="form-select" id="summaryTableRowPath" disabled>
-                                                <option value="">Root array</option>
+                                                <option value="">Load sample data to discover rows</option>
                                             </select>
                                             <div class="form-text">Choose the array containing the rows to display.</div>
                                         </div>
+                                    </div>
+                                    <div class="mb-4" id="summaryTableFieldEditor">
+                                        <div class="text-muted small">Load sample data and discover fields to configure columns.</div>
+                                    </div>
+                                    <section class="border rounded p-3 mb-4" aria-labelledby="summaryTableGroupByHeading">
+                                        <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                                            <div>
+                                                <h6 class="mb-1" id="summaryTableGroupByHeading">Group By</h6>
+                                                <div class="form-text">Optionally group rows by one or more discovered fields. Hidden fields can also be used.</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="summaryTableGroupByEnabled">
+                                                <label class="form-check-label" for="summaryTableGroupByEnabled">Enable grouping</label>
+                                            </div>
+                                        </div>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="summaryTableGroupByFields" class="form-label">Group fields (select one or more)</label>
+                                                <select class="form-select" id="summaryTableGroupByFields" multiple size="4" disabled></select>
+                                                <div class="form-text">Use Ctrl (Windows/Linux) or Command (Mac) to select multiple fields.</div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="summaryTableGroupByInitialState" class="form-label">Initial state</label>
+                                                <select class="form-select" id="summaryTableGroupByInitialState" disabled>
+                                                    <option value="EXPANDED">Expanded</option>
+                                                    <option value="COLLAPSED">Collapsed</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="summaryTableGroupByOrder" class="form-label">Group order</label>
+                                                <select class="form-select" id="summaryTableGroupByOrder" disabled>
+                                                    <option value="VALUE_ASC">Value A–Z</option>
+                                                    <option value="VALUE_DESC">Value Z–A</option>
+                                                    <option value="COUNT_ASC">Count low–high</option>
+                                                    <option value="COUNT_DESC">Count high–low</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="summaryTableGroupByAggregates" checked disabled>
+                                                    <label class="form-check-label" for="summaryTableGroupByAggregates">Show aggregates</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <div class="row g-3 mb-3">
                                         <div class="col-md-6">
                                             <label for="summaryTableDefaultSort" class="form-label">Default sort field</label>
                                             <select class="form-select" id="summaryTableDefaultSort" disabled>
                                                 <option value="">No default sort</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-2">
                                             <label for="summaryTableSortDirection" class="form-label">Sort direction</label>
                                             <select class="form-select" id="summaryTableSortDirection">
                                                 <option value="asc">Ascending</option>
                                                 <option value="desc">Descending</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-2">
                                             <label for="summaryTablePageSize" class="form-label">Rows per page</label>
                                             <select class="form-select" id="summaryTablePageSize">
                                                 <option value="5">5</option>
@@ -1557,15 +1603,12 @@
                                                 <option value="50">50</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-4 d-flex align-items-end">
+                                        <div class="col-md-2 d-flex align-items-end">
                                             <div class="form-check mb-2">
                                                 <input class="form-check-input" type="checkbox" id="summaryTableSearchEnabled" checked>
-                                                <label class="form-check-label" for="summaryTableSearchEnabled">Enable table search</label>
+                                                <label class="form-check-label" for="summaryTableSearchEnabled">Enable search</label>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div id="summaryTableFieldEditor" class="mb-3">
-                                        <div class="text-muted small">Discovered fields will appear here.</div>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                                         <h6 class="mb-0">Preview</h6>
