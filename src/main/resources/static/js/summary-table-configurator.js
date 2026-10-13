@@ -330,6 +330,13 @@
         setConfig(buildConfig());
     }
 
+    function syncParserOptionVisibility() {
+        const typeValue = byId("summaryTableResponseFormat").value;
+        byId("summaryTableDelimitedOptions").hidden = typeValue !== "DELIMITED";
+        byId("summaryTableKeyValueOptions").hidden = typeValue !== "KEY_VALUE";
+        byId("summaryTableRegexOptions").hidden = typeValue !== "REGEX";
+    }
+
     function showForSelectedType() {
         const isSummary = byId("dashboardWidgetType").value === "SUMMARY_TABLE";
         byId("summaryTableConfigurator").hidden = !isSummary;
@@ -354,12 +361,6 @@
 
         discoverButton.addEventListener("click", discover);
         const responseFormat = byId("summaryTableResponseFormat");
-        function syncParserOptionVisibility() {
-            const typeValue = responseFormat.value;
-            byId("summaryTableDelimitedOptions").hidden = typeValue !== "DELIMITED";
-            byId("summaryTableKeyValueOptions").hidden = typeValue !== "KEY_VALUE";
-            byId("summaryTableRegexOptions").hidden = typeValue !== "REGEX";
-        }
         responseFormat.addEventListener("change", function () {
             syncParserOptionVisibility();
             if (sample.value.trim()) discover();
