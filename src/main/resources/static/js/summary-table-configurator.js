@@ -190,7 +190,6 @@
 
     function renderRegexFields() {
         const config = getConfig();
-        if (isSummary) renderSummaryCards(config);
         const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
         const fields = Array.isArray(parser.fields) ? parser.fields : [];
         const host = byId("summaryTableRegexFields");
