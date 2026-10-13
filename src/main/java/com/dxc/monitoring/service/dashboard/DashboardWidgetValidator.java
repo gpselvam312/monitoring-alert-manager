@@ -126,18 +126,21 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
             return false;
         }
 
-        String type = String.valueOf(parser.getOrDefault("type", "AUTO")).trim().toUpperCase();
+        Object parserType = parser.get("type");
+        String type = String.valueOf(parserType == null ? "AUTO" : parserType).trim().toUpperCase();
         if (!RESPONSE_PARSER_TYPES.contains(type))
         {
             addFieldError(context, "fieldConfigJson", "Select a supported response parser type.");
             return false;
         }
-        if ("DELIMITED".equals(type) && isBlank(String.valueOf(parser.getOrDefault("delimiter", ""))))
+        Object delimiter = parser.get("delimiter");
+        if ("DELIMITED".equals(type) && isBlank(delimiter == null ? "" : String.valueOf(delimiter)))
         {
             addFieldError(context, "fieldConfigJson", "Delimited response parsing requires a delimiter.");
             return false;
         }
-        if ("KEY_VALUE".equals(type) && isBlank(String.valueOf(parser.getOrDefault("separator", ""))))
+        Object separator = parser.get("separator");
+        if ("KEY_VALUE".equals(type) && isBlank(separator == null ? "" : String.valueOf(separator)))
         {
             addFieldError(context, "fieldConfigJson", "Key-value response parsing requires a separator.");
             return false;
@@ -153,8 +156,8 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
             for (Object fieldValue : fields)
             {
                 if (!(fieldValue instanceof Map<?, ?> field)
-                        || isBlank(String.valueOf(field.getOrDefault("key", "")))
-                        || isBlank(String.valueOf(field.getOrDefault("pattern", "")))
+                        || isBlank(field.get("key") == null ? "" : String.valueOf(field.get("key")))
+                        || isBlank(field.get("pattern") == null ? "" : String.valueOf(field.get("pattern")))
                         || (field.containsKey("group") && !(field.get("group") instanceof Number)))
                 {
                     addFieldError(context, "fieldConfigJson",
