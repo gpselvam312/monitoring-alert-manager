@@ -571,18 +571,21 @@
                     summary: { enabled: true }
                 };
             case "TABLE":
-                return { rowPath: "", columns: [], visibleFields: [], labels: {}, sorting: { enabled: true }, search: { enabled: true }, pagination: { enabled: true, pageSize: 10 } };
+                return { renderer: "TABLE", responseParser: { type: "AUTO" }, rowPath: "", columns: [], visibleFields: [], labels: {}, sorting: { enabled: true }, search: { enabled: true }, pagination: { enabled: true, pageSize: 10 } };
             case "CHART":
-                return { rowPath: "", categoryField: "", valueField: "", seriesField: "" };
+                return { renderer: "CHART", responseParser: { type: "AUTO" }, rowPath: "", categoryField: "", valueField: "", seriesField: "" };
             case "STAT":
+                return { renderer: "STAT", responseParser: { type: "AUTO" }, valueField: "", visibleFields: [] };
             case "STATUS":
-                return { valueField: "", visibleFields: [] };
+                return { renderer: "STATUS", responseParser: { type: "AUTO" }, valueField: "", statusField: "", visibleFields: [] };
             case "TEXT":
-                return { textFields: [], textTemplate: "" };
+                return { renderer: "TEXT", responseParser: { type: "AUTO" }, textFields: [], textTemplate: "" };
             case "SYSTEM_METRICS":
-                return { rowPath: "", fields: [], labels: {} };
+                return { renderer: "SYSTEM_METRICS", responseParser: { type: "AUTO" }, rowPath: "", fields: [], labels: {} };
+            case "ELASTICSEARCH":
+                return { renderer: "ELASTICSEARCH", responseParser: { type: "AUTO" } };
             default:
-                return {};
+                return { responseParser: { type: "AUTO" } };
         }
     }
 
