@@ -549,7 +549,9 @@
     function syncTypeMappingToConfig(config, type) {
         const hasSample = state.sample && selectedCollection();
         config.responseParser = currentParserConfig();
-        if (hasSample) config.rowPath = byId("summaryTableRowPath").value || "";
+        if (hasSample && ["TABLE", "SUMMARY_TABLE", "CHART", "SYSTEM_METRICS"].includes(type)) {
+            config.rowPath = byId("summaryTableRowPath").value || "";
+        }
         switch (type) {
             case "CHART":
                 config.renderer = "CHART";
