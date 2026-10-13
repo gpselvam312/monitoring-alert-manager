@@ -276,8 +276,11 @@ public class DashboardService
             String rawOutput = monitoringResult.getRawOutput();
             if (parserConfigJson != null && rawOutput != null && !rawOutput.isBlank())
             {
+                MonitoringResult.ResultStatus fallbackStatus = execution.getStatus()
+                        == MonitoringExecution.ExecutionStatus.SUCCESS
+                                ? MonitoringResult.ResultStatus.OK : monitoringResult.getStatus();
                 MonitoringResultNormalizer.NormalizedResult normalized = monitoringResultNormalizer.normalize(
-                        rawOutput, execution.getStatus(), monitoringResult.getStatus(), monitoringResult.getMessage(),
+                        rawOutput, execution.getStatus(), fallbackStatus, monitoringResult.getMessage(),
                         execution.getStartedAt(), execution.getCompletedAt(), parserConfigJson);
                 String normalizedJson = normalized.json();
                 if ("SUMMARY_TABLE".equals(widget.getWidgetType()))
