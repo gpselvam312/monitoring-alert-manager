@@ -29,6 +29,39 @@
         return typeof value === "object" ? JSON.stringify(value) : String(value);
     }
 
+    function formatDateTime(value) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return display(value);
+
+        const pattern = String(window.monitoringDateTimeFormat || "MM/dd/yyyy hh:mm:ss a");
+        const parts = {
+            yyyy: String(date.getFullYear()).padStart(4, "0"),
+            yyy: String(date.getFullYear()).padStart(3, "0"),
+            yy: String(date.getFullYear()).slice(-2),
+            y: String(date.getFullYear()),
+            MMMM: date.toLocaleString("en-US", { month: "long" }),
+            MMM: date.toLocaleString("en-US", { month: "short" }),
+            MM: String(date.getMonth() + 1).padStart(2, "0"),
+            M: String(date.getMonth() + 1),
+            dd: String(date.getDate()).padStart(2, "0"),
+            d: String(date.getDate()),
+            HH: String(date.getHours()).padStart(2, "0"),
+            H: String(date.getHours()),
+            hh: String((date.getHours() % 12) || 12).padStart(2, "0"),
+            h: String((date.getHours() % 12) || 12),
+            mm: String(date.getMinutes()).padStart(2, "0"),
+            m: String(date.getMinutes()),
+            ss: String(date.getSeconds()).padStart(2, "0"),
+            s: String(date.getSeconds()),
+            a: date.getHours() < 12 ? "AM" : "PM"
+        };
+        const tokens = /'[^']*(?:''[^']*)*'|yyyy|yyy|yy|y|MMMM|MMM|MM|M|dd|d|HH|H|hh|h|mm|m|ss|s|a|./g;
+        return pattern.replace(tokens, token => {
+            if (token.startsWith("'") && token.endsWith("'")) return token.slice(1, -1).replace(/''/g, "'");
+            return Object.prototype.hasOwnProperty.call(parts, token) ? parts[token] : token;
+        });
+    }
+
     function formatValue(value, format) {
         if (value === null || value === undefined || value === "") return "";
         const normalized = String(format || "").toLowerCase();
@@ -46,10 +79,7 @@
                 .map(part => String(part).padStart(2, "0"))
                 .join(":");
         }
-        if (normalized === "datetime") {
-            const date = new Date(value);
-            if (!Number.isNaN(date.getTime())) return date.toLocaleString();
-        }
+        if (normalized === "datetime") return formatDateTime(value);
         return display(value);
     }
 
@@ -357,9 +387,11 @@
                     const key = raw === null || raw === undefined || String(raw).trim() === "" ? "" : String(raw);
                     counts.set(key, (counts.get(key) || 0) + 1);
                 });
-                const fieldLabel = (state.columnMap.get(field) || {}).label || field;
+                const groupedColumn = state.columnMap.get(field) || {};
+                const fieldLabel = groupedColumn.label || field;
                 counts.forEach((count, value) => {
-                    cards.push({ label: fieldLabel + ": " + (value === "" ? "(empty)" : value), value: count, cls: "",
+                    const displayValue = value === "" ? "(empty)" : formatValue(value, groupedColumn.format);
+                    cards.push({ label: fieldLabel + ": " + displayValue, value: count, cls: "",
                         filterField: field, filterValue: value, filterType: "grouped-value", filterOperation: "COUNT_ROWS" });
                 });
             });
