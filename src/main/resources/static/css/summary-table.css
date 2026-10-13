@@ -157,3 +157,11 @@
     border-color: var(--summary-card-accent);
     box-shadow: none;
 }
+
+/* Summary Table conditional formatting: compact row/cell highlight fills. */
+.summary-table-row.is-critical { background: color-mix(in srgb, var(--danger, #dc3545) 13%, transparent); }
+.summary-table-row.is-warning { background: color-mix(in srgb, var(--warning, #ffc107) 18%, transparent); }
+.summary-table-row.is-info { background: color-mix(in srgb, var(--info, #0dcaf0) 12%, transparent); }
+.summary-table-grid td.is-critical, #summaryTablePreview td.is-critical { background: color-mix(in srgb, var(--danger, #dc3545) 18%, transparent); }
+.summary-table-grid td.is-warning, #summaryTablePreview td.is-warning { background: color-mix(in srgb, var(--warning, #ffc107) 25%, transparent); }
+.summary-table-grid td.is-info, #summaryTablePreview td.is-info { background: color-mix(in srgb, var(--info, #0dcaf0) 18%, transparent); }
