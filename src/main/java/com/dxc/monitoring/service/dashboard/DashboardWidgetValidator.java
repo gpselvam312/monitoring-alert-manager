@@ -3,6 +3,7 @@ package com.dxc.monitoring.service.dashboard;
 import java.util.Set;
 import java.util.Map;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -162,6 +163,22 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
                 {
                     addFieldError(context, "fieldConfigJson",
                             "Each regex parser field requires a key, pattern, and numeric capture group when specified.");
+                    return false;
+                }
+                try
+                {
+                    Pattern pattern = Pattern.compile(String.valueOf(field.get("pattern")), Pattern.MULTILINE);
+                    int group = field.get("group") instanceof Number number ? number.intValue() : 1;
+                    if (group < 0 || group > pattern.matcher("").groupCount())
+                    {
+                        addFieldError(context, "fieldConfigJson",
+                                "A regex parser capture group is outside the pattern's available groups.");
+                        return false;
+                    }
+                }
+                catch (java.util.regex.PatternSyntaxException exception)
+                {
+                    addFieldError(context, "fieldConfigJson", "A regex parser field contains an invalid pattern.");
                     return false;
                 }
             }
