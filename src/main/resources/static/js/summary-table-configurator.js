@@ -419,16 +419,17 @@
         const details = config.details && typeof config.details === "object" ? config.details : {};
         const oldCards = Array.isArray(summary.cards) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : null);
         const selectedCardFields = new Set((oldCards || []).map(card => String(card.field || "")).filter(Boolean));
+        const showTotalRowsCard = (oldCards || []).some(card => String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
         fields.forEach(item => {
-            const numeric = (state.rows || []).some(row => { const value = rowValueForConfigurator(row, item.field); return value !== null && value !== undefined && value !== "" && typeof value !== "boolean" && Number.isFinite(Number(value)); });
-            item.summaryCard = selectedCardFields.has(item.field) || (!oldCards && numeric);
+            item.summaryCard = selectedCardFields.has(item.field);
         });
         const formats = [
-            ["", "Default"], ["number", "Number"], ["percentage", "Percentage"],
+            ["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
             ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]
         ];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
+            '<div class="d-flex align-items-center gap-2 mb-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div>' +
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
             '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Group aggregate</th><th>Groupable</th><th>Summary card</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
@@ -518,7 +519,7 @@
         config.details.conditionalFormatting = readConditionalFormatting();
         delete config.details.summaryCards;
         config.summary = Object.assign({}, config.summary || {});
-        config.summary.cards = [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }, ...editedColumns.filter(column => column.summaryCard).map(column => {
+        config.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }] : []), ...editedColumns.filter(column => column.summaryCard).map(column => {
             const aggregate = String(column.aggregation || "none").toLowerCase();
             const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate]
                 || (isNumericSummaryField(column.field) ? "SUM" : "COUNT_NON_EMPTY");
@@ -562,7 +563,7 @@
                     const boolValue = rawBoolean ? (value === true || String(value).trim().toLowerCase() === "true")
                         : ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes"].includes(statusValue);
                     const cellClass = conditionalPreviewClass(row, previewConfig, "cell", column.field);
-                    if (isBoolean) return '<td class="' + cellClass + '"><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '"><span></span></span></td>';
+                    if (String(column.format || "").toLowerCase() === "toggle") return '<td class="' + cellClass + '"><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '"><span></span></span></td>';
                     if (value === null || value === undefined) value = "";
                     if (column.format === "percentage" && value !== "") value = String(value) + "%";
                     if (column.format === "number" && value !== "" && Number.isFinite(Number(value))) value = Number(value).toLocaleString();
@@ -604,7 +605,7 @@
             summaryConfig.details.conditionalFormatting = readConditionalFormatting();
             delete summaryConfig.details.summaryCards;
             summaryConfig.summary = Object.assign({}, summaryConfig.summary || {});
-            summaryConfig.summary.cards = [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }, ...readFieldEditor().filter(column => column.summaryCard).map(column => {
+            summaryConfig.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }] : []), ...readFieldEditor().filter(column => column.summaryCard).map(column => {
                 const aggregate = String(column.aggregation || "none").toLowerCase();
                 const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate]
                     || (isNumericSummaryField(column.field) ? "SUM" : "COUNT_NON_EMPTY");
