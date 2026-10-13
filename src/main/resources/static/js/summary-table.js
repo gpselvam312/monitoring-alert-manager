@@ -337,6 +337,20 @@
                     value: value === null ? "—" : formatValue(value, card.format), cls: "", filterField: field || null,
                     filterType: field ? "custom-field" : "all", filterOperation: operation });
             });
+            const groupedSummaryFields = Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
+            groupedSummaryFields.forEach(field => {
+                const counts = new Map();
+                state.detailRows.forEach(row => {
+                    const raw = rowValue(row, field);
+                    const key = raw === null || raw === undefined || String(raw).trim() === "" ? "" : String(raw);
+                    counts.set(key, (counts.get(key) || 0) + 1);
+                });
+                const fieldLabel = (state.columnMap.get(field) || {}).label || field;
+                counts.forEach((count, value) => {
+                    cards.push({ label: fieldLabel + ": " + (value === "" ? "(empty)" : value), value: count, cls: "",
+                        filterField: field, filterValue: value, filterType: "grouped-value", filterOperation: "COUNT_ROWS" });
+                });
+            });
         } else {
             const numericFields = state.numericFields;
             const labels = state.config.labels && typeof state.config.labels === "object" ? state.config.labels : {};
@@ -363,7 +377,9 @@
         }
         if (!cards.length) return "";
         return '<div class="server-health-summary summary-table-cards">' + cards.map(card => {
-            const active = state.cardFilter && state.cardFilter.type === card.filterType && state.cardFilter.field === card.filterField;
+            const active = state.cardFilter && state.cardFilter.type === card.filterType &&
+                state.cardFilter.field === card.filterField &&
+                (card.filterType !== "grouped-value" || String(state.cardFilter.value ?? "") === String(card.filterValue ?? ""));
             const status = card.filterType === "overall" ? "total"
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
@@ -373,6 +389,7 @@
             return '<button type="button" class="server-health-summary-item server-health-summary-' + status +
                 ' server-health-summary-filter summary-table-card' + (active ? ' is-active' : '') +
                 '" data-card-filter-type="' + esc(card.filterType) + '" data-card-filter-field="' + esc(card.filterField || '') +
+                '" data-card-filter-value="' + esc(card.filterValue === undefined || card.filterValue === null ? "" : card.filterValue) +
                 '" aria-label="' + esc(card.label) + '" data-card-filter-operation="' + esc(card.filterOperation || '') + '" aria-pressed="' + Boolean(active) + '">' + content + '</button>';
         }).join("") + '</div>';
     }
@@ -395,6 +412,13 @@
                 rows = rows.filter(row => (numeric(rowValue(row, field)) || 0) > 0);
             } else if (state.cardFilter.type === "overall") {
                 rows = rows.filter(row => state.numericFields.some(field => (numeric(rowValue(row, field)) || 0) > 0));
+            } else if (state.cardFilter.type === "grouped-value" && state.cardFilter.field) {
+                const field = state.cardFilter.field;
+                const expected = String(state.cardFilter.value ?? "");
+                rows = rows.filter(row => {
+                    const actual = rowValue(row, field);
+                    return String(actual === null || actual === undefined ? "" : actual) === expected;
+                });
             } else if (state.cardFilter.type === "custom-field" && state.cardFilter.field) {
                 const field = state.cardFilter.field;
                 const operation = String(state.cardFilter.operation || "").toUpperCase();
@@ -592,10 +616,12 @@
             const type = cardButton.getAttribute("data-card-filter-type");
             const field = cardButton.getAttribute("data-card-filter-field") || null;
             const operation = cardButton.getAttribute("data-card-filter-operation") || "";
-            if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field && state.cardFilter.operation === operation) {
+            const value = cardButton.getAttribute("data-card-filter-value") || "";
+            if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field &&
+                state.cardFilter.operation === operation && (type !== "grouped-value" || String(state.cardFilter.value ?? "") === value)) {
                 state.cardFilter = null;
             } else {
-                state.cardFilter = { type, field, operation };
+                state.cardFilter = { type, field, operation, value };
             }
             state.page = 0;
         } else if (sortButton) {
