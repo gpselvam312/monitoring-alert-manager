@@ -257,10 +257,14 @@
         const collection = selectedCollection();
         if (!collection) return;
         state.rows = collection.rows;
-        const allFields = Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])));
-        state.fields = allFields;
+        const discoveredFields = Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])));
         const config = getConfig();
         const existing = configuredColumns(config);
+        const allFields = [
+            ...Array.from(existing.keys()).filter(field => discoveredFields.includes(field)),
+            ...discoveredFields.filter(field => !existing.has(field))
+        ];
+        state.fields = allFields;
         const anyExisting = existing.size > 0;
         const fields = allFields.map(field => {
             const saved = existing.get(field);
