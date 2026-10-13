@@ -498,6 +498,17 @@
         byId("summaryTableGroupByOrder").value = ["VALUE_ASC", "VALUE_DESC", "COUNT_ASC", "COUNT_DESC"].includes(String(groupBy.order || "").toUpperCase())
             ? String(groupBy.order).toUpperCase() : "VALUE_ASC";
         byId("summaryTableGroupByAggregates").checked = groupBy.showAggregates !== false;
+        const savedColumns = Array.from(configuredColumns(config).entries()).map(([field, column]) => ({
+            field,
+            label: column.label || humanize(field),
+            groupable: column.groupable !== false
+        }));
+        (Array.isArray(groupBy.fields) ? groupBy.fields : []).forEach(field => {
+            if (!savedColumns.some(item => item.field === String(field))) {
+                savedColumns.push({ field: String(field), label: humanize(field), groupable: true });
+            }
+        });
+        renderGroupByOptions(config, savedColumns);
         syncGroupByControlState();
         syncParserOptionVisibility();
         if (isSummary && state.sample) renderFields();
