@@ -1509,7 +1509,14 @@
                                             <textarea class="form-control" id="summaryTableIgnoredPrefixes" rows="2" placeholder="#, INFO"></textarea>
                                         </div>
                                         <div class="col-12" id="summaryTableRegexOptions" hidden>
-                                            <div class="alert alert-info mb-0 small">Regex mode uses the <code>responseParser.fields</code> array in Advanced JSON Configuration. Define each field with <code>key</code>, <code>pattern</code>, optional <code>group</code>, <code>type</code>, and <code>required</code>. The sample preview validates and applies those rules.</div>
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                                <div>
+                                                    <label class="form-label mb-1">Extracted fields</label>
+                                                    <div class="form-text">Each pattern must contain the selected capture group. Use group 0 for the full match.</div>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableAddRegexField">Add regex field</button>
+                                            </div>
+                                            <div id="summaryTableRegexFields"></div>
                                         </div>
                                     </div>
                                     <label for="summaryTableSampleJson" class="form-label">Sample response</label>
