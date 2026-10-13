@@ -421,8 +421,17 @@
         const selectedCardFields = new Set((oldCards || []).map(card => String(card.field || "")).filter(Boolean));
         const showTotalRowsCard = (oldCards || []).some(card => String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
         const groupedSummaryFields = new Set((Array.isArray(summary.groupByFields) ? summary.groupByFields : []).map(String));
+        const cardsByField = new Map((oldCards || []).filter(card => card && card.field)
+            .map(card => [String(card.field), card]));
         fields.forEach(item => {
-            item.summaryCard = selectedCardFields.has(item.field);
+            const savedCard = cardsByField.get(item.field);
+            const operation = String(savedCard && savedCard.operation || "").toUpperCase();
+            const inferredAggregation = ({
+                COUNT_NON_EMPTY: "count", COUNT_TRUE: "count", COUNT_FALSE: "count",
+                SUM: "sum", AVG: "avg", MAX: "max", MIN: "min"
+            })[operation];
+            if (item.aggregation === "none" && inferredAggregation) item.aggregation = inferredAggregation;
+            item.summaryCard = selectedCardFields.has(item.field) && item.aggregation !== "none";
             item.groupSummary = groupedSummaryFields.has(item.field);
         });
         const formats = [
@@ -433,7 +442,7 @@
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
             '<div class="d-flex align-items-center gap-2 mb-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div>' +
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
-            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Group aggregate</th><th>Groupable</th><th>Summary card</th><th>Group summary by field</th></tr></thead><tbody>' +
+            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th><th>Summary card</th><th>Group summary by field</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
@@ -447,7 +456,7 @@
                 aggregations.map(option => '<option value="' + option[0] + '"' + (item.aggregation === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
                 '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>' +
-                '<td><input class="form-check-input summary-config-summary-card" type="checkbox" aria-label="Include ' + escapeHtml(item.field) + ' in summary cards"' + (item.summaryCard ? ' checked' : '') + '></td>' +
+                '<td><input class="form-check-input summary-config-summary-card" type="checkbox" aria-label="Include ' + escapeHtml(item.field) + ' in summary cards"' + (item.summaryCard ? ' checked' : '') + (item.aggregation === "none" ? ' disabled' : '') + '></td>' +
                 '<td><input class="form-check-input summary-config-group-summary" type="checkbox" aria-label="Create a summary card for each distinct ' + escapeHtml(item.field) + ' value"' + (item.groupSummary ? ' checked' : '') + '></td></tr>').join("") +
             '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
             : '<div class="text-muted small">No fields were found in this collection.</div>';
@@ -526,11 +535,15 @@
         config.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
         config.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
             const aggregate = String(column.aggregation || "none").toLowerCase();
-            const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate]
-                || (isNumericSummaryField(column.field) ? "SUM" : "COUNT_NON_EMPTY");
+
+            const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate];
+
+            if (!operation) return null;
+
             return { label: column.label || humanize(column.field), field: column.field, operation,
                 format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : "") };
-        })];
+
+                }).filter(Boolean)];
         if (config.summary.enabled === undefined) config.summary.enabled = true;
         return config;
     }
@@ -614,11 +627,15 @@
             summaryConfig.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
             summaryConfig.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
                 const aggregate = String(column.aggregation || "none").toLowerCase();
-                const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate]
-                    || (isNumericSummaryField(column.field) ? "SUM" : "COUNT_NON_EMPTY");
+
+                const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate];
+
+                if (!operation) return null;
+
                 return { label: column.label || humanize(column.field), field: column.field, operation,
                     format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : "") };
-            })];
+
+                    }).filter(Boolean)];
             setConfig(summaryConfig);
             return;
         }
@@ -983,6 +1000,14 @@
             refreshConfigFromEditor();
         });
         byId("summaryTableFieldEditor").addEventListener("change", function (event) {
+            if (event.target.classList.contains("summary-config-aggregation")) {
+                const row = event.target.closest("tr[data-field]");
+                const summaryCard = row && row.querySelector(".summary-config-summary-card");
+                if (summaryCard) {
+                    summaryCard.disabled = event.target.value === "none";
+                    if (summaryCard.disabled) summaryCard.checked = false;
+                }
+            }
             refreshConfigFromEditor();
             if (event.target.classList.contains("summary-config-groupable")) {
                 renderFields();
