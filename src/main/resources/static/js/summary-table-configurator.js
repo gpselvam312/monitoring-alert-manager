@@ -242,8 +242,9 @@
                 && !collections.some(item => item.path === "")) {
                 collections.unshift({ path: "", rows: sample.filter(row => row && typeof row === "object" && !Array.isArray(row)), label: "(root array)" });
             }
-            if (!collections.length && sample && typeof sample === "object" && !Array.isArray(sample)) {
-                collections.push({ path: "", rows: [sample], label: "(root object)" });
+            if (!Array.isArray(sample) && sample && typeof sample === "object"
+                && !collections.some(item => item.path === "")) {
+                collections.unshift({ path: "", rows: [sample], label: "(root object)" });
             }
             if (!collections.length) {
                 throw new Error("No object fields or array of row objects were found in the response.");
@@ -258,7 +259,14 @@
                 '<option value="' + escapeHtml(item.path) + '">' + escapeHtml(item.label) + ' (' + item.rows.length + ' rows)</option>'
             ).join("");
             select.disabled = false;
-            select.value = collections.some(item => item.path === rowPath) ? rowPath : collections[0].path;
+            const parserType = String((config.responseParser || {}).type || "AUTO").toUpperCase();
+            const preferRoot = ["STAT", "STATUS", "TEXT", "ELASTICSEARCH"].includes(currentWidgetType())
+                && !["DELIMITED", "KEY_VALUE", "REGEX"].includes(parserType);
+            const preferredPath = rowPath && collections.some(item => item.path === rowPath)
+                ? rowPath
+                : (preferRoot && collections.some(item => item.path === "") ? "" :
+                    (collections.find(item => item.path !== "") || collections[0]).path);
+            select.value = preferredPath;
 
             const details = config.details && typeof config.details === "object" ? config.details : {};
             const search = details.search || config.search || {};
