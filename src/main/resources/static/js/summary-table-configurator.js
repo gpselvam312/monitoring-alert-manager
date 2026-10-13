@@ -122,6 +122,10 @@
         throw new Error("Unsupported response format: " + type);
     }
 
+    function currentWidgetType() {
+        return String(byId("dashboardWidgetType").value || "").toUpperCase();
+    }
+
     function getConfig() {
         const field = byId("dashboardWidgetFieldConfigJson");
         try {
@@ -238,8 +242,11 @@
                 && !collections.some(item => item.path === "")) {
                 collections.unshift({ path: "", rows: sample.filter(row => row && typeof row === "object" && !Array.isArray(row)), label: "(root array)" });
             }
+            if (!collections.length && sample && typeof sample === "object" && !Array.isArray(sample)) {
+                collections.push({ path: "", rows: [sample], label: "(root object)" });
+            }
             if (!collections.length) {
-                throw new Error("No array of JSON objects was found. Use a response containing an array of row objects for a Summary Table.");
+                throw new Error("No object fields or array of row objects were found in the response.");
             }
 
             state.sample = sample;
@@ -262,8 +269,9 @@
             byId("summaryTablePageSize").value = ["5", "10", "25", "50"].includes(String(pagination.pageSize)) ? String(pagination.pageSize) : "10";
 
             renderFields();
+            renderTypeMappingOptions();
             refreshConfigFromEditor();
-            message.textContent = "Found " + collections.length + " collection(s). Select the row collection and columns.";
+            message.textContent = "Found " + collections.length + " collection(s). Select a collection and map the discovered fields.";
             message.classList.remove("text-danger");
             message.classList.add("text-muted");
         } catch (error) {
@@ -334,6 +342,7 @@
         sort.disabled = fields.length === 0;
         sort.value = allFields.includes(previousSort) ? previousSort : "";
         renderGroupByOptions(config, fields);
+        renderTypeMappingOptions();
         renderPreview();
     }
 
@@ -412,34 +421,124 @@
     }
 
     function refreshConfigFromEditor() {
-        if (!state.sample || !selectedCollection()) {
-            const config = getConfig();
-            config.details = config.details && typeof config.details === "object" ? config.details : {};
-            config.details.search = Object.assign({}, config.details.search || {}, {
-                enabled: byId("summaryTableSearchEnabled").checked
-            });
-            const sorting = Object.assign({}, config.details.sorting || {});
-            sorting.enabled = sorting.enabled !== false;
-            sorting.direction = byId("summaryTableSortDirection").value;
-            if (!byId("summaryTableDefaultSort").disabled) {
-                sorting.defaultField = byId("summaryTableDefaultSort").value;
-            }
-            config.details.sorting = sorting;
-            config.details.pagination = Object.assign({}, config.details.pagination || {}, {
-                enabled: true,
-                pageSize: Number(byId("summaryTablePageSize").value) || 10
-            });
-            config.details.groupBy = Object.assign({}, config.details.groupBy || {}, {
-                enabled: byId("summaryTableGroupByEnabled").checked,
-                fields: Array.from(byId("summaryTableGroupByFields").selectedOptions).map(option => option.value),
-                initialState: byId("summaryTableGroupByInitialState").value,
-                order: byId("summaryTableGroupByOrder").value,
-                showAggregates: byId("summaryTableGroupByAggregates").checked
-            });
-            setConfig(config);
+        const type = currentWidgetType();
+        if (type === "SUMMARY_TABLE" && state.sample && selectedCollection()) {
+            setConfig(buildConfig());
             return;
         }
-        setConfig(buildConfig());
+        const config = getConfig();
+        config.responseParser = currentParserConfig();
+        if (type === "TABLE" && state.sample && selectedCollection()) {
+            const columns = readFieldEditor();
+            config.renderer = "TABLE";
+            config.rowPath = byId("summaryTableRowPath").value || "";
+            config.columns = columns;
+            config.visibleFields = columns.filter(item => item.visible).map(item => item.field);
+            config.labels = Object.fromEntries(columns.map(item => [item.field, item.label]));
+            config.formats = Object.fromEntries(columns.filter(item => item.format).map(item => [item.field, item.format]));
+            config.sorting = Object.assign({}, config.sorting || {}, {
+                enabled: true,
+                defaultField: byId("summaryTableDefaultSort").value,
+                direction: byId("summaryTableSortDirection").value
+            });
+            config.search = Object.assign({}, config.search || {}, { enabled: byId("summaryTableSearchEnabled").checked });
+            config.pagination = Object.assign({}, config.pagination || {}, {
+                enabled: true, pageSize: Number(byId("summaryTablePageSize").value) || 10
+            });
+        } else {
+            syncTypeMappingToConfig(config, type);
+        }
+        setConfig(config);
+    }
+
+    function selectedValues(id) {
+        const select = byId(id);
+        return select ? Array.from(select.selectedOptions).map(option => option.value) : [];
+    }
+
+    function setFieldOptions(id, fields, selected, noneLabel) {
+        const select = byId(id);
+        if (!select) return;
+        const multiple = select.multiple;
+        const selectedValuesSet = new Set((Array.isArray(selected) ? selected : [selected]).filter(Boolean).map(String));
+        const prefix = multiple ? "" : '<option value="">' + escapeHtml(noneLabel || "Select field") + '</option>';
+        select.innerHTML = prefix + fields.map(field =>
+            '<option value="' + escapeHtml(field) + '"' + (selectedValuesSet.has(String(field)) ? " selected" : "") + '>' +
+            escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>'
+        ).join("");
+        if (!multiple && !fields.includes(String(selected || ""))) select.value = "";
+    }
+
+    function renderTypeMappingOptions() {
+        const type = currentWidgetType();
+        const config = getConfig();
+        const mapping = byId("widgetTypeMappingOptions");
+        if (!mapping) return;
+        const hasDedicatedMapping = ["CHART", "STAT", "STATUS", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH"].includes(type);
+        mapping.hidden = !hasDedicatedMapping;
+        byId("widgetTypeMappingTitle").textContent = ({
+            CHART: "Chart field mapping",
+            STAT: "Stat value mapping",
+            STATUS: "Status field mapping",
+            TEXT: "Text content mapping",
+            SYSTEM_METRICS: "System metrics mapping",
+            ELASTICSEARCH: "Elasticsearch mapping"
+        })[type] || "Widget-specific mapping";
+        mapping.querySelectorAll("[data-mapping-for]").forEach(element => {
+            element.hidden = !element.getAttribute("data-mapping-for").split(/\s+/).includes(type);
+        });
+        const fields = state.fields || [];
+        setFieldOptions("widgetCategoryField", fields, config.categoryField, "Select category field");
+        setFieldOptions("widgetValueField", fields, config.valueField, "Select value field");
+        setFieldOptions("widgetSeriesField", fields, config.seriesField, "No series field");
+        setFieldOptions("widgetSingleValueField", fields, config.valueField, "Select value field");
+        setFieldOptions("widgetStatusField", fields, config.statusField, "No status field");
+        setFieldOptions("widgetTextFields", fields, config.textFields, "");
+        setFieldOptions("widgetMetricFields", fields, config.fields, "");
+        byId("widgetTextTemplate").value = config.textTemplate || "";
+    }
+
+    function syncTypeMappingToConfig(config, type) {
+        const hasSample = state.sample && selectedCollection();
+        config.responseParser = currentParserConfig();
+        if (hasSample) config.rowPath = byId("summaryTableRowPath").value || "";
+        switch (type) {
+            case "CHART":
+                config.renderer = "CHART";
+                config.categoryField = byId("widgetCategoryField").value;
+                config.valueField = byId("widgetValueField").value;
+                config.seriesField = byId("widgetSeriesField").value;
+                break;
+            case "STAT":
+                config.renderer = "STAT";
+                config.valueField = byId("widgetSingleValueField").value;
+                config.visibleFields = config.valueField ? [config.valueField] : [];
+                break;
+            case "STATUS":
+                config.renderer = "STATUS";
+                config.valueField = byId("widgetSingleValueField").value;
+                config.statusField = byId("widgetStatusField").value;
+                config.visibleFields = [config.valueField, config.statusField].filter(Boolean);
+                break;
+            case "TEXT":
+                config.renderer = "TEXT";
+                config.textFields = selectedValues("widgetTextFields");
+                config.textTemplate = byId("widgetTextTemplate").value;
+                break;
+            case "SYSTEM_METRICS":
+                config.renderer = "SYSTEM_METRICS";
+                config.fields = selectedValues("widgetMetricFields");
+                config.labels = Object.assign({}, config.labels || {});
+                break;
+            case "ELASTICSEARCH":
+                config.renderer = "ELASTICSEARCH";
+                break;
+            case "TABLE":
+                config.renderer = "TABLE";
+                break;
+            default:
+                break;
+        }
     }
 
     function syncParserSettings() {
@@ -504,9 +603,18 @@
     }
 
     function showForSelectedType() {
-        const isSummary = byId("dashboardWidgetType").value === "SUMMARY_TABLE";
-        byId("summaryTableConfigurator").hidden = !isSummary;
-        byId("dashboardWidgetAdvancedConfig").open = !isSummary;
+        const type = currentWidgetType();
+        const isSummary = type === "SUMMARY_TABLE";
+        const isTable = type === "TABLE" || isSummary;
+        const rowPathTypes = ["TABLE", "SUMMARY_TABLE", "CHART", "SYSTEM_METRICS"];
+        byId("summaryTableConfigurator").hidden = !type;
+        byId("dashboardWidgetAdvancedConfig").open = false;
+        byId("summaryTableGroupBySection").hidden = !isSummary;
+        byId("summaryTableTableOptions").hidden = !isTable;
+        byId("summaryTableFieldEditorGroup").hidden = !isTable;
+        byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
+        byId("widgetMappingHeading").textContent = type === "SUMMARY_TABLE" ? "Summary Table data and columns" : "Widget data and mapping";
+        byId("widgetFieldMappingHeading").textContent = isSummary ? "Column mapping" : "Field mapping";
         const config = getConfig();
         const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
         byId("summaryTableResponseFormat").value = ["AUTO", "JSON", "DELIMITED", "KEY_VALUE", "REGEX"].includes(String(parser.type || "AUTO").toUpperCase())
@@ -545,7 +653,8 @@
         renderGroupByOptions(config, savedColumns);
         syncGroupByControlState();
         syncParserOptionVisibility();
-        if (isSummary && state.sample) renderFields();
+        renderTypeMappingOptions();
+        if (state.sample) renderFields();
     }
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -634,8 +743,14 @@
         });
         byId("summaryTableRowPath").addEventListener("change", function () {
             renderFields();
+            renderTypeMappingOptions();
             refreshConfigFromEditor();
         });
+        ["widgetCategoryField", "widgetValueField", "widgetSeriesField", "widgetSingleValueField",
+            "widgetStatusField", "widgetTextFields", "widgetMetricFields"].forEach(id => {
+            byId(id).addEventListener("change", refreshConfigFromEditor);
+        });
+        byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
         byId("summaryTableFieldEditor").addEventListener("click", function (event) {
             const button = event.target.closest(".summary-config-move-up, .summary-config-move-down");
             if (!button) return;
@@ -705,7 +820,7 @@
                 const sourceType = byId("dashboardWidgetDataSourceType");
                 const jobSelect = byId("dashboardWidgetJobSourceId");
                 const loadLatestButton = byId("summaryTableLoadLatest");
-                if (type.value === "SUMMARY_TABLE" && sourceType && sourceType.value === "MONITORING_JOB"
+                if (type.value && sourceType && sourceType.value === "MONITORING_JOB"
                     && jobSelect && String(jobSelect.value || "").trim() && loadLatestButton) {
                     loadLatestButton.click();
                 }
