@@ -287,6 +287,42 @@
         byId("summaryTableAddConditionalRule").disabled = !byId("summaryTableConditionalFormattingEnabled").checked;
     }
 
+    function conditionalPreviewMatches(row, rule) {
+        const field = String(rule.field || "");
+        const value = Object.prototype.hasOwnProperty.call(row, field) ? row[field] : field.split(".").reduce((current,key) => current == null ? undefined : current[key], row);
+        const operator = String(rule.operator || "equals").toLowerCase();
+        if (operator === "missing") return value === undefined;
+        if (operator === "empty") return value === undefined || value === null || String(value).trim() === "";
+        if (value === undefined || value === null) return false;
+        const actual = String(value).trim(), expected = String(rule.value == null ? "" : rule.value).trim();
+        if (["gt","gte","lt","lte"].includes(operator)) {
+            const number = Number(actual.replace(/,/g,"").replace(/%/g,"")), threshold = Number(expected.replace(/,/g,"").replace(/%/g,""));
+            if (!Number.isFinite(number) || !Number.isFinite(threshold)) return false;
+            if (operator === "gt") return number > threshold;
+            if (operator === "gte") return number >= threshold;
+            if (operator === "lt") return number < threshold;
+            return number <= threshold;
+        }
+        if (operator === "contains") return actual.toLowerCase().includes(expected.toLowerCase());
+        if (operator === "not_equals") return actual.toLowerCase() !== expected.toLowerCase();
+        return actual.toLowerCase() === expected.toLowerCase();
+    }
+
+    function conditionalPreviewClass(row, config, scope, field) {
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const formatting = details.conditionalFormatting && typeof details.conditionalFormatting === "object" ? details.conditionalFormatting : (config.conditionalFormatting || {});
+        if (formatting.enabled === false || !Array.isArray(formatting.rules)) return "";
+        const rank = { info: 1, warning: 2, critical: 3 };
+        let selected = "";
+        formatting.rules.forEach(rule => {
+            if (String(rule.scope || "row") !== scope || (scope === "cell" && String(rule.field || "") !== String(field || ""))) return;
+            if (!conditionalPreviewMatches(row, rule)) return;
+            const severity = String(rule.severity || "critical").toLowerCase();
+            if ((rank[severity] || 0) > (rank[selected] || 0)) selected = severity;
+        });
+        return selected ? "is-" + selected : "";
+    }
+
     function discover() {
         const message = byId("summaryTableDiscoveryMessage");
         try {
@@ -470,17 +506,21 @@
             preview.innerHTML = '<div class="text-muted small p-3">Select at least one visible column to preview the table.</div>';
             return;
         }
-        const previewRows = rows.slice(0, 10);
+        const previewRows = rows.slice(0, 10), previewConfig = getConfig();
         preview.innerHTML = '<table class="table table-sm table-striped align-middle mb-0"><thead><tr>' +
             columns.map(column => '<th>' + escapeHtml(column.label) + '</th>').join("") +
-            '</tr></thead><tbody>' + previewRows.map(row => '<tr>' + columns.map(column => {
-                let value = row[column.field];
-                if (value !== null && typeof value === "object") value = JSON.stringify(value);
-                if (value === null || value === undefined) value = "";
-                if (column.format === "percentage" && value !== "") value = String(value) + "%";
-                if (column.format === "number" && value !== "" && Number.isFinite(Number(value))) value = Number(value).toLocaleString();
-                return '<td>' + escapeHtml(value) + '</td>';
-            }).join("") + '</tr>').join("") + '</tbody></table>' +
+            '</tr></thead><tbody>' + previewRows.map(row => {
+                const rowClass = conditionalPreviewClass(row, previewConfig, "row");
+                return '<tr class="' + rowClass + '">' + columns.map(column => {
+                    let value = row[column.field];
+                    if (value !== null && typeof value === "object") value = JSON.stringify(value);
+                    if (value === null || value === undefined) value = "";
+                    if (column.format === "percentage" && value !== "") value = String(value) + "%";
+                    if (column.format === "number" && value !== "" && Number.isFinite(Number(value))) value = Number(value).toLocaleString();
+                    const cellClass = conditionalPreviewClass(row, previewConfig, "cell", column.field);
+                    return '<td class="' + cellClass + '">' + escapeHtml(value) + '</td>';
+                }).join("") + '</tr>';
+            }).join("") + '</tbody></table>' +
             (rows.length > previewRows.length ? '<div class="small text-muted p-2">Preview limited to the first 10 rows.</div>' : "");
     }
 
