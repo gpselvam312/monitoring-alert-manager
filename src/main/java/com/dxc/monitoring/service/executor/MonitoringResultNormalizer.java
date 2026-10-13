@@ -139,8 +139,8 @@ public class MonitoringResultNormalizer
             envelope = new LinkedHashMap<>();
             envelope.put("schemaVersion", 1);
             envelope.put("executionState", executionState(executionStatus));
-            MonitoringResult.ResultStatus parsedStatus = parsed instanceof Map<?, ?> parsedMap
-                    ? parseStatus(parsedMap.get("status")) : null;
+            MonitoringResult.ResultStatus parsedStatus = parsed instanceof Map<?, ?> sourceMap
+                    ? parseStatus(sourceMap.get("status")) : null;
             if (parsedStatus != null)
             {
                 resultStatus = parsedStatus;
