@@ -697,25 +697,126 @@
             <div>
                 <div class="app-card-title">Result Parser Configuration</div>
                 <div class="app-card-subtitle">
-                    Optional parser for legacy script or API output. JSON output is detected automatically by default.
+                    Choose how the script or API response should be interpreted. The raw response format is independent of the widget used to display it.
                 </div>
             </div>
         </div>
 
         <div class="app-card-body">
-            <label for="resultParserConfig" class="form-label">Parser JSON</label>
-            <textarea id="resultParserConfig"
+            <!-- Bound value submitted to the existing backend field. The GUI below generates this JSON. -->
+            <textarea id="resultParserConfigValue"
                       th:field="*{resultParserConfig}"
-                      class="form-control form-control-code"
-                      rows="5"
-                      maxlength="10000"
-                      placeholder='{"type":"DELIMITED","delimiter":"|","headerRow":true}'></textarea>
-            <div class="form-text">
-                Supported types: AUTO, DELIMITED, KEY_VALUE and REGEX. Examples:
-                DELIMITED uses delimiter/headerRow; KEY_VALUE uses separator/ignorePrefixes;
-                REGEX uses fields with key, pattern, group and optional type (string, number, integer or percentage).
-                Leave as {} for automatic JSON detection and plain-text fallback.
+                      class="d-none"
+                      aria-hidden="true"
+                      tabindex="-1"></textarea>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="resultParserType" class="form-label">Response format</label>
+                    <select id="resultParserType" class="form-select">
+                        <option value="AUTO">Auto-detect JSON (plain-text fallback)</option>
+                        <option value="JSON">JSON</option>
+                        <option value="DELIMITED">Delimited text (CSV / TSV / pipe-separated)</option>
+                        <option value="KEY_VALUE">Key-value pairs</option>
+                        <option value="REGEX">Plain text with pattern extraction</option>
+                    </select>
+                    <div class="form-text">Auto-detect is the default. Choose a format explicitly when the output is known.</div>
+                </div>
             </div>
+
+            <div id="resultParserDelimitedOptions" class="row g-3 mt-1 d-none">
+                <div class="col-md-4">
+                    <label for="resultParserDelimiterPreset" class="form-label">Delimiter</label>
+                    <select id="resultParserDelimiterPreset" class="form-select">
+                        <option value="|">Pipe (|)</option>
+                        <option value=",">Comma (,)</option>
+                        <option value="\t">Tab</option>
+                        <option value=";">Semicolon (;)</option>
+                        <option value="custom">Custom delimiter</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-none" id="resultParserCustomDelimiterWrap">
+                    <label for="resultParserCustomDelimiter" class="form-label">Custom delimiter</label>
+                    <input id="resultParserCustomDelimiter" type="text" class="form-control" maxlength="10" value="|">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input id="resultParserHeaderRow" type="checkbox" class="form-check-input" checked>
+                        <label for="resultParserHeaderRow" class="form-check-label">First row contains headers</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="resultParserCommentPrefix" class="form-label">Comment prefix (optional)</label>
+                    <input id="resultParserCommentPrefix" type="text" class="form-control" placeholder="#">
+                </div>
+                <div class="col-md-8 d-flex align-items-end gap-4">
+                    <div class="form-check mb-2">
+                        <input id="resultParserTrim" type="checkbox" class="form-check-input" checked>
+                        <label for="resultParserTrim" class="form-check-label">Trim field values</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input id="resultParserIgnoreBlankLines" type="checkbox" class="form-check-input" checked>
+                        <label for="resultParserIgnoreBlankLines" class="form-check-label">Ignore blank lines</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="alert alert-info py-2 mb-0">
+                        Delimited parsing currently handles one record per line. For complex CSV with quoted delimiters or multiline fields, use a simpler output format or review the parser limitation before relying on it.
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultParserKeyValueOptions" class="row g-3 mt-1 d-none">
+                <div class="col-md-4">
+                    <label for="resultParserKeyValueSeparator" class="form-label">Key/value separator</label>
+                    <select id="resultParserKeyValueSeparator" class="form-select">
+                        <option value="=">Equals (=)</option>
+                        <option value=":">Colon (:)</option>
+                        <option value="custom">Custom separator</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-none" id="resultParserCustomKeyValueSeparatorWrap">
+                    <label for="resultParserCustomKeyValueSeparator" class="form-label">Custom separator</label>
+                    <input id="resultParserCustomKeyValueSeparator" type="text" class="form-control" maxlength="10" value="=">
+                </div>
+                <div class="col-md-8">
+                    <label for="resultParserIgnorePrefixes" class="form-label">Ignore lines starting with (optional)</label>
+                    <textarea id="resultParserIgnorePrefixes" class="form-control" rows="2" placeholder="#&#10;INFO:"></textarea>
+                    <div class="form-text">Enter one ignored prefix per line, for example # or INFO:.</div>
+                </div>
+            </div>
+
+            <div id="resultParserRegexOptions" class="mt-3 d-none">
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                    <div>
+                        <label class="form-label mb-0">Fields to extract</label>
+                        <div class="form-text">Each pattern must contain a capture group. Group 1 is used by default.</div>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="resultParserAddRegexField">
+                        <i class="bi bi-plus-lg me-1"></i>Add field
+                    </button>
+                </div>
+                <div id="resultParserRegexFields" class="d-grid gap-2"></div>
+                <div id="resultParserRegexEmpty" class="text-muted small">Add at least one field and a regular expression to use pattern extraction.</div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                <div class="form-text">These controls generate the parser configuration automatically. You do not need to write JSON.</div>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="resultParserToggleAdvanced" aria-expanded="false">
+                    Advanced JSON
+                </button>
+            </div>
+
+            <div id="resultParserAdvancedOptions" class="mt-3 d-none">
+                <label for="resultParserAdvancedJson" class="form-label">Advanced parser configuration</label>
+                <textarea id="resultParserAdvancedJson" class="form-control form-control-code" rows="7" maxlength="10000" spellcheck="false"></textarea>
+                <div class="d-flex align-items-center justify-content-between gap-2 mt-2">
+                    <div id="resultParserAdvancedMessage" class="form-text" role="status">Advanced JSON is optional. Apply it to load its values into the form.</div>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="resultParserApplyAdvanced">Apply JSON</button>
+                </div>
+            </div>
+
+            <div id="resultParserConfigError" class="alert alert-danger py-2 mt-3 d-none" role="alert"></div>
         </div>
 
     </div>
@@ -1106,6 +1207,8 @@
 
 
 <!-- Monitoring Job Machine Filtering -->
+
+<script th:src="@{/js/result-parser-config.js}"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
