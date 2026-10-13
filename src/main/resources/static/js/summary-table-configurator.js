@@ -603,8 +603,12 @@
             });
             refreshConfigFromEditor();
         });
-        byId("summaryTableFieldEditor").addEventListener("change", function () {
+        byId("summaryTableFieldEditor").addEventListener("change", function (event) {
             refreshConfigFromEditor();
+            if (event.target.classList.contains("summary-config-groupable")) {
+                renderFields();
+                refreshConfigFromEditor();
+            }
         });
         byId("summaryTableFieldEditor").addEventListener("input", function (event) {
             if (event.target.classList.contains("summary-config-label")) refreshConfigFromEditor();
@@ -645,7 +649,10 @@
         });
         const modal = byId("dashboardWidgetModal");
         if (modal) {
-            modal.addEventListener("shown.bs.modal", showForSelectedType);
+            modal.addEventListener("shown.bs.modal", function () {
+                lastWidgetType = type.value;
+                showForSelectedType();
+            });
             modal.addEventListener("hidden.bs.modal", function () {
                 sample.value = "";
                 state.sample = null;
