@@ -158,11 +158,13 @@
         if (rowStatus.enabled !== false && rowStatus.field) return statusClass(rowValue(row, rowStatus.field), rowStatus);
         const thresholds = (config.details && config.details.thresholds && typeof config.details.thresholds === "object")
             ? config.details.thresholds : (config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {});
+        let hasWarning = false;
         for (const field of Object.keys(thresholds)) {
             const result = thresholdClass(rowValue(row, field), thresholds[field]);
-            if (result === "is-critical" || result === "is-warning") return result;
+            if (result === "is-critical") return "is-critical";
+            if (result === "is-warning") hasWarning = true;
         }
-        return "";
+        return hasWarning ? "is-warning" : "";
     }
 
     function summaryClass(value, rules) {
