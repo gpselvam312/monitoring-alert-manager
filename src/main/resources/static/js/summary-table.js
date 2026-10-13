@@ -368,12 +368,15 @@
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
+            const content = '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
+                '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong>';
+            if (String(card.filterType || "").startsWith("custom-")) {
+                return '<div class="server-health-summary-item server-health-summary-' + status + ' summary-table-card summary-table-card-static">' + content + '</div>';
+            }
             return '<button type="button" class="server-health-summary-item server-health-summary-' + status +
                 ' server-health-summary-filter summary-table-card' + (active ? ' is-active' : '') +
                 '" data-card-filter-type="' + esc(card.filterType) + '" data-card-filter-field="' + esc(card.filterField || '') +
-                '" aria-label="' + esc(card.label) + '" aria-pressed="' + Boolean(active) + '">' +
-                '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
-                '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong></button>';
+                '" aria-label="' + esc(card.label) + '" aria-pressed="' + Boolean(active) + '">' + content + '</button>';
         }).join("") + '</div>';
     }
 
