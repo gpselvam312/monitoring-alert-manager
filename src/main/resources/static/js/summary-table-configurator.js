@@ -190,6 +190,7 @@
 
     function renderRegexFields() {
         const config = getConfig();
+        if (isSummary) renderSummaryCards(config);
         const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
         const fields = Array.isArray(parser.fields) ? parser.fields : [];
         const host = byId("summaryTableRegexFields");
@@ -614,6 +615,9 @@
                 showAggregates: byId("summaryTableGroupByAggregates").checked
             });
             summaryConfig.details.conditionalFormatting = readConditionalFormatting();
+            summaryConfig.details.summaryCards = readSummaryCards();
+            summaryConfig.summary = Object.assign({}, summaryConfig.summary || {});
+            summaryConfig.summary.cards = summaryConfig.details.summaryCards;
             setConfig(summaryConfig);
             return;
         }
