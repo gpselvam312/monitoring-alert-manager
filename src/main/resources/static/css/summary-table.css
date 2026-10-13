@@ -165,3 +165,11 @@
 .summary-table-grid td.is-critical, #summaryTablePreview td.is-critical { background: color-mix(in srgb, var(--danger, #dc3545) 18%, transparent); }
 .summary-table-grid td.is-warning, #summaryTablePreview td.is-warning { background: color-mix(in srgb, var(--warning, #ffc107) 25%, transparent); }
 .summary-table-grid td.is-info, #summaryTablePreview td.is-info { background: color-mix(in srgb, var(--info, #0dcaf0) 18%, transparent); }
+
+/* Apply row colors to cells too, so Bootstrap table striping cannot hide the highlight. */
+.summary-table-grid tbody tr.summary-table-row.is-critical > td,
+#summaryTablePreview tbody tr.is-critical > td { background-color: color-mix(in srgb, var(--danger, #dc3545) 13%, var(--bs-table-bg, transparent)); }
+.summary-table-grid tbody tr.summary-table-row.is-warning > td,
+#summaryTablePreview tbody tr.is-warning > td { background-color: color-mix(in srgb, var(--warning, #ffc107) 18%, var(--bs-table-bg, transparent)); }
+.summary-table-grid tbody tr.summary-table-row.is-info > td,
+#summaryTablePreview tbody tr.is-info > td { background-color: color-mix(in srgb, var(--info, #0dcaf0) 12%, var(--bs-table-bg, transparent)); }
