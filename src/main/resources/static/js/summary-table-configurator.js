@@ -408,22 +408,29 @@
                 label: saved && saved.label ? saved.label : humanize(field),
                 visible: saved ? saved.visible !== false : true,
                 format: saved && saved.format ? String(saved.format).toLowerCase() : "",
-                displayStyle: saved && saved.displayStyle ? String(saved.displayStyle).toLowerCase() : "text",
                 aggregation: saved && saved.aggregation ? String(saved.aggregation).toLowerCase() : "none",
+                summaryCard: false,
                 sortable: saved ? saved.sortable !== false : true,
                 searchable: saved ? saved.searchable !== false : true,
                 groupable: saved ? saved.groupable !== false : true
             };
         });
+        const summary = config.summary && typeof config.summary === "object" ? config.summary : {};
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const oldCards = Array.isArray(summary.cards) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : null);
+        const selectedCardFields = new Set((oldCards || []).map(card => String(card.field || "")).filter(Boolean));
+        fields.forEach(item => {
+            const numeric = (state.rows || []).some(row => { const value = rowValueForConfigurator(row, item.field); return value !== null && value !== undefined && value !== "" && typeof value !== "boolean" && Number.isFinite(Number(value)); });
+            item.summaryCard = selectedCardFields.has(item.field) || (!oldCards && numeric);
+        });
         const formats = [
             ["", "Default"], ["number", "Number"], ["percentage", "Percentage"],
             ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]
         ];
-        const displayStyles = [["text", "Text"], ["checkbox", "Checkbox"], ["toggle", "Toggle"]];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
-            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Boolean display</th><th>Group aggregate</th><th>Groupable</th></tr></thead><tbody>' +
+            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Group aggregate</th><th>Groupable</th><th>Summary card</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
@@ -433,13 +440,11 @@
                 '<td><select class="form-select form-select-sm summary-config-format" aria-label="Format for ' + escapeHtml(item.field) + '">' +
                 formats.map(option => '<option value="' + option[0] + '"' + (item.format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
-                '<td><select class="form-select form-select-sm summary-config-display-style" aria-label="Boolean display for ' + escapeHtml(item.field) + '">' +
-                displayStyles.map(option => '<option value="' + option[0] + '"' + (item.displayStyle === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
-                '</select></td>' +
                 '<td><select class="form-select form-select-sm summary-config-aggregation" aria-label="Aggregation for ' + escapeHtml(item.field) + '">' +
                 aggregations.map(option => '<option value="' + option[0] + '"' + (item.aggregation === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
-                '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td></tr>').join("") +
+                '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>' +
+                '<td><input class="form-check-input summary-config-summary-card" type="checkbox" aria-label="Include ' + escapeHtml(item.field) + ' in summary cards"' + (item.summaryCard ? ' checked' : '') + '></td></tr>').join("") +
             '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
             : '<div class="text-muted small">No fields were found in this collection.</div>';
 
@@ -453,7 +458,6 @@
         sort.value = allFields.includes(previousSort) ? previousSort : "";
         renderGroupByOptions(config, fields);
         renderConditionalRules(config);
-        renderSummaryCards(config);
         renderTypeMappingOptions();
         renderPreview();
     }
@@ -467,8 +471,8 @@
             sortable: row.getAttribute("data-sortable") !== "false",
             searchable: row.getAttribute("data-searchable") !== "false",
             format: row.querySelector(".summary-config-format").value,
-            displayStyle: row.querySelector(".summary-config-display-style").value,
-            aggregation: row.querySelector(".summary-config-aggregation").value
+            aggregation: row.querySelector(".summary-config-aggregation").value,
+            summaryCard: row.querySelector(".summary-config-summary-card").checked
         }));
     }
 
@@ -485,58 +489,6 @@
         return String(field || "").split(".").reduce((value, key) => value == null ? undefined : value[key], row);
     }
 
-    function renderSummaryCards(config) {
-        const host = byId("summaryTableSummaryCards");
-        if (!host) return;
-        const summary = config.summary && typeof config.summary === "object" ? config.summary : {};
-        const details = config.details && typeof config.details === "object" ? config.details : {};
-        const hasSavedCards = Array.isArray(details.summaryCards) || Array.isArray(summary.cards);
-        const cards = Array.isArray(details.summaryCards) ? details.summaryCards.slice() : (Array.isArray(summary.cards) ? summary.cards.slice() : []);
-        if (!hasSavedCards && Array.isArray(state.rows) && state.rows.length) {
-            cards.push({ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "" });
-            (state.fields || []).filter(field => state.rows.some(row => row[field] !== null && row[field] !== undefined && row[field] !== "" && Number.isFinite(Number(row[field]))))
-                .forEach(field => cards.push({ label: humanize(field) + " Total", field, operation: "SUM", format: "number" }));
-        }
-        const fields = Array.from(new Set([...(state.fields || []), ...cards.map(card => String(card.field || "")).filter(Boolean)]));
-        const operations = [["COUNT_ROWS","Count rows"],["COUNT_NON_EMPTY","Count non-empty values"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
-        const numericOnly = new Set(["SUM", "AVG", "MAX", "MIN"]);
-        const isNumericField = field => !!field && (state.rows || []).some(row => {
-            const value = rowValueForConfigurator(row, field);
-            return value !== null && value !== undefined && value !== "" && typeof value !== "boolean" && Number.isFinite(Number(value));
-        });
-        const options = selected => '<option value="">No field / all rows</option>' + fields.map(field =>
-            '<option value="' + escapeHtml(field) + '"' + (String(selected || "") === field ? " selected" : "") + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("");
-        host.innerHTML = cards.map((card, index) => '<div class="border rounded p-2 mb-2" data-summary-card><div class="row g-2 align-items-end">' +
-            '<div class="col-md-3"><label class="form-label small">Card label</label><input class="form-control form-control-sm summary-card-label" maxlength="100" value="' + escapeHtml(card.label || "") + '"></div>' +
-            '<div class="col-md-3"><label class="form-label small">Field</label><select class="form-select form-select-sm summary-card-field">' + options(card.field) + '</select></div>' +
-            '<div class="col-md-3"><label class="form-label small">Calculation</label><select class="form-select form-select-sm summary-card-operation">' +
-            operations.map(op => '<option value="' + op[0] + '"' + (String(card.operation || "COUNT_ROWS") === op[0] ? " selected" : "") +
-                (numericOnly.has(op[0]) && !isNumericField(card.field) ? " disabled" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
-            '<div class="col-md-2"><label class="form-label small">Format</label><select class="form-select form-select-sm summary-card-format">' +
-            [["","Default"],["number","Number"],["percentage","Percentage"],["duration","Duration"]].map(op => '<option value="' + op[0] + '"' + (String(card.format || "") === op[0] ? " selected" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
-            '<div class="col-md-1"><button type="button" class="btn btn-outline-danger btn-sm summary-card-remove" aria-label="Remove summary card ' + (index + 1) + '">×</button></div>' +
-            '<div class="col-md-4"><label class="form-label small">Filter field (optional)</label><select class="form-select form-select-sm summary-card-filter-field"><option value="">No filter</option>' +
-            fields.map(field => '<option value="' + escapeHtml(field) + '"' + (String(card.filterField || "") === field ? " selected" : "") + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("") + '</select></div>' +
-            '<div class="col-md-3"><label class="form-label small">Filter condition</label><select class="form-select form-select-sm summary-card-filter-operator">' +
-            [["equals","Equals"],["not_equals","Not equals"],["contains","Contains"],["gt","Greater than"],["gte","At least"],["lt","Less than"],["lte","At most"]].map(op => '<option value="' + op[0] + '"' + (String(card.filterOperator || "equals") === op[0] ? " selected" : "") + '>' + op[1] + '</option>').join("") + '</select></div>' +
-            '<div class="col-md-5"><label class="form-label small">Filter value</label><input class="form-control form-control-sm summary-card-filter-value" value="' + escapeHtml(card.filterValue == null ? "" : card.filterValue) + '" placeholder="e.g. CRITICAL"></div>' +
-            '</div></div>').join("") || '<div class="text-muted small">No summary cards configured. Add cards to choose which metrics appear.</div>';
-    }
-
-    function readSummaryCards() {
-        const host = byId("summaryTableSummaryCards");
-        if (!host) return [];
-        return Array.from(host.querySelectorAll("[data-summary-card]")).map(row => ({
-            label: row.querySelector(".summary-card-label").value.trim() || "Summary",
-            field: row.querySelector(".summary-card-field").value,
-            operation: row.querySelector(".summary-card-operation").value,
-            format: row.querySelector(".summary-card-format").value,
-            filterField: row.querySelector(".summary-card-filter-field").value,
-            filterOperator: row.querySelector(".summary-card-filter-operator").value,
-            filterValue: row.querySelector(".summary-card-filter-value").value
-        }));
-    }
-
     function buildConfig() {
         const config = getConfig();
         config.renderer = "SUMMARY_TABLE";
@@ -546,7 +498,8 @@
         else delete config.rowPath;
 
         config.details = config.details && typeof config.details === "object" ? config.details : {};
-        config.details.columns = readFieldEditor();
+        const editedColumns = readFieldEditor();
+        config.details.columns = editedColumns.map(({ summaryCard, ...column }) => column);
         config.details.search = Object.assign({}, config.details.search || {}, { enabled: byId("summaryTableSearchEnabled").checked });
         const defaultField = byId("summaryTableDefaultSort").value;
         config.details.sorting = Object.assign({}, config.details.sorting || {}, {
@@ -563,9 +516,15 @@
             showAggregates: byId("summaryTableGroupByAggregates").checked
         });
         config.details.conditionalFormatting = readConditionalFormatting();
-        config.details.summaryCards = readSummaryCards();
+        delete config.details.summaryCards;
         config.summary = Object.assign({}, config.summary || {});
-        config.summary.cards = config.details.summaryCards;
+        config.summary.cards = [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }, ...editedColumns.filter(column => column.summaryCard).map(column => {
+            const aggregate = String(column.aggregation || "none").toLowerCase();
+            const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate]
+                || (isNumericSummaryField(column.field) ? "SUM" : "COUNT_NON_EMPTY");
+            return { label: column.label || humanize(column.field), field: column.field, operation,
+                format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : "") };
+        })];
         if (config.summary.enabled === undefined) config.summary.enabled = true;
         return config;
     }
@@ -603,8 +562,7 @@
                     const boolValue = rawBoolean ? (value === true || String(value).trim().toLowerCase() === "true")
                         : ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes"].includes(statusValue);
                     const cellClass = conditionalPreviewClass(row, previewConfig, "cell", column.field);
-                    if (isBoolean && String(column.displayStyle || "text").toLowerCase() === "checkbox") return '<td class="' + cellClass + '"><input class="form-check-input summary-table-boolean" type="checkbox" disabled ' + (boolValue ? 'checked' : '') + '></td>';
-                    if (isBoolean && String(column.displayStyle || "text").toLowerCase() === "toggle") return '<td class="' + cellClass + '"><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '"><span></span></span></td>';
+                    if (isBoolean) return '<td class="' + cellClass + '"><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '"><span></span></span></td>';
                     if (value === null || value === undefined) value = "";
                     if (column.format === "percentage" && value !== "") value = String(value) + "%";
                     if (column.format === "number" && value !== "" && Number.isFinite(Number(value))) value = Number(value).toLocaleString();
@@ -644,9 +602,15 @@
                 showAggregates: byId("summaryTableGroupByAggregates").checked
             });
             summaryConfig.details.conditionalFormatting = readConditionalFormatting();
-            summaryConfig.details.summaryCards = readSummaryCards();
+            delete summaryConfig.details.summaryCards;
             summaryConfig.summary = Object.assign({}, summaryConfig.summary || {});
-            summaryConfig.summary.cards = summaryConfig.details.summaryCards;
+            summaryConfig.summary.cards = [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number" }, ...readFieldEditor().filter(column => column.summaryCard).map(column => {
+                const aggregate = String(column.aggregation || "none").toLowerCase();
+                const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate]
+                    || (isNumericSummaryField(column.field) ? "SUM" : "COUNT_NON_EMPTY");
+                return { label: column.label || humanize(column.field), field: column.field, operation,
+                    format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : "") };
+            })];
             setConfig(summaryConfig);
             return;
         }
@@ -798,7 +762,6 @@
                         pagination: { enabled: true, pageSize: 10 },
                         groupBy: { enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true },
                         conditionalFormatting: { enabled: true, rules: [] },
-                        summaryCards: []
                     },
                     summary: { enabled: true, cards: [] }
                 };
@@ -846,7 +809,6 @@
         byId("dashboardWidgetAdvancedConfig").open = false;
         byId("summaryTableGroupBySection").hidden = !isSummary;
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
-        byId("summaryTableSummaryCardsSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
         byId("summaryTableFieldEditorGroup").hidden = !isTable;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
@@ -1095,45 +1057,6 @@
         });
         byId("summaryTableConditionalRules").addEventListener("input", function (event) {
             if (event.target.classList.contains("summary-conditional-value")) refreshConfigFromEditor();
-        });
-        byId("summaryTableAddSummaryCard").addEventListener("click", function () {
-            const config = getConfig();
-            config.summary = Object.assign({}, config.summary || {});
-            const cards = readSummaryCards();
-            cards.push({ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "" });
-            config.summary.cards = cards;
-            config.details = config.details && typeof config.details === "object" ? config.details : {};
-            config.details.summaryCards = cards;
-            setConfig(config);
-            renderSummaryCards(config);
-            refreshConfigFromEditor();
-        });
-        byId("summaryTableSummaryCards").addEventListener("click", function (event) {
-            const button = event.target.closest(".summary-card-remove");
-            if (!button) return;
-            button.closest("[data-summary-card]").remove();
-            refreshConfigFromEditor();
-        });
-        byId("summaryTableSummaryCards").addEventListener("change", function (event) {
-            if (event.target.matches(".summary-card-field")) {
-                const row = event.target.closest("[data-summary-card]");
-                const operation = row.querySelector(".summary-card-operation");
-                const field = event.target.value;
-                if (!isNumericSummaryField(field) && ["SUM", "AVG", "MAX", "MIN"].includes(operation.value)) {
-                    operation.value = field ? "COUNT_NON_EMPTY" : "COUNT_ROWS";
-                }
-                const config = getConfig();
-                const currentCards = readSummaryCards();
-                config.summary = Object.assign({}, config.summary || {});
-                config.summary.cards = currentCards;
-                config.details = config.details && typeof config.details === "object" ? config.details : {};
-                config.details.summaryCards = currentCards;
-                renderSummaryCards(config);
-            }
-            refreshConfigFromEditor();
-        });
-        byId("summaryTableSummaryCards").addEventListener("input", function (event) {
-            if (event.target.matches("input")) refreshConfigFromEditor();
         });
         byId("summaryTableConditionalFormattingEnabled").addEventListener("change", function () {
             const config = getConfig();
