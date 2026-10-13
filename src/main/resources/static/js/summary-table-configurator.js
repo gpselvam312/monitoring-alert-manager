@@ -380,17 +380,25 @@
     }
 
     function renderPreview() {
+        const preview = byId("summaryTablePreview");
+        const count = byId("summaryTablePreviewCount");
+        if (!preview || !count) return;
         const collection = selectedCollection();
-        if (!collection) return;
-        const rows = collection.rows;
-        const columns = readFieldEditor().filter(column => column.visible);
-        byId("summaryTablePreviewCount").textContent = rows.length + " sample row(s)";
+        if (!collection || !Array.isArray(collection.rows)) {
+            count.textContent = "";
+            preview.innerHTML = '<div class="text-muted small p-3">Load a sample response or the latest job output to preview the table.</div>';
+            return;
+        }
+        const rows = collection.rows.filter(row => row && typeof row === "object");
+        const editor = byId("summaryTableFieldEditor");
+        const columns = editor ? readFieldEditor().filter(column => column && column.visible) : [];
+        count.textContent = rows.length + " sample row(s)";
         if (!columns.length) {
-            byId("summaryTablePreview").innerHTML = '<div class="text-muted small p-3">Select at least one visible column to preview the table.</div>';
+            preview.innerHTML = '<div class="text-muted small p-3">Select at least one visible column to preview the table.</div>';
             return;
         }
         const previewRows = rows.slice(0, 10);
-        byId("summaryTablePreview").innerHTML = '<table class="table table-sm table-striped align-middle mb-0"><thead><tr>' +
+        preview.innerHTML = '<table class="table table-sm table-striped align-middle mb-0"><thead><tr>' +
             columns.map(column => '<th>' + escapeHtml(column.label) + '</th>').join("") +
             '</tr></thead><tbody>' + previewRows.map(row => '<tr>' + columns.map(column => {
                 let value = row[column.field];
@@ -567,8 +575,14 @@
                 });
                 if (!response.ok) throw new Error("Unable to load the latest result (HTTP " + response.status + ").");
                 const result = await response.json();
-                const output = String(result.rawOutput || "").trim() ? result.rawOutput : (result.resultData || "");
-                if (!String(output).trim()) {
+                if (!result || typeof result !== "object") {
+                    message.textContent = "The latest job response was empty or invalid.";
+                    return;
+                }
+                const rawOutput = typeof result.rawOutput === "string" ? result.rawOutput : "";
+                const resultData = typeof result.resultData === "string" ? result.resultData : "";
+                const output = rawOutput.trim() ? rawOutput : resultData;
+                if (!output.trim()) {
                     message.textContent = result.message || "No saved output is available. Run the job or paste a sample response.";
                     return;
                 }
@@ -688,6 +702,13 @@
             modal.addEventListener("shown.bs.modal", function () {
                 lastWidgetType = type.value;
                 showForSelectedType();
+                const sourceType = byId("dashboardWidgetDataSourceType");
+                const jobSelect = byId("dashboardWidgetJobSourceId");
+                const loadLatestButton = byId("summaryTableLoadLatest");
+                if (type.value === "SUMMARY_TABLE" && sourceType && sourceType.value === "MONITORING_JOB"
+                    && jobSelect && String(jobSelect.value || "").trim() && loadLatestButton) {
+                    loadLatestButton.click();
+                }
             });
             modal.addEventListener("hidden.bs.modal", function () {
                 sample.value = "";
