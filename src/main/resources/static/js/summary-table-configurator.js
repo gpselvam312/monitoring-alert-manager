@@ -35,6 +35,8 @@
                 : (selectedSeparator === "\\t" ? "\t" : selectedSeparator);
             parser.ignorePrefixes = byId("summaryTableIgnoredPrefixes").value
                 .split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+        } else if (type === "REGEX") {
+            parser.fields = readRegexFields();
         }
         return parser;
     }
@@ -160,6 +162,37 @@
     function selectedCollection() {
         const path = byId("summaryTableRowPath").value;
         return state.collections.find(item => item.path === path) || null;
+    }
+
+    function readRegexFields() {
+        return Array.from(byId("summaryTableRegexFields").querySelectorAll("[data-regex-field]")).map(row => ({
+            key: row.querySelector(".summary-regex-key").value.trim(),
+            pattern: row.querySelector(".summary-regex-pattern").value,
+            group: Number.parseInt(row.querySelector(".summary-regex-group").value, 10),
+            type: row.querySelector(".summary-regex-type").value,
+            required: row.querySelector(".summary-regex-required").checked
+        }));
+    }
+
+    function renderRegexFields() {
+        const config = getConfig();
+        const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
+        const fields = Array.isArray(parser.fields) ? parser.fields : [];
+        const host = byId("summaryTableRegexFields");
+        host.innerHTML = fields.map((field, index) =>
+            '<div class="border rounded p-2 mb-2" data-regex-field>' +
+            '<div class="row g-2 align-items-end">' +
+            '<div class="col-md-3"><label class="form-label small">Output field</label><input class="form-control form-control-sm summary-regex-key" maxlength="100" value="' + escapeHtml(field.key || "") + '"></div>' +
+            '<div class="col-md-4"><label class="form-label small">Regular expression</label><input class="form-control form-control-sm font-monospace summary-regex-pattern" value="' + escapeHtml(field.pattern || "") + '"></div>' +
+            '<div class="col-md-1"><label class="form-label small">Group</label><input class="form-control form-control-sm summary-regex-group" type="number" min="0" value="' + escapeHtml(field.group === undefined ? 1 : field.group) + '"></div>' +
+            '<div class="col-md-2"><label class="form-label small">Value type</label><select class="form-select form-select-sm summary-regex-type">' +
+            [["string","Text"],["number","Number"],["integer","Integer"],["percentage","Percentage"],["boolean","Boolean"]].map(option =>
+                '<option value="' + option[0] + '"' + (String(field.type || "string") === option[0] ? " selected" : "") + '>' + option[1] + '</option>').join("") +
+            '</select></div>' +
+            '<div class="col-md-1"><div class="form-check"><input class="form-check-input summary-regex-required" type="checkbox"' + (field.required === true ? " checked" : "") + '><label class="form-check-label small">Required</label></div></div>' +
+            '<div class="col-md-1"><button type="button" class="btn btn-outline-danger btn-sm summary-regex-remove" aria-label="Remove regex field ' + (index + 1) + '">×</button></div>' +
+            '</div></div>'
+        ).join("") || '<div class="text-muted small">Add one or more fields to extract values from the response.</div>';
     }
 
     function configuredColumns(config) {
@@ -361,6 +394,7 @@
         byId("summaryTableCustomSeparator").value = byId("summaryTableKeyValueSeparator").value === "custom" ? separatorValue : "";
         byId("summaryTableCustomSeparator").hidden = byId("summaryTableKeyValueSeparator").value !== "custom";
         byId("summaryTableIgnoredPrefixes").value = Array.isArray(parser.ignorePrefixes) ? parser.ignorePrefixes.join("\n") : "";
+        renderRegexFields();
         syncParserOptionVisibility();
         if (isSummary && state.sample) renderFields();
     }
@@ -373,6 +407,31 @@
 
         discoverButton.addEventListener("click", discover);
         const responseFormat = byId("summaryTableResponseFormat");
+        renderRegexFields();
+        byId("summaryTableAddRegexField").addEventListener("click", function () {
+            const fields = readRegexFields();
+            fields.push({ key: "", pattern: "", group: 1, type: "string", required: false });
+            const config = getConfig();
+            config.responseParser = Object.assign({}, config.responseParser || {}, { type: "REGEX", fields });
+            setConfig(config);
+            renderRegexFields();
+            responseFormat.value = "REGEX";
+            syncParserOptionVisibility();
+        });
+        byId("summaryTableRegexFields").addEventListener("click", function (event) {
+            if (!event.target.closest(".summary-regex-remove")) return;
+            event.target.closest("[data-regex-field]").remove();
+            if (sample.value.trim()) discover();
+            else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+        });
+        byId("summaryTableRegexFields").addEventListener("change", function () {
+            if (sample.value.trim()) discover();
+            else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+        });
+        byId("summaryTableRegexFields").addEventListener("input", function () {
+            if (sample.value.trim()) discover();
+            else setConfig(Object.assign(getConfig(), { responseParser: currentParserConfig() }));
+        });
         responseFormat.addEventListener("change", function () {
             syncParserOptionVisibility();
             if (sample.value.trim()) discover();
