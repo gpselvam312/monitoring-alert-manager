@@ -264,7 +264,7 @@
         byId("summaryTableConditionalFormattingEnabled").checked = formatting.enabled !== false;
         const fields = Array.from(new Set([...(state.fields || []), ...rules.map(rule => String(rule.field || "")).filter(Boolean)]));
         const operators = [["equals","Equals"],["not_equals","Not equals"],["contains","Contains"],["gt","Greater than"],["gte","Greater than or equal"],["lt","Less than"],["lte","Less than or equal"],["empty","Is empty"],["missing","Is missing"]];
-        const severities = [["critical","Red — Critical"],["warning","Yellow — Warning"],["info","Blue — Info"]];
+        const severities = [["critical","Red — Critical"],["warning","Yellow — Warning"],["healthy","Green — Healthy / Success"],["info","Blue — Info"]];
         const scopes = [["row","Entire row"],["cell","Matching cell"]];
         host.innerHTML = rules.length ? rules.map((rule,index) => {
             const operator = String(rule.operator || "equals"), hideValue = ["empty","missing"].includes(operator);
@@ -406,6 +406,8 @@
                 label: saved && saved.label ? saved.label : humanize(field),
                 visible: saved ? saved.visible !== false : true,
                 format: saved && saved.format ? saved.format : "",
+                displayStyle: saved && saved.displayStyle ? saved.displayStyle : "text",
+                aggregation: saved && saved.aggregation ? saved.aggregation : "none",
                 sortable: saved ? saved.sortable !== false : true,
                 searchable: saved ? saved.searchable !== false : true,
                 groupable: saved ? saved.groupable !== false : true
@@ -415,9 +417,11 @@
             ["", "Default"], ["number", "Number"], ["percentage", "Percentage"],
             ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]
         ];
+        const displayStyles = [["text", "Text"], ["checkbox", "Checkbox"], ["toggle", "Toggle"]];
+        const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
-            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Groupable</th></tr></thead><tbody>' +
+            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Boolean display</th><th>Group aggregate</th><th>Groupable</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
@@ -426,6 +430,12 @@
                 '<td><input class="form-control form-control-sm summary-config-label" type="text" maxlength="120" value="' + escapeHtml(item.label) + '" aria-label="Label for ' + escapeHtml(item.field) + '"></td>' +
                 '<td><select class="form-select form-select-sm summary-config-format" aria-label="Format for ' + escapeHtml(item.field) + '">' +
                 formats.map(option => '<option value="' + option[0] + '"' + (item.format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
+                '</select></td>' +
+                '<td><select class="form-select form-select-sm summary-config-display-style" aria-label="Boolean display for ' + escapeHtml(item.field) + '">' +
+                displayStyles.map(option => '<option value="' + option[0] + '"' + (item.displayStyle === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
+                '</select></td>' +
+                '<td><select class="form-select form-select-sm summary-config-aggregation" aria-label="Aggregation for ' + escapeHtml(item.field) + '">' +
+                aggregations.map(option => '<option value="' + option[0] + '"' + (item.aggregation === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
                 '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td></tr>').join("") +
             '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
@@ -453,7 +463,9 @@
             groupable: row.querySelector(".summary-config-groupable").checked,
             sortable: row.getAttribute("data-sortable") !== "false",
             searchable: row.getAttribute("data-searchable") !== "false",
-            format: row.querySelector(".summary-config-format").value
+            format: row.querySelector(".summary-config-format").value,
+            displayStyle: row.querySelector(".summary-config-display-style").value,
+            aggregation: row.querySelector(".summary-config-aggregation").value
         }));
     }
 
@@ -752,6 +764,7 @@
         byId("dashboardWidgetAdvancedConfig").open = false;
         byId("summaryTableGroupBySection").hidden = !isSummary;
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
+        byId("summaryTableSummaryCardsSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
         byId("summaryTableFieldEditorGroup").hidden = !isTable;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
