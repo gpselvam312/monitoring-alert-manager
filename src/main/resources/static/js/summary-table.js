@@ -29,6 +29,30 @@
         return typeof value === "object" ? JSON.stringify(value) : String(value);
     }
 
+    function formatValue(value, format) {
+        if (value === null || value === undefined || value === "") return "";
+        const normalized = String(format || "").toLowerCase();
+        const number = numeric(value);
+        if ((normalized === "number") && number !== null) return number.toLocaleString();
+        if ((normalized === "percentage" || normalized === "percent") && number !== null) {
+            return number.toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
+        }
+        if (normalized === "duration" && number !== null) {
+            const seconds = Math.max(0, Math.floor(number));
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const remainingSeconds = seconds % 60;
+            return [hours, minutes, remainingSeconds]
+                .map(part => String(part).padStart(2, "0"))
+                .join(":");
+        }
+        if (normalized === "datetime") {
+            const date = new Date(value);
+            if (!Number.isNaN(date.getTime())) return date.toLocaleString();
+        }
+        return display(value);
+    }
+
     function getRows(result, config) {
         const payload = result && result.payload;
         const validRows = rows => Array.isArray(rows)
@@ -201,7 +225,7 @@
                     const cls = statusClass(value, (config.details && config.details.rowStatus) || config.rowStatus || {});
                     return '<td><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
                 }
-                return '<td>' + esc(display(value)) + '</td>';
+                return '<td>' + esc(formatValue(value, column.format)) + '</td>';
             }).join("") + '</tr>';
     }
 
