@@ -147,7 +147,7 @@
     }
 
     function setConfig(config) {
-        byId("dashboardWidgetFieldConfigJson").value = JSON.stringify(config, null, 2);
+        byId("dashboardWidgetFieldConfigJson").value = JSON.stringify(config);
         byId("dashboardWidgetFieldConfigJson").dispatchEvent(new Event("input", { bubbles: true }));
         renderPreview();
     }
