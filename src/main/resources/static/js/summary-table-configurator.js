@@ -202,6 +202,28 @@
             .map(item => [String(item.field || item.key), item]));
     }
 
+    function renderGroupByOptions(config, fields) {
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const groupBy = details.groupBy && typeof details.groupBy === "object" ? details.groupBy : {};
+        const selected = Array.isArray(groupBy.fields) ? groupBy.fields.map(String) : [];
+        const select = byId("summaryTableGroupByFields");
+        select.innerHTML = fields.map(item =>
+            '<option value="' + escapeHtml(item.field) + '"' + (selected.includes(item.field) ? " selected" : "") + '>' +
+            escapeHtml(item.label) + ' (' + escapeHtml(item.field) + ')</option>'
+        ).join("");
+        select.disabled = fields.length === 0;
+        byId("summaryTableGroupByEnabled").checked = groupBy.enabled === true;
+        byId("summaryTableGroupByInitialState").value = ["EXPANDED", "COLLAPSED"].includes(String(groupBy.initialState || "").toUpperCase())
+            ? String(groupBy.initialState).toUpperCase() : "EXPANDED";
+        byId("summaryTableGroupByOrder").value = ["VALUE_ASC", "VALUE_DESC", "COUNT_ASC", "COUNT_DESC"].includes(String(groupBy.order || "").toUpperCase())
+            ? String(groupBy.order).toUpperCase() : "VALUE_ASC";
+        byId("summaryTableGroupByAggregates").checked = groupBy.showAggregates !== false;
+        select.disabled = fields.length === 0 || !byId("summaryTableGroupByEnabled").checked;
+        byId("summaryTableGroupByInitialState").disabled = !byId("summaryTableGroupByEnabled").checked;
+        byId("summaryTableGroupByOrder").disabled = !byId("summaryTableGroupByEnabled").checked;
+        byId("summaryTableGroupByAggregates").disabled = !byId("summaryTableGroupByEnabled").checked;
+    }
+
     function discover() {
         const message = byId("summaryTableDiscoveryMessage");
         try {
@@ -305,6 +327,7 @@
         ).join("");
         sort.disabled = fields.length === 0;
         sort.value = allFields.includes(previousSort) ? previousSort : "";
+        renderGroupByOptions(config, fields);
         renderPreview();
     }
 
@@ -337,6 +360,13 @@
         });
         config.details.pagination = Object.assign({}, config.details.pagination || {}, {
             enabled: true, pageSize: Number(byId("summaryTablePageSize").value) || 10
+        });
+        config.details.groupBy = Object.assign({}, config.details.groupBy || {}, {
+            enabled: byId("summaryTableGroupByEnabled").checked,
+            fields: Array.from(byId("summaryTableGroupByFields").selectedOptions).map(option => option.value),
+            initialState: byId("summaryTableGroupByInitialState").value,
+            order: byId("summaryTableGroupByOrder").value,
+            showAggregates: byId("summaryTableGroupByAggregates").checked
         });
         config.summary = Object.assign({}, config.summary || {});
         if (config.summary.enabled === undefined) config.summary.enabled = true;
@@ -384,6 +414,53 @@
         byId("summaryTableDelimitedOptions").hidden = typeValue !== "DELIMITED";
         byId("summaryTableKeyValueOptions").hidden = typeValue !== "KEY_VALUE";
         byId("summaryTableRegexOptions").hidden = typeValue !== "REGEX";
+    }
+
+    function defaultConfigForType(type) {
+        switch (type) {
+            case "SUMMARY_TABLE":
+                return {
+                    renderer: "SUMMARY_TABLE",
+                    responseParser: { type: "AUTO" },
+                    details: {
+                        columns: [],
+                        search: { enabled: true },
+                        sorting: { enabled: true, defaultField: "", direction: "asc" },
+                        pagination: { enabled: true, pageSize: 10 },
+                        groupBy: { enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true }
+                    },
+                    summary: { enabled: true }
+                };
+            case "TABLE":
+                return { rowPath: "", columns: [], visibleFields: [], labels: {}, sorting: { enabled: true }, search: { enabled: true }, pagination: { enabled: true, pageSize: 10 } };
+            case "CHART":
+                return { rowPath: "", categoryField: "", valueField: "", seriesField: "" };
+            case "STAT":
+            case "STATUS":
+                return { valueField: "", visibleFields: [] };
+            case "TEXT":
+                return { textFields: [], textTemplate: "" };
+            case "SYSTEM_METRICS":
+                return { rowPath: "", fields: [], labels: {} };
+            default:
+                return {};
+        }
+    }
+
+    function clearSampleState(message) {
+        state.sample = null;
+        state.collections = [];
+        state.rows = [];
+        state.fields = [];
+        byId("summaryTableSampleJson").value = "";
+        byId("summaryTableRowPath").innerHTML = '<option value="">Load sample data to discover rows</option>';
+        byId("summaryTableRowPath").disabled = true;
+        byId("summaryTableDefaultSort").innerHTML = '<option value="">No default sort</option>';
+        byId("summaryTableDefaultSort").disabled = true;
+        byId("summaryTableFieldEditor").innerHTML = '<div class="text-muted small">Load sample data and discover fields to configure columns.</div>';
+        byId("summaryTablePreview").innerHTML = '<div class="text-muted small p-3">Discover fields to preview the selected columns.</div>';
+        byId("summaryTablePreviewCount").textContent = "";
+        byId("summaryTableDiscoveryMessage").textContent = message || "Paste a sample or load the latest job output.";
     }
 
     function showForSelectedType() {
@@ -519,9 +596,40 @@
         ["summaryTableDefaultSort", "summaryTableSortDirection", "summaryTablePageSize", "summaryTableSearchEnabled"].forEach(id => {
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
-        type.addEventListener("change", showForSelectedType);
+        let lastWidgetType = type.value;
+        type.addEventListener("change", function () {
+            const nextType = type.value;
+            if (nextType !== lastWidgetType) {
+                clearSampleState("Widget type changed. Previous mapping settings were cleared; configure the new widget type.");
+                setConfig(defaultConfigForType(nextType));
+                lastWidgetType = nextType;
+            }
+            showForSelectedType();
+        });
         byId("dashboardWidgetFieldConfigJson").addEventListener("change", function () {
-            if (state.sample) renderFields();
+            const config = getConfig();
+            showForSelectedType();
+            if (state.sample) {
+                const details = config.details && typeof config.details === "object" ? config.details : {};
+                const search = details.search || config.search || {};
+                const sorting = details.sorting || config.sorting || {};
+                const pagination = details.pagination || config.pagination || {};
+                byId("summaryTableSearchEnabled").checked = search.enabled !== false;
+                byId("summaryTableSortDirection").value = String(sorting.direction || "asc").toLowerCase() === "desc" ? "desc" : "asc";
+                byId("summaryTablePageSize").value = ["5", "10", "25", "50"].includes(String(pagination.pageSize)) ? String(pagination.pageSize) : "10";
+                renderFields();
+            }
+        });
+        byId("summaryTableGroupByEnabled").addEventListener("change", function () {
+            const config = getConfig();
+            renderGroupByOptions(config, state.fields.map(field => {
+                const saved = configuredColumns(config).get(field);
+                return { field, label: saved && saved.label ? saved.label : humanize(field) };
+            }));
+            refreshConfigFromEditor();
+        });
+        ["summaryTableGroupByFields", "summaryTableGroupByInitialState", "summaryTableGroupByOrder", "summaryTableGroupByAggregates"].forEach(id => {
+            byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         const modal = byId("dashboardWidgetModal");
         if (modal) {
