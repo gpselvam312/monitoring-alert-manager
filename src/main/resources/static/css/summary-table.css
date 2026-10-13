@@ -158,57 +158,48 @@
     box-shadow: none;
 }
 
-/* Summary Table conditional formatting: compact row/cell highlight fills. */
-.summary-table-row.is-critical { background: color-mix(in srgb, var(--danger, #dc3545) 13%, transparent); }
-.summary-table-row.is-warning { background: color-mix(in srgb, var(--warning, #ffc107) 18%, transparent); }
-.summary-table-row.is-info { background: color-mix(in srgb, var(--info, #0dcaf0) 12%, transparent); }
-.summary-table-grid td.is-critical, #summaryTablePreview td.is-critical { background: color-mix(in srgb, var(--danger, #dc3545) 18%, transparent); }
-.summary-table-grid td.is-warning, #summaryTablePreview td.is-warning { background: color-mix(in srgb, var(--warning, #ffc107) 25%, transparent); }
-.summary-table-grid td.is-info, #summaryTablePreview td.is-info { background: color-mix(in srgb, var(--info, #0dcaf0) 18%, transparent); }
 
-/* Apply row colors to cells too, so Bootstrap table striping cannot hide the highlight. */
-.summary-table-grid tbody tr.summary-table-row.is-critical > td,
-#summaryTablePreview tbody tr.is-critical > td { background-color: color-mix(in srgb, var(--danger, #dc3545) 13%, var(--bs-table-bg, transparent)); }
-.summary-table-grid tbody tr.summary-table-row.is-warning > td,
-#summaryTablePreview tbody tr.is-warning > td { background-color: color-mix(in srgb, var(--warning, #ffc107) 18%, var(--bs-table-bg, transparent)); }
-.summary-table-grid tbody tr.summary-table-row.is-info > td,
-#summaryTablePreview tbody tr.is-info > td { background-color: color-mix(in srgb, var(--info, #0dcaf0) 12%, var(--bs-table-bg, transparent)); }
-
-/* Strong, theme-aware conditional formatting for the Summary Table. */
-.summary-table-grid td.is-critical, #summaryTablePreview td.is-critical,
-.summary-table-grid tbody tr.summary-table-row.is-critical > td, #summaryTablePreview tbody tr.is-critical > td { background-color: color-mix(in srgb, #dc3545 24%, var(--bs-table-bg, transparent)) !important; color: var(--bs-body-color, inherit); }
-.summary-table-grid td.is-warning, #summaryTablePreview td.is-warning,
-.summary-table-grid tbody tr.summary-table-row.is-warning > td, #summaryTablePreview tbody tr.is-warning > td { background-color: color-mix(in srgb, #ffc107 28%, var(--bs-table-bg, transparent)) !important; color: var(--bs-body-color, inherit); }
-.summary-table-grid td.is-info, #summaryTablePreview td.is-info,
-.summary-table-grid tbody tr.summary-table-row.is-info > td, #summaryTablePreview tbody tr.is-info > td { background-color: color-mix(in srgb, #0d6efd 20%, var(--bs-table-bg, transparent)) !important; color: var(--bs-body-color, inherit); }
-.summary-table-grid td.is-healthy, #summaryTablePreview td.is-healthy,
-.summary-table-grid tbody tr.summary-table-row.is-healthy > td, #summaryTablePreview tbody tr.is-healthy > td { background-color: color-mix(in srgb, #198754 24%, var(--bs-table-bg, transparent)) !important; color: var(--bs-body-color, inherit); }
-[data-bs-theme="dark"] .summary-table-grid td.is-critical, [data-bs-theme="dark"] #summaryTablePreview td.is-critical, [data-bs-theme="dark"] .summary-table-grid tbody tr.summary-table-row.is-critical > td, [data-bs-theme="dark"] #summaryTablePreview tbody tr.is-critical > td { background-color: #64252d !important; color: #ffe7e9; }
-[data-bs-theme="dark"] .summary-table-grid td.is-warning, [data-bs-theme="dark"] #summaryTablePreview td.is-warning, [data-bs-theme="dark"] .summary-table-grid tbody tr.summary-table-row.is-warning > td, [data-bs-theme="dark"] #summaryTablePreview tbody tr.is-warning > td { background-color: #5d4819 !important; color: #fff0bd; }
-[data-bs-theme="dark"] .summary-table-grid td.is-info, [data-bs-theme="dark"] #summaryTablePreview td.is-info, [data-bs-theme="dark"] .summary-table-grid tbody tr.summary-table-row.is-info > td, [data-bs-theme="dark"] #summaryTablePreview tbody tr.is-info > td { background-color: #183d61 !important; color: #e1f0ff; }
-[data-bs-theme="dark"] .summary-table-grid td.is-healthy, [data-bs-theme="dark"] #summaryTablePreview td.is-healthy, [data-bs-theme="dark"] .summary-table-grid tbody tr.summary-table-row.is-healthy > td, [data-bs-theme="dark"] #summaryTablePreview tbody tr.is-healthy > td { background-color: #174b32 !important; color: #d9fbe7; }
+/* Small controls used by the Summary Table renderer. */
 .summary-table-boolean { width: 1.1rem; height: 1.1rem; vertical-align: middle; }
 .summary-table-toggle { display: inline-flex; width: 2.1rem; height: 1.15rem; padding: .12rem; border-radius: 99px; vertical-align: middle; align-items: center; }
 .summary-table-toggle > span { display: block; width: .9rem; height: .9rem; border-radius: 50%; background: #fff; }
 .summary-table-toggle.is-on { background: var(--success, #198754); justify-content: flex-end; }
-.summary-table-toggle.is-off { background: var(--secondary, #6c757d); justify-content: flex-start; }
-
+.summary-table-toggle.is-off { background: var(--text-secondary, #6c757d); justify-content: flex-start; }
 .summary-table-card-static { cursor: default; }
 
-/* Ensure conditional formatting is visible over table striping in both themes. */
-.summary-table-grid tbody tr.is-critical > td, #summaryTablePreview tbody tr.is-critical > td { background: #f5c2c7 !important; color: #58151c !important; }
-.summary-table-grid tbody tr.is-warning > td, #summaryTablePreview tbody tr.is-warning > td { background: #fff3cd !important; color: #664d03 !important; }
-.summary-table-grid tbody tr.is-info > td, #summaryTablePreview tbody tr.is-info > td { background: #cfe2ff !important; color: #084298 !important; }
-.summary-table-grid tbody tr.is-healthy > td, #summaryTablePreview tbody tr.is-healthy > td { background: #d1e7dd !important; color: #0f5132 !important; }
-.summary-table-grid td.is-critical, #summaryTablePreview td.is-critical { background: #f5c2c7 !important; color: #58151c !important; }
-.summary-table-grid td.is-warning, #summaryTablePreview td.is-warning { background: #fff3cd !important; color: #664d03 !important; }
-.summary-table-grid td.is-info, #summaryTablePreview td.is-info { background: #cfe2ff !important; color: #084298 !important; }
-.summary-table-grid td.is-healthy, #summaryTablePreview td.is-healthy { background: #d1e7dd !important; color: #0f5132 !important; }
-[data-bs-theme="dark"] .summary-table-grid tbody tr.is-critical > td, [data-bs-theme="dark"] #summaryTablePreview tbody tr.is-critical > td,
-[data-bs-theme="dark"] .summary-table-grid td.is-critical, [data-bs-theme="dark"] #summaryTablePreview td.is-critical { background: #64252d !important; color: #ffe7e9 !important; }
-[data-bs-theme="dark"] .summary-table-grid tbody tr.is-warning > td, [data-bs-theme="dark"] #summaryTablePreview tbody tr.is-warning > td,
-[data-bs-theme="dark"] .summary-table-grid td.is-warning, [data-bs-theme="dark"] #summaryTablePreview td.is-warning { background: #5d4819 !important; color: #fff0bd !important; }
-[data-bs-theme="dark"] .summary-table-grid tbody tr.is-info > td, [data-bs-theme="dark"] #summaryTablePreview tbody tr.is-info > td,
-[data-bs-theme="dark"] .summary-table-grid td.is-info, [data-bs-theme="dark"] #summaryTablePreview td.is-info { background: #183d61 !important; color: #e1f0ff !important; }
-[data-bs-theme="dark"] .summary-table-grid tbody tr.is-healthy > td, [data-bs-theme="dark"] #summaryTablePreview tbody tr.is-healthy > td,
-[data-bs-theme="dark"] .summary-table-grid td.is-healthy, [data-bs-theme="dark"] #summaryTablePreview td.is-healthy { background: #174b32 !important; color: #d9fbe7 !important; }
+/*
+ * Conditional formatting intentionally uses soft tints over each theme's own
+ * table surface. Avoid fixed light/dark hex colors and Bootstrap theme selectors:
+ * the application uses data-theme="orange-dark" / "blue-dark" and CSS variables.
+ */
+.summary-table-grid tbody tr.summary-table-row.is-critical,
+#summaryTablePreview tbody tr.is-critical { --summary-row-accent: var(--danger, #dc3545); }
+.summary-table-grid tbody tr.summary-table-row.is-warning,
+#summaryTablePreview tbody tr.is-warning { --summary-row-accent: var(--warning, #d99a00); }
+.summary-table-grid tbody tr.summary-table-row.is-info,
+#summaryTablePreview tbody tr.is-info { --summary-row-accent: var(--info, #0d6efd); }
+.summary-table-grid tbody tr.summary-table-row.is-healthy,
+#summaryTablePreview tbody tr.is-healthy { --summary-row-accent: var(--success, #198754); }
+.summary-table-grid tbody tr.summary-table-row.is-unknown,
+#summaryTablePreview tbody tr.is-unknown { --summary-row-accent: var(--text-secondary, #6b6b6b); }
+
+/* Keep row emphasis subtle, readable and consistent in light and dark themes. */
+.summary-table-grid tbody tr.summary-table-row[class*="is-"] > td,
+#summaryTablePreview tbody tr[class*="is-"] > td {
+    background-color: color-mix(in srgb, var(--summary-row-accent, transparent) 5%, var(--table-bg, var(--card-bg, #fff))) !important;
+    color: var(--text-primary, var(--bs-body-color, #212529)) !important;
+}
+.summary-table-grid tbody tr.summary-table-row[class*="is-"] > td:first-child,
+#summaryTablePreview tbody tr[class*="is-"] > td:first-child {
+    border-left: 3px solid var(--summary-row-accent, transparent);
+}
+
+/* Cell rules are slightly more visible than row-level tints, without hardcoded text colors. */
+.summary-table-grid td.is-critical,
+#summaryTablePreview td.is-critical { background-color: color-mix(in srgb, var(--danger, #dc3545) 13%, var(--table-bg, var(--card-bg, #fff))) !important; }
+.summary-table-grid td.is-warning,
+#summaryTablePreview td.is-warning { background-color: color-mix(in srgb, var(--warning, #d99a00) 15%, var(--table-bg, var(--card-bg, #fff))) !important; }
+.summary-table-grid td.is-info,
+#summaryTablePreview td.is-info { background-color: color-mix(in srgb, var(--info, #0d6efd) 11%, var(--table-bg, var(--card-bg, #fff))) !important; }
+.summary-table-grid td.is-healthy,
+#summaryTablePreview td.is-healthy { background-color: color-mix(in srgb, var(--success, #198754) 11%, var(--table-bg, var(--card-bg, #fff))) !important; }
