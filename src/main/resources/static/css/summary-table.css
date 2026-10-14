@@ -173,9 +173,9 @@
 }
 
 /*
- * Conditional formatting intentionally uses soft tints over each theme's own
- * table surface. Avoid fixed light/dark hex colors and Bootstrap theme selectors:
- * the application uses data-theme="orange-dark" / "blue-dark" and CSS variables.
+ * Light themes use status-color tints over the configured table surface.
+ * Dark themes use explicit opaque status colors below for reliable contrast.
+ * Theme selectors match the application's data-theme values.
  */
 .summary-table-grid tbody tr.summary-table-row.is-critical,
 #summaryTablePreview tbody tr.is-critical { --summary-row-accent: var(--danger, #dc3545); }
