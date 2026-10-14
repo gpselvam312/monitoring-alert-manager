@@ -4796,3 +4796,43 @@ textarea.form-control {
 
 .execution-sort-button.active { color: var(--theme-primary); }
 .execution-sort-button.active .table-sort-icon { color: var(--theme-primary); }
+
+
+/* Dashboard configuration dialogs: keep both tab and widget forms usable at common viewport sizes. */
+#dashboardTabModal .modal-dialog,
+#dashboardWidgetModal .modal-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: min(1000px, calc(100vw - 1.5rem));
+    margin: .75rem auto;
+}
+#dashboardWidgetModal .modal-dialog {
+    max-width: min(1200px, calc(100vw - 1.5rem));
+}
+#dashboardTabModal .modal-content,
+#dashboardWidgetModal .modal-content {
+    max-height: calc(100dvh - 1.5rem);
+    display: flex;
+}
+#dashboardTabModal .modal-body,
+#dashboardWidgetModal .modal-body {
+    min-height: 0;
+    overflow-y: auto;
+}
+#dashboardWidgetModal .modal-header,
+#dashboardWidgetModal .modal-footer,
+#dashboardTabModal .modal-header,
+#dashboardTabModal .modal-footer {
+    flex-shrink: 0;
+}
+@media (max-width: 767.98px) {
+    #dashboardTabModal .modal-dialog,
+    #dashboardWidgetModal .modal-dialog {
+        width: calc(100% - 1rem);
+        max-width: none;
+        margin: .5rem auto;
+    }
+    #dashboardTabModal .modal-content,
+    #dashboardWidgetModal .modal-content {
+        max-height: calc(100dvh - 1rem);
+    }
+}
