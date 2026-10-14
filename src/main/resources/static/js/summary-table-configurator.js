@@ -443,7 +443,7 @@
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
             '<div class="d-flex flex-wrap align-items-center gap-3 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" id="summaryTableShowDetailsTable"' + (((getConfig().details || {}).enabled !== false) ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowDetailsTable">Show detail table</label></div><div class="form-check d-flex align-items-center gap-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div></div>' +
-            '<div class="row g-2 align-items-end mb-3"><div class="col-md-3"><label class="form-label small" for="summaryTableBooleanMode">Boolean display</label><select class="form-select form-select-sm" id="summaryTableBooleanMode">' + [['LABELS','Labels'],['BADGE','Status badge'],['ICON','Icons'],['RAW','Raw true / false']].map(option => '<option value="' + option[0] + '"' + (String((((getConfig().details || {}).booleanDisplay || {}).mode) || 'LABELS').toUpperCase() === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join('') + '</select></div><div class="col-md-3"><label class="form-label small" for="summaryTableBooleanTrueLabel">True label</label><input class="form-control form-control-sm" id="summaryTableBooleanTrueLabel" maxlength="40" value="' + escapeHtml((((getConfig().details || {}).booleanDisplay || {}).trueLabel) || 'Enabled') + '"></div><div class="col-md-3"><label class="form-label small" for="summaryTableBooleanFalseLabel">False label</label><input class="form-control form-control-sm" id="summaryTableBooleanFalseLabel" maxlength="40" value="' + escapeHtml((((getConfig().details || {}).booleanDisplay || {}).falseLabel) || 'Disabled') + '"></div></div>' +
+
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
             '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th><th>Summary card</th><th>Filter on click</th><th>Group summary by field</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
@@ -519,12 +519,6 @@
         config.details = config.details && typeof config.details === "object" ? config.details : {};
         const showDetailsTable = byId("summaryTableShowDetailsTable");
         if (showDetailsTable) config.details.enabled = showDetailsTable.checked;
-        const booleanMode = byId("summaryTableBooleanMode");
-        if (booleanMode) config.details.booleanDisplay = {
-            mode: booleanMode.value,
-            trueLabel: byId("summaryTableBooleanTrueLabel").value.trim() || "Enabled",
-            falseLabel: byId("summaryTableBooleanFalseLabel").value.trim() || "Disabled"
-        };
         const editedColumns = readFieldEditor();
         config.details.columns = editedColumns.map(({ summaryCard, summaryFilterable, groupSummary, ...column }) => column);
         config.details.search = Object.assign({}, config.details.search || {}, { enabled: byId("summaryTableSearchEnabled").checked });
