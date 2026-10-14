@@ -4836,3 +4836,43 @@ textarea.form-control {
         max-height: calc(100dvh - 1rem);
     }
 }
+
+
+/* Keep the Summary Table mapping editor visually distinct inside the widget popup. */
+#summaryTableFieldEditorGroup.summary-table-config-panel {
+    padding: 1rem;
+    background-color: var(--card-bg, #fff);
+    color: var(--text-primary, #222);
+    border: 1px solid var(--border-color, #e2e2df);
+    border-radius: .75rem;
+}
+#summaryTableFieldEditorGroup .table-responsive {
+    background-color: var(--card-bg, #fff);
+    border-color: var(--border-color, #e2e2df) !important;
+}
+#summaryTableFieldEditorGroup .table {
+    --bs-table-bg: var(--card-bg, #fff);
+    --bs-table-color: var(--text-primary, #222);
+    --bs-table-border-color: var(--border-color, #e2e2df);
+    color: var(--text-primary, #222);
+    margin-bottom: 0;
+}
+#summaryTableFieldEditorGroup .table thead th {
+    background-color: var(--table-header-bg, #f8f8f6);
+    color: var(--table-header-text, #646464);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+#summaryTableFieldEditorGroup .form-control,
+#summaryTableFieldEditorGroup .form-select {
+    background-color: var(--input-bg, #fff);
+    color: var(--text-primary, #222);
+    border-color: var(--border-color, #e2e2df);
+}
+#summaryTableFieldEditorGroup code {
+    color: var(--text-primary, #222);
+    white-space: nowrap;
+}
+#summaryTableFieldEditorGroup .form-text {
+    color: var(--text-secondary, #6b6b6b);
+}
