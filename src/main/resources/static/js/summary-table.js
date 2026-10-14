@@ -338,8 +338,11 @@
             ? state.detailRows.filter(row => requestedSearchFields.some(field =>
                 String(display(rowValue(row, field))).toLowerCase().includes(state.search.toLowerCase())))
             : state.detailRows;
-        const hasConfiguredCards = Array.isArray(summary.cards) || Array.isArray(details.summaryCards);
-        const configured = Array.isArray(summary.cards) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : []);
+        const hasNewCards = Array.isArray(summary.cards);
+        const hasLegacyCards = Array.isArray(details.summaryCards);
+        const hasConfiguredCards = hasNewCards || hasLegacyCards;
+        const configured = hasNewCards && (summary.cards.length > 0 || !hasLegacyCards)
+            ? summary.cards : (hasLegacyCards ? details.summaryCards : (hasNewCards ? summary.cards : []));
         const cards = [];
         if (hasConfiguredCards) {
             const matches = (row, card) => !card.filterField || conditionalRuleMatches(row, {
