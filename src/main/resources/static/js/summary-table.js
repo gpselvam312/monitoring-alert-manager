@@ -433,7 +433,9 @@
                     state.cardFilter.operation === (card.filterOperation || "") &&
                     (["grouped-value", "custom-rule"].includes(card.filterType)
                         ? String(state.cardFilter.value ?? "") === String(card.filterValue ?? "")
-                        : true));
+                        : true) &&
+                    (card.filterType !== "custom-rule" ||
+                        (state.cardFilter.operator || "equals") === (card.filterOperator || "equals")));
             const status = card.filterType === "overall" ? "total"
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
@@ -689,7 +691,8 @@
                 state.cardFilter = null;
             } else if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field &&
                 state.cardFilter.operation === operation &&
-                (!["grouped-value", "custom-rule"].includes(type) || String(state.cardFilter.value ?? "") === value)) {
+                (!["grouped-value", "custom-rule"].includes(type) || String(state.cardFilter.value ?? "") === value) &&
+                (type !== "custom-rule" || (state.cardFilter.operator || "equals") === (cardButton.getAttribute("data-card-filter-operator") || "equals"))) {
                 state.cardFilter = null;
             } else {
                 state.cardFilter = { type, field, operation, value,
