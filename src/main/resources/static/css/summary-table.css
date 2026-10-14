@@ -186,7 +186,7 @@
 /* Keep row emphasis subtle, readable and consistent in light and dark themes. */
 .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td,
 #summaryTablePreview tbody tr[class*="is-"] > td {
-    background-color: color-mix(in srgb, var(--summary-row-accent, transparent) 5%, var(--table-bg, var(--card-bg, #fff))) !important;
+    background-color: color-mix(in srgb, var(--summary-row-accent, transparent) 2%, var(--table-bg, var(--card-bg, #fff))) !important;
     color: var(--text-primary, var(--bs-body-color, #212529)) !important;
 }
 .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td:first-child,
