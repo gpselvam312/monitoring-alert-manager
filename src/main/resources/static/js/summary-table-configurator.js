@@ -533,21 +533,29 @@
             showAggregates: byId("summaryTableGroupByAggregates").checked
         });
         config.details.conditionalFormatting = readConditionalFormatting();
+        const existingSummaryCards = Array.isArray(config.summary && config.summary.cards)
+            ? config.summary.cards.slice()
+            : (Array.isArray(config.details.summaryCards) ? config.details.summaryCards.slice() : []);
+        const existingTotalRowsCard = existingSummaryCards.find(card =>
+            card && String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
         delete config.details.summaryCards;
         config.summary = Object.assign({}, config.summary || {});
         config.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
-        config.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked ? [{ label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number", filterable: false }] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
+        config.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked
+            ? [Object.assign({}, existingTotalRowsCard || {}, {
+                label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number",
+                filterable: existingTotalRowsCard ? existingTotalRowsCard.filterable !== false : false
+            })] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
             const aggregate = String(column.aggregation || "none").toLowerCase();
-
             const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate];
-
             if (!operation) return null;
-
-            return { label: column.label || humanize(column.field), field: column.field, operation,
+            const existingCard = existingSummaryCards.find(card => card && String(card.field || "") === column.field);
+            return Object.assign({}, existingCard || {}, {
+                label: column.label || humanize(column.field), field: column.field, operation,
                 format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : ""),
-                filterable: column.summaryFilterable };
-
-                }).filter(Boolean)];
+                filterable: column.summaryFilterable
+            });
+        }).filter(Boolean)];
         if (config.summary.enabled === undefined) config.summary.enabled = true;
         return config;
     }
