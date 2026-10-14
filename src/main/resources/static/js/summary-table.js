@@ -342,19 +342,11 @@
         const configured = Array.isArray(summary.cards) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : []);
         const cards = [];
         if (hasConfiguredCards) {
-            const matches = (row, card) => {
-                if (!card.filterField) return true;
-                const actual = rowValue(row, card.filterField);
-                const actualText = actual == null ? "" : String(actual);
-                const expected = card.filterValue == null ? "" : String(card.filterValue);
-                const op = String(card.filterOperator || "equals").toLowerCase();
-                const a = numeric(actual), b = numeric(expected);
-                if (op === "contains") return actualText.toLowerCase().includes(expected.toLowerCase());
-                if (["gt", "gte", "lt", "lte"].includes(op) && a !== null && b !== null)
-                    return op === "gt" ? a > b : op === "gte" ? a >= b : op === "lt" ? a < b : a <= b;
-                return op === "not_equals" ? actualText.toLowerCase() !== expected.toLowerCase()
-                    : actualText.toLowerCase() === expected.toLowerCase();
-            };
+            const matches = (row, card) => !card.filterField || conditionalRuleMatches(row, {
+                field: card.filterField,
+                operator: card.filterOperator || "equals",
+                value: card.filterValue
+            });
             configured.forEach((card, index) => {
                 const subset = state.detailRows.filter(row => matches(row, card));
                 const field = String(card.field || "");
