@@ -427,7 +427,7 @@
         fields.forEach(item => {
             const savedCard = cardsByField.get(item.field);
             const operation = String(savedCard && savedCard.operation || "").toUpperCase();
-            item.summaryFilterable = savedCard ? savedCard.filterable !== false : true;
+            item.summaryFilterable = savedCard ? savedCard.filterable === true : false;
             const inferredAggregation = ({
                 COUNT_NON_EMPTY: "count", COUNT_TRUE: "count", COUNT_FALSE: "count",
                 SUM: "sum", AVG: "avg", MAX: "max", MIN: "min"
