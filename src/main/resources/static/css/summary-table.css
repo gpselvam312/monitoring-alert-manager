@@ -275,3 +275,27 @@
 [data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-unknown,
 [data-theme="orange-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-unknown,
 [data-theme="blue-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-unknown { background-color: #3a4655 !important; }
+
+
+/* Restore neutral zebra striping without overriding health/status rows. */
+.summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):nth-child(odd) > td {
+    background-color: var(--table-bg, var(--card-bg, #fff));
+}
+.summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):nth-child(even) > td {
+    background-color: var(--table-row-alt-bg, #f8f9fa);
+}
+.summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):hover > td {
+    background-color: var(--table-row-hover-bg, #fff8f0);
+}
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):nth-child(odd) > td,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):nth-child(odd) > td {
+    background-color: var(--table-bg, var(--card-bg, #242424));
+}
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):nth-child(even) > td,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):nth-child(even) > td {
+    background-color: var(--table-row-alt-bg, #2c2c2c);
+}
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):hover > td,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row:not([class*="is-"]):hover > td {
+    background-color: var(--table-row-hover-bg, #343434);
+}
