@@ -547,7 +547,8 @@
         config.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked
             ? [Object.assign({}, existingTotalRowsCard || {}, {
                 label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number",
-                filterable: existingTotalRowsCard ? existingTotalRowsCard.filterable !== false : false
+                filterable: existingTotalRowsCard && typeof existingTotalRowsCard.filterable === "boolean"
+                    ? existingTotalRowsCard.filterable : false
             })] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
             const aggregate = String(column.aggregation || "none").toLowerCase();
             const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate];
