@@ -209,7 +209,7 @@
         const details = config.details && typeof config.details === "object" ? config.details : {};
         const formatting = details.conditionalFormatting && typeof details.conditionalFormatting === "object" ? details.conditionalFormatting : (config.conditionalFormatting || {});
         if (formatting.enabled === false || !Array.isArray(formatting.rules)) return "";
-        const ranks = { info: 1, healthy: 1, warning: 2, critical: 3 };
+        const ranks = { info: 1, healthy: 2, warning: 3, critical: 4 };
         let selected = "";
         formatting.rules.forEach(rule => {
             if (!rule || String(rule.scope || "row").toLowerCase() !== scope) return;
@@ -236,7 +236,7 @@
             if (!baseClass && hasWarning) baseClass = "is-warning";
         }
         const conditional = conditionalRuleClass(row, config, "row");
-        const rank = { "": 0, "is-unknown": 0, "is-info": 1, "is-healthy": 1, "is-warning": 2, "is-critical": 3 };
+        const rank = { "": 0, "is-unknown": 0, "is-info": 1, "is-healthy": 2, "is-warning": 3, "is-critical": 4 };
         return (rank[conditional] || 0) > (rank[baseClass] || 0) ? conditional : baseClass;
     }
 
