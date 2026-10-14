@@ -318,21 +318,6 @@
                 if (String(column.format || "").toLowerCase() === "toggle") {
                     return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '" role="img" aria-label="' + esc(column.label || column.field) + ': ' + (boolValue ? 'true' : 'false') + '"><span></span></span></td>';
                 }
-                const booleanDisplay = (config.details && config.details.booleanDisplay) || {};
-                if (rawBoolean && !String(column.format || "").trim()) {
-                    const mode = String(booleanDisplay.mode || "LABELS").toUpperCase();
-                    const trueLabel = booleanDisplay.trueLabel || "Enabled";
-                    const falseLabel = booleanDisplay.falseLabel || "Disabled";
-                    if (mode === "ICON") {
-                        return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><i class="bi ' + (boolValue ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-secondary') + '" role="img" aria-label="' + esc(boolValue ? trueLabel : falseLabel) + '"></i></td>';
-                    }
-                    if (mode === "BADGE") {
-                        return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="badge ' + (boolValue ? 'text-bg-success' : 'text-bg-secondary') + '">' + esc(boolValue ? trueLabel : falseLabel) + '</span></td>';
-                    }
-                    if (mode === "LABELS") {
-                        return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '>' + esc(boolValue ? trueLabel : falseLabel) + '</td>';
-                    }
-                }
                 if (String(column.format).toLowerCase() === "status") {
                     const cls = statusClass(value, (config.details && config.details.rowStatus) || config.rowStatus || {});
                     return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
@@ -455,7 +440,11 @@
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
-            const content = '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
+            const iconName = String(card.icon || "").trim();
+            const iconMarkup = /^[a-z0-9-]+$/.test(iconName)
+                ? '<i class="bi bi-' + iconName + ' summary-table-card-icon" aria-hidden="true"></i>' : '';
+            const content = (iconMarkup ? '<span class="summary-table-card-heading">' + iconMarkup + '<span class="summary-table-card-label">' + esc(card.label) + '</span></span>'
+                : '<span class="summary-table-card-label">' + esc(card.label) + '</span>') +
                 '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong>';
             const cardClasses = 'server-health-summary-item server-health-summary-' + status + ' summary-table-card' +
                 (filterable ? ' server-health-summary-filter summary-table-card-filter' : ' summary-table-card-static') +
