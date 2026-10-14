@@ -522,6 +522,7 @@
         else delete config.rowPath;
 
         config.details = config.details && typeof config.details === "object" ? config.details : {};
+        delete config.details.booleanDisplay;
         const showDetailsTable = byId("summaryTableShowDetailsTable");
         if (showDetailsTable) config.details.enabled = showDetailsTable.checked;
         const editedColumns = readFieldEditor();
