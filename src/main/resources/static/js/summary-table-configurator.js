@@ -427,6 +427,7 @@
         fields.forEach(item => {
             const savedCard = cardsByField.get(item.field);
             const operation = String(savedCard && savedCard.operation || "").toUpperCase();
+            item.cardIcon = String(savedCard && savedCard.icon || "");
             item.summaryFilterable = savedCard ? savedCard.filterable === true : false;
             const inferredAggregation = ({
                 COUNT_NON_EMPTY: "count", COUNT_TRUE: "count", COUNT_FALSE: "count",
@@ -445,7 +446,7 @@
             '<div class="d-flex flex-wrap align-items-center gap-3 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" id="summaryTableShowDetailsTable"' + (((getConfig().details || {}).enabled !== false) ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowDetailsTable">Show detail table</label></div><div class="form-check d-flex align-items-center gap-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div></div>' +
 
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
-            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th><th>Summary card</th><th>Filter on click</th><th>Group summary by field</th></tr></thead><tbody>' +
+            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th><th>Summary card</th><th>Card icon</th><th>Filter on click</th><th>Group summary by field</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
@@ -460,6 +461,9 @@
                 '</select></td>' +
                 '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>' +
                 '<td><input class="form-check-input summary-config-summary-card" type="checkbox" aria-label="Include ' + escapeHtml(item.field) + ' in summary cards"' + (item.summaryCard ? ' checked' : '') + (item.aggregation === "none" ? ' disabled' : '') + '></td>' +
+                '<td><select class="form-select form-select-sm summary-config-card-icon" aria-label="Icon for ' + escapeHtml(item.field) + ' summary card"' + (!item.summaryCard || item.aggregation === "none" ? ' disabled' : '') + '>' +
+                [['','None'],['activity','Activity'],['bar-chart','Bar chart'],['bell','Bell'],['check-circle','Check'],['clock','Clock'],['cpu','CPU'],['database','Database'],['exclamation-triangle','Warning'],['heart-pulse','Health'],['lightning-charge','Lightning'],['people','People'],['server','Server'],['shield-check','Shield'],['x-circle','Error']].map(option => '<option value="' + option[0] + '"' + (item.cardIcon === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join('') +
+                '</select></td>' +
                 '<td><input class="form-check-input summary-config-summary-filterable" type="checkbox" aria-label="Make ' + escapeHtml(item.field) + ' summary card filter rows when clicked"' + (item.summaryFilterable ? ' checked' : '') + (!item.summaryCard || item.aggregation === "none" ? ' disabled' : '') + '></td>' +
                 '<td><input class="form-check-input summary-config-group-summary" type="checkbox" aria-label="Create a summary card for each distinct ' + escapeHtml(item.field) + ' value"' + (item.groupSummary ? ' checked' : '') + '></td></tr>').join("") +
             '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
@@ -490,6 +494,7 @@
             format: row.querySelector(".summary-config-format").value,
             aggregation: row.querySelector(".summary-config-aggregation").value,
             summaryCard: row.querySelector(".summary-config-summary-card").checked,
+            cardIcon: row.querySelector(".summary-config-card-icon").value,
             summaryFilterable: row.querySelector(".summary-config-summary-filterable").checked,
             groupSummary: row.querySelector(".summary-config-group-summary").checked
         }));
@@ -520,7 +525,7 @@
         const showDetailsTable = byId("summaryTableShowDetailsTable");
         if (showDetailsTable) config.details.enabled = showDetailsTable.checked;
         const editedColumns = readFieldEditor();
-        config.details.columns = editedColumns.map(({ summaryCard, summaryFilterable, groupSummary, ...column }) => column);
+        config.details.columns = editedColumns.map(({ summaryCard, cardIcon, summaryFilterable, groupSummary, ...column }) => column);
         config.details.search = Object.assign({}, config.details.search || {}, { enabled: byId("summaryTableSearchEnabled").checked });
         const defaultField = byId("summaryTableDefaultSort").value;
         config.details.sorting = Object.assign({}, config.details.sorting || {}, {
@@ -560,6 +565,7 @@
             return Object.assign({}, existingCard || {}, {
                 label: column.label || humanize(column.field), field: column.field, operation,
                 format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : ""),
+                icon: column.cardIcon || "",
                 filterable: column.summaryFilterable
             });
         }).filter(Boolean)];
@@ -1039,12 +1045,22 @@
                     summaryCard.disabled = event.target.value === "none";
                     if (summaryCard.disabled) summaryCard.checked = false;
                 }
+                const cardIcon = row && row.querySelector(".summary-config-card-icon");
+                if (cardIcon) {
+                    cardIcon.disabled = event.target.value === "none" || !summaryCard || !summaryCard.checked;
+                    if (cardIcon.disabled) cardIcon.value = "";
+                }
                 if (filterable) {
                     filterable.disabled = event.target.value === "none" || !summaryCard || !summaryCard.checked;
                     if (filterable.disabled) filterable.checked = false;
                 }
             }
             if (event.target.classList.contains("summary-config-summary-card")) {
+                const cardIcon = row && row.querySelector(".summary-config-card-icon");
+                if (cardIcon) {
+                    cardIcon.disabled = !event.target.checked || event.target.disabled;
+                    if (cardIcon.disabled) cardIcon.value = "";
+                }
                 const filterable = row && row.querySelector(".summary-config-summary-filterable");
                 if (filterable) {
                     filterable.disabled = !event.target.checked || event.target.disabled;
