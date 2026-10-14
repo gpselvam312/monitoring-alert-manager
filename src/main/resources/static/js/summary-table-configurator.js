@@ -442,7 +442,7 @@
         ];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
-            '<div class="d-flex align-items-center gap-2 mb-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div>' +
+            '<div class="d-flex flex-wrap align-items-center gap-3 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" id="summaryTableShowDetailsTable"' + (((getConfig().details || {}).enabled !== false) ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowDetailsTable">Show detail table</label></div><div class="form-check d-flex align-items-center gap-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div>' +
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
             '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th><th>Summary card</th><th>Filter on click</th><th>Group summary by field</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
@@ -516,6 +516,8 @@
         else delete config.rowPath;
 
         config.details = config.details && typeof config.details === "object" ? config.details : {};
+        const showDetailsTable = byId("summaryTableShowDetailsTable");
+        if (showDetailsTable) config.details.enabled = showDetailsTable.checked;
         const editedColumns = readFieldEditor();
         config.details.columns = editedColumns.map(({ summaryCard, summaryFilterable, groupSummary, ...column }) => column);
         config.details.search = Object.assign({}, config.details.search || {}, { enabled: byId("summaryTableSearchEnabled").checked });
@@ -1046,7 +1048,7 @@
                 if (filterable) {
                     filterable.disabled = !event.target.checked || event.target.disabled;
                     if (filterable.disabled) filterable.checked = false;
-                    else filterable.checked = true;
+                    else filterable.checked = false;
                 }
             }
             refreshConfigFromEditor();
