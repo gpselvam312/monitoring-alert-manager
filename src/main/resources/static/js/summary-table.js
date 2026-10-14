@@ -258,6 +258,7 @@
         let entries = Array.from(grouped.entries());
         const ordering = config.groupBy && config.groupBy.order;
         entries.sort((a, b) => {
+            if (ordering === "COUNT_ASC") return a[1].length - b[1].length;
             if (ordering === "COUNT_DESC") return b[1].length - a[1].length;
             if (ordering === "VALUE_DESC") return String(b[0]).localeCompare(String(a[0]), undefined, { numeric: true });
             return String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true });
@@ -371,14 +372,20 @@
                     else if (operation === "MAX") value = numbers.length ? Math.max(...numbers) : null;
                     else if (operation === "MIN") value = numbers.length ? Math.min(...numbers) : null;
                 }
+                const configuredFilterField = String(card.filterField || "");
+                const filterType = configuredFilterField ? "custom-rule" : (field ? "custom-field" : "all");
+                const defaultFilterable = Boolean(configuredFilterField || field || operation !== "COUNT_ROWS");
                 cards.push({ label: card.label || (operation === "COUNT_ROWS" ? "Total Rows" : field || "Summary"),
-                    value: value === null ? "—" : formatValue(value, card.format), cls: "", filterField: field || null,
-                    filterType: field ? "custom-field" : "all", filterOperation: operation });
+                    value: value === null ? "—" : formatValue(value, card.format), cls: "",
+                    filterField: configuredFilterField || field || null,
+                    filterValue: card.filterValue, filterOperator: card.filterOperator || "equals",
+                    filterType, filterOperation: operation,
+                    filterable: card.filterable === true || (card.filterable !== false && defaultFilterable) });
             });
             const groupedSummaryFields = Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
             if (groupedSummaryFields.length) {
                 cards.unshift({ label: "All", value: summaryCountRows.length, cls: "",
-                    filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS" });
+                    filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS", filterable: true });
             }
             groupedSummaryFields.forEach(field => {
                 const counts = new Map();
@@ -392,7 +399,7 @@
                 counts.forEach((count, value) => {
                     const displayValue = value === "" ? "(empty)" : formatValue(value, groupedColumn.format);
                     cards.push({ label: fieldLabel + ": " + displayValue, value: count, cls: "",
-                        filterField: field, filterValue: value, filterType: "grouped-value", filterOperation: "COUNT_ROWS" });
+                        filterField: field, filterValue: value, filterType: "grouped-value", filterOperation: "COUNT_ROWS", filterable: true });
                 });
             });
         } else {
@@ -411,32 +418,45 @@
                 const overall = summary.totalCard.field ? (authoritativeValue !== null ? authoritativeValue : calculatedTotal(summary.totalCard.field))
                     : numericFields.reduce((sum, field) => sum + (totals[field] || 0), 0);
                 cards.push({ label: summary.totalCard.label || "Overall Total", value: overall || 0,
-                    cls: summaryClass(overall || 0, summary.totalCard.thresholds), filterField: null, filterType: "overall" });
+                    cls: summaryClass(overall || 0, summary.totalCard.thresholds), filterField: null, filterType: "overall",
+                    filterable: summary.totalCard.filterable !== false });
             }
             const excluded = new Set(Array.isArray(summary.excludedFields) ? summary.excludedFields.map(String) : []);
             numericFields.filter(field => !excluded.has(field)).forEach(field => {
                 cards.push({ label: labels[field] || (state.columnMap.get(field) || {}).label || field,
-                    value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field, filterType: "field" });
+                    value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field,
+                    filterType: "field", filterable: true });
             });
         }
         if (!cards.length) return "";
         return '<div class="server-health-summary summary-table-cards">' + cards.map(card => {
-            const active = card.filterType === "grouped-all"
+            const filterable = card.filterable !== false;
+            const active = filterable && (card.filterType === "grouped-all"
                 ? (!state.cardFilter || state.cardFilter.type === "grouped-all")
                 : state.cardFilter && state.cardFilter.type === card.filterType &&
                     state.cardFilter.field === card.filterField &&
-                    (card.filterType !== "grouped-value" || String(state.cardFilter.value ?? "") === String(card.filterValue ?? ""));
+                    state.cardFilter.operation === (card.filterOperation || "") &&
+                    (["grouped-value", "custom-rule"].includes(card.filterType)
+                        ? String(state.cardFilter.value ?? "") === String(card.filterValue ?? "")
+                        : true));
             const status = card.filterType === "overall" ? "total"
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
             const content = '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
                 '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong>';
-            return '<button type="button" class="server-health-summary-item server-health-summary-' + status +
-                ' server-health-summary-filter summary-table-card' + (active ? ' is-active' : '') +
+            const cardClasses = 'server-health-summary-item server-health-summary-' + status + ' summary-table-card' +
+                (filterable ? ' server-health-summary-filter summary-table-card-filter' : ' summary-table-card-static') +
+                (active ? ' is-active' : '');
+            if (!filterable) {
+                return '<div class="' + cardClasses + '" aria-label="' + esc(card.label) + '">' + content + '</div>';
+            }
+            return '<button type="button" class="' + cardClasses +
                 '" data-card-filter-type="' + esc(card.filterType) + '" data-card-filter-field="' + esc(card.filterField || '') +
                 '" data-card-filter-value="' + esc(card.filterValue === undefined || card.filterValue === null ? "" : card.filterValue) +
-                '" aria-label="' + esc(card.label) + '" data-card-filter-operation="' + esc(card.filterOperation || '') + '" aria-pressed="' + Boolean(active) + '">' + content + '</button>';
+                '" data-card-filter-operator="' + esc(card.filterOperator || '') +
+                '" aria-label="' + esc(card.label) + '" data-card-filter-operation="' + esc(card.filterOperation || '') +
+                '" aria-pressed="' + Boolean(active) + '">' + content + '</button>';
         }).join("") + '</div>';
     }
 
@@ -467,6 +487,9 @@
                     const actual = rowValue(row, field);
                     return String(actual === null || actual === undefined ? "" : actual) === expected;
                 });
+            } else if (state.cardFilter.type === "custom-rule" && state.cardFilter.field) {
+                const rule = { field: state.cardFilter.field, operator: state.cardFilter.operator || "equals", value: state.cardFilter.value };
+                rows = rows.filter(row => conditionalRuleMatches(row, rule));
             } else if (state.cardFilter.type === "custom-field" && state.cardFilter.field) {
                 const field = state.cardFilter.field;
                 const operation = String(state.cardFilter.operation || "").toUpperCase();
@@ -652,7 +675,7 @@
     document.addEventListener("click", function (event) {
         const sortButton = event.target.closest(".summary-table-sort");
         const groupButton = event.target.closest(".summary-table-group-toggle");
-        const cardButton = event.target.closest(".summary-table-card");
+        const cardButton = event.target.closest(".summary-table-card-filter");
         const groupClearButton = event.target.closest(".summary-table-group-clear");
         const prev = event.target.closest(".summary-table-prev");
         const next = event.target.closest(".summary-table-next");
@@ -668,10 +691,12 @@
             if (type === "grouped-all") {
                 state.cardFilter = null;
             } else if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field &&
-                state.cardFilter.operation === operation && (type !== "grouped-value" || String(state.cardFilter.value ?? "") === value)) {
+                state.cardFilter.operation === operation &&
+                (!["grouped-value", "custom-rule"].includes(type) || String(state.cardFilter.value ?? "") === value)) {
                 state.cardFilter = null;
             } else {
-                state.cardFilter = { type, field, operation, value };
+                state.cardFilter = { type, field, operation, value,
+                    operator: cardButton.getAttribute("data-card-filter-operator") || "equals" };
             }
             state.page = 0;
         } else if (sortButton) {
