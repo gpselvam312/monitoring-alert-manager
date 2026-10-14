@@ -57,15 +57,15 @@ Use a single parsing/field-mapping path across generic Table, Summary Table, Kaf
 - [x] Default card filtering to off for newly configured summary cards; preserve explicitly saved settings.
 - [x] Honor configured dashboard widget size rather than forcing selected types to full width.
 - [x] Improve Dashboard Tab / Widget modal sizing and scrolling CSS.
-- [ ] Verify light/dark themes, status rows, hover and selected states in the browser.
+- [ ] Verify light/dark themes, status rows, hover and selected states in the browser (CSS updated; visual verification not yet run).
 - [ ] Add select-all row selection only after defining what selected rows enable; recommended scope is the current displayed page, with a clear label and indeterminate state.
 
 ### Phase 2 — Summary Table configurator
-- [ ] Add an explicit “Show detail table” option, default true, to enable cards-only dashboards. Persist as `details.enabled`; ensure table-only, cards-only, and cards-plus-table all preview and reload correctly.
-- [ ] Make the card-click option dependent on Summary Card selection. When Summary Card is off, disable and clear card-click filtering; when enabled, allow the user to opt in. On reopening, restore the saved setting.
+- [x] Add an explicit “Show detail table” option, default true, to enable cards-only dashboards. Persist as `details.enabled`; browser round-trip verification remains.
+- [x] Make the card-click option dependent on Summary Card selection. When Summary Card is off, disable and clear card-click filtering; selecting Summary Card leaves filtering unchecked by default. Saved explicit settings are retained.
 - [ ] Add per-card action: filter this widget (default), target a selected widget, or no action. Target selection must exclude self, validate target compatibility, persist and restore.
 - [ ] Add optional icons for table headers and summary cards, using the existing Bootstrap Icons library and an allowlist/validation approach.
-- [ ] Add boolean display formats/labels for both table cells and summary cards, preserving raw data for comparisons and filters.
+- [x] Add configurable boolean labels and display modes (labels, badge, icons, raw) for boolean table cells; raw source values remain the basis for filters and thresholds. Summary-card boolean presentation still needs review.
 - [ ] Investigate the Rows / collection choices: use path as identity, show meaningful path labels, and avoid collapsing distinct paths merely because their row shapes are alike.
 - [ ] Add select-all row checkbox only with defined row-selection behavior; default to visible-page rows, not all unseen pages.
 
