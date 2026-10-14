@@ -183,10 +183,10 @@
 .summary-table-grid tbody tr.summary-table-row.is-unknown,
 #summaryTablePreview tbody tr.is-unknown { --summary-row-accent: var(--text-secondary, #6b6b6b); }
 
-/* Keep row emphasis subtle, readable and consistent in light and dark themes. */
+/* Light themes use a stronger status tint so formatted rows stand apart from plain rows. */
 .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td,
 #summaryTablePreview tbody tr[class*="is-"] > td {
-    background-color: color-mix(in srgb, var(--summary-row-accent, transparent) 2%, var(--table-bg, var(--card-bg, #fff))) !important;
+    background-color: color-mix(in srgb, var(--summary-row-accent, transparent) 10%, var(--table-bg, var(--card-bg, #fff))) !important;
     color: var(--text-primary, var(--bs-body-color, #212529)) !important;
 }
 .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td:first-child,
