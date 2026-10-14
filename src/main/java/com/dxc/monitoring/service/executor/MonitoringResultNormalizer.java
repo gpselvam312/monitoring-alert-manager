@@ -52,7 +52,12 @@ public class MonitoringResultNormalizer
         {
             try
             {
-                if ("DELIMITED".equals(parserType))
+                if ("PLAIN_TEXT".equals(parserType))
+                {
+                    parsed = parsePlainText(source);
+                    validJson = true;
+                }
+                else if ("DELIMITED".equals(parserType))
                 {
                     parsed = parseDelimited(source, parserConfig);
                     validJson = true;
@@ -224,7 +229,7 @@ public class MonitoringResultNormalizer
         }
 
         String type = String.valueOf(config.getOrDefault("type", "AUTO")).trim().toUpperCase(Locale.ROOT);
-        if (!List.of("AUTO", "JSON", "DELIMITED", "KEY_VALUE", "REGEX").contains(type))
+        if (!List.of("AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX").contains(type))
         {
             throw new IllegalArgumentException("Unsupported result parser type: " + type);
         }
@@ -280,6 +285,24 @@ public class MonitoringResultNormalizer
         {
             return Map.of();
         }
+    }
+
+    private Map<String, Object> parsePlainText(String source)
+    {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        int lineNumber = 1;
+        for (String line : source.split("\\R"))
+        {
+            if (line.isBlank())
+            {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("lineNumber", lineNumber++);
+            row.put("text", line);
+            rows.add(row);
+        }
+        return Map.of("rows", rows);
     }
 
     private Map<String, Object> parseDelimited(String source, Map<String, Object> config)
