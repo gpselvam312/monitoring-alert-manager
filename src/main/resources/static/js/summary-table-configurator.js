@@ -417,7 +417,8 @@
         });
         const summary = config.summary && typeof config.summary === "object" ? config.summary : {};
         const details = config.details && typeof config.details === "object" ? config.details : {};
-        const oldCards = Array.isArray(summary.cards) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : null);
+        const oldCards = Array.isArray(summary.cards) && (summary.cards.length > 0 || !Array.isArray(details.summaryCards))
+            ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : (Array.isArray(summary.cards) ? summary.cards : null));
         const selectedCardFields = new Set((oldCards || []).map(card => String(card.field || "")).filter(Boolean));
         const showTotalRowsCard = (oldCards || []).some(card => String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
         const groupedSummaryFields = new Set((Array.isArray(summary.groupByFields) ? summary.groupByFields : []).map(String));
@@ -534,8 +535,10 @@
         });
         config.details.conditionalFormatting = readConditionalFormatting();
         const existingSummaryCards = Array.isArray(config.summary && config.summary.cards)
+            && (config.summary.cards.length > 0 || !Array.isArray(config.details.summaryCards))
             ? config.summary.cards.slice()
-            : (Array.isArray(config.details.summaryCards) ? config.details.summaryCards.slice() : []);
+            : (Array.isArray(config.details.summaryCards) ? config.details.summaryCards.slice()
+                : (Array.isArray(config.summary && config.summary.cards) ? config.summary.cards.slice() : []));
         const existingTotalRowsCard = existingSummaryCards.find(card =>
             card && String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
         delete config.details.summaryCards;
