@@ -43,6 +43,32 @@ class MonitoringResultNormalizerTest
     }
 
     @Test
+    void parsesPlainTextLinesIntoRowsForWidgetSpecificConfiguration() throws Exception
+    {
+        String parserConfig = """
+                {"type":"PLAIN_TEXT"}
+                """;
+        normalizer.validateParserConfig(parserConfig);
+
+        MonitoringResultNormalizer.NormalizedResult normalized = normalize(
+                "broker is up\\n\\nconsumer lag is 12", parserConfig);
+
+        Map<String, Object> envelope = objectMapper.readValue(normalized.json(),
+                new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> data = objectMapper.convertValue(envelope.get("data"),
+                new TypeReference<Map<String, Object>>() {});
+        List<Map<String, Object>> rows = objectMapper.convertValue(data.get("rows"),
+                new TypeReference<List<Map<String, Object>>>() {});
+
+        assertEquals(2, rows.size());
+        assertEquals(1, rows.get(0).get("lineNumber"));
+        assertEquals("broker is up", rows.get(0).get("text"));
+        assertEquals(2, rows.get(1).get("lineNumber"));
+        assertEquals("consumer lag is 12", rows.get(1).get("text"));
+        assertEquals(MonitoringResult.ResultType.TABLE, normalized.resultType());
+    }
+
+    @Test
     void parsesKeyValueOutputAndPreservesHealthStatus() throws Exception
     {
         String parserConfig = """
