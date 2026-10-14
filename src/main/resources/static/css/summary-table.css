@@ -194,6 +194,14 @@
     border-left: 3px solid var(--summary-row-accent, transparent);
 }
 
+/* Dark themes need a brighter surface as well as a severity tint; a tiny tint alone is almost invisible on navy rows. */
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td,
+[data-theme="orange-dark"] #summaryTablePreview tbody tr[class*="is-"] > td,
+[data-theme="blue-dark"] #summaryTablePreview tbody tr[class*="is-"] > td {
+    background-color: color-mix(in srgb, var(--summary-row-accent, transparent) 12%, color-mix(in srgb, #ffffff 8%, var(--table-bg, var(--card-bg, #0f172a)))) !important;
+}
+
 /* Cell rules are slightly more visible than row-level tints, without hardcoded text colors. */
 .summary-table-grid tbody tr.summary-table-row > td.is-critical,
 #summaryTablePreview tbody tr > td.is-critical { background-color: color-mix(in srgb, var(--danger, #dc3545) 13%, var(--table-bg, var(--card-bg, #fff))) !important; }
