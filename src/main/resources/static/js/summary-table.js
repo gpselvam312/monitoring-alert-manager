@@ -318,6 +318,21 @@
                 if (String(column.format || "").toLowerCase() === "toggle") {
                     return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '" role="img" aria-label="' + esc(column.label || column.field) + ': ' + (boolValue ? 'true' : 'false') + '"><span></span></span></td>';
                 }
+                const booleanDisplay = (config.details && config.details.booleanDisplay) || {};
+                if (rawBoolean && !String(column.format || "").trim()) {
+                    const mode = String(booleanDisplay.mode || "LABELS").toUpperCase();
+                    const trueLabel = booleanDisplay.trueLabel || "Enabled";
+                    const falseLabel = booleanDisplay.falseLabel || "Disabled";
+                    if (mode === "ICON") {
+                        return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><i class="bi ' + (boolValue ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-secondary') + '" role="img" aria-label="' + esc(boolValue ? trueLabel : falseLabel) + '"></i></td>';
+                    }
+                    if (mode === "BADGE") {
+                        return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="badge ' + (boolValue ? 'text-bg-success' : 'text-bg-secondary') + '">' + esc(boolValue ? trueLabel : falseLabel) + '</span></td>';
+                    }
+                    if (mode === "LABELS") {
+                        return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '>' + esc(boolValue ? trueLabel : falseLabel) + '</td>';
+                    }
+                }
                 if (String(column.format).toLowerCase() === "status") {
                     const cls = statusClass(value, (config.details && config.details.rowStatus) || config.rowStatus || {});
                     return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
