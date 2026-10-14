@@ -166,6 +166,11 @@
 .summary-table-toggle.is-on { background: var(--success, #198754); justify-content: flex-end; }
 .summary-table-toggle.is-off { background: var(--text-secondary, #6c757d); justify-content: flex-start; }
 .summary-table-card-static { cursor: default; }
+.summary-table-card-static:hover,
+.summary-table-card-static:focus-visible {
+    transform: none;
+    box-shadow: none;
+}
 
 /*
  * Conditional formatting intentionally uses soft tints over each theme's own
@@ -244,3 +249,29 @@
 #summaryTablePreview tbody tr > td.is-info { background-color: color-mix(in srgb, var(--info, #0d6efd) 11%, var(--table-bg, var(--card-bg, #fff))) !important; }
 .summary-table-grid tbody tr.summary-table-row > td.is-healthy,
 #summaryTablePreview tbody tr > td.is-healthy { background-color: color-mix(in srgb, var(--success, #198754) 11%, var(--table-bg, var(--card-bg, #fff))) !important; }
+
+/* Cell-level rules must override row-level fills, including the higher-specificity dark-theme row surfaces. */
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-critical,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-critical,
+[data-theme="orange-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-critical,
+[data-theme="blue-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-critical { background-color: #653039 !important; }
+
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-warning,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-warning,
+[data-theme="orange-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-warning,
+[data-theme="blue-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-warning { background-color: #665022 !important; }
+
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-info,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-info,
+[data-theme="orange-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-info,
+[data-theme="blue-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-info { background-color: #254a68 !important; }
+
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-healthy,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-healthy,
+[data-theme="orange-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-healthy,
+[data-theme="blue-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-healthy { background-color: #28543d !important; }
+
+[data-theme="orange-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-unknown,
+[data-theme="blue-dark"] .summary-table-grid tbody tr.summary-table-row[class*="is-"] > td.is-unknown,
+[data-theme="orange-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-unknown,
+[data-theme="blue-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-unknown { background-color: #3a4655 !important; }
