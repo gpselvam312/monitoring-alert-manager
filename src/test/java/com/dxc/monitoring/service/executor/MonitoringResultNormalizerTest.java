@@ -51,7 +51,7 @@ class MonitoringResultNormalizerTest
         normalizer.validateParserConfig(parserConfig);
 
         MonitoringResultNormalizer.NormalizedResult normalized = normalize(
-                "broker is up\\n\\nconsumer lag is 12", parserConfig);
+                "broker is up\n\nconsumer lag is 12", parserConfig);
 
         Map<String, Object> envelope = objectMapper.readValue(normalized.json(),
                 new TypeReference<Map<String, Object>>() {});
