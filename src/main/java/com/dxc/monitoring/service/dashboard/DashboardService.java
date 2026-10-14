@@ -20,6 +20,7 @@ import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringExecutionRepository;
 import com.dxc.monitoring.repository.MonitoringResultRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
+import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -34,13 +35,15 @@ public class DashboardService
     private final MonitoringJobRepository monitoringJobRepository;
     private final ObjectMapper objectMapper;
     private final DashboardAccessService dashboardAccessService;
+    private final MonitoringResultNormalizer monitoringResultNormalizer;
 
     public DashboardService(DashboardTabRepository dashboardTabRepository,
             DashboardWidgetRepository dashboardWidgetRepository,
             MonitoringExecutionRepository monitoringExecutionRepository,
             MonitoringResultRepository monitoringResultRepository,
             MonitoringJobRepository monitoringJobRepository,
-            ObjectMapper objectMapper, DashboardAccessService dashboardAccessService)
+            ObjectMapper objectMapper, DashboardAccessService dashboardAccessService,
+            MonitoringResultNormalizer monitoringResultNormalizer)
     {
         this.dashboardTabRepository = dashboardTabRepository;
         this.dashboardWidgetRepository = dashboardWidgetRepository;
@@ -49,6 +52,7 @@ public class DashboardService
         this.monitoringJobRepository = monitoringJobRepository;
         this.objectMapper = objectMapper;
         this.dashboardAccessService = dashboardAccessService;
+        this.monitoringResultNormalizer = monitoringResultNormalizer;
     }
 
     @Transactional(readOnly = true)
@@ -212,7 +216,7 @@ public class DashboardService
                 && execution.getStatus() == MonitoringExecution.ExecutionStatus.RUNNING);
         definition.setRunNowEnabled(canRunNow(widget, job, execution));
 
-        WidgetResult result = createResult(execution, monitoringResult);
+        WidgetResult result = createResult(widget, execution, monitoringResult);
 
         if (environmentMismatch)
         {
@@ -243,7 +247,7 @@ public class DashboardService
         return response;
     }
 
-    private WidgetResult createResult(MonitoringExecution execution, MonitoringResult monitoringResult)
+    private WidgetResult createResult(DashboardWidget widget, MonitoringExecution execution, MonitoringResult monitoringResult)
     {
         WidgetResult result = new WidgetResult();
 
@@ -268,10 +272,87 @@ public class DashboardService
         if (monitoringResult != null)
         {
             result.setValue(monitoringResult.getValue());
-            deserializeResultData(monitoringResult.getResultData(), result);
+            String parserConfigJson = responseParserConfigJson(widget);
+            String rawOutput = monitoringResult.getRawOutput();
+            if (parserConfigJson != null && rawOutput != null && !rawOutput.isBlank())
+            {
+                MonitoringResult.ResultStatus fallbackStatus = execution.getStatus()
+                        == MonitoringExecution.ExecutionStatus.SUCCESS
+                                ? MonitoringResult.ResultStatus.OK : monitoringResult.getStatus();
+                MonitoringResultNormalizer.NormalizedResult normalized = monitoringResultNormalizer.normalize(
+                        rawOutput, execution.getStatus(), fallbackStatus, monitoringResult.getMessage(),
+                        execution.getStartedAt(), execution.getCompletedAt(), parserConfigJson);
+                String normalizedJson = normalized.json();
+                if ("SUMMARY_TABLE".equals(widget.getWidgetType()))
+                {
+                    normalizedJson = wrapSingleRecordRows(normalizedJson, parserConfigJson);
+                }
+                deserializeResultData(normalizedJson, result);
+                if (normalized.message() != null && !normalized.message().isBlank())
+                {
+                    result.setMessage(normalized.message());
+                }
+            }
+            else
+            {
+                deserializeResultData(monitoringResult.getResultData(), result);
+            }
         }
 
         return result;
+    }
+
+    private String responseParserConfigJson(DashboardWidget widget)
+    {
+        if (widget == null || widget.getFieldConfigJson() == null || widget.getFieldConfigJson().isBlank())
+        {
+            return null;
+        }
+        try
+        {
+            Map<String, Object> fieldConfig = objectMapper.readValue(widget.getFieldConfigJson(),
+                    new TypeReference<Map<String, Object>>() {});
+            Object parserConfig = fieldConfig.get("responseParser");
+            if (parserConfig instanceof Map<?, ?> parserMap && !parserMap.isEmpty())
+            {
+                return objectMapper.writeValueAsString(parserMap);
+            }
+        }
+        catch (Exception exception)
+        {
+            // The widget's normal field-config validation reports invalid JSON on save.
+        }
+        return null;
+    }
+
+    private String wrapSingleRecordRows(String normalizedJson, String parserConfigJson)
+    {
+        try
+        {
+            Map<String, Object> parserConfig = objectMapper.readValue(parserConfigJson,
+                    new TypeReference<Map<String, Object>>() {});
+            String parserType = String.valueOf(parserConfig.getOrDefault("type", "AUTO")).toUpperCase();
+            if (!"KEY_VALUE".equals(parserType) && !"REGEX".equals(parserType))
+            {
+                return normalizedJson;
+            }
+
+            Map<String, Object> envelope = objectMapper.readValue(normalizedJson,
+                    new TypeReference<Map<String, Object>>() {});
+            Object dataValue = envelope.get("data");
+            if (dataValue instanceof Map<?, ?> dataMap && !dataMap.containsKey("rows"))
+            {
+                Map<String, Object> row = objectMapper.convertValue(dataMap,
+                        new TypeReference<Map<String, Object>>() {});
+                envelope.put("data", Map.of("rows", List.of(row)));
+                return objectMapper.writeValueAsString(envelope);
+            }
+        }
+        catch (Exception exception)
+        {
+            // Keep the normalizer output intact; the renderer will show its normal empty/error state.
+        }
+        return normalizedJson;
     }
 
     private boolean canRunNow(DashboardWidget widget, MonitoringJob job, MonitoringExecution execution)

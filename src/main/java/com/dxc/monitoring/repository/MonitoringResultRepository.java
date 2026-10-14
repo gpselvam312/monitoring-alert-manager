@@ -1,6 +1,7 @@
 package com.dxc.monitoring.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +14,8 @@ public interface MonitoringResultRepository extends JpaRepository<MonitoringResu
 {
 
     List<MonitoringResult> findAllByExecutionId(Long executionId);
+
+    Optional<MonitoringResult> findFirstByExecution_MonitoringJob_IdOrderByCreatedAtDescIdDesc(Long jobId);
 
     @EntityGraph(attributePaths = { "execution", "execution.monitoringJob" })
     List<MonitoringResult> findAllByOrderByCreatedAtDescIdDesc();

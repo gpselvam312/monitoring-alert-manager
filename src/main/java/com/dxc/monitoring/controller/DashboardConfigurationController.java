@@ -1,6 +1,7 @@
 package com.dxc.monitoring.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -191,6 +192,13 @@ public class DashboardConfigurationController
         model.addAttribute("pageSize", pageSize);
 
         return "administration/dashboard-configuration :: dashboardTabsTable";
+    }
+
+    @GetMapping("/widgets/source-sample")
+    @ResponseBody
+    public Map<String, Object> latestResultSample(@RequestParam Long jobId)
+    {
+        return dashboardConfigurationService.getLatestResultSample(jobId);
     }
 
     @GetMapping("/widgets/table")

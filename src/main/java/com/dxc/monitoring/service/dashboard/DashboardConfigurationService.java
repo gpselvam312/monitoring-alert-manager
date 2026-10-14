@@ -2,6 +2,7 @@ package com.dxc.monitoring.service.dashboard;
 
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -357,6 +358,33 @@ public class DashboardConfigurationService
         dashboardWidgetRepository.delete(widget);
 
         return widgetName;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getLatestResultSample(Long jobId)
+    {
+        if (jobId == null)
+        {
+            throw new IllegalArgumentException("Monitoring job is required.");
+        }
+        MonitoringJob job = monitoringJobRepository.findById(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found."));
+        if (job.getApplication() == null)
+        {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Monitoring job is not assigned to an application.");
+        }
+        accessService.assertCanAccessApplication(job.getApplication().getId(), "SYSTEM_CONFIG");
+
+        MonitoringResult latest = monitoringResultRepository
+                .findFirstByExecution_MonitoringJob_IdOrderByCreatedAtDescIdDesc(jobId).orElse(null);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("rawOutput", latest == null || latest.getRawOutput() == null ? "" : latest.getRawOutput());
+        response.put("resultData", latest == null || latest.getResultData() == null ? "" : latest.getResultData());
+        response.put("message", latest == null ? "No previous monitoring result was found."
+                : (latest.getMessage() == null ? "" : latest.getMessage()));
+        response.put("createdAt", latest == null || latest.getCreatedAt() == null ? "" : latest.getCreatedAt().toString());
+        return response;
     }
 
     @Transactional(readOnly = true)

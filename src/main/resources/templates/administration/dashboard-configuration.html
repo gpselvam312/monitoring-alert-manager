@@ -1140,7 +1140,7 @@
          tabindex="-1"
          aria-hidden="true">
 
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
 
             <div class="modal-content">
 
@@ -1181,6 +1181,13 @@
                         <div th:if="${dashboardWidgetSaveError != null}"
                              class="alert alert-danger" role="alert"
                              th:text="${dashboardWidgetSaveError}">Unable to save widget.</div>
+                        <div th:if="${#fields.hasErrors('*')}"
+                             class="alert alert-danger" role="alert">
+                            <div class="fw-semibold mb-1">The widget was not saved. Please correct the following:</div>
+                            <ul class="mb-0">
+                                <li th:each="error : ${#fields.errors('*')}" th:text="${error}">Validation error</li>
+                            </ul>
+                        </div>
                         <div id="dashboardWidgetValidationMessage"
                              class="alert alert-danger d-none" role="alert"></div>
 
@@ -1290,6 +1297,171 @@
                             </div>
 
 
+                            
+
+
+                            <div class="col-md-3">
+
+                                <label for="dashboardWidgetSize"
+                                       class="form-label">
+
+                                    Size
+                                    <span class="text-danger">*</span>
+
+                                </label>
+
+                               <select class="form-select"
+								        th:field="*{size}"
+								        th:classappend="${#fields.hasErrors('size')} ? ' is-invalid' : ''"
+								        id="dashboardWidgetSize"
+								        required>
+								
+								    <option value="SMALL">Small</option>
+								    <option value="MEDIUM">Medium</option>
+								    <option value="LARGE">Large</option>
+								    <option value="FULL">Full</option>
+								
+								</select>
+                                <div class="invalid-feedback"
+								     th:if="${#fields.hasErrors('size')}"
+								     th:errors="*{size}">
+								    Widget size is required.
+								</div>
+
+                            </div>
+
+
+                            <div class="col-md-3">
+
+                                <label for="dashboardWidgetIcon"
+                                       class="form-label">
+
+                                    Icon
+
+                                </label>
+
+                                <input type="text"
+							       class="form-control"
+							       id="dashboardWidgetIcon"
+							       th:field="*{icon}"
+							       maxlength="100"
+							       placeholder="bi-server">
+
+                            </div>
+
+
+                          <div class="row g-3 align-items-end mb-2">
+<div class="col-md-2">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   th:field="*{enabled}" id="dashboardWidgetEnabled">
+                                            <label class="form-check-label" for="dashboardWidgetEnabled">Enabled</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   th:field="*{detailsEnabled}" id="dashboardWidgetDetailsEnabled">
+                                            <label class="form-check-label" for="dashboardWidgetDetailsEnabled">Details Enabled</label>
+                                        </div>
+                                    </div>
+
+                            <div class="col-md-2">
+                                <div class="form-check mt-2 text-nowrap">
+                                    <input class="form-check-input" type="checkbox"
+                                           th:field="*{autoRefresh}" id="dashboardWidgetAutoRefresh">
+                                    <label class="form-check-label" for="dashboardWidgetAutoRefresh">Auto Refresh</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-2"
+                                 id="dashboardWidgetRefreshIntervalGroup">
+
+                                <label for="dashboardWidgetRefreshInterval"
+                                       class="form-label">
+
+                                    Refresh Interval
+
+                                </label>
+
+                                <input type="number"
+								       class="form-control"
+								       th:field="*{refreshInterval}"
+								       id="dashboardWidgetRefreshInterval"
+								       min="1">
+
+                            </div>
+
+
+                            <div class="col-md-3"
+                                 id="dashboardWidgetRefreshUnitGroup">
+
+                                <label for="dashboardWidgetRefreshIntervalUnit"
+                                       class="form-label">
+
+                                    Refresh Unit
+
+                                </label>
+
+                                <select class="form-select"
+								        th:field="*{refreshIntervalUnit}"
+								        id="dashboardWidgetRefreshIntervalUnit">
+
+                                    <option value="">
+                                        Select unit
+                                    </option>
+
+                                    <option value="SECONDS">
+                                        Seconds
+                                    </option>
+
+                                    <option value="MINUTES">
+                                        Minutes
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+
+</div>
+
+<div class="col-md-6">
+                                <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
+                                <select class="form-select"
+                                        id="dashboardWidgetDataSourceType"
+                                        th:field="*{dataSourceType}"
+                                        th:classappend="${#fields.hasErrors('dataSourceType')} ? ' is-invalid' : ''">
+                                    <option value="">No data source</option>
+                                    <option value="MONITORING_JOB">Monitoring Job</option>
+                                </select>
+                                <div class="invalid-feedback"
+                                     th:if="${#fields.hasErrors('dataSourceType')}"
+                                     th:errors="*{dataSourceType}">Select a valid data source.</div>
+                                <div class="form-text">Select a job to show its latest monitoring result.</div>
+                            </div>
+
+                            <div class="col-md-6" id="dashboardWidgetJobSourceGroup">
+                                <label for="dashboardWidgetJobSourceId" class="form-label">
+                                    Monitoring Job <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select"
+                                        id="dashboardWidgetJobSourceId"
+                                        th:field="*{dataSourceId}"
+                                        th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
+                                    <option value="">Select monitoring job</option>
+                                    <option th:each="job : ${monitoringJobs}"
+                                            th:value="${job.id}"
+                                            th:attr="data-application-id=${job.application != null ? job.application.id : ''},
+                                                     data-environment-id=${job.environment != null ? job.environment.id : ''}"
+                                            th:text="${job.name}">Monitoring Job</option>
+                                </select>
+                                <div class="invalid-feedback"
+                                     th:if="${#fields.hasErrors('dataSourceId')}"
+                                     th:errors="*{dataSourceId}">Select a monitoring job.</div>
+                            </div>
+
                             <div class="col-md-6">
 
                                 <label for="dashboardWidgetType"
@@ -1326,58 +1498,7 @@
 
                             </div>
 
-
-                            <div class="col-md-4">
-
-                                <label for="dashboardWidgetSize"
-                                       class="form-label">
-
-                                    Size
-                                    <span class="text-danger">*</span>
-
-                                </label>
-
-                               <select class="form-select"
-								        th:field="*{size}"
-								        th:classappend="${#fields.hasErrors('size')} ? ' is-invalid' : ''"
-								        id="dashboardWidgetSize"
-								        required>
-								
-								    <option value="SMALL">Small</option>
-								    <option value="MEDIUM">Medium</option>
-								    <option value="LARGE">Large</option>
-								    <option value="FULL">Full</option>
-								
-								</select>
-                                <div class="invalid-feedback"
-								     th:if="${#fields.hasErrors('size')}"
-								     th:errors="*{size}">
-								    Widget size is required.
-								</div>
-
-                            </div>
-
-
-                            <div class="col-md-4">
-
-                                <label for="dashboardWidgetIcon"
-                                       class="form-label">
-
-                                    Icon
-
-                                </label>
-
-                                <input type="text"
-							       class="form-control"
-							       id="dashboardWidgetIcon"
-							       th:field="*{icon}"
-							       maxlength="100"
-							       placeholder="bi-server">
-
-                            </div>
-
-
-                          <div class="col-md-4" id="dashboardWidgetChartTypeGroup">
+<div class="col-md-4" id="dashboardWidgetChartTypeGroup">
 							
 							    <label for="dashboardWidgetChartType"
 							           class="form-label">
@@ -1405,137 +1526,238 @@
 							</div>
 
 
-                            <div class="col-md-6">
-                                <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
-                                <select class="form-select"
-                                        id="dashboardWidgetDataSourceType"
-                                        th:field="*{dataSourceType}"
-                                        th:classappend="${#fields.hasErrors('dataSourceType')} ? ' is-invalid' : ''">
-                                    <option value="">No data source</option>
-                                    <option value="MONITORING_JOB">Monitoring Job</option>
-                                </select>
-                                <div class="invalid-feedback"
-                                     th:if="${#fields.hasErrors('dataSourceType')}"
-                                     th:errors="*{dataSourceType}">Select a valid data source.</div>
-                                <div class="form-text">Select a job to show its latest monitoring result.</div>
-                            </div>
-
-                            <div class="col-md-6" id="dashboardWidgetJobSourceGroup">
-                                <label for="dashboardWidgetJobSourceId" class="form-label">
-                                    Monitoring Job <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-select"
-                                        id="dashboardWidgetJobSourceId"
-                                        th:field="*{dataSourceId}"
-                                        th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
-                                    <option value="">Select monitoring job</option>
-                                    <option th:each="job : ${monitoringJobs}"
-                                            th:value="${job.id}"
-                                            th:attr="data-application-id=${job.application != null ? job.application.id : ''},
-                                                     data-environment-id=${job.environment != null ? job.environment.id : ''}"
-                                            th:text="${job.name}">Monitoring Job</option>
-                                </select>
-                                <div class="invalid-feedback"
-                                     th:if="${#fields.hasErrors('dataSourceId')}"
-                                     th:errors="*{dataSourceId}">Select a monitoring job.</div>
+                            <div class="col-12" id="summaryTableConfigurator">
+                                <div class="border rounded p-3 mb-3">
+                                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                                        <div>
+                                            <h6 class="mb-1" id="widgetMappingHeading">Widget data and mapping</h6>
+                                            <p class="text-muted small mb-0">Configure how this widget parses and displays the selected Monitoring Job response. Paste a sample or load the latest saved output to discover available fields. Samples are used for preview only.</p>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label for="summaryTableResponseFormat" class="form-label">Response format</label>
+                                            <select class="form-select" id="summaryTableResponseFormat">
+                                                <option value="AUTO">Automatic / JSON</option>
+                                                <option value="JSON">JSON (strict)</option>
+                                                <option value="PLAIN_TEXT">Plain text / lines</option>
+                                                <option value="DELIMITED">Delimited text</option>
+                                                <option value="KEY_VALUE">Key-value text</option>
+                                                <option value="REGEX">Regex extraction</option>
+                                            </select>
+                                            <div class="form-text">Parsing settings belong to this widget; job execution settings remain on the Monitoring Job.</div>
+                                        </div>
+                                        <div class="col-md-6" id="summaryTableDelimitedOptions" hidden>
+                                            <label for="summaryTableDelimiter" class="form-label">Delimiter</label>
+                                            <select class="form-select" id="summaryTableDelimiter">
+                                                <option value="|">Pipe (|)</option>
+                                                <option value=",">Comma (,)</option>
+                                                <option value=";">Semicolon (;)</option>
+                                                <option value="\t">Tab</option>
+                                                <option value="custom">Custom</option>
+                                            </select>
+                                            <input type="text" class="form-control form-control-sm mt-2" id="summaryTableCustomDelimiter" placeholder="Custom delimiter" hidden>
+                                            <label for="summaryTableCommentPrefix" class="form-label mt-2">Comment prefix (optional)</label>
+                                            <input type="text" class="form-control form-control-sm" id="summaryTableCommentPrefix" maxlength="20" placeholder="#">
+                                            <div class="form-check mt-2">
+                                                <input class="form-check-input" type="checkbox" id="summaryTableHasHeader" checked>
+                                                <label class="form-check-label" for="summaryTableHasHeader">First row contains column names</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6" id="summaryTableKeyValueOptions" hidden>
+                                            <label for="summaryTableKeyValueSeparator" class="form-label">Key-value separator</label>
+                                            <select class="form-select" id="summaryTableKeyValueSeparator">
+                                                <option value=":">Colon (:)</option>
+                                                <option value="=">Equals (=)</option>
+                                                <option value="\t">Tab</option>
+                                                <option value="custom">Custom</option>
+                                            </select>
+                                            <input type="text" class="form-control form-control-sm mt-2" id="summaryTableCustomSeparator" placeholder="Custom separator" hidden>
+                                            <label for="summaryTableIgnoredPrefixes" class="form-label mt-2">Ignore lines starting with (optional)</label>
+                                            <textarea class="form-control" id="summaryTableIgnoredPrefixes" rows="2" placeholder="#, INFO"></textarea>
+                                        </div>
+                                        <div class="col-12" id="summaryTableRegexOptions" hidden>
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                                <div>
+                                                    <label class="form-label mb-1">Extracted fields</label>
+                                                    <div class="form-text">Each pattern must contain the selected capture group. Use group 0 for the full match.</div>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableAddRegexField">Add regex field</button>
+                                            </div>
+                                            <div id="summaryTableRegexFields"></div>
+                                        </div>
+                                    </div>
+                                    <label for="summaryTableSampleJson" class="form-label">Sample response</label>
+                                    <textarea class="form-control font-monospace mb-2" id="summaryTableSampleJson" rows="5"
+                                              placeholder="Paste a sample response or load the latest job output"></textarea>
+                                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="summaryTableLoadLatest">Load latest job output</button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableDiscoverFields">Discover fields / preview</button>
+                                        <span class="small text-muted" id="summaryTableDiscoveryMessage" aria-live="polite">Paste a sample or load the latest job output.</span>
+                                    </div>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6" id="summaryTableRowPathGroup">
+                                            <label for="summaryTableRowPath" class="form-label">Rows / collection</label>
+                                            <select class="form-select" id="summaryTableRowPath" disabled>
+                                                <option value="">Load sample data to discover rows</option>
+                                            </select>
+                                            <div class="form-text">Choose the response object or array collection used by this widget.</div>
+                                        </div>
+                                    </div>
+                                                                        <div class="border rounded p-3 mb-4" id="widgetTypeMappingOptions" hidden>
+                                        <h6 class="mb-3" id="widgetTypeMappingTitle">Widget-specific mapping</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-4" data-mapping-for="CHART">
+                                                <label for="widgetCategoryField" class="form-label">Category field</label>
+                                                <select class="form-select" id="widgetCategoryField"><option value="">Select field</option></select>
+                                            </div>
+                                            <div class="col-md-4" data-mapping-for="CHART">
+                                                <label for="widgetValueField" class="form-label">Value field</label>
+                                                <select class="form-select" id="widgetValueField"><option value="">Select field</option></select>
+                                            </div>
+                                            <div class="col-md-4" data-mapping-for="CHART">
+                                                <label for="widgetSeriesField" class="form-label">Series field (optional)</label>
+                                                <select class="form-select" id="widgetSeriesField"><option value="">None</option></select>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="STAT STATUS">
+                                                <label for="widgetSingleValueField" class="form-label">Value field</label>
+                                                <select class="form-select" id="widgetSingleValueField"><option value="">Select field</option></select>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="STATUS">
+                                                <label for="widgetStatusField" class="form-label">Status field (optional)</label>
+                                                <select class="form-select" id="widgetStatusField"><option value="">None</option></select>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="TEXT">
+                                                <label for="widgetTextFields" class="form-label">Text fields</label>
+                                                <select class="form-select" id="widgetTextFields" multiple size="4"></select>
+                                                <div class="form-text">Select fields to display when no text template is supplied.</div>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="TEXT">
+                                                <label for="widgetTextTemplate" class="form-label">Text template (optional)</label>
+                                                <textarea class="form-control font-monospace" id="widgetTextTemplate" rows="4" placeholder="Host: {{HOST}}&#10;Status: {{STATUS}}"></textarea>
+                                                <div class="form-text">Use {{FIELD_NAME}} placeholders matching the response fields.</div>
+                                            </div>
+                                            <div class="col-md-6" data-mapping-for="SYSTEM_METRICS">
+                                                <label for="widgetMetricFields" class="form-label">Metric fields</label>
+                                                <select class="form-select" id="widgetMetricFields" multiple size="4"></select>
+                                            </div>
+                                            <div class="col-12" data-mapping-for="ELASTICSEARCH">
+                                                <div class="alert alert-info mb-0">Elasticsearch widgets retain their dedicated renderer options. Use Advanced JSON for renderer-specific settings; response parsing and field discovery are available above.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+<div class="mb-4" id="summaryTableFieldEditorGroup">
+                                        <h6 class="mb-2" id="widgetFieldMappingHeading">Field mapping</h6>
+                                        <div id="summaryTableFieldEditor">
+                                            <div class="text-muted small">Load sample data and discover fields to configure columns.</div>
+                                        </div>
+                                    </div>
+                                    <section class="border rounded p-3 mb-4" id="summaryTableGroupBySection" aria-labelledby="summaryTableGroupByHeading">
+                                        <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                                            <div>
+                                                <h6 class="mb-1" id="summaryTableGroupByHeading">Group By</h6>
+                                                <div class="form-text">Optionally group rows by one or more discovered fields. Hidden fields can also be used.</div>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="summaryTableGroupByEnabled">
+                                                <label class="form-check-label" for="summaryTableGroupByEnabled">Enable grouping</label>
+                                            </div>
+                                        </div>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label for="summaryTableGroupByFields" class="form-label">Group fields (select one or more)</label>
+                                                <select class="form-select" id="summaryTableGroupByFields" multiple size="4" disabled></select>
+                                                <div class="form-text">Use Ctrl (Windows/Linux) or Command (Mac) to select multiple fields.</div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="summaryTableGroupByInitialState" class="form-label">Initial state</label>
+                                                <select class="form-select" id="summaryTableGroupByInitialState" disabled>
+                                                    <option value="EXPANDED">Expanded</option>
+                                                    <option value="COLLAPSED">Collapsed</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="summaryTableGroupByOrder" class="form-label">Group order</label>
+                                                <select class="form-select" id="summaryTableGroupByOrder" disabled>
+                                                    <option value="VALUE_ASC">Value A–Z</option>
+                                                    <option value="VALUE_DESC">Value Z–A</option>
+                                                    <option value="COUNT_ASC">Count low–high</option>
+                                                    <option value="COUNT_DESC">Count high–low</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 d-flex align-items-end">
+                                                <div class="form-check mb-2 text-nowrap">
+                                                    <input class="form-check-input" type="checkbox" id="summaryTableGroupByAggregates" checked disabled>
+                                                    <label class="form-check-label text-nowrap" for="summaryTableGroupByAggregates">Show aggregates</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+                                    <section class="border rounded p-3 mb-3" id="summaryTableConditionalFormattingSection" hidden>
+                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                            <div><h6 class="mb-1">Conditional Row Formatting</h6><div class="form-text">Highlight unhealthy or unexpected results using response fields. Critical rules take precedence over warnings; green is available for healthy/success states.</div></div>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="summaryTableConditionalFormattingEnabled" checked><label class="form-check-label" for="summaryTableConditionalFormattingEnabled">Enabled</label></div>
+                                                <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableAddConditionalRule"><i class="bi bi-plus-lg me-1"></i>Add rule</button>
+                                            </div>
+                                        </div>
+                                        <div id="summaryTableConditionalRules"><div class="text-muted small">Add a rule to highlight matching rows or cells.</div></div>
+                                    </section>
+                                    <div class="row g-3 mb-3" id="summaryTableTableOptions">
+                                        <div class="col-md-5">
+                                            <label for="summaryTableDefaultSort" class="form-label">Default sort field</label>
+                                            <select class="form-select" id="summaryTableDefaultSort" disabled>
+                                                <option value="">No default sort</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label for="summaryTableSortDirection" class="form-label">Sort direction</label>
+                                            <select class="form-select" id="summaryTableSortDirection">
+                                                <option value="asc">Ascending</option>
+                                                <option value="desc">Descending</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label for="summaryTablePageSize" class="form-label">Rows per page</label>
+                                            <select class="form-select" id="summaryTablePageSize">
+                                                <option value="5">5</option>
+                                                <option value="10" selected>10</option>
+                                                <option value="25">25</option>
+                                                <option value="50">50</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 d-flex align-items-end">
+                                            <div class="form-check mb-2 text-nowrap">
+                                                <input class="form-check-input" type="checkbox" id="summaryTableSearchEnabled" checked>
+                                                <label class="form-check-label text-nowrap" for="summaryTableSearchEnabled">Enable search</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                        <h6 class="mb-0">Preview</h6>
+                                        <span class="small text-muted" id="summaryTablePreviewCount"></span>
+                                    </div>
+                                    <div class="table-responsive border rounded" id="summaryTablePreview">
+                                        <div class="text-muted small p-3">Discover fields to preview the selected columns.</div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-12">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <div class="form-check mt-2">
-                                            <input class="form-check-input" type="checkbox"
-                                                   th:field="*{enabled}" id="dashboardWidgetEnabled">
-                                            <label class="form-check-label" for="dashboardWidgetEnabled">Enabled</label>
-                                        </div>
+                                <details id="dashboardWidgetAdvancedConfig">
+                                    <summary class="form-label mb-2">Advanced JSON configuration</summary>
+                                    <textarea class="form-control font-monospace mt-2" rows="5"
+                                              th:field="*{fieldConfigJson}" id="dashboardWidgetFieldConfigJson"
+                                              maxlength="10000"
+                                              placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
+                                    <div class="form-text">
+                                        Advanced JSON is available for options not exposed by the guided editor. TABLE widgets support rowPath, columns, visibleFields, labels, formats, sorting, search and pagination; charts use rowPath, categoryField, valueField and optional seriesField; STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields and labels. Summary Table supports details columns, search, sorting, pagination, grouping, row status, thresholds, summary cards and total-row configuration. Kafka health continues to use its dedicated TABLE renderer configuration. For date-filtered API jobs, use "dateRange":{"enabled":true} and {{startDate}}/{{endDate}} placeholders in the API URL or request body. Leave as {} to infer fields automatically.
                                     </div>
-                                    <div class="col-md-6">
-                                        <div class="form-check mt-2">
-                                            <input class="form-check-input" type="checkbox"
-                                                   th:field="*{detailsEnabled}" id="dashboardWidgetDetailsEnabled">
-                                            <label class="form-check-label" for="dashboardWidgetDetailsEnabled">Details Enabled</label>
-                                        </div>
-                                    </div>
-                                </div>
+                                    <div class="invalid-feedback">Enter a valid JSON object.</div>
+                                </details>
                             </div>
 
-                            <div class="col-12">
-                                <label for="dashboardWidgetFieldConfigJson" class="form-label">JSON Field / Column Configuration</label>
-                                <textarea class="form-control font-monospace" rows="5"
-                                          th:field="*{fieldConfigJson}" id="dashboardWidgetFieldConfigJson"
-                                          maxlength="10000"
-                                          placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
-                                <div class="form-text">
-                                    Optional JSON: TABLE widgets support rowPath, columns (field/key, label, visible, sortable, searchable, format: number/percentage/status/datetime/duration), visibleFields, labels, order, formats, sorting (enabled, defaultField, direction), search (enabled, placeholder) and pagination (enabled, pageSize);
-                                    charts use rowPath, categoryField, valueField and optional seriesField;
-                                    STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields (logical-to-JSON mappings) and labels; standard metrics use built-in percentage, load and duration formatting.
-                                    Summary Table uses renderer SUMMARY_TABLE with optional summary cards/overall total, details columns (including hidden groupable fields), search, sorting, pagination, multi-field grouping, row-status/threshold mappings, and column formats number/percentage/datetime/duration/status (duration is in seconds);
-                                    Kafka health uses TABLE with "renderer":"KAFKA_CONSUMER_HEALTH", clusterPath and cluster metric fields,
-                                    rowPath, groupNameField, groupStatusField, groupLagField, topicsField, topicNameField, topicCurrentField,
-                                    topicEndField, topicLagField, partitionsField, partitionIdField, partitionCurrentField, partitionEndField and partitionLagField.
-                                    For date-filtered API jobs add "dateRange":{"enabled":true} and use {{startDate}}/{{endDate}}
-                                    placeholders in the API URL or request body. Leave as {} to infer table fields automatically.
-                                </div>
-                                <div class="invalid-feedback">Enter a valid JSON object.</div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="form-check mt-4">
-                                    <input class="form-check-input" type="checkbox"
-                                           th:field="*{autoRefresh}" id="dashboardWidgetAutoRefresh">
-                                    <label class="form-check-label" for="dashboardWidgetAutoRefresh">Auto Refresh</label>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4"
-                                 id="dashboardWidgetRefreshIntervalGroup">
-
-                                <label for="dashboardWidgetRefreshInterval"
-                                       class="form-label">
-
-                                    Refresh Interval
-
-                                </label>
-
-                                <input type="number"
-								       class="form-control"
-								       th:field="*{refreshInterval}"
-								       id="dashboardWidgetRefreshInterval"
-								       min="1">
-
-                            </div>
-
-
-                            <div class="col-md-4"
-                                 id="dashboardWidgetRefreshUnitGroup">
-
-                                <label for="dashboardWidgetRefreshIntervalUnit"
-                                       class="form-label">
-
-                                    Refresh Unit
-
-                                </label>
-
-                                <select class="form-select"
-								        th:field="*{refreshIntervalUnit}"
-								        id="dashboardWidgetRefreshIntervalUnit">
-
-                                    <option value="">
-                                        Select unit
-                                    </option>
-
-                                    <option value="SECONDS">
-                                        Seconds
-                                    </option>
-
-                                    <option value="MINUTES">
-                                        Minutes
-                                    </option>
-
-                                </select>
-
-                            </div>
-
+                            
                         </div>
 
                     </div>
@@ -1568,6 +1790,8 @@
 
     </div>
 
+
+    <script th:src="@{/js/summary-table-configurator.js}"></script>
 
     <script th:inline="javascript">
 

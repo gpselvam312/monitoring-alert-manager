@@ -29,6 +29,39 @@
         return typeof value === "object" ? JSON.stringify(value) : String(value);
     }
 
+    function formatDateTime(value) {
+        const date = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(date.getTime())) return display(value);
+
+        const pattern = String(window.monitoringDateTimeFormat || "MM/dd/yyyy hh:mm:ss a");
+        const parts = {
+            yyyy: String(date.getFullYear()).padStart(4, "0"),
+            yyy: String(date.getFullYear()).padStart(3, "0"),
+            yy: String(date.getFullYear()).slice(-2),
+            y: String(date.getFullYear()),
+            MMMM: date.toLocaleString("en-US", { month: "long" }),
+            MMM: date.toLocaleString("en-US", { month: "short" }),
+            MM: String(date.getMonth() + 1).padStart(2, "0"),
+            M: String(date.getMonth() + 1),
+            dd: String(date.getDate()).padStart(2, "0"),
+            d: String(date.getDate()),
+            HH: String(date.getHours()).padStart(2, "0"),
+            H: String(date.getHours()),
+            hh: String((date.getHours() % 12) || 12).padStart(2, "0"),
+            h: String((date.getHours() % 12) || 12),
+            mm: String(date.getMinutes()).padStart(2, "0"),
+            m: String(date.getMinutes()),
+            ss: String(date.getSeconds()).padStart(2, "0"),
+            s: String(date.getSeconds()),
+            a: date.getHours() < 12 ? "AM" : "PM"
+        };
+        const tokens = /'[^']*(?:''[^']*)*'|yyyy|yyy|yy|y|MMMM|MMM|MM|M|dd|d|HH|H|hh|h|mm|m|ss|s|a|./g;
+        return pattern.replace(tokens, token => {
+            if (token.startsWith("'") && token.endsWith("'")) return token.slice(1, -1).replace(/''/g, "'");
+            return Object.prototype.hasOwnProperty.call(parts, token) ? parts[token] : token;
+        });
+    }
+
     function formatValue(value, format) {
         if (value === null || value === undefined || value === "") return "";
         const normalized = String(format || "").toLowerCase();
@@ -46,10 +79,7 @@
                 .map(part => String(part).padStart(2, "0"))
                 .join(":");
         }
-        if (normalized === "datetime") {
-            const date = new Date(value);
-            if (!Number.isNaN(date.getTime())) return date.toLocaleString();
-        }
+        if (normalized === "datetime") return formatDateTime(value);
         return display(value);
     }
 
@@ -125,7 +155,8 @@
                 sortable: column.sortable !== false,
                 groupable: column.groupable !== false,
                 searchable: column.searchable !== false,
-                format: column.format || ""
+                format: column.format || "",
+                aggregation: column.aggregation || "none"
             }));
         }
         const keys = Array.from(new Set(rows.reduce((all, row) => all.concat(Object.keys(row)), [])));
@@ -153,18 +184,60 @@
         return "is-healthy";
     }
 
+    function conditionalRuleMatches(row, rule) {
+        const field = String(rule.field || "");
+        const value = Object.prototype.hasOwnProperty.call(row, field) ? row[field] : field.split(".").reduce((current,key) => current == null ? undefined : current[key], row);
+        const operator = String(rule.operator || "equals").toLowerCase();
+        if (operator === "missing") return value === undefined;
+        if (operator === "empty") return value === undefined || value === null || String(value).trim() === "";
+        if (value === undefined || value === null) return false;
+        const actual = String(value).trim(), expected = String(rule.value == null ? "" : rule.value).trim();
+        if (["gt","gte","lt","lte"].includes(operator)) {
+            const number = numeric(actual), threshold = numeric(expected);
+            if (number === null || threshold === null) return false;
+            if (operator === "gt") return number > threshold;
+            if (operator === "gte") return number >= threshold;
+            if (operator === "lt") return number < threshold;
+            return number <= threshold;
+        }
+        if (operator === "contains") return actual.toLowerCase().includes(expected.toLowerCase());
+        if (operator === "not_equals") return actual.toLowerCase() !== expected.toLowerCase();
+        return actual.toLowerCase() === expected.toLowerCase();
+    }
+
+    function conditionalRuleClass(row, config, scope, field) {
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const formatting = details.conditionalFormatting && typeof details.conditionalFormatting === "object" ? details.conditionalFormatting : (config.conditionalFormatting || {});
+        if (formatting.enabled === false || !Array.isArray(formatting.rules)) return "";
+        const ranks = { info: 1, healthy: 2, warning: 3, critical: 4 };
+        let selected = "";
+        formatting.rules.forEach(rule => {
+            if (!rule || String(rule.scope || "row").toLowerCase() !== scope) return;
+            if (scope === "cell" && String(rule.field || "") !== String(field || "")) return;
+            if (!conditionalRuleMatches(row, rule)) return;
+            const severity = String(rule.severity || "critical").toLowerCase();
+            if ((ranks[severity] || 0) > (ranks[selected] || 0)) selected = severity;
+        });
+        return selected ? "is-" + selected : "";
+    }
+
     function rowClass(row, config) {
         const rowStatus = (config.details && config.details.rowStatus) || config.rowStatus || {};
-        if (rowStatus.enabled !== false && rowStatus.field) return statusClass(rowValue(row, rowStatus.field), rowStatus);
-        const thresholds = (config.details && config.details.thresholds && typeof config.details.thresholds === "object")
-            ? config.details.thresholds : (config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {});
-        let hasWarning = false;
-        for (const field of Object.keys(thresholds)) {
-            const result = thresholdClass(rowValue(row, field), thresholds[field]);
-            if (result === "is-critical") return "is-critical";
-            if (result === "is-warning") hasWarning = true;
+        let baseClass = "";
+        if (rowStatus.enabled !== false && rowStatus.field) baseClass = statusClass(rowValue(row, rowStatus.field), rowStatus);
+        else {
+            const thresholds = (config.details && config.details.thresholds && typeof config.details.thresholds === "object") ? config.details.thresholds : (config.thresholds && typeof config.thresholds === "object" ? config.thresholds : {});
+            let hasWarning = false;
+            for (const field of Object.keys(thresholds)) {
+                const result = thresholdClass(rowValue(row, field), thresholds[field]);
+                if (result === "is-critical") { baseClass = "is-critical"; break; }
+                if (result === "is-warning") hasWarning = true;
+            }
+            if (!baseClass && hasWarning) baseClass = "is-warning";
         }
-        return hasWarning ? "is-warning" : "";
+        const conditional = conditionalRuleClass(row, config, "row");
+        const rank = { "": 0, "is-unknown": 0, "is-info": 1, "is-healthy": 2, "is-warning": 3, "is-critical": 4 };
+        return (rank[conditional] || 0) > (rank[baseClass] || 0) ? conditional : baseClass;
     }
 
     function summaryClass(value, rules) {
@@ -185,6 +258,7 @@
         let entries = Array.from(grouped.entries());
         const ordering = config.groupBy && config.groupBy.order;
         entries.sort((a, b) => {
+            if (ordering === "COUNT_ASC") return a[1].length - b[1].length;
             if (ordering === "COUNT_DESC") return b[1].length - a[1].length;
             if (ordering === "VALUE_DESC") return String(b[0]).localeCompare(String(a[0]), undefined, { numeric: true });
             return String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true });
@@ -207,11 +281,22 @@
             const count = node.rows.length;
             let aggregate = "";
             if (showAggregates) {
-                const numericColumns = columns.filter(column => node.rows.some(row => numeric(rowValue(row, column.field)) !== null));
-                aggregate = numericColumns.map(column => {
-                    const total = node.rows.reduce((sum, row) => sum + (numeric(rowValue(row, column.field)) || 0), 0);
-                    return esc(column.label) + ": " + esc(total.toLocaleString());
-                }).join(" · ");
+                const aggregateColumns = columns.filter(column => String(column.aggregation || "none").toLowerCase() !== "none");
+                aggregate = aggregateColumns.map(column => {
+                    const operation = String(column.aggregation || "none").toLowerCase();
+                    const values = node.rows.map(row => rowValue(row, column.field)).filter(value => value !== null && value !== undefined && value !== "");
+                    let result;
+                    if (operation === "count") result = values.length;
+                    else {
+                        const numbers = values.map(numeric).filter(value => value !== null);
+                        if (!numbers.length) return "";
+                        if (operation === "sum") result = numbers.reduce((sum, value) => sum + value, 0);
+                        else if (operation === "avg") result = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+                        else if (operation === "max") result = Math.max(...numbers);
+                        else if (operation === "min") result = Math.min(...numbers);
+                    }
+                    return esc(column.label) + " (" + esc(operation.toUpperCase()) + "): " + esc(result === undefined ? "—" : Number.isFinite(result) ? result.toLocaleString() : result);
+                }).filter(Boolean).join(" · ");
             }
             htmlRows.push('<tr class="summary-table-group-row"><td colspan="' + columns.length + '"><button type="button" class="summary-table-group-toggle" data-group-id="' + esc(node.id) + '" aria-expanded="' + (!collapsed) + '"><i class="bi ' + (collapsed ? "bi-chevron-right" : "bi-chevron-down") + '"></i><strong>' + esc(node.field) + ': ' + esc(node.value) + '</strong><span class="summary-table-group-count">' + count + ' rows</span>' + (aggregate ? '<span class="summary-table-group-aggregate">' + aggregate + '</span>' : '') + '</button></td></tr>');
             if (!collapsed) flattenNodes(node.children, config, state, columns, htmlRows);
@@ -223,61 +308,152 @@
         return '<tr' + (css ? ' class="summary-table-row ' + css + '"' : ' class="summary-table-row"') + '>' +
             columns.map(column => {
                 const value = rowValue(row, column.field);
+                const cellClass = conditionalRuleClass(row, config, "cell", column.field);
+                const rawBoolean = value === true || value === false || (typeof value === "string" && /^(true|false)$/i.test(value.trim()));
+                const statusValue = String(value == null ? "" : value).trim().toLowerCase();
+                const isBoolean = rawBoolean || ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes",
+                    "unhealthy", "down", "inactive", "disabled", "error", "failed", "fail", "critical", "red", "0", "no"].includes(statusValue);
+                const boolValue = rawBoolean ? (value === true || String(value).trim().toLowerCase() === "true")
+                    : ["healthy", "health", "up", "active", "enabled", "ok", "pass", "passed", "success", "green", "1", "yes"].includes(statusValue);
+                if (String(column.format || "").toLowerCase() === "toggle") {
+                    return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-toggle ' + (boolValue ? 'is-on' : 'is-off') + '" role="img" aria-label="' + esc(column.label || column.field) + ': ' + (boolValue ? 'true' : 'false') + '"><span></span></span></td>';
+                }
                 if (String(column.format).toLowerCase() === "status") {
                     const cls = statusClass(value, (config.details && config.details.rowStatus) || config.rowStatus || {});
-                    return '<td><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
+                    return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><span class="summary-table-status ' + cls + '">' + esc(display(value)) + '</span></td>';
                 }
-                return '<td>' + esc(formatValue(value, column.format)) + '</td>';
+                return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '>' + esc(formatValue(value, column.format)) + '</td>';
             }).join("") + '</tr>';
     }
 
     function renderCards(state) {
         const summary = state.config.summary || {};
         if (summary.enabled === false) return "";
-        const numericFields = state.numericFields;
-        const labels = state.config.labels && typeof state.config.labels === "object" ? state.config.labels : {};
-        const rules = summary.thresholds && typeof summary.thresholds === "object" ? summary.thresholds : {};
+        const details = state.config.details && typeof state.config.details === "object" ? state.config.details : {};
+        const searchConfig = details.search || state.config.search || {};
+        const requestedSearchFields = Array.isArray(searchConfig.fields)
+            ? searchConfig.fields.map(String)
+            : state.columns.filter(column => column.searchable !== false).map(column => column.field);
+        const summaryCountRows = state.search && searchConfig.enabled !== false
+            ? state.detailRows.filter(row => requestedSearchFields.some(field =>
+                String(display(rowValue(row, field))).toLowerCase().includes(state.search.toLowerCase())))
+            : state.detailRows;
+        const hasNewCards = Array.isArray(summary.cards);
+        const hasLegacyCards = Array.isArray(details.summaryCards);
+        const hasConfiguredCards = hasNewCards || hasLegacyCards;
+        const configured = hasNewCards && (summary.cards.length > 0 || !hasLegacyCards)
+            ? summary.cards : (hasLegacyCards ? details.summaryCards : (hasNewCards ? summary.cards : []));
         const cards = [];
-        const totalConfig = summary.totalRow || {};
-        const sourceTotals = state.totalRow;
-        const totals = {};
-        const calculatedTotal = field => state.detailRows.reduce(
-            (sum, row) => sum + (numeric(rowValue(row, field)) || 0), 0);
-        numericFields.forEach(field => {
-            const authoritativeValue = sourceTotals ? numeric(rowValue(sourceTotals, field)) : null;
-            totals[field] = authoritativeValue !== null ? authoritativeValue : calculatedTotal(field);
-        });
-        if (summary.totalCard && summary.totalCard.enabled === true) {
-            let overall;
-            if (summary.totalCard.field) {
-                const authoritativeValue = sourceTotals ? numeric(rowValue(sourceTotals, summary.totalCard.field)) : null;
-                overall = authoritativeValue !== null ? authoritativeValue : calculatedTotal(summary.totalCard.field);
-            } else {
-                overall = numericFields.reduce((sum, field) => sum + (totals[field] || 0), 0);
+        if (hasConfiguredCards) {
+            const matches = (row, card) => !card.filterField || conditionalRuleMatches(row, {
+                field: card.filterField,
+                operator: card.filterOperator || "equals",
+                value: card.filterValue
+            });
+            configured.forEach((card, index) => {
+                const subset = state.detailRows.filter(row => matches(row, card));
+                const field = String(card.field || "");
+                const operation = String(card.operation || "COUNT_ROWS").toUpperCase();
+                const values = field ? subset.map(row => rowValue(row, field)) : [];
+                let value = 0;
+                if (operation === "COUNT_ROWS") value = subset.length;
+                else if (operation === "COUNT_NON_EMPTY") value = values.filter(item => item !== null && item !== undefined && item !== "").length;
+                else if (operation === "COUNT_TRUE") value = values.filter(item => item === true || String(item).toLowerCase() === "true").length;
+                else if (operation === "COUNT_FALSE") value = values.filter(item => item === false || String(item).toLowerCase() === "false").length;
+                else {
+                    const numbers = values.map(numeric).filter(item => item !== null);
+                    if (operation === "SUM") value = numbers.reduce((sum, item) => sum + item, 0);
+                    else if (operation === "AVG") value = numbers.length ? numbers.reduce((sum, item) => sum + item, 0) / numbers.length : null;
+                    else if (operation === "MAX") value = numbers.length ? Math.max(...numbers) : null;
+                    else if (operation === "MIN") value = numbers.length ? Math.min(...numbers) : null;
+                }
+                const configuredFilterField = String(card.filterField || "");
+                const filterType = configuredFilterField ? "custom-rule" : (field ? "custom-field" : "all");
+                const defaultFilterable = Boolean(configuredFilterField || field || operation !== "COUNT_ROWS");
+                cards.push({ label: card.label || (operation === "COUNT_ROWS" ? "Total Rows" : field || "Summary"),
+                    value: value === null ? "—" : formatValue(value, card.format), cls: "",
+                    filterField: configuredFilterField || field || null,
+                    filterValue: card.filterValue, filterOperator: card.filterOperator || "equals",
+                    filterType, filterOperation: operation,
+                    filterable: card.filterable === true || (card.filterable !== false && defaultFilterable) });
+            });
+            const groupedSummaryFields = Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
+            if (groupedSummaryFields.length) {
+                cards.unshift({ label: "All", value: summaryCountRows.length, cls: "",
+                    filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS", filterable: true });
             }
-            cards.push({ label: summary.totalCard.label || "Overall Total", value: overall || 0, cls: summaryClass(overall || 0, summary.totalCard.thresholds), filterField: null, filterType: "overall" });
+            groupedSummaryFields.forEach(field => {
+                const counts = new Map();
+                summaryCountRows.forEach(row => {
+                    const raw = rowValue(row, field);
+                    const key = raw === null || raw === undefined || String(raw).trim() === "" ? "" : String(raw);
+                    counts.set(key, (counts.get(key) || 0) + 1);
+                });
+                const groupedColumn = state.columnMap.get(field) || {};
+                const fieldLabel = groupedColumn.label || field;
+                counts.forEach((count, value) => {
+                    const displayValue = value === "" ? "(empty)" : formatValue(value, groupedColumn.format);
+                    cards.push({ label: fieldLabel + ": " + displayValue, value: count, cls: "",
+                        filterField: field, filterValue: value, filterType: "grouped-value", filterOperation: "COUNT_ROWS", filterable: true });
+                });
+            });
+        } else {
+            const numericFields = state.numericFields;
+            const labels = state.config.labels && typeof state.config.labels === "object" ? state.config.labels : {};
+            const rules = summary.thresholds && typeof summary.thresholds === "object" ? summary.thresholds : {};
+            const sourceTotals = state.totalRow;
+            const totals = {};
+            const calculatedTotal = field => state.detailRows.reduce((sum, row) => sum + (numeric(rowValue(row, field)) || 0), 0);
+            numericFields.forEach(field => {
+                const authoritativeValue = sourceTotals ? numeric(rowValue(sourceTotals, field)) : null;
+                totals[field] = authoritativeValue !== null ? authoritativeValue : calculatedTotal(field);
+            });
+            if (summary.totalCard && summary.totalCard.enabled === true) {
+                const authoritativeValue = sourceTotals && summary.totalCard.field ? numeric(rowValue(sourceTotals, summary.totalCard.field)) : null;
+                const overall = summary.totalCard.field ? (authoritativeValue !== null ? authoritativeValue : calculatedTotal(summary.totalCard.field))
+                    : numericFields.reduce((sum, field) => sum + (totals[field] || 0), 0);
+                cards.push({ label: summary.totalCard.label || "Overall Total", value: overall || 0,
+                    cls: summaryClass(overall || 0, summary.totalCard.thresholds), filterField: null, filterType: "overall",
+                    filterable: summary.totalCard.filterable !== false });
+            }
+            const excluded = new Set(Array.isArray(summary.excludedFields) ? summary.excludedFields.map(String) : []);
+            numericFields.filter(field => !excluded.has(field)).forEach(field => {
+                cards.push({ label: labels[field] || (state.columnMap.get(field) || {}).label || field,
+                    value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field,
+                    filterType: "field", filterable: true });
+            });
         }
-        const excluded = new Set(Array.isArray(summary.excludedFields) ? summary.excludedFields.map(String) : []);
-        numericFields.filter(field => !excluded.has(field)).forEach(field => {
-            const label = labels[field] || (state.columnMap.get(field) || {}).label || field;
-            cards.push({ label, value: totals[field], cls: summaryClass(totals[field], rules[field]), filterField: field, filterType: "field" });
-        });
         if (!cards.length) return "";
         return '<div class="server-health-summary summary-table-cards">' + cards.map(card => {
-            const active = state.cardFilter && state.cardFilter.type === card.filterType
-                && state.cardFilter.field === card.filterField;
+            const filterable = card.filterable !== false;
+            const active = filterable && (card.filterType === "grouped-all"
+                ? (!state.cardFilter || state.cardFilter.type === "grouped-all")
+                : state.cardFilter && state.cardFilter.type === card.filterType &&
+                    state.cardFilter.field === card.filterField &&
+                    state.cardFilter.operation === (card.filterOperation || "") &&
+                    (["grouped-value", "custom-rule"].includes(card.filterType)
+                        ? String(state.cardFilter.value ?? "") === String(card.filterValue ?? "")
+                        : true) &&
+                    (card.filterType !== "custom-rule" ||
+                        (state.cardFilter.operator || "equals") === (card.filterOperator || "equals")));
             const status = card.filterType === "overall" ? "total"
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
-            return '<button type="button" class="server-health-summary-item server-health-summary-' + status +
-                ' server-health-summary-filter summary-table-card' + (active ? ' is-active' : '') +
-                '" data-card-filter-type="' + esc(card.filterType) +
-                '" data-card-filter-field="' + esc(card.filterField || '') + '" aria-label="Filter rows by ' +
-                esc(card.label) + '" aria-pressed="' + Boolean(active) + '">' +
-                '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
-                '<strong class="summary-table-card-value">' + esc(display(card.value)) +
-                '</strong></button>';
+            const content = '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
+                '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong>';
+            const cardClasses = 'server-health-summary-item server-health-summary-' + status + ' summary-table-card' +
+                (filterable ? ' server-health-summary-filter summary-table-card-filter' : ' summary-table-card-static') +
+                (active ? ' is-active' : '');
+            if (!filterable) {
+                return '<div class="' + cardClasses + '" aria-label="' + esc(card.label) + '">' + content + '</div>';
+            }
+            return '<button type="button" class="' + cardClasses +
+                '" data-card-filter-type="' + esc(card.filterType) + '" data-card-filter-field="' + esc(card.filterField || '') +
+                '" data-card-filter-value="' + esc(card.filterValue === undefined || card.filterValue === null ? "" : card.filterValue) +
+                '" data-card-filter-operator="' + esc(card.filterOperator || '') +
+                '" aria-label="' + esc(card.label) + '" data-card-filter-operation="' + esc(card.filterOperation || '') +
+                '" aria-pressed="' + Boolean(active) + '">' + content + '</button>';
         }).join("") + '</div>';
     }
 
@@ -294,11 +470,34 @@
         const pageConfig = details.pagination || config.pagination || {};
         let rows = state.detailRows.slice();
         if (state.cardFilter) {
-            if (state.cardFilter.type === "field" && state.cardFilter.field) {
+            if (state.cardFilter.type === "grouped-all") {
+                // The All card intentionally leaves the complete row set visible.
+            } else if (state.cardFilter.type === "field" && state.cardFilter.field) {
                 const field = state.cardFilter.field;
                 rows = rows.filter(row => (numeric(rowValue(row, field)) || 0) > 0);
             } else if (state.cardFilter.type === "overall") {
                 rows = rows.filter(row => state.numericFields.some(field => (numeric(rowValue(row, field)) || 0) > 0));
+            } else if (state.cardFilter.type === "grouped-value" && state.cardFilter.field) {
+                const field = state.cardFilter.field;
+                const expected = String(state.cardFilter.value ?? "");
+                rows = rows.filter(row => {
+                    const actual = rowValue(row, field);
+                    return String(actual === null || actual === undefined ? "" : actual) === expected;
+                });
+            } else if (state.cardFilter.type === "custom-rule" && state.cardFilter.field) {
+                const rule = { field: state.cardFilter.field, operator: state.cardFilter.operator || "equals", value: state.cardFilter.value };
+                rows = rows.filter(row => conditionalRuleMatches(row, rule));
+            } else if (state.cardFilter.type === "custom-field" && state.cardFilter.field) {
+                const field = state.cardFilter.field;
+                const operation = String(state.cardFilter.operation || "").toUpperCase();
+                rows = rows.filter(row => {
+                    const value = rowValue(row, field);
+                    if (operation === "COUNT_TRUE") return value === true || String(value).toLowerCase() === "true";
+                    if (operation === "COUNT_FALSE") return value === false || String(value).toLowerCase() === "false";
+                    if (operation === "COUNT_NON_EMPTY") return value !== null && value !== undefined && value !== "";
+                    const number = numeric(value);
+                    return number !== null && number > 0;
+                });
             }
         }
         if (state.search && searchConfig.enabled !== false) {
@@ -352,7 +551,9 @@
         if (!body) body = '<tr><td colspan="' + Math.max(1, columns.length) + '" class="summary-table-empty-cell">No matching rows.</td></tr>';
         const pager = pageConfig.enabled === false ? "" : '<div class="summary-table-pagination"><span class="small text-muted">Showing ' +
             (totalCount ? (state.page * pageSize + 1) : 0) + '–' + Math.min((state.page + 1) * pageSize, totalCount) + ' of ' + totalCount +
-            (grouping && groupFields.length ? ' groups' : ' rows') + '</span><div class="d-flex align-items-center gap-2"><label class="small text-muted">Rows <select class="form-select form-select-sm summary-table-page-size" aria-label="Rows per page">' +
+            (grouping && groupFields.length ? ' groups' : ' rows') + '</span><div class="d-flex align-items-center gap-2"><label class="small text-muted">' +
+            (grouping && groupFields.length ? 'Groups' : 'Rows') + ' <select class="form-select form-select-sm summary-table-page-size" aria-label="' +
+            (grouping && groupFields.length ? 'Groups' : 'Rows') + ' per page">' +
             [5, 10, 20, 50, 100, pageSize].filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b).map(size => '<option value="' + size + '"' + (size === pageSize ? ' selected' : '') + '>' + size + '</option>').join("") +
             '</select></label><button type="button" class="btn btn-sm btn-outline-secondary summary-table-prev"' + (state.page <= 0 ? ' disabled' : '') + ' aria-label="Previous page"><i class="bi bi-chevron-left"></i></button><span class="small">' +
             (state.page + 1) + ' / ' + pageCount + '</span><button type="button" class="btn btn-sm btn-outline-secondary summary-table-next"' + (state.page >= pageCount - 1 ? ' disabled' : '') + ' aria-label="Next page"><i class="bi bi-chevron-right"></i></button></div></div>';
@@ -473,7 +674,7 @@
     document.addEventListener("click", function (event) {
         const sortButton = event.target.closest(".summary-table-sort");
         const groupButton = event.target.closest(".summary-table-group-toggle");
-        const cardButton = event.target.closest(".summary-table-card");
+        const cardButton = event.target.closest(".summary-table-card-filter");
         const groupClearButton = event.target.closest(".summary-table-group-clear");
         const prev = event.target.closest(".summary-table-prev");
         const next = event.target.closest(".summary-table-next");
@@ -484,10 +685,18 @@
         if (cardButton) {
             const type = cardButton.getAttribute("data-card-filter-type");
             const field = cardButton.getAttribute("data-card-filter-field") || null;
-            if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field) {
+            const operation = cardButton.getAttribute("data-card-filter-operation") || "";
+            const value = cardButton.getAttribute("data-card-filter-value") || "";
+            if (type === "grouped-all") {
+                state.cardFilter = null;
+            } else if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field &&
+                state.cardFilter.operation === operation &&
+                (!["grouped-value", "custom-rule"].includes(type) || String(state.cardFilter.value ?? "") === value) &&
+                (type !== "custom-rule" || (state.cardFilter.operator || "equals") === (cardButton.getAttribute("data-card-filter-operator") || "equals"))) {
                 state.cardFilter = null;
             } else {
-                state.cardFilter = { type, field };
+                state.cardFilter = { type, field, operation, value,
+                    operator: cardButton.getAttribute("data-card-filter-operator") || "equals" };
             }
             state.page = 0;
         } else if (sortButton) {

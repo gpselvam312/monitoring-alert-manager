@@ -25,6 +25,7 @@ public class SystemSettingService
 {
     public static final String APPLICATION_NAME = "APPLICATION_NAME";
     public static final String THEME = "THEME";
+    public static final String DATE_TIME_FORMAT = "DATE_TIME_FORMAT";
     public static final String SITE_OFFLINE = "SITE_OFFLINE";
     public static final String MAINTENANCE_MESSAGE = "MAINTENANCE_MESSAGE";
     public static final String MAINTENANCE_BYPASS_IPS = "MAINTENANCE_BYPASS_IPS";
@@ -87,6 +88,20 @@ public class SystemSettingService
             }
         }
         return value;
+    }
+
+    @Transactional(readOnly = true)
+    public String getDateTimeFormat()
+    {
+        try
+        {
+            String value = findByKey(DATE_TIME_FORMAT).getSettingValue();
+            return value == null || value.isBlank() ? "MM/dd/yyyy hh:mm:ss a" : value;
+        }
+        catch (IllegalArgumentException exception)
+        {
+            return "MM/dd/yyyy hh:mm:ss a";
+        }
     }
 
     @Transactional(readOnly = true)
@@ -283,6 +298,20 @@ public class SystemSettingService
 
         if (THEME.equals(setting.getSettingKey()) && !ALLOWED_THEMES.contains(value))
             throw new IllegalArgumentException("Invalid theme. Allowed values: " + String.join(", ", ALLOWED_THEMES));
+
+        if (DATE_TIME_FORMAT.equals(setting.getSettingKey()))
+        {
+            if (value.isBlank())
+                throw new IllegalArgumentException("Date/time format cannot be blank.");
+            try
+            {
+                java.time.format.DateTimeFormatter.ofPattern(value, java.util.Locale.ENGLISH);
+            }
+            catch (IllegalArgumentException exception)
+            {
+                throw new IllegalArgumentException("Invalid date/time format pattern. Use Java date/time pattern syntax.");
+            }
+        }
 
         if (SCRIPT_ALLOWED_DIRECTORIES.equals(setting.getSettingKey()))
         {
