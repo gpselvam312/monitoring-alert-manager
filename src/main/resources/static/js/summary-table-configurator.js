@@ -223,7 +223,7 @@
         const cards = (Array.isArray(summary.cards) && (summary.cards.length || !Array.isArray(details.summaryCards)) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : [])).map(card => Object.assign({}, card));
         const fields = Array.from(new Set([...(state.fields || []), ...cards.map(card => String(card.field || "")).filter(Boolean)]));
         const options = selected => '<option value="">All rows</option>' + fields.map(field => '<option value="' + escapeHtml(field) + '"' + (String(selected || "") === field ? ' selected' : '') + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("");
-        const ops = [["COUNT_ROWS","Count rows"],["COUNT_NON_EMPTY","Count non-empty"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
+        const ops = [["COUNT_ROWS","Count rows"],["VALUE","Field value"],["COUNT_NON_EMPTY","Count non-empty"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
         host.innerHTML = cards.map((card,i) => {
             const map = card.valueMapping && typeof card.valueMapping === "object" ? card.valueMapping : {}, icon = card.icon && typeof card.icon === "object" ? card.icon : {};
             return '<div class="border rounded p-3 mb-3" data-summary-card-row><div class="d-flex justify-content-between mb-2"><strong>Card ' + (i+1) + '</strong><button type="button" class="btn btn-sm btn-outline-danger summary-card-remove">Remove</button></div><div class="row g-2">' +
@@ -482,7 +482,7 @@
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
             '<div class="d-flex align-items-center gap-2 mb-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div>' +
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
-            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th><th>Summary card</th><th>Filter on click</th><th>Group summary by field</th></tr></thead><tbody>' +
+            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
@@ -496,9 +496,7 @@
                 aggregations.map(option => '<option value="' + option[0] + '"' + (item.aggregation === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
                 '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>' +
-                '<td><input class="form-check-input summary-config-summary-card" type="checkbox" aria-label="Include ' + escapeHtml(item.field) + ' in summary cards"' + (item.summaryCard ? ' checked' : '') + (item.aggregation === "none" ? ' disabled' : '') + '></td>' +
-                '<td><input class="form-check-input summary-config-summary-filterable" type="checkbox" aria-label="Make ' + escapeHtml(item.field) + ' summary card filter rows when clicked"' + (item.summaryFilterable ? ' checked' : '') + (!item.summaryCard || item.aggregation === "none" ? ' disabled' : '') + '></td>' +
-                '<td><input class="form-check-input summary-config-group-summary" type="checkbox" aria-label="Create a summary card for each distinct ' + escapeHtml(item.field) + ' value"' + (item.groupSummary ? ' checked' : '') + '></td></tr>').join("") +
+                '</tr>').join("") +
             '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
             : '<div class="text-muted small">No fields were found in this collection.</div>';
 
@@ -527,9 +525,6 @@
             searchable: row.getAttribute("data-searchable") !== "false",
             format: row.querySelector(".summary-config-format").value,
             aggregation: row.querySelector(".summary-config-aggregation").value,
-            summaryCard: row.querySelector(".summary-config-summary-card").checked,
-            summaryFilterable: row.querySelector(".summary-config-summary-filterable").checked,
-            groupSummary: row.querySelector(".summary-config-group-summary").checked
         }));
     }
 
@@ -575,7 +570,7 @@
         config.details.conditionalFormatting = readConditionalFormatting();
         delete config.details.summaryCards;
         config.summary = Object.assign({}, config.summary || {});
-        config.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
+        config.summary.groupByFields = Array.isArray(config.summary.groupByFields) ? config.summary.groupByFields : [];
         config.summary.cards = readSummaryCardsEditor();
         config.summary.layout = byId("summaryTableLayout").value;
         config.details.enabled = config.summary.layout !== "CARDS_ONLY";
