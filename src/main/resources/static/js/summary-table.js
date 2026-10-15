@@ -385,8 +385,8 @@
         const cards = [];
         const totalRowsCard = summary.totalRowsCard && typeof summary.totalRowsCard === "object" ? summary.totalRowsCard : {};
         if (totalRowsCard.enabled === true) {
-            cards.push({ label: totalRowsCard.label || "Total Rows", value: summaryCountRows.length, cls: "",
-                filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS",
+            cards.push({ label: totalRowsCard.label || "Total Rows", value: state.detailRows.length, cls: "",
+                filterField: null, filterValue: "", filterType: "total-rows", filterOperation: "COUNT_ROWS",
                 filterable: totalRowsCard.filterable === true,
                 icon: totalRowsCard.icon && totalRowsCard.icon.enabled === true
                     ? String(totalRowsCard.icon.name || "list-check").replace(/^bi-/, "") : "" });
@@ -511,8 +511,10 @@
         if (!cards.length) return "";
         return '<div class="server-health-summary summary-table-cards">' + cards.map(card => {
             const filterable = card.filterable !== false;
-            const active = filterable && (card.filterType === "grouped-all"
-                ? (!state.cardFilter || state.cardFilter.type === "grouped-all")
+            const active = filterable && (card.filterType === "total-rows"
+                ? (!state.cardFilter && !state.search)
+                : card.filterType === "grouped-all"
+                    ? (!state.cardFilter || state.cardFilter.type === "grouped-all")
                 : state.cardFilter && state.cardFilter.type === card.filterType &&
                     state.cardFilter.field === card.filterField &&
                     state.cardFilter.operation === (card.filterOperation || "") &&
@@ -840,7 +842,10 @@
             const field = cardButton.getAttribute("data-card-filter-field") || null;
             const operation = cardButton.getAttribute("data-card-filter-operation") || "";
             const value = cardButton.getAttribute("data-card-filter-value") || "";
-            if (type === "grouped-all") {
+            if (type === "total-rows") {
+                state.cardFilter = null;
+                state.search = "";
+            } else if (type === "grouped-all") {
                 state.cardFilter = null;
             } else if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field &&
                 state.cardFilter.operation === operation &&
