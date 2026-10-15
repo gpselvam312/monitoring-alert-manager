@@ -277,15 +277,26 @@
 [data-theme="blue-dark"] #summaryTablePreview tbody tr[class*="is-"] > td.is-unknown { background-color: #3a4655 !important; }
 
 
-/* Dashboard Configuration field-mapping table: Bootstrap's table cell shadow hides background-color-only stripes. */
-.summary-config-mapping-table tbody tr:nth-of-type(even) > td {
-    --bs-table-bg-type: color-mix(in srgb, var(--table-header-bg, #f1f3f5) 42%, var(--table-bg, var(--card-bg, #fff)));
+/* Dashboard Configuration mapping and preview tables.
+   Bootstrap paints table cells with a background-image, so use an explicit
+   gradient overlay instead of background-color alone for reliable striping. */
+.summary-config-mapping-table tbody tr:nth-child(even) > td,
+#summaryTablePreview table tbody tr:nth-child(even) > td {
+    background-image: linear-gradient(
+        color-mix(in srgb, var(--table-header-bg, #6c757d) 13%, transparent),
+        color-mix(in srgb, var(--table-header-bg, #6c757d) 13%, transparent)
+    ) !important;
 }
-.summary-config-mapping-table tbody tr > td {
+.summary-config-mapping-table tbody tr > td,
+#summaryTablePreview table tbody tr > td {
     transition: background-color .12s ease, box-shadow .12s ease;
 }
-.summary-config-mapping-table tbody tr:hover > td {
-    --bs-table-bg-state: color-mix(in srgb, var(--theme-primary, #0d6efd) 9%, transparent);
+.summary-config-mapping-table tbody tr:hover > td,
+#summaryTablePreview table tbody tr:hover > td {
+    background-image: linear-gradient(
+        color-mix(in srgb, var(--theme-primary, #0d6efd) 9%, transparent),
+        color-mix(in srgb, var(--theme-primary, #0d6efd) 9%, transparent)
+    ) !important;
 }
 
 /* Summary Table row striping and hover feedback, without overriding status colors. */
