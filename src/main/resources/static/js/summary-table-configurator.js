@@ -463,11 +463,13 @@
 
     function renderFields() {
         const collection = selectedCollection();
-        if (!collection) return;
-        state.rows = collection.rows;
-        const discoveredFields = Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])));
         const config = getConfig();
         const existing = configuredColumns(config);
+        if (!collection && !existing.size && !(state.fields || []).length) return;
+        state.rows = collection ? collection.rows : [];
+        const discoveredFields = collection
+            ? Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])))
+            : [];
         // Keep saved mappings even when a field is absent from the current sample/latest job response.
         // Otherwise a partial or changing response silently drops display and aggregation settings.
         const allFields = [
@@ -1103,7 +1105,11 @@
             config.summary.enabled = true;
             config.details.enabled = true;
             setConfig(config);
+            showForSelectedType();
             renderFields();
+            renderSummaryCardsEditor(config);
+            byId("summaryTableDefaultSort").value = "";
+            byId("summaryTableSortDirection").value = "asc";
             refreshConfigFromEditor();
         }
         byId("summaryTableClearMapping").addEventListener("click", function () { clearSummaryTableMapping(false); });
