@@ -2409,7 +2409,7 @@
         return (
 
             '<div class="' +
-                getWidgetSizeClass((widgetType === "SYSTEM_METRICS" || widgetType === "ELASTICSEARCH" || widgetType === "SUMMARY_TABLE") ? "FULL" : widget.size) +
+                getWidgetSizeClass((widgetType === "SYSTEM_METRICS" || widgetType === "ELASTICSEARCH") ? "FULL" : widget.size) +
             '">' +
 
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
