@@ -479,6 +479,17 @@
         selectAll.disabled = checkboxes.length === 0;
     }
 
+    function syncGroupableSelectAll() {
+        const host = byId("summaryTableFieldEditor");
+        const selectAll = host.querySelector(".summary-config-groupable-all");
+        if (!selectAll) return;
+        const checkboxes = Array.from(host.querySelectorAll("tbody .summary-config-groupable"));
+        const checkedCount = checkboxes.filter(checkbox => checkbox.checked).length;
+        selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        selectAll.disabled = checkboxes.length === 0;
+    }
+
     function renderFields() {
         const collection = selectedCollection();
         const config = getConfig();
@@ -537,7 +548,7 @@
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
             '<div class="table-responsive border rounded"><table class="table table-sm table-striped align-middle mb-0 summary-config-mapping-table">' +
-            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all columns"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th></tr></thead><tbody>' +
+            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all columns"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-groupable-all" type="checkbox" aria-label="Allow grouping by all columns"><label class="form-check-label">Groupable</label></div></th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
@@ -555,6 +566,7 @@
             '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
             : '<div class="text-muted small">No fields were found in this collection.</div>'; 
         syncColumnVisibilitySelectAll();
+        syncGroupableSelectAll();
 
         const sort = byId("summaryTableDefaultSort");
         const previousSort = (config.details && config.details.sorting && config.details.sorting.defaultField)
@@ -1166,6 +1178,14 @@
             refreshConfigFromEditor();
         });
         byId("summaryTableFieldEditor").addEventListener("change", function (event) {
+            if (event.target.matches(".summary-config-groupable-all")) {
+                byId("summaryTableFieldEditor").querySelectorAll("tbody .summary-config-groupable")
+                    .forEach(checkbox => { checkbox.checked = event.target.checked; });
+                event.target.indeterminate = false;
+                refreshConfigFromEditor();
+                syncGroupableSelectAll();
+                return;
+            }
             if (event.target.matches(".summary-config-visible-all")) {
                 byId("summaryTableFieldEditor").querySelectorAll("tbody .summary-config-visible")
                     .forEach(checkbox => { checkbox.checked = event.target.checked; });
@@ -1198,6 +1218,7 @@
             refreshConfigFromEditor();
             if (event.target.classList.contains("summary-config-visible")) syncColumnVisibilitySelectAll();
             if (event.target.classList.contains("summary-config-groupable")) {
+                syncGroupableSelectAll();
                 renderFields();
                 refreshConfigFromEditor();
             }
