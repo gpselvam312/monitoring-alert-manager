@@ -50,9 +50,13 @@ Do not return an empty `machines` array as if collection succeeded. Return an ex
 
 The widget displays a collection-failed message for this response. A successful response with no machine rows displays a separate no-data/unknown message.
 
-## Field mapping
+## Field mapping and view customization
 
-The standard field names above are recognized automatically. For a different schema, use the widget's **Health status field** selector to map the status field, and Advanced JSON to map other fields. For example:
+In Dashboard Configuration, choose **System Metrics**, paste a sample response (or load the latest job output), then select **Discover fields / preview**. The System Metrics mapping panel lets you map the hostname, CPU, memory, load averages, CPU cores, uptime, disk, and optional memory-capacity fields to the response. The health status field can be selected separately. These controls save to the widget's field configuration; Advanced JSON remains available for unusual schemas.
+
+The same panel lets you show or hide the summary cards and individual metric rows, customize metric labels, and choose 6, 12, 24, or 48 machines per page. The defaults preserve the existing card layout and all current metrics. The shell script still owns threshold evaluation; the widget does not recalculate thresholds.
+
+For an unusual schema, the equivalent Advanced JSON configuration looks like this:
 
 ```json
 {
