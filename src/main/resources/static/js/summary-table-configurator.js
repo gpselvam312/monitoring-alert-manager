@@ -623,7 +623,8 @@
         icon: { enabled: byId("summaryTableTotalRowsIconEnabled").checked,
             name: byId("summaryTableTotalRowsIconPreset").value === "custom"
                 ? (byId("summaryTableTotalRowsIconName").value.trim() || "list-check")
-                : byId("summaryTableTotalRowsIconPreset").value };
+                : byId("summaryTableTotalRowsIconPreset").value }
+        };
         config.summary.layout = byId("summaryTableLayout").value;
         config.details.enabled = config.summary.layout !== "CARDS_ONLY";
         if (config.summary.enabled === undefined) config.summary.enabled = true;
@@ -713,7 +714,8 @@
             icon: { enabled: byId("summaryTableTotalRowsIconEnabled").checked,
                 name: byId("summaryTableTotalRowsIconPreset").value === "custom"
                     ? (byId("summaryTableTotalRowsIconName").value.trim() || "list-check")
-                    : byId("summaryTableTotalRowsIconPreset").value };
+                    : byId("summaryTableTotalRowsIconPreset").value }
+            };
             summaryConfig.summary.layout = byId("summaryTableLayout").value;
             summaryConfig.details.enabled = summaryConfig.summary.layout !== "CARDS_ONLY";
             setConfig(summaryConfig);
