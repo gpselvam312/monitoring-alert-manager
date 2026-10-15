@@ -820,6 +820,44 @@
         setFieldOptions("widgetMetricStatusField", fields,
             config.statusField || (config.fields && !Array.isArray(config.fields) ? config.fields.status : ""),
             "Auto-detect status field");
+        const metricFields = config.fields && typeof config.fields === "object" && !Array.isArray(config.fields) ? config.fields : {};
+        const metricFieldDefaults = {
+            hostname: "hostname", cpu: "cpuPercent", ram: "memoryPercent",
+            load1m: "loadAverage", load5m: "load5m", load15m: "load15m",
+            cpuCores: "cpuCores", uptimeSeconds: "uptimeSeconds", uptimeHours: "uptimeHours",
+            diskUsedPercent: "diskU01Percent", ramUsedMb: "ramUsedMb", ramTotalMb: "ramTotalMb"
+        };
+        const metricFieldControls = {
+            hostname: "systemMetricHostnameField", cpu: "systemMetricCpuField", ram: "systemMetricRamField",
+            load1m: "systemMetricLoad1Field", load5m: "systemMetricLoad5Field", load15m: "systemMetricLoad15Field",
+            cpuCores: "systemMetricCoresField", uptimeSeconds: "systemMetricUptimeSecondsField",
+            uptimeHours: "systemMetricUptimeHoursField", diskUsedPercent: "systemMetricDiskField",
+            ramUsedMb: "systemMetricRamUsedField", ramTotalMb: "systemMetricRamTotalField"
+        };
+        Object.keys(metricFieldControls).forEach(key => {
+            setFieldOptions(metricFieldControls[key], fields, metricFields[key] || metricFieldDefaults[key], "Auto-detect field");
+        });
+        const metricLabels = config.labels && typeof config.labels === "object" ? config.labels : {};
+        const labelControls = {
+            cpu: ["systemMetricCpuLabel", "CPU"], ram: ["systemMetricRamLabel", "RAM"],
+            load1m: ["systemMetricLoadLabel", "Load (1m / 5m / 15m)"],
+            uptimeSeconds: ["systemMetricUptimeLabel", "Uptime"],
+            diskUsedPercent: ["systemMetricDiskLabel", "/u01 Used"],
+            ramCapacity: ["systemMetricRamCapacityLabel", "RAM"]
+        };
+        Object.keys(labelControls).forEach(key => {
+            const [id, fallback] = labelControls[key];
+            byId(id).value = metricLabels[key] === undefined ? fallback : metricLabels[key];
+        });
+        const view = config.view && typeof config.view === "object" ? config.view : {};
+        byId("systemMetricShowSummaryCards").checked = view.showSummaryCards !== false;
+        byId("systemMetricShowCpu").checked = view.showCpu !== false;
+        byId("systemMetricShowRam").checked = view.showRam !== false;
+        byId("systemMetricShowLoad").checked = view.showLoad !== false;
+        byId("systemMetricShowUptime").checked = view.showUptime !== false;
+        byId("systemMetricShowDisk").checked = view.showDisk !== false;
+        byId("systemMetricShowRamCapacity").checked = view.showRamCapacity !== false;
+        byId("systemMetricPageSize").value = ["6", "12", "24", "48"].includes(String(view.pageSize)) ? String(view.pageSize) : "12";
         setFieldOptions("widgetTextFields", fields, config.textFields, "");
         byId("widgetTextTemplate").value = config.textTemplate || "";
     }
@@ -856,10 +894,41 @@
             case "SYSTEM_METRICS":
                 config.renderer = "SYSTEM_METRICS";
                 config.statusField = byId("widgetMetricStatusField").value;
-                // Preserve the advanced per-metric mapping object; older versions incorrectly
-                // serialized the guided multi-select as an array, so normalize that legacy shape.
+                // Keep field mapping and presentation preferences separate from collector thresholds.
                 if (!config.fields || typeof config.fields !== "object" || Array.isArray(config.fields)) config.fields = {};
+                const metricFieldControls = {
+                    hostname: "systemMetricHostnameField", cpu: "systemMetricCpuField", ram: "systemMetricRamField",
+                    load1m: "systemMetricLoad1Field", load5m: "systemMetricLoad5Field", load15m: "systemMetricLoad15Field",
+                    cpuCores: "systemMetricCoresField", uptimeSeconds: "systemMetricUptimeSecondsField",
+                    uptimeHours: "systemMetricUptimeHoursField", diskUsedPercent: "systemMetricDiskField",
+                    ramUsedMb: "systemMetricRamUsedField", ramTotalMb: "systemMetricRamTotalField"
+                };
+                Object.keys(metricFieldControls).forEach(key => {
+                    const value = byId(metricFieldControls[key]).value;
+                    if (value) config.fields[key] = value;
+                    else delete config.fields[key];
+                });
                 config.labels = Object.assign({}, config.labels || {});
+                const labelControls = {
+                    cpu: "systemMetricCpuLabel", ram: "systemMetricRamLabel", load1m: "systemMetricLoadLabel",
+                    uptimeSeconds: "systemMetricUptimeLabel", diskUsedPercent: "systemMetricDiskLabel",
+                    ramCapacity: "systemMetricRamCapacityLabel"
+                };
+                Object.keys(labelControls).forEach(key => {
+                    const value = byId(labelControls[key]).value.trim();
+                    if (value) config.labels[key] = value;
+                    else delete config.labels[key];
+                });
+                config.view = Object.assign({}, config.view || {}, {
+                    showSummaryCards: byId("systemMetricShowSummaryCards").checked,
+                    showCpu: byId("systemMetricShowCpu").checked,
+                    showRam: byId("systemMetricShowRam").checked,
+                    showLoad: byId("systemMetricShowLoad").checked,
+                    showUptime: byId("systemMetricShowUptime").checked,
+                    showDisk: byId("systemMetricShowDisk").checked,
+                    showRamCapacity: byId("systemMetricShowRamCapacity").checked,
+                    pageSize: Number(byId("systemMetricPageSize").value) || 12
+                });
                 break;
             case "ELASTICSEARCH":
                 config.renderer = "ELASTICSEARCH";
@@ -1095,7 +1164,19 @@
             refreshConfigFromEditor();
         });
         ["widgetCategoryField", "widgetValueField", "widgetSeriesField", "widgetSingleValueField",
-            "widgetStatusField", "widgetMetricStatusField", "widgetTextFields"].forEach(id => {
+            "widgetStatusField", "widgetMetricStatusField", "widgetTextFields",
+            "systemMetricHostnameField", "systemMetricCpuField", "systemMetricRamField",
+            "systemMetricLoad1Field", "systemMetricLoad5Field", "systemMetricLoad15Field",
+            "systemMetricCoresField", "systemMetricUptimeSecondsField", "systemMetricUptimeHoursField",
+            "systemMetricDiskField", "systemMetricRamUsedField", "systemMetricRamTotalField",
+            "systemMetricShowSummaryCards", "systemMetricShowCpu", "systemMetricShowRam",
+            "systemMetricShowLoad", "systemMetricShowUptime", "systemMetricShowDisk",
+            "systemMetricShowRamCapacity", "systemMetricPageSize"].forEach(id => {
+            byId(id).addEventListener("change", refreshConfigFromEditor);
+        });
+        ["systemMetricCpuLabel", "systemMetricRamLabel", "systemMetricLoadLabel", "systemMetricUptimeLabel",
+            "systemMetricDiskLabel", "systemMetricRamCapacityLabel"].forEach(id => {
+            byId(id).addEventListener("input", refreshConfigFromEditor);
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
