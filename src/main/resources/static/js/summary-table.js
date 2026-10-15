@@ -387,7 +387,9 @@
         if (totalRowsCard.enabled === true) {
             cards.push({ label: totalRowsCard.label || "Total Rows", value: summaryCountRows.length, cls: "",
                 filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS",
-                filterable: totalRowsCard.filterable === true });
+                filterable: totalRowsCard.filterable === true,
+                icon: totalRowsCard.icon && totalRowsCard.icon.enabled === true
+                    ? String(totalRowsCard.icon.name || "list-check") : "" });
         }
         if (hasConfiguredCards) {
             const matches = (row, card) => !card.filterField || conditionalRuleMatches(row, {
@@ -541,18 +543,10 @@
         }).join("") + '</div>';
     }
 
-    function renderContent(state) {
-        const config = state.config;
-        const details = config.details || {};
-        const summaryLayout = String((config.summary || {}).layout || "").toUpperCase();
-        const groupConfig = details.groupBy || config.groupBy || {};
-        const grouping = groupConfig.enabled === true;
-        const groupFields = grouping && Array.isArray(groupConfig.fields)
-            ? groupConfig.fields.map(String).filter(field => field && (!state.columnMap.has(field) || state.columnMap.get(field).groupable !== false))
-            : [];
-        const searchConfig = details.search || config.search || {};
-        const sortConfig = details.sorting || config.sorting || {};
-        const pageConfig = details.pagination || config.pagination || {};
+    function getFilteredSortedRows(state) {
+        const details = state.config.details || {};
+        const searchConfig = details.search || state.config.search || {};
+        const sortConfig = details.sorting || state.config.sorting || {};
         let rows = state.detailRows.slice();
         if (state.cardFilter) {
             if (state.cardFilter.type === "grouped-all") {
@@ -601,6 +595,45 @@
                 return state.sortDirection === "desc" ? -compare : compare;
             });
         }
+        return rows;
+    }
+
+    function exportTableCsv(state) {
+        const columns = state.columns.filter(column => column.visible !== false);
+        const rows = getFilteredSortedRows(state);
+        const quote = value => {
+            const text = String(value === null || value === undefined ? "" : display(value));
+            return '"' + text.replace(/"/g, '""') + '"';
+        };
+        const lines = [columns.map(column => quote(column.label || column.field)).join(",")];
+        rows.forEach(row => {
+            lines.push(columns.map(column => quote(rowValue(row, column.field))).join(","));
+        });
+        const blob = new Blob(["\\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "summary-table-" + new Date().toISOString().slice(0, 10) + ".csv";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    function renderContent(state) {
+        const config = state.config;
+        const details = config.details || {};
+        const summaryLayout = String((config.summary || {}).layout || "").toUpperCase();
+        const groupConfig = details.groupBy || config.groupBy || {};
+        const grouping = groupConfig.enabled === true;
+        const groupFields = grouping && Array.isArray(groupConfig.fields)
+            ? groupConfig.fields.map(String).filter(field => field && (!state.columnMap.has(field) || state.columnMap.get(field).groupable !== false))
+            : [];
+        const searchConfig = details.search || config.search || {};
+        const sortConfig = details.sorting || config.sorting || {};
+        const pageConfig = details.pagination || config.pagination || {};
+        let rows = getFilteredSortedRows(state);
         const columns = state.columns.filter(column => column.visible !== false);
         const visibleFields = new Set(columns.map(column => column.field));
         const toolbar = searchConfig.enabled === false ? "" : '<div class="summary-table-toolbar"><input class="form-control form-control-sm summary-table-search" type="search" placeholder="' + esc(searchConfig.placeholder || "Search table...") + '" value="' + esc(state.search) + '" aria-label="Search table"></div>';
@@ -658,8 +691,8 @@
             '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>Clear grouping</button></div></div></div>' : "";
         const selectionCount = state.selectedRows.size;
         const selectionStatus = selectionCount ? '<span class="small text-muted summary-table-selection-count" aria-live="polite">' + selectionCount + ' selected</span>' : "";
-        const tableControls = toolbar || groupSelector || selectionStatus
-            ? '<div class="summary-table-control-row">' + toolbar + groupSelector + selectionStatus + '</div>' : "";
+        const exportButton = '<button type="button" class="btn btn-sm btn-outline-secondary summary-table-export" title="Export all filtered rows as CSV"><i class="bi bi-download me-1" aria-hidden="true"></i>Export CSV</button>';
+        const tableControls = '<div class="summary-table-control-row">' + toolbar + groupSelector + exportButton + selectionStatus + '</div>';
         return (summaryLayout === "TABLE_ONLY" ? "" : renderCards(state)) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
     }
@@ -793,10 +826,15 @@
         const groupClearButton = event.target.closest(".summary-table-group-clear");
         const prev = event.target.closest(".summary-table-prev");
         const next = event.target.closest(".summary-table-next");
-        if (!sortButton && !groupButton && !cardButton && !groupClearButton && !prev && !next) return;
+        const exportButton = event.target.closest(".summary-table-export");
+        if (!sortButton && !groupButton && !cardButton && !groupClearButton && !prev && !next && !exportButton) return;
         const found = stateFor(event.target);
         if (!found || !found.state) return;
         const state = found.state;
+        if (exportButton) {
+            exportTableCsv(state);
+            return;
+        }
         if (cardButton) {
             const type = cardButton.getAttribute("data-card-filter-type");
             const field = cardButton.getAttribute("data-card-filter-field") || null;
