@@ -216,6 +216,88 @@
             .map(item => [String(item.field || item.key), item]));
     }
 
+    function fieldBooleanType(field) {
+        if (!field || !Array.isArray(state.rows) || !state.rows.length) return null;
+        const values = state.rows.map(row => {
+            if (row && Object.prototype.hasOwnProperty.call(row, field)) return row[field];
+            return String(field).split(".").reduce((value, key) => value == null ? undefined : value[key], row);
+        }).filter(value => value !== null && value !== undefined && value !== "");
+        if (!values.length) return null;
+        return values.every(value => typeof value === "boolean" ||
+            (typeof value === "string" && /^(true|false)$/i.test(value.trim())));
+    }
+
+    function syncSummaryCardBooleanFields() {
+        const host = byId("summaryTableCardsEditor");
+        if (!host) return;
+        host.querySelectorAll("[data-summary-card-row]").forEach(row => {
+            const field = row.querySelector(".summary-card-field").value;
+            const groupBy = row.querySelector(".summary-card-group-by").value;
+            const fieldType = fieldBooleanType(field), groupType = fieldBooleanType(groupBy);
+            const mapping = row.querySelector(".summary-card-boolean-mapping");
+            const hasLegacyMapping = row.querySelector(".summary-card-true-label").value !== "" ||
+                row.querySelector(".summary-card-false-label").value !== "";
+            if (mapping) mapping.hidden = !(fieldType === true || groupType === true ||
+                (fieldType === null && groupType === null && hasLegacyMapping));
+        });
+    }
+
+    function renderSummaryCardsEditor(config) {
+        const host = byId("summaryTableCardsEditor"); if (!host) return;
+        const summary = config.summary && typeof config.summary === "object" ? config.summary : {};
+        const details = config.details && typeof config.details === "object" ? config.details : {};
+        const sourceCards = (Array.isArray(summary.cards) && (summary.cards.length || !Array.isArray(details.summaryCards)) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : [])).map(card => Object.assign({}, card));
+        const legacyTotal = sourceCards.find(card => String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
+        const totalRows = summary.totalRowsCard && typeof summary.totalRowsCard === "object" ? summary.totalRowsCard : {};
+        const cards = sourceCards.filter(card => !(String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || "")));
+        const fields = Array.from(new Set([...(state.fields || []), ...cards.map(card => String(card.field || "")).filter(Boolean)]));
+        const options = selected => '<option value="">All rows</option>' + fields.map(field => '<option value="' + escapeHtml(field) + '"' + (String(selected || "") === field ? ' selected' : '') + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("");
+        const ops = [["COUNT_ROWS","Count rows"],["VALUE","Field value"],["COUNT_NON_EMPTY","Count non-empty"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
+        const iconPresets = [["activity","Activity"],["check-circle","Success"],["exclamation-triangle","Warning"],["x-circle","Critical"],["info-circle","Information"],["speedometer2","Gauge"],["server","Server"],["hdd-stack","Storage"],["cpu","CPU"],["memory","Memory"],["people","People"],["person-check","Person check"],["clock-history","History"],["lightning-charge","Performance"],["database","Database"],["cloud-check","Cloud"],["shield-check","Security"],["bell","Alerts"],["graph-up","Trend"],["list-check","List"],["box-seam","Box"],["diagram-3","Topology"],["arrow-repeat","Refresh"]];
+        host.innerHTML = cards.map((card,i) => {
+            const map = card.valueMapping && typeof card.valueMapping === "object" ? card.valueMapping : {}, icon = card.icon && typeof card.icon === "object" ? card.icon : {};
+            return '<div class="border rounded p-3 mb-3" data-summary-card-row><div class="d-flex justify-content-between mb-2"><strong>Card ' + (i+1) + '</strong><button type="button" class="btn btn-sm btn-outline-danger summary-card-remove">Remove</button></div><div class="row g-2">' +
+            '<div class="col-md-4"><label class="form-label small">Field</label><select class="form-select form-select-sm summary-card-field">' + options(card.field) + '</select></div>' +
+            '<div class="col-md-4"><label class="form-label small">Label</label><input class="form-control form-control-sm summary-card-label" maxlength="120" value="' + escapeHtml(card.label || '') + '"></div>' +
+            '<div class="col-md-4"><label class="form-label small">Calculation</label><select class="form-select form-select-sm summary-card-operation">' + ops.map(o => '<option value="' + o[0] + '"' + (String(card.operation || "COUNT_ROWS").toUpperCase()===o[0]?' selected':'') + '>' + o[1] + '</option>').join("") + '</select></div>' +
+            '<div class="col-md-4"><label class="form-label small">Group by (optional)</label><select class="form-select form-select-sm summary-card-group-by">' + options(card.groupBy) + '</select></div>' +
+            '<div class="col-md-4"><label class="form-label small">On click</label><select class="form-select form-select-sm summary-card-click"><option value="FILTER_SELF"' + (card.filterable === false?'':' selected') + '>Filter this widget</option><option value="NONE"' + (card.filterable === false?' selected':'') + '>No action</option></select></div>' +
+            '<div class="col-md-4"><label class="form-label small">Format</label><select class="form-select form-select-sm summary-card-format">' + [["","Default"],["number","Number"],["percentage","Percentage"],["duration","Duration"],["datetime","Date / time"]].map(o=>'<option value="'+o[0]+'"'+(String(card.format||"")===o[0]?' selected':'')+'>'+o[1]+'</option>').join("") + '</select></div>' +
+            '<div class="col-md-3"><div class="form-check mt-2"><input class="form-check-input summary-card-icon-enabled" type="checkbox"' + (icon.enabled===true?' checked':'') + '><label class="form-check-label small">Show icon</label></div></div>' +
+            '<div class="col-md-4"><label class="form-label small">Bootstrap icon</label><select class="form-select form-select-sm summary-card-icon-preset">' + iconPresets.map(o => '<option value="' + o[0] + '"' + (String(icon.name || "activity") === o[0] ? " selected" : "") + '>' + o[1] + '</option>').join("") + '<option value="custom"' + (iconPresets.some(o => o[0] === String(icon.name || "")) ? "" : " selected") + '>Custom…</option></select></div>' +
+            '<div class="col-md-5"><label class="form-label small">Custom icon name</label><input class="form-control form-control-sm summary-card-icon-name" value="' + escapeHtml(icon.name && !iconPresets.some(o => o[0] === String(icon.name)) ? icon.name : "") + '" placeholder="e.g. boxes"></div>' +
+            '<div class="col-12 summary-card-boolean-mapping" hidden><div class="row g-2"><div class="col-md-6"><label class="form-label small">True label</label><input class="form-control form-control-sm summary-card-true-label" value="' + escapeHtml(map.true===undefined?'':map.true) + '" placeholder="Active"></div>' +
+            '<div class="col-md-6"><label class="form-label small">False label</label><input class="form-control form-control-sm summary-card-false-label" value="' + escapeHtml(map.false===undefined?'':map.false) + '" placeholder="Inactive"></div></div></div></div></div></div>';
+        }).join("") || '<div class="text-muted small">No cards configured. Select Add card to create one.</div>';
+        const layout = String(summary.layout || (details.enabled === false ? "CARDS_ONLY" : "BOTH")).toUpperCase();
+        byId("summaryTableLayout").value = ["BOTH","CARDS_ONLY","TABLE_ONLY"].includes(layout) ? layout : "BOTH";
+        byId("summaryTableShowTotalRowsCard").checked = totalRows.enabled === true || (!summary.totalRowsCard && Boolean(legacyTotal));
+        byId("summaryTableTotalRowsLabel").value = totalRows.label || (legacyTotal && legacyTotal.label) || "Total Rows";
+        byId("summaryTableTotalRowsClick").value = totalRows.filterable === true ? "FILTER_SELF" : "NONE";
+        const totalIcon = totalRows.icon && typeof totalRows.icon === "object" ? totalRows.icon : {};
+        const totalIconName = String(totalIcon.name || "list-check");
+        byId("summaryTableTotalRowsIconEnabled").checked = totalIcon.enabled === true;
+        byId("summaryTableTotalRowsIconPreset").value = iconPresets.some(option => option[0] === totalIconName) ? totalIconName : "custom";
+        byId("summaryTableTotalRowsIconName").value = iconPresets.some(option => option[0] === totalIconName) ? "" : totalIconName;
+        syncSummaryCardBooleanFields();
+    }
+    function readSummaryCardsEditor() {
+        return Array.from(byId("summaryTableCardsEditor").querySelectorAll("[data-summary-card-row]")).map(row => {
+            const field = row.querySelector(".summary-card-field").value, groupBy = row.querySelector(".summary-card-group-by").value;
+            const mapping = {}, t = row.querySelector(".summary-card-true-label").value, f = row.querySelector(".summary-card-false-label").value;
+            const fieldType = fieldBooleanType(field), groupType = fieldBooleanType(groupBy);
+            if (fieldType === true || groupType === true || (fieldType === null && groupType === null && (t !== "" || f !== ""))) {
+                if (t !== "") mapping.true = t;
+                if (f !== "") mapping.false = f;
+            }
+            const card = {field, label:row.querySelector(".summary-card-label").value.trim() || (field ? humanize(field) : "Total Rows"),
+                operation:row.querySelector(".summary-card-operation").value, format:row.querySelector(".summary-card-format").value,
+                filterable:row.querySelector(".summary-card-click").value === "FILTER_SELF",
+                icon:{enabled:row.querySelector(".summary-card-icon-enabled").checked,name:row.querySelector(".summary-card-icon-name").value.trim() || (row.querySelector(".summary-card-icon-preset").value === "custom" ? "activity" : row.querySelector(".summary-card-icon-preset").value)}, valueMapping:mapping};
+            if (groupBy) card.groupBy = groupBy; return card;
+        });
+    }
+
     function renderGroupByOptions(config, fields) {
         const details = config.details && typeof config.details === "object" ? config.details : {};
         const groupBy = details.groupBy && typeof details.groupBy === "object" ? details.groupBy : {};
@@ -363,6 +445,7 @@
             const sorting = details.sorting || config.sorting || {};
             const pagination = details.pagination || config.pagination || {};
             byId("summaryTableSearchEnabled").checked = search.enabled !== false;
+            byId("summaryTableExportCsvEnabled").checked = !details.exportCsv || details.exportCsv.enabled !== false;
             byId("summaryTableSortDirection").value = String(sorting.direction || "asc").toLowerCase() === "desc" ? "desc" : "asc";
             byId("summaryTablePageSize").value = ["5", "10", "25", "50"].includes(String(pagination.pageSize)) ? String(pagination.pageSize) : "10";
 
@@ -386,13 +469,37 @@
         }
     }
 
+    function syncColumnVisibilitySelectAll() {
+        const host = byId("summaryTableFieldEditor");
+        const selectAll = host.querySelector(".summary-config-visible-all");
+        if (!selectAll) return;
+        const checkboxes = Array.from(host.querySelectorAll("tbody .summary-config-visible"));
+        const checkedCount = checkboxes.filter(checkbox => checkbox.checked).length;
+        selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        selectAll.disabled = checkboxes.length === 0;
+    }
+
+    function syncGroupableSelectAll() {
+        const host = byId("summaryTableFieldEditor");
+        const selectAll = host.querySelector(".summary-config-groupable-all");
+        if (!selectAll) return;
+        const checkboxes = Array.from(host.querySelectorAll("tbody .summary-config-groupable"));
+        const checkedCount = checkboxes.filter(checkbox => checkbox.checked).length;
+        selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        selectAll.disabled = checkboxes.length === 0;
+    }
+
     function renderFields() {
         const collection = selectedCollection();
-        if (!collection) return;
-        state.rows = collection.rows;
-        const discoveredFields = Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])));
         const config = getConfig();
         const existing = configuredColumns(config);
+        if (!collection && !existing.size && !(state.fields || []).length) return;
+        state.rows = collection ? collection.rows : [];
+        const discoveredFields = collection
+            ? Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])))
+            : [];
         // Keep saved mappings even when a field is absent from the current sample/latest job response.
         // Otherwise a partial or changing response silently drops display and aggregation settings.
         const allFields = [
@@ -420,7 +527,6 @@
         const oldCards = Array.isArray(summary.cards) && (summary.cards.length > 0 || !Array.isArray(details.summaryCards))
             ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : (Array.isArray(summary.cards) ? summary.cards : null));
         const selectedCardFields = new Set((oldCards || []).map(card => String(card.field || "")).filter(Boolean));
-        const showTotalRowsCard = (oldCards || []).some(card => String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
         const groupedSummaryFields = new Set((Array.isArray(summary.groupByFields) ? summary.groupByFields : []).map(String));
         const cardsByField = new Map((oldCards || []).filter(card => card && card.field)
             .map(card => [String(card.field), card]));
@@ -442,9 +548,8 @@
         ];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
-            '<div class="d-flex align-items-center gap-2 mb-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div>' +
-            '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
-            '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th><th>Summary card</th><th>Filter on click</th><th>Group summary by field</th></tr></thead><tbody>' +
+            '<div class="table-responsive border rounded"><table class="table table-sm table-striped align-middle mb-0 summary-config-mapping-table">' +
+            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all columns"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-groupable-all" type="checkbox" aria-label="Allow grouping by all columns"><label class="form-check-label">Groupable</label></div></th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
@@ -458,11 +563,11 @@
                 aggregations.map(option => '<option value="' + option[0] + '"' + (item.aggregation === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
                 '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>' +
-                '<td><input class="form-check-input summary-config-summary-card" type="checkbox" aria-label="Include ' + escapeHtml(item.field) + ' in summary cards"' + (item.summaryCard ? ' checked' : '') + (item.aggregation === "none" ? ' disabled' : '') + '></td>' +
-                '<td><input class="form-check-input summary-config-summary-filterable" type="checkbox" aria-label="Make ' + escapeHtml(item.field) + ' summary card filter rows when clicked"' + (item.summaryFilterable ? ' checked' : '') + (!item.summaryCard || item.aggregation === "none" ? ' disabled' : '') + '></td>' +
-                '<td><input class="form-check-input summary-config-group-summary" type="checkbox" aria-label="Create a summary card for each distinct ' + escapeHtml(item.field) + ' value"' + (item.groupSummary ? ' checked' : '') + '></td></tr>').join("") +
+                '</tr>').join("") +
             '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
-            : '<div class="text-muted small">No fields were found in this collection.</div>';
+            : '<div class="text-muted small">No fields were found in this collection.</div>'; 
+        syncColumnVisibilitySelectAll();
+        syncGroupableSelectAll();
 
         const sort = byId("summaryTableDefaultSort");
         const previousSort = (config.details && config.details.sorting && config.details.sorting.defaultField)
@@ -472,6 +577,7 @@
         ).join("");
         sort.disabled = fields.length === 0;
         sort.value = allFields.includes(previousSort) ? previousSort : "";
+        renderSummaryCardsEditor(config);
         renderGroupByOptions(config, fields);
         renderConditionalRules(config);
         renderTypeMappingOptions();
@@ -488,9 +594,6 @@
             searchable: row.getAttribute("data-searchable") !== "false",
             format: row.querySelector(".summary-config-format").value,
             aggregation: row.querySelector(".summary-config-aggregation").value,
-            summaryCard: row.querySelector(".summary-config-summary-card").checked,
-            summaryFilterable: row.querySelector(".summary-config-summary-filterable").checked,
-            groupSummary: row.querySelector(".summary-config-group-summary").checked
         }));
     }
 
@@ -519,6 +622,7 @@
         const editedColumns = readFieldEditor();
         config.details.columns = editedColumns.map(({ summaryCard, summaryFilterable, groupSummary, ...column }) => column);
         config.details.search = Object.assign({}, config.details.search || {}, { enabled: byId("summaryTableSearchEnabled").checked });
+        config.details.exportCsv = Object.assign({}, config.details.exportCsv || {}, { enabled: byId("summaryTableExportCsvEnabled").checked });
         const defaultField = byId("summaryTableDefaultSort").value;
         config.details.sorting = Object.assign({}, config.details.sorting || {}, {
             enabled: true, defaultField, direction: byId("summaryTableSortDirection").value
@@ -534,32 +638,19 @@
             showAggregates: byId("summaryTableGroupByAggregates").checked
         });
         config.details.conditionalFormatting = readConditionalFormatting();
-        const existingSummaryCards = Array.isArray(config.summary && config.summary.cards)
-            && (config.summary.cards.length > 0 || !Array.isArray(config.details.summaryCards))
-            ? config.summary.cards.slice()
-            : (Array.isArray(config.details.summaryCards) ? config.details.summaryCards.slice()
-                : (Array.isArray(config.summary && config.summary.cards) ? config.summary.cards.slice() : []));
-        const existingTotalRowsCard = existingSummaryCards.find(card =>
-            card && String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
         delete config.details.summaryCards;
         config.summary = Object.assign({}, config.summary || {});
-        config.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
-        config.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked
-            ? [Object.assign({}, existingTotalRowsCard || {}, {
-                label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number",
-                filterable: existingTotalRowsCard && typeof existingTotalRowsCard.filterable === "boolean"
-                    ? existingTotalRowsCard.filterable : false
-            })] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
-            const aggregate = String(column.aggregation || "none").toLowerCase();
-            const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate];
-            if (!operation) return null;
-            const existingCard = existingSummaryCards.find(card => card && String(card.field || "") === column.field);
-            return Object.assign({}, existingCard || {}, {
-                label: column.label || humanize(column.field), field: column.field, operation,
-                format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : ""),
-                filterable: column.summaryFilterable
-            });
-        }).filter(Boolean)];
+        config.summary.groupByFields = Array.isArray(config.summary.groupByFields) ? config.summary.groupByFields : [];
+        config.summary.cards = readSummaryCardsEditor();
+        config.summary.totalRowsCard = {
+            enabled: byId("summaryTableShowTotalRowsCard").checked,
+            label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
+            filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF",
+        icon: { enabled: byId("summaryTableTotalRowsIconEnabled").checked,
+            name: byId("summaryTableTotalRowsIconName").value.trim() || (byId("summaryTableTotalRowsIconPreset").value === "custom" ? "list-check" : byId("summaryTableTotalRowsIconPreset").value) }
+        };
+        config.summary.layout = byId("summaryTableLayout").value;
+        config.details.enabled = config.summary.layout !== "CARDS_ONLY";
         if (config.summary.enabled === undefined) config.summary.enabled = true;
         return config;
     }
@@ -620,6 +711,9 @@
             summaryConfig.details.search = Object.assign({}, summaryConfig.details.search || {}, {
                 enabled: byId("summaryTableSearchEnabled").checked
             });
+            summaryConfig.details.exportCsv = Object.assign({}, summaryConfig.details.exportCsv || {}, {
+                enabled: byId("summaryTableExportCsvEnabled").checked
+            });
             summaryConfig.details.sorting = Object.assign({}, summaryConfig.details.sorting || {}, {
                 enabled: true,
                 direction: byId("summaryTableSortDirection").value,
@@ -637,33 +731,18 @@
                 showAggregates: byId("summaryTableGroupByAggregates").checked
             });
             summaryConfig.details.conditionalFormatting = readConditionalFormatting();
-            const existingSummaryCards = Array.isArray(summaryConfig.summary && summaryConfig.summary.cards)
-                && (summaryConfig.summary.cards.length > 0 || !Array.isArray(summaryConfig.details.summaryCards))
-                ? summaryConfig.summary.cards.slice()
-                : (Array.isArray(summaryConfig.details.summaryCards) ? summaryConfig.details.summaryCards.slice()
-                    : (Array.isArray(summaryConfig.summary && summaryConfig.summary.cards) ? summaryConfig.summary.cards.slice() : []));
-            const existingTotalRowsCard = existingSummaryCards.find(card =>
-                card && String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
             delete summaryConfig.details.summaryCards;
             summaryConfig.summary = Object.assign({}, summaryConfig.summary || {});
-            const editedColumns = readFieldEditor();
-            summaryConfig.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
-            summaryConfig.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked
-                ? [Object.assign({}, existingTotalRowsCard || {}, {
-                    label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number",
-                    filterable: existingTotalRowsCard && typeof existingTotalRowsCard.filterable === "boolean"
-                        ? existingTotalRowsCard.filterable : false
-                })] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
-                const aggregate = String(column.aggregation || "none").toLowerCase();
-                const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate];
-                if (!operation) return null;
-                const existingCard = existingSummaryCards.find(card => card && String(card.field || "") === column.field);
-                return Object.assign({}, existingCard || {}, {
-                    label: column.label || humanize(column.field), field: column.field, operation,
-                    format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : ""),
-                    filterable: column.summaryFilterable
-                });
-            }).filter(Boolean)];
+            summaryConfig.summary.cards = readSummaryCardsEditor();
+            summaryConfig.summary.totalRowsCard = {
+                enabled: byId("summaryTableShowTotalRowsCard").checked,
+                label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
+                filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF",
+            icon: { enabled: byId("summaryTableTotalRowsIconEnabled").checked,
+                name: byId("summaryTableTotalRowsIconName").value.trim() || (byId("summaryTableTotalRowsIconPreset").value === "custom" ? "list-check" : byId("summaryTableTotalRowsIconPreset").value) }
+            };
+            summaryConfig.summary.layout = byId("summaryTableLayout").value;
+            summaryConfig.details.enabled = summaryConfig.summary.layout !== "CARDS_ONLY";
             setConfig(summaryConfig);
             return;
         }
@@ -816,7 +895,7 @@
                         groupBy: { enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true },
                         conditionalFormatting: { enabled: true, rules: [] },
                     },
-                    summary: { enabled: true, cards: [] }
+                    summary: { enabled: true, cards: [], totalRowsCard: { enabled: false, label: "Total Rows", filterable: false } }
                 };
             case "TABLE":
                 return { renderer: "TABLE", responseParser: { type: "AUTO" }, rowPath: "", columns: [], visibleFields: [], labels: {}, sorting: { enabled: true }, search: { enabled: true }, pagination: { enabled: true, pageSize: 10 } };
@@ -861,8 +940,11 @@
         byId("summaryTableConfigurator").hidden = !type;
         byId("dashboardWidgetAdvancedConfig").open = false;
         byId("summaryTableGroupBySection").hidden = !isSummary;
+        byId("summaryTableCardsSection").hidden = !isSummary;
+        byId("summaryTableMappingActions").hidden = !isSummary;
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
+        byId("summaryTableExportCsvOption").hidden = !isSummary;
         byId("summaryTableFieldEditorGroup").hidden = !isTable;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
         byId("widgetMappingHeading").textContent = type === "SUMMARY_TABLE" ? "Summary Table data and columns" : "Widget data and mapping";
@@ -887,6 +969,7 @@
         renderRegexFields();
         const details = config.details && typeof config.details === "object" ? config.details : {};
         const groupBy = details.groupBy && typeof details.groupBy === "object" ? details.groupBy : {};
+        byId("summaryTableExportCsvEnabled").checked = !details.exportCsv || details.exportCsv.enabled !== false;
         byId("summaryTableGroupByEnabled").checked = groupBy.enabled === true;
         byId("summaryTableGroupByInitialState").value = String(groupBy.initialState || "EXPANDED").toUpperCase() === "COLLAPSED" ? "COLLAPSED" : "EXPANDED";
         byId("summaryTableGroupByOrder").value = ["VALUE_ASC", "VALUE_DESC", "COUNT_ASC", "COUNT_DESC"].includes(String(groupBy.order || "").toUpperCase())
@@ -1011,6 +1094,80 @@
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
+        byId("summaryTableShowTotalRowsCard").addEventListener("change", refreshConfigFromEditor);
+        ["summaryTableTotalRowsLabel", "summaryTableTotalRowsClick", "summaryTableTotalRowsIconEnabled", "summaryTableTotalRowsIconPreset", "summaryTableTotalRowsIconName"].forEach(id => {
+            byId(id).addEventListener("change", function () {
+                if (id === "summaryTableTotalRowsIconPreset" && byId(id).value !== "custom") byId("summaryTableTotalRowsIconName").value = "";
+                refreshConfigFromEditor();
+            });
+            byId(id).addEventListener("input", function () {
+                if (id === "summaryTableTotalRowsIconName" && byId(id).value.trim()) byId("summaryTableTotalRowsIconPreset").value = "custom";
+                refreshConfigFromEditor();
+            });
+        });
+        byId("summaryTableAddCard").addEventListener("click", function () {
+            const config = getConfig(), summary = config.summary && typeof config.summary === "object" ? config.summary : {};
+            const details = config.details && typeof config.details === "object" ? config.details : {};
+            const cards = Array.isArray(summary.cards) ? summary.cards.slice() : (Array.isArray(details.summaryCards) ? details.summaryCards.slice() : []);
+            cards.push({field:(state.fields || [])[0] || "",label:"",operation:"COUNT_ROWS",filterable:true,icon:{enabled:false,name:"activity"},valueMapping:{}});
+            config.summary = Object.assign({},summary,{cards}); config.details = details; setConfig(config); renderSummaryCardsEditor(config);
+        });
+        byId("summaryTableCardsEditor").addEventListener("click", function (event) {
+            const button = event.target.closest(".summary-card-remove"); if (!button) return;
+            button.closest("[data-summary-card-row]").remove(); refreshConfigFromEditor();
+        });
+        ["change","input"].forEach(name => byId("summaryTableCardsEditor").addEventListener(name, function (event) {
+            const row = event.target.closest("[data-summary-card-row]");
+            if (row && event.target.matches(".summary-card-icon-preset") && event.target.value !== "custom") {
+                row.querySelector(".summary-card-icon-name").value = "";
+            } else if (row && event.target.matches(".summary-card-icon-name") && event.target.value.trim()) {
+                row.querySelector(".summary-card-icon-preset").value = "custom";
+            }
+            if (event.target.matches(".summary-card-field, .summary-card-group-by")) syncSummaryCardBooleanFields();
+            refreshConfigFromEditor();
+        }));
+        byId("summaryTableLayout").addEventListener("change", refreshConfigFromEditor);
+        function clearSummaryTableMapping(resetToDefaults) {
+            const message = resetToDefaults
+                ? "Reset mapping to defaults? Column display settings, summary cards, grouping, and conditional formatting will be reset. The response parser and row path will be preserved."
+                : "Clear the current mapping? Columns will be hidden, summary cards and grouping cleared, and conditional-formatting rules removed. The response parser and row path will be preserved.";
+            if (!window.confirm(message)) return;
+            const config = getConfig();
+            config.renderer = "SUMMARY_TABLE";
+            config.details = config.details && typeof config.details === "object" ? config.details : {};
+            config.summary = config.summary && typeof config.summary === "object" ? config.summary : {};
+            if (resetToDefaults) {
+                delete config.details.columns;
+                delete config.columns;
+            } else {
+                const mappingFields = Array.from(new Set([...configuredColumns(config).keys(), ...(state.fields || [])]));
+                config.details.columns = mappingFields.map(field => ({
+                    field, label: humanize(field), visible: false, groupable: true,
+                    sortable: true, searchable: true, format: "", aggregation: "none"
+                }));
+            }
+            config.details.sorting = Object.assign({}, config.details.sorting || {}, { defaultField: "", enabled: true, direction: "asc" });
+            config.details.groupBy = Object.assign({}, config.details.groupBy || {}, {
+                enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true
+            });
+            config.details.conditionalFormatting = { enabled: true, rules: [] };
+            delete config.details.summaryCards;
+            config.summary.cards = [];
+            config.summary.totalRowsCard = { enabled: false, label: "Total Rows", filterable: false };
+            delete config.summary.groupByFields;
+            config.summary.layout = "BOTH";
+            config.summary.enabled = true;
+            config.details.enabled = true;
+            setConfig(config);
+            showForSelectedType();
+            renderFields();
+            renderSummaryCardsEditor(config);
+            byId("summaryTableDefaultSort").value = "";
+            byId("summaryTableSortDirection").value = "asc";
+            refreshConfigFromEditor();
+        }
+        byId("summaryTableClearMapping").addEventListener("click", function () { clearSummaryTableMapping(false); });
+        byId("summaryTableResetMapping").addEventListener("click", function () { clearSummaryTableMapping(true); });
         byId("summaryTableFieldEditor").addEventListener("click", function (event) {
             const button = event.target.closest(".summary-config-move-up, .summary-config-move-down");
             if (!button) return;
@@ -1028,6 +1185,22 @@
             refreshConfigFromEditor();
         });
         byId("summaryTableFieldEditor").addEventListener("change", function (event) {
+            if (event.target.matches(".summary-config-groupable-all")) {
+                byId("summaryTableFieldEditor").querySelectorAll("tbody .summary-config-groupable")
+                    .forEach(checkbox => { checkbox.checked = event.target.checked; });
+                event.target.indeterminate = false;
+                refreshConfigFromEditor();
+                syncGroupableSelectAll();
+                return;
+            }
+            if (event.target.matches(".summary-config-visible-all")) {
+                byId("summaryTableFieldEditor").querySelectorAll("tbody .summary-config-visible")
+                    .forEach(checkbox => { checkbox.checked = event.target.checked; });
+                event.target.indeterminate = false;
+                refreshConfigFromEditor();
+                syncColumnVisibilitySelectAll();
+                return;
+            }
             const row = event.target.closest("tr[data-field]");
             if (event.target.classList.contains("summary-config-aggregation")) {
                 const summaryCard = row && row.querySelector(".summary-config-summary-card");
@@ -1050,7 +1223,9 @@
                 }
             }
             refreshConfigFromEditor();
+            if (event.target.classList.contains("summary-config-visible")) syncColumnVisibilitySelectAll();
             if (event.target.classList.contains("summary-config-groupable")) {
+                syncGroupableSelectAll();
                 renderFields();
                 refreshConfigFromEditor();
             }
@@ -1058,7 +1233,7 @@
         byId("summaryTableFieldEditor").addEventListener("input", function (event) {
             if (event.target.classList.contains("summary-config-label")) refreshConfigFromEditor();
         });
-        ["summaryTableDefaultSort", "summaryTableSortDirection", "summaryTablePageSize", "summaryTableSearchEnabled"].forEach(id => {
+        ["summaryTableDefaultSort", "summaryTableSortDirection", "summaryTablePageSize", "summaryTableSearchEnabled", "summaryTableExportCsvEnabled"].forEach(id => {
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         let lastWidgetType = type.value;

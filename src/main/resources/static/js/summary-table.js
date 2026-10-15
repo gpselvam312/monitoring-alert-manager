@@ -272,40 +272,79 @@
     function flattenNodes(nodes, config, state, columns, htmlRows) {
         nodes.forEach(node => {
             if (node.type === "row") {
-                htmlRows.push(renderRow(node.row, columns, config));
+                htmlRows.push(renderRow(node.row, columns, config, state));
                 return;
             }
+
             const collapsed = state.collapsed.has(node.id);
             const groupConfig = (config.details && config.details.groupBy) || config.groupBy || config;
             const showAggregates = groupConfig.showAggregates === true;
             const count = node.rows.length;
-            let aggregate = "";
+            const aggregateByField = new Map();
+
             if (showAggregates) {
-                const aggregateColumns = columns.filter(column => String(column.aggregation || "none").toLowerCase() !== "none");
-                aggregate = aggregateColumns.map(column => {
-                    const operation = String(column.aggregation || "none").toLowerCase();
-                    const values = node.rows.map(row => rowValue(row, column.field)).filter(value => value !== null && value !== undefined && value !== "");
-                    let result;
-                    if (operation === "count") result = values.length;
-                    else {
-                        const numbers = values.map(numeric).filter(value => value !== null);
-                        if (!numbers.length) return "";
-                        if (operation === "sum") result = numbers.reduce((sum, value) => sum + value, 0);
-                        else if (operation === "avg") result = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
-                        else if (operation === "max") result = Math.max(...numbers);
-                        else if (operation === "min") result = Math.min(...numbers);
-                    }
-                    return esc(column.label) + " (" + esc(operation.toUpperCase()) + "): " + esc(result === undefined ? "—" : Number.isFinite(result) ? result.toLocaleString() : result);
-                }).filter(Boolean).join(" · ");
+                columns.filter(column => String(column.aggregation || "none").toLowerCase() !== "none")
+                    .forEach(column => {
+                        const operation = String(column.aggregation || "none").toLowerCase();
+                        const values = node.rows.map(row => rowValue(row, column.field))
+                            .filter(value => value !== null && value !== undefined && value !== "");
+                        let result;
+
+                        if (operation === "count") {
+                            result = values.length;
+                        } else {
+                            const numbers = values.map(numeric).filter(value => value !== null);
+                            if (!numbers.length) return;
+                            if (operation === "sum") result = numbers.reduce((sum, value) => sum + value, 0);
+                            else if (operation === "avg") result = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+                            else if (operation === "max") result = Math.max(...numbers);
+                            else if (operation === "min") result = Math.min(...numbers);
+                        }
+
+                        if (result !== undefined) {
+                            aggregateByField.set(column.field,
+                                Number.isFinite(result) ? result.toLocaleString() : String(result));
+                        }
+                    });
             }
-            htmlRows.push('<tr class="summary-table-group-row"><td colspan="' + columns.length + '"><button type="button" class="summary-table-group-toggle" data-group-id="' + esc(node.id) + '" aria-expanded="' + (!collapsed) + '"><i class="bi ' + (collapsed ? "bi-chevron-right" : "bi-chevron-down") + '"></i><strong>' + esc(node.field) + ': ' + esc(node.value) + '</strong><span class="summary-table-group-count">' + count + ' rows</span>' + (aggregate ? '<span class="summary-table-group-aggregate">' + aggregate + '</span>' : '') + '</button></td></tr>');
+
+            const groupColumnIndex = columns.findIndex(column => column.field === node.field);
+            const fallbackColumnIndex = groupColumnIndex >= 0 ? groupColumnIndex : 0;
+            const cells = columns.map((column, index) => {
+                const aggregate = aggregateByField.get(column.field);
+                const groupLabel = index === fallbackColumnIndex
+                    ? '<button type="button" class="summary-table-group-toggle" data-group-id="' + esc(node.id) +
+                        '" aria-expanded="' + (!collapsed) + '"><i class="bi ' +
+                        (collapsed ? "bi-chevron-right" : "bi-chevron-down") +
+                        '"></i><strong>' + esc(node.field) + ': ' + esc(node.value) +
+                        '</strong><span class="summary-table-group-count">' + count + ' rows</span></button>'
+                    : "";
+
+                if (index === fallbackColumnIndex) {
+                    return '<td class="summary-table-group-value-cell">' +
+                        (groupLabel || (aggregate !== undefined ? esc(aggregate) : "")) + '</td>';
+                }
+                if (aggregate !== undefined) {
+                    return '<td class="summary-table-group-aggregate-cell">' + esc(aggregate) + '</td>';
+                }
+                return '<td></td>';
+            }).join("");
+
+            htmlRows.push('<tr class="summary-table-group-row"><td class="summary-table-select-cell"></td>' + cells + '</tr>');
             if (!collapsed) flattenNodes(node.children, config, state, columns, htmlRows);
         });
     }
 
-    function renderRow(row, columns, config) {
+    function renderRow(row, columns, config, state) {
         const css = rowClass(row, config);
+        let rowId = state.rowIds.get(row);
+        if (!rowId) {
+            rowId = "row-" + (++state.nextRowId);
+            state.rowIds.set(row, rowId);
+        }
+        state.visibleRowIds.push(rowId);
         return '<tr' + (css ? ' class="summary-table-row ' + css + '"' : ' class="summary-table-row"') + '>' +
+            '<td class="summary-table-select-cell"><input type="checkbox" class="form-check-input summary-table-row-select" data-row-select-id="' + esc(rowId) + '" aria-label="Select row"' + (state.selectedRows.has(rowId) ? ' checked' : '') + '></td>' +
             columns.map(column => {
                 const value = rowValue(row, column.field);
                 const cellClass = conditionalRuleClass(row, config, "cell", column.field);
@@ -344,6 +383,14 @@
         const configured = hasNewCards && (summary.cards.length > 0 || !hasLegacyCards)
             ? summary.cards : (hasLegacyCards ? details.summaryCards : (hasNewCards ? summary.cards : []));
         const cards = [];
+        const totalRowsCard = summary.totalRowsCard && typeof summary.totalRowsCard === "object" ? summary.totalRowsCard : {};
+        if (totalRowsCard.enabled === true) {
+            cards.push({ label: totalRowsCard.label || "Total Rows", value: state.detailRows.length, cls: "",
+                filterField: null, filterValue: "", filterType: "total-rows", filterOperation: "COUNT_ROWS",
+                filterable: totalRowsCard.filterable === true,
+                icon: totalRowsCard.icon && totalRowsCard.icon.enabled === true
+                    ? String(totalRowsCard.icon.name || "list-check").replace(/^bi-/, "") : "" });
+        }
         if (hasConfiguredCards) {
             const matches = (row, card) => !card.filterField || conditionalRuleMatches(row, {
                 field: card.filterField,
@@ -357,6 +404,7 @@
                 const values = field ? subset.map(row => rowValue(row, field)) : [];
                 let value = 0;
                 if (operation === "COUNT_ROWS") value = subset.length;
+                else if (operation === "VALUE") value = values.length ? values[0] : null;
                 else if (operation === "COUNT_NON_EMPTY") value = values.filter(item => item !== null && item !== undefined && item !== "").length;
                 else if (operation === "COUNT_TRUE") value = values.filter(item => item === true || String(item).toLowerCase() === "true").length;
                 else if (operation === "COUNT_FALSE") value = values.filter(item => item === false || String(item).toLowerCase() === "false").length;
@@ -368,16 +416,58 @@
                     else if (operation === "MIN") value = numbers.length ? Math.min(...numbers) : null;
                 }
                 const configuredFilterField = String(card.filterField || "");
-                const filterType = configuredFilterField ? "custom-rule" : (field ? "custom-field" : "all");
+                // COUNT_ROWS represents the whole subset, not a positive/non-empty field filter.
+                // Honor an explicit filter rule when configured; otherwise clicking the card
+                // should leave the row set unchanged.
+                const filterType = configuredFilterField || operation === "VALUE"
+                    ? "custom-rule"
+                    : (operation === "COUNT_ROWS" ? "all" : (field ? "custom-field" : "all"));
                 const defaultFilterable = Boolean(configuredFilterField || field || operation !== "COUNT_ROWS");
-                cards.push({ label: card.label || (operation === "COUNT_ROWS" ? "Total Rows" : field || "Summary"),
-                    value: value === null ? "—" : formatValue(value, card.format), cls: "",
-                    filterField: configuredFilterField || field || null,
-                    filterValue: card.filterValue, filterOperator: card.filterOperator || "equals",
-                    filterType, filterOperation: operation,
-                    filterable: card.filterable === true || (card.filterable !== false && defaultFilterable) });
+                const mapping = card.valueMapping && typeof card.valueMapping === "object" ? card.valueMapping : {};
+                const mapped = value === true ? mapping.true : value === false ? mapping.false : value;
+                const icon = card.icon && typeof card.icon === "object" && card.icon.enabled === true ? String(card.icon.name || "activity") : "";
+                const label = card.label || (operation === "COUNT_ROWS" ? "Total Rows" : field || "Summary");
+                const filterable = card.filterable === true || (card.filterable !== false && defaultFilterable);
+                if (card.groupBy) {
+                    const groups = new Map();
+                    subset.forEach(row => {
+                        const raw = rowValue(row, String(card.groupBy));
+                        const key = raw === null || raw === undefined || String(raw).trim() === "" ? "" : String(raw);
+                        if (!groups.has(key)) groups.set(key, []);
+                        groups.get(key).push(row);
+                    });
+                    groups.forEach((groupRows, groupValue) => {
+                        const groupValues = field ? groupRows.map(row => rowValue(row, field)) : [];
+                        let result = groupRows.length;
+                        if (operation === "VALUE") result = groupValues.length ? groupValues[0] : null;
+                        else if (operation === "COUNT_NON_EMPTY") result = groupValues.filter(item => item !== null && item !== undefined && item !== "").length;
+                        else if (operation === "COUNT_TRUE") result = groupValues.filter(item => item === true || String(item).toLowerCase() === "true").length;
+                        else if (operation === "COUNT_FALSE") result = groupValues.filter(item => item === false || String(item).toLowerCase() === "false").length;
+                        else if (["SUM","AVG","MAX","MIN"].includes(operation)) {
+                            const nums = groupValues.map(numeric).filter(item => item !== null);
+                            result = operation === "SUM" ? nums.reduce((sum,item)=>sum+item,0)
+                                : operation === "AVG" ? (nums.length ? nums.reduce((sum,item)=>sum+item,0)/nums.length : null)
+                                : operation === "MAX" ? (nums.length ? Math.max(...nums) : null)
+                                : (nums.length ? Math.min(...nums) : null);
+                        }
+                        const mappedResult = result === true ? mapping.true : result === false ? mapping.false : result;
+                        const mappedGroup = String(groupValue).toLowerCase() === "true" && mapping.true !== undefined ? mapping.true
+                            : String(groupValue).toLowerCase() === "false" && mapping.false !== undefined ? mapping.false
+                            : (groupValue === "" ? "(empty)" : display(groupValue));
+                        cards.push({label:label + ": " + mappedGroup,
+                            value:result === null ? "—" : formatValue(mappedResult === undefined ? result : mappedResult,card.format), cls:"",
+                            filterField:String(card.groupBy),filterValue:groupValue,filterType:"grouped-value",
+                            filterOperation:operation,filterable,icon});
+                    });
+                } else {
+                    cards.push({ label, value: value === null ? "—" : formatValue(mapped === undefined ? value : mapped, card.format), cls: "",
+                        filterField: configuredFilterField || field || null,
+                        filterValue: operation === "VALUE" ? value : card.filterValue, filterOperator: card.filterOperator || "equals",
+                        filterType, filterOperation: operation, filterable, icon });
+                }
             });
-            const groupedSummaryFields = Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
+            const groupedSummaryFields = (!hasNewCards || (summary.cards.length === 0 && hasLegacyCards)) &&
+                Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
             if (groupedSummaryFields.length) {
                 cards.unshift({ label: "All", value: summaryCountRows.length, cls: "",
                     filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS", filterable: true });
@@ -426,8 +516,10 @@
         if (!cards.length) return "";
         return '<div class="server-health-summary summary-table-cards">' + cards.map(card => {
             const filterable = card.filterable !== false;
-            const active = filterable && (card.filterType === "grouped-all"
-                ? (!state.cardFilter || state.cardFilter.type === "grouped-all")
+            const active = filterable && (card.filterType === "total-rows"
+                ? (!state.cardFilter && !state.search)
+                : card.filterType === "grouped-all"
+                    ? (!state.cardFilter || state.cardFilter.type === "grouped-all")
                 : state.cardFilter && state.cardFilter.type === card.filterType &&
                     state.cardFilter.field === card.filterField &&
                     state.cardFilter.operation === (card.filterOperation || "") &&
@@ -440,7 +532,8 @@
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
-            const content = '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
+            const iconMarkup = card.icon ? '<i class="bi bi-' + esc(card.icon) + ' summary-table-card-icon" aria-hidden="true"></i>' : "";
+            const content = iconMarkup + '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
                 '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong>';
             const cardClasses = 'server-health-summary-item server-health-summary-' + status + ' summary-table-card' +
                 (filterable ? ' server-health-summary-filter summary-table-card-filter' : ' summary-table-card-static') +
@@ -457,17 +550,10 @@
         }).join("") + '</div>';
     }
 
-    function renderContent(state) {
-        const config = state.config;
-        const details = config.details || {};
-        const groupConfig = details.groupBy || config.groupBy || {};
-        const grouping = groupConfig.enabled === true;
-        const groupFields = grouping && Array.isArray(groupConfig.fields)
-            ? groupConfig.fields.map(String).filter(field => field && (!state.columnMap.has(field) || state.columnMap.get(field).groupable !== false))
-            : [];
-        const searchConfig = details.search || config.search || {};
-        const sortConfig = details.sorting || config.sorting || {};
-        const pageConfig = details.pagination || config.pagination || {};
+    function getFilteredSortedRows(state) {
+        const details = state.config.details || {};
+        const searchConfig = details.search || state.config.search || {};
+        const sortConfig = details.sorting || state.config.sorting || {};
         let rows = state.detailRows.slice();
         if (state.cardFilter) {
             if (state.cardFilter.type === "grouped-all") {
@@ -516,15 +602,57 @@
                 return state.sortDirection === "desc" ? -compare : compare;
             });
         }
+        return rows;
+    }
+
+    function exportTableCsv(state) {
+        const columns = state.columns.filter(column => column.visible !== false);
+        const filteredRows = getFilteredSortedRows(state);
+        // An explicit selection takes precedence over search and card filters, including
+        // selected rows that are currently hidden. With no selection, export filtered rows.
+        const rows = state.selectedRows.size
+            ? state.detailRows.filter(row => state.selectedRows.has(state.rowIds.get(row)))
+            : filteredRows;
+        const quote = value => {
+            const text = String(value === null || value === undefined ? "" : display(value));
+            return '"' + text.replace(/"/g, '""') + '"';
+        };
+        const lines = [columns.map(column => quote(column.label || column.field)).join(",")];
+        rows.forEach(row => {
+            lines.push(columns.map(column => quote(rowValue(row, column.field))).join(","));
+        });
+        const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "summary-table-" + new Date().toISOString().slice(0, 10) + ".csv";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    function renderContent(state) {
+        const config = state.config;
+        const details = config.details || {};
+        const summaryLayout = String((config.summary || {}).layout || "").toUpperCase();
+        const groupConfig = details.groupBy || config.groupBy || {};
+        const grouping = groupConfig.enabled === true;
+        const groupFields = grouping && Array.isArray(groupConfig.fields)
+            ? groupConfig.fields.map(String).filter(field => field && (!state.columnMap.has(field) || state.columnMap.get(field).groupable !== false))
+            : [];
+        const searchConfig = details.search || config.search || {};
+        const sortConfig = details.sorting || config.sorting || {};
+        const pageConfig = details.pagination || config.pagination || {};
+        let rows = getFilteredSortedRows(state);
         const columns = state.columns.filter(column => column.visible !== false);
         const visibleFields = new Set(columns.map(column => column.field));
         const toolbar = searchConfig.enabled === false ? "" : '<div class="summary-table-toolbar"><input class="form-control form-control-sm summary-table-search" type="search" placeholder="' + esc(searchConfig.placeholder || "Search table...") + '" value="' + esc(state.search) + '" aria-label="Search table"></div>';
-        if (!details.enabled && config.details && config.details.enabled === false) {
-            return renderCards(state);
-        }
-        if (details.enabled === false) return renderCards(state);
+        if (summaryLayout === "CARDS_ONLY" || details.enabled === false) return renderCards(state);
         if (!columns.length) return renderCards(state) + '<div class="summary-table-empty">No visible detail columns configured.</div>';
-        const header = columns.map(column => {
+        state.visibleRowIds = [];
+        const header = '<th scope="col" class="summary-table-select-cell"><input type="checkbox" class="form-check-input summary-table-select-all" aria-label="Select all rows on this page"></th>' + columns.map(column => {
             const canSort = sortConfig.enabled !== false && column.sortable !== false;
             const active = state.sortField === column.field;
             return '<th scope="col">' + (canSort ? '<button type="button" class="summary-table-sort" data-sort-field="' + esc(column.field) + '">' : '') +
@@ -546,9 +674,9 @@
             pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
             state.page = Math.min(state.page, pageCount - 1);
             pageRows = pageConfig.enabled === false ? rows : rows.slice(state.page * pageSize, (state.page + 1) * pageSize);
-            body = pageRows.map(row => renderRow(row, columns, config)).join("");
+            body = pageRows.map(row => renderRow(row, columns, config, state)).join("");
         }
-        if (!body) body = '<tr><td colspan="' + Math.max(1, columns.length) + '" class="summary-table-empty-cell">No matching rows.</td></tr>';
+        if (!body) body = '<tr><td colspan="' + (Math.max(1, columns.length) + 1) + '" class="summary-table-empty-cell">No matching rows.</td></tr>';
         const pager = pageConfig.enabled === false ? "" : '<div class="summary-table-pagination"><span class="small text-muted">Showing ' +
             (totalCount ? (state.page * pageSize + 1) : 0) + '–' + Math.min((state.page + 1) * pageSize, totalCount) + ' of ' + totalCount +
             (grouping && groupFields.length ? ' groups' : ' rows') + '</span><div class="d-flex align-items-center gap-2"><label class="small text-muted">' +
@@ -573,14 +701,28 @@
                 '<span>' + esc(column.label) + '</span></label>').join("") +
             '<div class="dropdown-divider"></div><button type="button" class="dropdown-item small summary-table-group-clear">' +
             '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>Clear grouping</button></div></div></div>' : "";
-        const tableControls = toolbar || groupSelector
-            ? '<div class="summary-table-control-row">' + toolbar + groupSelector + '</div>' : "";
-        return renderCards(state) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
+        const selectionCount = state.selectedRows.size;
+        const selectionStatus = selectionCount ? '<span class="small text-muted summary-table-selection-count" aria-live="polite">' + selectionCount + ' selected</span>' : "";
+        const exportConfig = details.exportCsv && typeof details.exportCsv === "object" ? details.exportCsv : {};
+        const exportButton = exportConfig.enabled === false ? "" : '<button type="button" class="btn btn-sm btn-outline-secondary summary-table-export" title="Export selected rows as CSV, or all filtered rows when none are selected"><i class="bi bi-download me-1" aria-hidden="true"></i>Export CSV</button>';
+        const tableControls = '<div class="summary-table-control-row">' + toolbar + groupSelector + exportButton + selectionStatus + '</div>';
+        return (summaryLayout === "TABLE_ONLY" ? "" : renderCards(state)) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
+    }
+
+    function syncSelectionHeader(root, state) {
+        const header = root.querySelector(".summary-table-select-all");
+        if (!header) return;
+        const visible = state.visibleRowIds || [];
+        const selected = visible.filter(id => state.selectedRows.has(id)).length;
+        header.checked = visible.length > 0 && selected === visible.length;
+        header.indeterminate = selected > 0 && selected < visible.length;
+        header.disabled = visible.length === 0;
     }
 
     function rerender(root, state) {
         root.innerHTML = renderContent(state);
+        syncSelectionHeader(root, state);
     }
 
     function render(result, widget) {
@@ -601,7 +743,8 @@
             config, widget, result, columns, columnMap, detailRows, totalRow, numericFields,
             search: "", sortField: ((config.details || {}).sorting || {}).defaultField || "",
             sortDirection: String((((config.details || {}).sorting || {}).direction) || "asc").toLowerCase() === "desc" ? "desc" : "asc",
-            page: 0, collapsed: new Set(), cardFilter: null
+            page: 0, collapsed: new Set(), cardFilter: null,
+            rowIds: new WeakMap(), nextRowId: 0, selectedRows: new Set(), visibleRowIds: []
         };
         const groupConfig = (config.details || {}).groupBy || config.groupBy || {};
         if (groupConfig.enabled === true && groupConfig.initialState === "COLLAPSED" && Array.isArray(groupConfig.fields) && groupConfig.fields.length) {
@@ -643,6 +786,24 @@
     });
 
     document.addEventListener("change", function (event) {
+        if (event.target.matches(".summary-table-select-all, .summary-table-row-select")) {
+            const found = stateFor(event.target);
+            if (!found || !found.state) return;
+            const state = found.state;
+            if (event.target.matches(".summary-table-select-all")) {
+                const shouldSelect = event.target.checked;
+                (state.visibleRowIds || []).forEach(id => {
+                    if (shouldSelect) state.selectedRows.add(id);
+                    else state.selectedRows.delete(id);
+                });
+            } else {
+                const rowId = event.target.getAttribute("data-row-select-id");
+                if (event.target.checked) state.selectedRows.add(rowId);
+                else state.selectedRows.delete(rowId);
+            }
+            rerender(found.root, state);
+            return;
+        }
         if (event.target.matches(".summary-table-group-field")) {
             const found = stateFor(event.target);
             if (!found || !found.state) return;
@@ -678,16 +839,24 @@
         const groupClearButton = event.target.closest(".summary-table-group-clear");
         const prev = event.target.closest(".summary-table-prev");
         const next = event.target.closest(".summary-table-next");
-        if (!sortButton && !groupButton && !cardButton && !groupClearButton && !prev && !next) return;
+        const exportButton = event.target.closest(".summary-table-export");
+        if (!sortButton && !groupButton && !cardButton && !groupClearButton && !prev && !next && !exportButton) return;
         const found = stateFor(event.target);
         if (!found || !found.state) return;
         const state = found.state;
+        if (exportButton) {
+            exportTableCsv(state);
+            return;
+        }
         if (cardButton) {
             const type = cardButton.getAttribute("data-card-filter-type");
             const field = cardButton.getAttribute("data-card-filter-field") || null;
             const operation = cardButton.getAttribute("data-card-filter-operation") || "";
             const value = cardButton.getAttribute("data-card-filter-value") || "";
-            if (type === "grouped-all") {
+            if (type === "total-rows") {
+                state.cardFilter = null;
+                state.search = "";
+            } else if (type === "grouped-all") {
                 state.cardFilter = null;
             } else if (state.cardFilter && state.cardFilter.type === type && state.cardFilter.field === field &&
                 state.cardFilter.operation === operation &&
