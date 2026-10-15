@@ -293,7 +293,7 @@
             const card = {field, label:row.querySelector(".summary-card-label").value.trim() || (field ? humanize(field) : "Total Rows"),
                 operation:row.querySelector(".summary-card-operation").value, format:row.querySelector(".summary-card-format").value,
                 filterable:row.querySelector(".summary-card-click").value === "FILTER_SELF",
-                icon:{enabled:row.querySelector(".summary-card-icon-enabled").checked,name:row.querySelector(".summary-card-icon-preset").value === "custom" ? (row.querySelector(".summary-card-icon-name").value.trim() || "activity") : row.querySelector(".summary-card-icon-preset").value}, valueMapping:mapping};
+                icon:{enabled:row.querySelector(".summary-card-icon-enabled").checked,name:row.querySelector(".summary-card-icon-name").value.trim() || (row.querySelector(".summary-card-icon-preset").value === "custom" ? "activity" : row.querySelector(".summary-card-icon-preset").value)}, valueMapping:mapping};
             if (groupBy) card.groupBy = groupBy; return card;
         });
     }
@@ -621,9 +621,7 @@
             label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
             filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF",
         icon: { enabled: byId("summaryTableTotalRowsIconEnabled").checked,
-            name: byId("summaryTableTotalRowsIconPreset").value === "custom"
-                ? (byId("summaryTableTotalRowsIconName").value.trim() || "list-check")
-                : byId("summaryTableTotalRowsIconPreset").value }
+            name: byId("summaryTableTotalRowsIconName").value.trim() || (byId("summaryTableTotalRowsIconPreset").value === "custom" ? "list-check" : byId("summaryTableTotalRowsIconPreset").value) }
         };
         config.summary.layout = byId("summaryTableLayout").value;
         config.details.enabled = config.summary.layout !== "CARDS_ONLY";
@@ -712,9 +710,7 @@
                 label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
                 filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF",
             icon: { enabled: byId("summaryTableTotalRowsIconEnabled").checked,
-                name: byId("summaryTableTotalRowsIconPreset").value === "custom"
-                    ? (byId("summaryTableTotalRowsIconName").value.trim() || "list-check")
-                    : byId("summaryTableTotalRowsIconPreset").value }
+                name: byId("summaryTableTotalRowsIconName").value.trim() || (byId("summaryTableTotalRowsIconPreset").value === "custom" ? "list-check" : byId("summaryTableTotalRowsIconPreset").value) }
             };
             summaryConfig.summary.layout = byId("summaryTableLayout").value;
             summaryConfig.details.enabled = summaryConfig.summary.layout !== "CARDS_ONLY";
@@ -1069,8 +1065,14 @@
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
         byId("summaryTableShowTotalRowsCard").addEventListener("change", refreshConfigFromEditor);
         ["summaryTableTotalRowsLabel", "summaryTableTotalRowsClick", "summaryTableTotalRowsIconEnabled", "summaryTableTotalRowsIconPreset", "summaryTableTotalRowsIconName"].forEach(id => {
-            byId(id).addEventListener("change", refreshConfigFromEditor);
-            byId(id).addEventListener("input", refreshConfigFromEditor);
+            byId(id).addEventListener("change", function () {
+                if (id === "summaryTableTotalRowsIconPreset" && byId(id).value !== "custom") byId("summaryTableTotalRowsIconName").value = "";
+                refreshConfigFromEditor();
+            });
+            byId(id).addEventListener("input", function () {
+                if (id === "summaryTableTotalRowsIconName" && byId(id).value.trim()) byId("summaryTableTotalRowsIconPreset").value = "custom";
+                refreshConfigFromEditor();
+            });
         });
         byId("summaryTableAddCard").addEventListener("click", function () {
             const config = getConfig(), summary = config.summary && typeof config.summary === "object" ? config.summary : {};
@@ -1084,6 +1086,12 @@
             button.closest("[data-summary-card-row]").remove(); refreshConfigFromEditor();
         });
         ["change","input"].forEach(name => byId("summaryTableCardsEditor").addEventListener(name, function (event) {
+            const row = event.target.closest("[data-summary-card-row]");
+            if (row && event.target.matches(".summary-card-icon-preset") && event.target.value !== "custom") {
+                row.querySelector(".summary-card-icon-name").value = "";
+            } else if (row && event.target.matches(".summary-card-icon-name") && event.target.value.trim()) {
+                row.querySelector(".summary-card-icon-preset").value = "custom";
+            }
             if (event.target.matches(".summary-card-field, .summary-card-group-by")) syncSummaryCardBooleanFields();
             refreshConfigFromEditor();
         }));
