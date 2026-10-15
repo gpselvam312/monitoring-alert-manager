@@ -370,12 +370,43 @@
                 const configuredFilterField = String(card.filterField || "");
                 const filterType = configuredFilterField ? "custom-rule" : (field ? "custom-field" : "all");
                 const defaultFilterable = Boolean(configuredFilterField || field || operation !== "COUNT_ROWS");
-                cards.push({ label: card.label || (operation === "COUNT_ROWS" ? "Total Rows" : field || "Summary"),
-                    value: value === null ? "—" : formatValue(value, card.format), cls: "",
-                    filterField: configuredFilterField || field || null,
-                    filterValue: card.filterValue, filterOperator: card.filterOperator || "equals",
-                    filterType, filterOperation: operation,
-                    filterable: card.filterable === true || (card.filterable !== false && defaultFilterable) });
+                const mapping = card.valueMapping && typeof card.valueMapping === "object" ? card.valueMapping : {};
+                const mapped = value === true ? mapping.true : value === false ? mapping.false : value;
+                const icon = card.icon && typeof card.icon === "object" && card.icon.enabled === true ? String(card.icon.name || "activity") : "";
+                const label = card.label || (operation === "COUNT_ROWS" ? "Total Rows" : field || "Summary");
+                const filterable = card.filterable === true || (card.filterable !== false && defaultFilterable);
+                if (card.groupBy) {
+                    const groups = new Map();
+                    subset.forEach(row => {
+                        const raw = rowValue(row, String(card.groupBy));
+                        const key = raw === null || raw === undefined || String(raw).trim() === "" ? "" : String(raw);
+                        if (!groups.has(key)) groups.set(key, []);
+                        groups.get(key).push(row);
+                    });
+                    groups.forEach((groupRows, groupValue) => {
+                        const groupValues = field ? groupRows.map(row => rowValue(row, field)) : [];
+                        let result = groupRows.length;
+                        if (operation === "COUNT_NON_EMPTY") result = groupValues.filter(item => item !== null && item !== undefined && item !== "").length;
+                        else if (operation === "COUNT_TRUE") result = groupValues.filter(item => item === true || String(item).toLowerCase() === "true").length;
+                        else if (operation === "COUNT_FALSE") result = groupValues.filter(item => item === false || String(item).toLowerCase() === "false").length;
+                        else if (["SUM","AVG","MAX","MIN"].includes(operation)) {
+                            const nums = groupValues.map(numeric).filter(item => item !== null);
+                            result = operation === "SUM" ? nums.reduce((sum,item)=>sum+item,0)
+                                : operation === "AVG" ? (nums.length ? nums.reduce((sum,item)=>sum+item,0)/nums.length : null)
+                                : operation === "MAX" ? (nums.length ? Math.max(...nums) : null)
+                                : (nums.length ? Math.min(...nums) : null);
+                        }
+                        cards.push({label:label + ": " + (groupValue === "" ? "(empty)" : display(groupValue)),
+                            value:result === null ? "—" : formatValue(result,card.format), cls:"",
+                            filterField:String(card.groupBy),filterValue:groupValue,filterType:"grouped-value",
+                            filterOperation:operation,filterable,icon});
+                    });
+                } else {
+                    cards.push({ label, value: value === null ? "—" : formatValue(mapped === undefined ? value : mapped, card.format), cls: "",
+                        filterField: configuredFilterField || field || null,
+                        filterValue: card.filterValue, filterOperator: card.filterOperator || "equals",
+                        filterType, filterOperation: operation, filterable, icon });
+                }
             });
             const groupedSummaryFields = Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
             if (groupedSummaryFields.length) {
@@ -440,7 +471,8 @@
                 : String(card.cls || "").includes("critical") ? "critical"
                 : String(card.cls || "").includes("warning") ? "warning"
                 : String(card.cls || "").includes("healthy") ? "healthy" : "unknown";
-            const content = '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
+            const iconMarkup = card.icon ? '<i class="bi bi-' + esc(card.icon) + ' summary-table-card-icon" aria-hidden="true"></i>' : "";
+            const content = iconMarkup + '<span class="summary-table-card-label">' + esc(card.label) + '</span>' +
                 '<strong class="summary-table-card-value">' + esc(display(card.value)) + '</strong>';
             const cardClasses = 'server-health-summary-item server-health-summary-' + status + ' summary-table-card' +
                 (filterable ? ' server-health-summary-filter summary-table-card-filter' : ' summary-table-card-static') +
@@ -460,6 +492,7 @@
     function renderContent(state) {
         const config = state.config;
         const details = config.details || {};
+        const summaryLayout = String((config.summary || {}).layout || "").toUpperCase();
         const groupConfig = details.groupBy || config.groupBy || {};
         const grouping = groupConfig.enabled === true;
         const groupFields = grouping && Array.isArray(groupConfig.fields)
@@ -519,10 +552,7 @@
         const columns = state.columns.filter(column => column.visible !== false);
         const visibleFields = new Set(columns.map(column => column.field));
         const toolbar = searchConfig.enabled === false ? "" : '<div class="summary-table-toolbar"><input class="form-control form-control-sm summary-table-search" type="search" placeholder="' + esc(searchConfig.placeholder || "Search table...") + '" value="' + esc(state.search) + '" aria-label="Search table"></div>';
-        if (!details.enabled && config.details && config.details.enabled === false) {
-            return renderCards(state);
-        }
-        if (details.enabled === false) return renderCards(state);
+        if (summaryLayout === "CARDS_ONLY" || details.enabled === false) return renderCards(state);
         if (!columns.length) return renderCards(state) + '<div class="summary-table-empty">No visible detail columns configured.</div>';
         const header = columns.map(column => {
             const canSort = sortConfig.enabled !== false && column.sortable !== false;
@@ -575,7 +605,7 @@
             '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>Clear grouping</button></div></div></div>' : "";
         const tableControls = toolbar || groupSelector
             ? '<div class="summary-table-control-row">' + toolbar + groupSelector + '</div>' : "";
-        return renderCards(state) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
+        return (summaryLayout === "TABLE_ONLY" ? "" : renderCards(state)) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
     }
 
