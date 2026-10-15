@@ -389,7 +389,7 @@
                 filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS",
                 filterable: totalRowsCard.filterable === true,
                 icon: totalRowsCard.icon && totalRowsCard.icon.enabled === true
-                    ? String(totalRowsCard.icon.name || "list-check") : "" });
+                    ? String(totalRowsCard.icon.name || "list-check").replace(/^bi-/, "") : "" });
         }
         if (hasConfiguredCards) {
             const matches = (row, card) => !card.filterField || conditionalRuleMatches(row, {
