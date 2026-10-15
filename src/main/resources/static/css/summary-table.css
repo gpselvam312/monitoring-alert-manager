@@ -341,10 +341,3 @@
     line-height: 1.5;
     vertical-align: middle;
 }
-
-/* Bootstrap's default close icon is dark; invert it only for the dark widget-config modal. */
-[data-theme="orange-dark"] #dashboardWidgetModal .btn-close,
-[data-theme="blue-dark"] #dashboardWidgetModal .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%);
-    opacity: 1;
-}
