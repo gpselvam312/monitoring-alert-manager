@@ -1299,7 +1299,23 @@
 
     function renderSystemMetricsCards(result, widget, config)
     {
-        const rows = getConfiguredTableRows(result, config).map(function (row) { return Object.assign({}, row); });
+        const payload = result && result.payload;
+        const payloadObject = payload && typeof payload === "object" ? payload : {};
+        const failure = result && (result.success === false || result.ok === false)
+            ? (result.error || result.message || "The monitoring script reported a collection failure.")
+            : payloadObject.success === false || payloadObject.ok === false || payloadObject.error
+                ? (payloadObject.error || payloadObject.message || "The monitoring script reported a collection failure.")
+                : null;
+        if (failure)
+        {
+            const message = typeof failure === "string" ? failure : JSON.stringify(failure);
+            return '<div class="server-health-empty server-health-collection-error"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>System metrics collection failed: ' + escapeHtml(message) + '</span></div>';
+        }
+        const rows = getConfiguredTableRows(result || {}, config).map(function (row) { return Object.assign({}, row); });
+        if (!rows.length)
+        {
+            return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>No machine metrics were returned. Health status is unknown until data is collected.</span></div>';
+        }
         const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
         const fields = Object.assign({
             hostname: "hostname", cpu: "cpu_used_percent", ram: "ram_used_percent",
@@ -1350,10 +1366,41 @@
             const cores = Math.max(1, number(pick(row, ["cpuCores", "cpu_cores"])) || 1);
             const uptime = number(pick(row, ["uptimeSeconds", "uptime_seconds", "uptime_sec"]));
             const disk = number(pick(row, ["diskUsedPercent", "u01_used_percent", "u01_used_percentage", "u01_percent", "disk_u01_used_percent", "u01_usage_percent"]));
+            // If the shell script supplies a health status, trust it. Thresholds belong
+            // to the collector script/config, not the UI. Missing or unrecognized status is UNKNOWN.
+            const configuredStatusField = typeof config.statusField === "string" && config.statusField.trim()
+                ? config.statusField.trim()
+                : config.fields && typeof config.fields.status === "string" && config.fields.status.trim()
+                    ? config.fields.status.trim()
+                    : "";
+            const statusKeys = configuredStatusField
+                ? [configuredStatusField]
+                : ["status", "healthStatus", "health_status"];
+            let rawStatus = null;
+            for (const statusKey of statusKeys)
+            {
+                if (row[statusKey] !== undefined && row[statusKey] !== null && String(row[statusKey]).trim() !== "")
+                {
+                    rawStatus = String(row[statusKey]).trim().toUpperCase();
+                    break;
+                }
+            }
+            const hasScriptStatus = Boolean(configuredStatusField) || rawStatus !== null;
+            const normalizeHealthStatus = function (value)
+            {
+                if (["HEALTHY", "HEALTH", "OK", "GREEN", "SUCCESS", "SUCCEEDED", "UP", "PASS"].includes(value)) return "HEALTHY";
+                if (["WARNING", "WARN", "YELLOW", "DEGRADED"].includes(value)) return "WARNING";
+                if (["CRITICAL", "ERROR", "FAILED", "FAILURE", "RED", "DOWN"].includes(value)) return "CRITICAL";
+                return "UNKNOWN";
+            };
             let status = "UNKNOWN";
-            // A successful collection must contain all required System Metrics before health is inferred.
-            // Missing uptime or /u01 data is incomplete collection, not a healthy server.
-            if (collected(row) && cpu !== null && ram !== null && load1 !== null && uptime !== null && disk !== null)
+            if (hasScriptStatus)
+            {
+                status = rawStatus === null ? "UNKNOWN" : normalizeHealthStatus(rawStatus);
+            }
+            // Backward compatibility: older payloads without a health status retain the
+            // previous inferred status behavior and completeness checks.
+            else if (collected(row) && cpu !== null && ram !== null && load1 !== null && uptime !== null && disk !== null)
             {
                 const critical = cpu >= 85 || ram >= 90 || load1 / cores >= 1 || disk >= 95;
                 const warning = cpu >= 70 || ram >= 75 || load1 / cores >= 0.70 || disk >= 85 || uptime < 72 * 3600;
