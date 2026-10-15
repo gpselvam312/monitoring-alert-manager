@@ -1082,6 +1082,7 @@
             config.summary = config.summary && typeof config.summary === "object" ? config.summary : {};
             if (resetToDefaults) {
                 delete config.details.columns;
+                delete config.columns;
             } else {
                 const mappingFields = Array.from(new Set([...configuredColumns(config).keys(), ...(state.fields || [])]));
                 config.details.columns = mappingFields.map(field => ({
