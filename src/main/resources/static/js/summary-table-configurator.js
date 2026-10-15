@@ -651,33 +651,11 @@
                 showAggregates: byId("summaryTableGroupByAggregates").checked
             });
             summaryConfig.details.conditionalFormatting = readConditionalFormatting();
-            const existingSummaryCards = Array.isArray(summaryConfig.summary && summaryConfig.summary.cards)
-                && (summaryConfig.summary.cards.length > 0 || !Array.isArray(summaryConfig.details.summaryCards))
-                ? summaryConfig.summary.cards.slice()
-                : (Array.isArray(summaryConfig.details.summaryCards) ? summaryConfig.details.summaryCards.slice()
-                    : (Array.isArray(summaryConfig.summary && summaryConfig.summary.cards) ? summaryConfig.summary.cards.slice() : []));
-            const existingTotalRowsCard = existingSummaryCards.find(card =>
-                card && String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
             delete summaryConfig.details.summaryCards;
             summaryConfig.summary = Object.assign({}, summaryConfig.summary || {});
-            const editedColumns = readFieldEditor();
-            summaryConfig.summary.groupByFields = editedColumns.filter(column => column.groupSummary).map(column => column.field);
-            summaryConfig.summary.cards = [...(byId("summaryTableShowTotalRowsCard") && byId("summaryTableShowTotalRowsCard").checked
-                ? [Object.assign({}, existingTotalRowsCard || {}, {
-                    label: "Total Rows", field: "", operation: "COUNT_ROWS", format: "number",
-                    filterable: existingTotalRowsCard && typeof existingTotalRowsCard.filterable === "boolean"
-                        ? existingTotalRowsCard.filterable : false
-                })] : []), ...editedColumns.filter(column => column.summaryCard && !column.groupSummary).map(column => {
-                const aggregate = String(column.aggregation || "none").toLowerCase();
-                const operation = ({ count: "COUNT_NON_EMPTY", sum: "SUM", avg: "AVG", max: "MAX", min: "MIN" })[aggregate];
-                if (!operation) return null;
-                const existingCard = existingSummaryCards.find(card => card && String(card.field || "") === column.field);
-                return Object.assign({}, existingCard || {}, {
-                    label: column.label || humanize(column.field), field: column.field, operation,
-                    format: column.format || (["SUM", "AVG", "MAX", "MIN"].includes(operation) ? "number" : ""),
-                    filterable: column.summaryFilterable
-                });
-            }).filter(Boolean)];
+            summaryConfig.summary.cards = readSummaryCardsEditor();
+            summaryConfig.summary.layout = byId("summaryTableLayout").value;
+            summaryConfig.details.enabled = summaryConfig.summary.layout !== "CARDS_ONLY";
             setConfig(summaryConfig);
             return;
         }
