@@ -320,13 +320,14 @@
                         '</strong><span class="summary-table-group-count">' + count + ' rows</span></button>'
                     : "";
 
-                if (index === groupColumnIndex) {
-                    return '<td class="summary-table-group-value-cell">' + groupLabel + '</td>';
+                if (index === fallbackColumnIndex) {
+                    return '<td class="summary-table-group-value-cell">' +
+                        (groupLabel || (aggregate !== undefined ? esc(aggregate) : "")) + '</td>';
                 }
                 if (aggregate !== undefined) {
                     return '<td class="summary-table-group-aggregate-cell">' + esc(aggregate) + '</td>';
                 }
-                return '<td>' + groupLabel + '</td>';
+                return '<td></td>';
             }).join("");
 
             htmlRows.push('<tr class="summary-table-group-row"><td class="summary-table-select-cell"></td>' + cells + '</tr>');
