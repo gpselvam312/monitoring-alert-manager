@@ -253,6 +253,7 @@
         const fields = Array.from(new Set([...(state.fields || []), ...cards.map(card => String(card.field || "")).filter(Boolean)]));
         const options = selected => '<option value="">All rows</option>' + fields.map(field => '<option value="' + escapeHtml(field) + '"' + (String(selected || "") === field ? ' selected' : '') + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("");
         const ops = [["COUNT_ROWS","Count rows"],["VALUE","Field value"],["COUNT_NON_EMPTY","Count non-empty"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
+        const iconPresets = [["activity","Activity"],["check-circle","Success"],["exclamation-triangle","Warning"],["x-circle","Critical"],["info-circle","Information"],["speedometer2","Gauge"],["server","Server"],["hdd-stack","Storage"],["cpu","CPU"],["memory","Memory"],["people","People"],["person-check","Person check"],["clock-history","History"],["lightning-charge","Performance"],["database","Database"],["cloud-check","Cloud"],["shield-check","Security"],["bell","Alerts"],["graph-up","Trend"],["list-check","List"],["box-seam","Box"],["diagram-3","Topology"],["arrow-repeat","Refresh"]];
         host.innerHTML = cards.map((card,i) => {
             const map = card.valueMapping && typeof card.valueMapping === "object" ? card.valueMapping : {}, icon = card.icon && typeof card.icon === "object" ? card.icon : {};
             return '<div class="border rounded p-3 mb-3" data-summary-card-row><div class="d-flex justify-content-between mb-2"><strong>Card ' + (i+1) + '</strong><button type="button" class="btn btn-sm btn-outline-danger summary-card-remove">Remove</button></div><div class="row g-2">' +
@@ -263,7 +264,8 @@
             '<div class="col-md-4"><label class="form-label small">On click</label><select class="form-select form-select-sm summary-card-click"><option value="FILTER_SELF"' + (card.filterable === false?'':' selected') + '>Filter this widget</option><option value="NONE"' + (card.filterable === false?' selected':'') + '>No action</option></select></div>' +
             '<div class="col-md-4"><label class="form-label small">Format</label><select class="form-select form-select-sm summary-card-format">' + [["","Default"],["number","Number"],["percentage","Percentage"],["duration","Duration"],["datetime","Date / time"]].map(o=>'<option value="'+o[0]+'"'+(String(card.format||"")===o[0]?' selected':'')+'>'+o[1]+'</option>').join("") + '</select></div>' +
             '<div class="col-md-3"><div class="form-check mt-2"><input class="form-check-input summary-card-icon-enabled" type="checkbox"' + (icon.enabled===true?' checked':'') + '><label class="form-check-label small">Show icon</label></div></div>' +
-            '<div class="col-md-3"><label class="form-label small">Bootstrap icon</label><input class="form-control form-control-sm summary-card-icon-name" value="' + escapeHtml(icon.name || "activity") + '"></div>' +
+            '<div class="col-md-4"><label class="form-label small">Bootstrap icon</label><select class="form-select form-select-sm summary-card-icon-preset">' + iconPresets.map(o => '<option value="' + o[0] + '"' + (String(icon.name || "activity") === o[0] ? " selected" : "") + '>' + o[1] + '</option>').join("") + '<option value="custom"' + (iconPresets.some(o => o[0] === String(icon.name || "")) ? "" : " selected") + '>Custom…</option></select></div>' +
+            '<div class="col-md-5"><label class="form-label small">Custom icon name</label><input class="form-control form-control-sm summary-card-icon-name" value="' + escapeHtml(icon.name && !iconPresets.some(o => o[0] === String(icon.name)) ? icon.name : "") + '" placeholder="e.g. boxes"></div>' +
             '<div class="col-12 summary-card-boolean-mapping" hidden><div class="row g-2"><div class="col-md-6"><label class="form-label small">True label</label><input class="form-control form-control-sm summary-card-true-label" value="' + escapeHtml(map.true===undefined?'':map.true) + '" placeholder="Active"></div>' +
             '<div class="col-md-6"><label class="form-label small">False label</label><input class="form-control form-control-sm summary-card-false-label" value="' + escapeHtml(map.false===undefined?'':map.false) + '" placeholder="Inactive"></div></div></div></div></div></div>';
         }).join("") || '<div class="text-muted small">No cards configured. Select Add card to create one.</div>';
@@ -272,6 +274,11 @@
         byId("summaryTableShowTotalRowsCard").checked = totalRows.enabled === true || (!summary.totalRowsCard && Boolean(legacyTotal));
         byId("summaryTableTotalRowsLabel").value = totalRows.label || (legacyTotal && legacyTotal.label) || "Total Rows";
         byId("summaryTableTotalRowsClick").value = totalRows.filterable === true ? "FILTER_SELF" : "NONE";
+        const totalIcon = totalRows.icon && typeof totalRows.icon === "object" ? totalRows.icon : {};
+        const totalIconName = String(totalIcon.name || "list-check");
+        byId("summaryTableTotalRowsIconEnabled").checked = totalIcon.enabled === true;
+        byId("summaryTableTotalRowsIconPreset").value = iconPresets.some(option => option[0] === totalIconName) ? totalIconName : "custom";
+        byId("summaryTableTotalRowsIconName").value = iconPresets.some(option => option[0] === totalIconName) ? "" : totalIconName;
         syncSummaryCardBooleanFields();
     }
     function readSummaryCardsEditor() {
@@ -286,7 +293,7 @@
             const card = {field, label:row.querySelector(".summary-card-label").value.trim() || (field ? humanize(field) : "Total Rows"),
                 operation:row.querySelector(".summary-card-operation").value, format:row.querySelector(".summary-card-format").value,
                 filterable:row.querySelector(".summary-card-click").value === "FILTER_SELF",
-                icon:{enabled:row.querySelector(".summary-card-icon-enabled").checked,name:row.querySelector(".summary-card-icon-name").value.trim() || "activity"}, valueMapping:mapping};
+                icon:{enabled:row.querySelector(".summary-card-icon-enabled").checked,name:row.querySelector(".summary-card-icon-preset").value === "custom" ? (row.querySelector(".summary-card-icon-name").value.trim() || "activity") : row.querySelector(".summary-card-icon-preset").value}, valueMapping:mapping};
             if (groupBy) card.groupBy = groupBy; return card;
         });
     }
@@ -612,8 +619,11 @@
         config.summary.totalRowsCard = {
             enabled: byId("summaryTableShowTotalRowsCard").checked,
             label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
-            filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF"
-        };
+            filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF",
+        icon: { enabled: byId("summaryTableTotalRowsIconEnabled").checked,
+            name: byId("summaryTableTotalRowsIconPreset").value === "custom"
+                ? (byId("summaryTableTotalRowsIconName").value.trim() || "list-check")
+                : byId("summaryTableTotalRowsIconPreset").value };
         config.summary.layout = byId("summaryTableLayout").value;
         config.details.enabled = config.summary.layout !== "CARDS_ONLY";
         if (config.summary.enabled === undefined) config.summary.enabled = true;
@@ -699,8 +709,11 @@
             summaryConfig.summary.totalRowsCard = {
                 enabled: byId("summaryTableShowTotalRowsCard").checked,
                 label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
-                filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF"
-            };
+                filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF",
+            icon: { enabled: byId("summaryTableTotalRowsIconEnabled").checked,
+                name: byId("summaryTableTotalRowsIconPreset").value === "custom"
+                    ? (byId("summaryTableTotalRowsIconName").value.trim() || "list-check")
+                    : byId("summaryTableTotalRowsIconPreset").value };
             summaryConfig.summary.layout = byId("summaryTableLayout").value;
             summaryConfig.details.enabled = summaryConfig.summary.layout !== "CARDS_ONLY";
             setConfig(summaryConfig);
@@ -1053,7 +1066,7 @@
         });
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
         byId("summaryTableShowTotalRowsCard").addEventListener("change", refreshConfigFromEditor);
-        ["summaryTableTotalRowsLabel", "summaryTableTotalRowsClick"].forEach(id => {
+        ["summaryTableTotalRowsLabel", "summaryTableTotalRowsClick", "summaryTableTotalRowsIconEnabled", "summaryTableTotalRowsIconPreset", "summaryTableTotalRowsIconName"].forEach(id => {
             byId(id).addEventListener("change", refreshConfigFromEditor);
             byId(id).addEventListener("input", refreshConfigFromEditor);
         });
