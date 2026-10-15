@@ -1647,7 +1647,7 @@
                                         </div>
                                     </div>
 <div class="mb-4" id="summaryTableFieldEditorGroup">
-                                        <h6 class="mb-2" id="widgetFieldMappingHeading">Field mapping</h6>
+                                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2"><h6 class="mb-0" id="widgetFieldMappingHeading">Field mapping</h6><div class="d-flex flex-wrap gap-2" id="summaryTableMappingActions" hidden><button type="button" class="btn btn-sm btn-outline-secondary" id="summaryTableClearMapping">Clear mapping</button><button type="button" class="btn btn-sm btn-outline-secondary" id="summaryTableResetMapping">Reset to defaults</button></div></div>
                                         <div id="summaryTableFieldEditor">
                                             <div class="text-muted small">Load sample data and discover fields to configure columns.</div>
                                         </div>
@@ -1655,6 +1655,7 @@
                                     <section class="border rounded p-3 mb-4" id="summaryTableCardsSection" aria-labelledby="summaryTableCardsHeading" hidden>
                                         <div class="d-flex align-items-center justify-content-between gap-3 mb-3"><div><h6 class="mb-1" id="summaryTableCardsHeading">Summary Cards</h6><div class="form-text">Configure cards independently from table columns. Hidden fields are supported.</div></div><button type="button" class="btn btn-sm btn-outline-primary" id="summaryTableAddCard">Add card</button></div>
                                         <div class="row g-2 mb-3"><div class="col-md-6"><label for="summaryTableLayout" class="form-label">Layout</label><select id="summaryTableLayout" class="form-select"><option value="BOTH">Cards and table</option><option value="CARDS_ONLY">Cards only</option><option value="TABLE_ONLY">Table only</option></select></div></div>
+                                        <div class="border rounded p-3 mb-3"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="summaryTableShowTotalRowsCard"><label class="form-check-label" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div><div class="row g-2"><div class="col-md-6"><label for="summaryTableTotalRowsLabel" class="form-label small">Card label</label><input type="text" class="form-control form-control-sm" id="summaryTableTotalRowsLabel" maxlength="120" value="Total Rows"></div><div class="col-md-6"><label for="summaryTableTotalRowsClick" class="form-label small">On click</label><select id="summaryTableTotalRowsClick" class="form-select form-select-sm"><option value="NONE">No action</option><option value="FILTER_SELF">Filter this widget</option></select></div></div></div>
                                         <div id="summaryTableCardsEditor"><div class="text-muted small">Discover fields to configure summary cards.</div></div>
                                     </section>
                                     <section class="border rounded p-3 mb-4" id="summaryTableGroupBySection" aria-labelledby="summaryTableGroupByHeading">
