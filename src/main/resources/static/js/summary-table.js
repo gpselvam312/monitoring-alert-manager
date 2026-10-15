@@ -272,7 +272,7 @@
     function flattenNodes(nodes, config, state, columns, htmlRows) {
         nodes.forEach(node => {
             if (node.type === "row") {
-                htmlRows.push(renderRow(node.row, columns, config));
+                htmlRows.push(renderRow(node.row, columns, config, state));
                 return;
             }
             const collapsed = state.collapsed.has(node.id);
@@ -298,14 +298,21 @@
                     return esc(column.label) + " (" + esc(operation.toUpperCase()) + "): " + esc(result === undefined ? "—" : Number.isFinite(result) ? result.toLocaleString() : result);
                 }).filter(Boolean).join(" · ");
             }
-            htmlRows.push('<tr class="summary-table-group-row"><td colspan="' + columns.length + '"><button type="button" class="summary-table-group-toggle" data-group-id="' + esc(node.id) + '" aria-expanded="' + (!collapsed) + '"><i class="bi ' + (collapsed ? "bi-chevron-right" : "bi-chevron-down") + '"></i><strong>' + esc(node.field) + ': ' + esc(node.value) + '</strong><span class="summary-table-group-count">' + count + ' rows</span>' + (aggregate ? '<span class="summary-table-group-aggregate">' + aggregate + '</span>' : '') + '</button></td></tr>');
+            htmlRows.push('<tr class="summary-table-group-row"><td colspan="' + (columns.length + 1) + '"><button type="button" class="summary-table-group-toggle" data-group-id="' + esc(node.id) + '" aria-expanded="' + (!collapsed) + '"><i class="bi ' + (collapsed ? "bi-chevron-right" : "bi-chevron-down") + '"></i><strong>' + esc(node.field) + ': ' + esc(node.value) + '</strong><span class="summary-table-group-count">' + count + ' rows</span>' + (aggregate ? '<span class="summary-table-group-aggregate">' + aggregate + '</span>' : '') + '</button></td></tr>');
             if (!collapsed) flattenNodes(node.children, config, state, columns, htmlRows);
         });
     }
 
-    function renderRow(row, columns, config) {
+    function renderRow(row, columns, config, state) {
         const css = rowClass(row, config);
+        let rowId = state.rowIds.get(row);
+        if (!rowId) {
+            rowId = "row-" + (++state.nextRowId);
+            state.rowIds.set(row, rowId);
+        }
+        state.visibleRowIds.push(rowId);
         return '<tr' + (css ? ' class="summary-table-row ' + css + '"' : ' class="summary-table-row"') + '>' +
+            '<td class="summary-table-select-cell"><input type="checkbox" class="form-check-input summary-table-row-select" data-row-select-id="' + esc(rowId) + '" aria-label="Select row"' + (state.selectedRows.has(rowId) ? ' checked' : '') + '></td>' +
             columns.map(column => {
                 const value = rowValue(row, column.field);
                 const cellClass = conditionalRuleClass(row, config, "cell", column.field);
@@ -344,6 +351,12 @@
         const configured = hasNewCards && (summary.cards.length > 0 || !hasLegacyCards)
             ? summary.cards : (hasLegacyCards ? details.summaryCards : (hasNewCards ? summary.cards : []));
         const cards = [];
+        const totalRowsCard = summary.totalRowsCard && typeof summary.totalRowsCard === "object" ? summary.totalRowsCard : {};
+        if (totalRowsCard.enabled === true) {
+            cards.push({ label: totalRowsCard.label || "Total Rows", value: summaryCountRows.length, cls: "",
+                filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS",
+                filterable: totalRowsCard.filterable === true });
+        }
         if (hasConfiguredCards) {
             const matches = (row, card) => !card.filterField || conditionalRuleMatches(row, {
                 field: card.filterField,
@@ -414,7 +427,8 @@
                         filterType, filterOperation: operation, filterable, icon });
                 }
             });
-            const groupedSummaryFields = Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
+            const groupedSummaryFields = (!hasNewCards || (summary.cards.length === 0 && hasLegacyCards)) &&
+                Array.isArray(summary.groupByFields) ? summary.groupByFields.map(String) : [];
             if (groupedSummaryFields.length) {
                 cards.unshift({ label: "All", value: summaryCountRows.length, cls: "",
                     filterField: null, filterValue: "", filterType: "grouped-all", filterOperation: "COUNT_ROWS", filterable: true });
@@ -560,7 +574,8 @@
         const toolbar = searchConfig.enabled === false ? "" : '<div class="summary-table-toolbar"><input class="form-control form-control-sm summary-table-search" type="search" placeholder="' + esc(searchConfig.placeholder || "Search table...") + '" value="' + esc(state.search) + '" aria-label="Search table"></div>';
         if (summaryLayout === "CARDS_ONLY" || details.enabled === false) return renderCards(state);
         if (!columns.length) return renderCards(state) + '<div class="summary-table-empty">No visible detail columns configured.</div>';
-        const header = columns.map(column => {
+        state.visibleRowIds = [];
+        const header = '<th scope="col" class="summary-table-select-cell"><input type="checkbox" class="form-check-input summary-table-select-all" aria-label="Select all rows on this page"></th>' + columns.map(column => {
             const canSort = sortConfig.enabled !== false && column.sortable !== false;
             const active = state.sortField === column.field;
             return '<th scope="col">' + (canSort ? '<button type="button" class="summary-table-sort" data-sort-field="' + esc(column.field) + '">' : '') +
@@ -582,9 +597,9 @@
             pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
             state.page = Math.min(state.page, pageCount - 1);
             pageRows = pageConfig.enabled === false ? rows : rows.slice(state.page * pageSize, (state.page + 1) * pageSize);
-            body = pageRows.map(row => renderRow(row, columns, config)).join("");
+            body = pageRows.map(row => renderRow(row, columns, config, state)).join("");
         }
-        if (!body) body = '<tr><td colspan="' + Math.max(1, columns.length) + '" class="summary-table-empty-cell">No matching rows.</td></tr>';
+        if (!body) body = '<tr><td colspan="' + (Math.max(1, columns.length) + 1) + '" class="summary-table-empty-cell">No matching rows.</td></tr>';
         const pager = pageConfig.enabled === false ? "" : '<div class="summary-table-pagination"><span class="small text-muted">Showing ' +
             (totalCount ? (state.page * pageSize + 1) : 0) + '–' + Math.min((state.page + 1) * pageSize, totalCount) + ' of ' + totalCount +
             (grouping && groupFields.length ? ' groups' : ' rows') + '</span><div class="d-flex align-items-center gap-2"><label class="small text-muted">' +
@@ -609,14 +624,27 @@
                 '<span>' + esc(column.label) + '</span></label>').join("") +
             '<div class="dropdown-divider"></div><button type="button" class="dropdown-item small summary-table-group-clear">' +
             '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>Clear grouping</button></div></div></div>' : "";
-        const tableControls = toolbar || groupSelector
-            ? '<div class="summary-table-control-row">' + toolbar + groupSelector + '</div>' : "";
+        const selectionCount = state.selectedRows.size;
+        const selectionStatus = selectionCount ? '<span class="small text-muted summary-table-selection-count" aria-live="polite">' + selectionCount + ' selected</span>' : "";
+        const tableControls = toolbar || groupSelector || selectionStatus
+            ? '<div class="summary-table-control-row">' + toolbar + groupSelector + selectionStatus + '</div>' : "";
         return (summaryLayout === "TABLE_ONLY" ? "" : renderCards(state)) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
     }
 
+    function syncSelectionHeader(root, state) {
+        const header = root.querySelector(".summary-table-select-all");
+        if (!header) return;
+        const visible = state.visibleRowIds || [];
+        const selected = visible.filter(id => state.selectedRows.has(id)).length;
+        header.checked = visible.length > 0 && selected === visible.length;
+        header.indeterminate = selected > 0 && selected < visible.length;
+        header.disabled = visible.length === 0;
+    }
+
     function rerender(root, state) {
         root.innerHTML = renderContent(state);
+        syncSelectionHeader(root, state);
     }
 
     function render(result, widget) {
@@ -637,7 +665,8 @@
             config, widget, result, columns, columnMap, detailRows, totalRow, numericFields,
             search: "", sortField: ((config.details || {}).sorting || {}).defaultField || "",
             sortDirection: String((((config.details || {}).sorting || {}).direction) || "asc").toLowerCase() === "desc" ? "desc" : "asc",
-            page: 0, collapsed: new Set(), cardFilter: null
+            page: 0, collapsed: new Set(), cardFilter: null,
+            rowIds: new WeakMap(), nextRowId: 0, selectedRows: new Set(), visibleRowIds: []
         };
         const groupConfig = (config.details || {}).groupBy || config.groupBy || {};
         if (groupConfig.enabled === true && groupConfig.initialState === "COLLAPSED" && Array.isArray(groupConfig.fields) && groupConfig.fields.length) {
@@ -679,6 +708,24 @@
     });
 
     document.addEventListener("change", function (event) {
+        if (event.target.matches(".summary-table-select-all, .summary-table-row-select")) {
+            const found = stateFor(event.target);
+            if (!found || !found.state) return;
+            const state = found.state;
+            if (event.target.matches(".summary-table-select-all")) {
+                const shouldSelect = event.target.checked;
+                (state.visibleRowIds || []).forEach(id => {
+                    if (shouldSelect) state.selectedRows.add(id);
+                    else state.selectedRows.delete(id);
+                });
+            } else {
+                const rowId = event.target.getAttribute("data-row-select-id");
+                if (event.target.checked) state.selectedRows.add(rowId);
+                else state.selectedRows.delete(rowId);
+            }
+            rerender(found.root, state);
+            return;
+        }
         if (event.target.matches(".summary-table-group-field")) {
             const found = stateFor(event.target);
             if (!found || !found.state) return;
