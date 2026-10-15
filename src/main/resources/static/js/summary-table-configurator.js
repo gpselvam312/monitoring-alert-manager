@@ -445,6 +445,7 @@
             const sorting = details.sorting || config.sorting || {};
             const pagination = details.pagination || config.pagination || {};
             byId("summaryTableSearchEnabled").checked = search.enabled !== false;
+            byId("summaryTableExportCsvEnabled").checked = !details.exportCsv || details.exportCsv.enabled !== false;
             byId("summaryTableSortDirection").value = String(sorting.direction || "asc").toLowerCase() === "desc" ? "desc" : "asc";
             byId("summaryTablePageSize").value = ["5", "10", "25", "50"].includes(String(pagination.pageSize)) ? String(pagination.pageSize) : "10";
 
@@ -621,6 +622,7 @@
         const editedColumns = readFieldEditor();
         config.details.columns = editedColumns.map(({ summaryCard, summaryFilterable, groupSummary, ...column }) => column);
         config.details.search = Object.assign({}, config.details.search || {}, { enabled: byId("summaryTableSearchEnabled").checked });
+        config.details.exportCsv = Object.assign({}, config.details.exportCsv || {}, { enabled: byId("summaryTableExportCsvEnabled").checked });
         const defaultField = byId("summaryTableDefaultSort").value;
         config.details.sorting = Object.assign({}, config.details.sorting || {}, {
             enabled: true, defaultField, direction: byId("summaryTableSortDirection").value
@@ -708,6 +710,9 @@
             summaryConfig.details = summaryConfig.details && typeof summaryConfig.details === "object" ? summaryConfig.details : {};
             summaryConfig.details.search = Object.assign({}, summaryConfig.details.search || {}, {
                 enabled: byId("summaryTableSearchEnabled").checked
+            });
+            summaryConfig.details.exportCsv = Object.assign({}, summaryConfig.details.exportCsv || {}, {
+                enabled: byId("summaryTableExportCsvEnabled").checked
             });
             summaryConfig.details.sorting = Object.assign({}, summaryConfig.details.sorting || {}, {
                 enabled: true,
@@ -939,6 +944,7 @@
         byId("summaryTableMappingActions").hidden = !isSummary;
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
+        byId("summaryTableExportCsvOption").hidden = !isSummary;
         byId("summaryTableFieldEditorGroup").hidden = !isTable;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
         byId("widgetMappingHeading").textContent = type === "SUMMARY_TABLE" ? "Summary Table data and columns" : "Widget data and mapping";
@@ -963,6 +969,7 @@
         renderRegexFields();
         const details = config.details && typeof config.details === "object" ? config.details : {};
         const groupBy = details.groupBy && typeof details.groupBy === "object" ? details.groupBy : {};
+        byId("summaryTableExportCsvEnabled").checked = !details.exportCsv || details.exportCsv.enabled !== false;
         byId("summaryTableGroupByEnabled").checked = groupBy.enabled === true;
         byId("summaryTableGroupByInitialState").value = String(groupBy.initialState || "EXPANDED").toUpperCase() === "COLLAPSED" ? "COLLAPSED" : "EXPANDED";
         byId("summaryTableGroupByOrder").value = ["VALUE_ASC", "VALUE_DESC", "COUNT_ASC", "COUNT_DESC"].includes(String(groupBy.order || "").toUpperCase())
@@ -1226,7 +1233,7 @@
         byId("summaryTableFieldEditor").addEventListener("input", function (event) {
             if (event.target.classList.contains("summary-config-label")) refreshConfigFromEditor();
         });
-        ["summaryTableDefaultSort", "summaryTableSortDirection", "summaryTablePageSize", "summaryTableSearchEnabled"].forEach(id => {
+        ["summaryTableDefaultSort", "summaryTableSortDirection", "summaryTablePageSize", "summaryTableSearchEnabled", "summaryTableExportCsvEnabled"].forEach(id => {
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         let lastWidgetType = type.value;
