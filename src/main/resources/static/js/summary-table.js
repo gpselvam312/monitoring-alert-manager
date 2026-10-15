@@ -416,7 +416,12 @@
                     else if (operation === "MIN") value = numbers.length ? Math.min(...numbers) : null;
                 }
                 const configuredFilterField = String(card.filterField || "");
-                const filterType = configuredFilterField || operation === "VALUE" ? "custom-rule" : (field ? "custom-field" : "all");
+                // COUNT_ROWS represents the whole subset, not a positive/non-empty field filter.
+                // Honor an explicit filter rule when configured; otherwise clicking the card
+                // should leave the row set unchanged.
+                const filterType = configuredFilterField || operation === "VALUE"
+                    ? "custom-rule"
+                    : (operation === "COUNT_ROWS" ? "all" : (field ? "custom-field" : "all"));
                 const defaultFilterable = Boolean(configuredFilterField || field || operation !== "COUNT_ROWS");
                 const mapping = card.valueMapping && typeof card.valueMapping === "object" ? card.valueMapping : {};
                 const mapped = value === true ? mapping.true : value === false ? mapping.false : value;
@@ -603,10 +608,10 @@
     function exportTableCsv(state) {
         const columns = state.columns.filter(column => column.visible !== false);
         const filteredRows = getFilteredSortedRows(state);
-        // When the user has selected rows, export only those selected rows.
-        // With no explicit selection, preserve the existing export-all-filtered-rows behavior.
+        // An explicit selection takes precedence over search and card filters, including
+        // selected rows that are currently hidden. With no selection, export filtered rows.
         const rows = state.selectedRows.size
-            ? filteredRows.filter(row => state.selectedRows.has(state.rowIds.get(row)))
+            ? state.detailRows.filter(row => state.selectedRows.has(state.rowIds.get(row)))
             : filteredRows;
         const quote = value => {
             const text = String(value === null || value === undefined ? "" : display(value));
