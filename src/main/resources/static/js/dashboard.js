@@ -1320,7 +1320,7 @@
         const fields = Object.assign({
             hostname: "hostname", cpu: "cpu_used_percent", ram: "ram_used_percent",
             load1m: "load_1m", load5m: "load_5m", load15m: "load_15m",
-            uptimeSeconds: "uptime_seconds", diskUsedPercent: "u01_used_percent",
+            uptimeSeconds: "uptime_seconds", uptimeHours: "uptimeHours", diskUsedPercent: "u01_used_percent",
             collectionStatus: "collection_status", cpuCores: "cpu_cores",
             ramUsedMb: "ram_used_mb", ramTotalMb: "ram_total_mb"
         }, config.fields && typeof config.fields === "object" ? config.fields : {});
@@ -1360,12 +1360,14 @@
         };
         const items = rows.map(function (row)
         {
-            const cpu = number(pick(row, ["cpu", "cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
-            const ram = number(pick(row, ["ram", "ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
-            const load1 = number(pick(row, ["load1m", "load_1m", "load_average_1m"]));
+            const cpu = number(pick(row, ["cpu", "cpuPercent", "cpu_percent", "cpu_used_percent", "cpuUsedPercent"]));
+            const ram = number(pick(row, ["ram", "memoryPercent", "ramPercent", "ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
+            const load1 = number(pick(row, ["load1m", "loadAverage", "load_1m", "load_average_1m"]));
             const cores = Math.max(1, number(pick(row, ["cpuCores", "cpu_cores"])) || 1);
-            const uptime = number(pick(row, ["uptimeSeconds", "uptime_seconds", "uptime_sec"]));
-            const disk = number(pick(row, ["diskUsedPercent", "u01_used_percent", "u01_used_percentage", "u01_percent", "disk_u01_used_percent", "u01_usage_percent"]));
+            const uptimeSeconds = number(pick(row, ["uptimeSeconds", "uptime_seconds", "uptime_sec"]));
+            const uptimeHours = number(pick(row, ["uptimeHours", "uptime_hours"]));
+            const uptime = uptimeSeconds !== null ? uptimeSeconds : uptimeHours !== null ? uptimeHours * 3600 : null;
+            const disk = number(pick(row, ["diskUsedPercent", "diskU01Percent", "u01_used_percent", "u01_used_percentage", "u01_percent", "disk_u01_used_percent", "u01_usage_percent"]));
             // If the shell script supplies a health status, trust it. Thresholds belong
             // to the collector script/config, not the UI. Missing or unrecognized status is UNKNOWN.
             const configuredStatusField = typeof config.statusField === "string" && config.statusField.trim()
@@ -1450,7 +1452,7 @@
             const row = item.row, host = pick(row, ["hostname", "hostName", "server", "name"]) || "Unknown host";
             const sev = item.status.toLowerCase();
             const loads = [
-                number(pick(row, ["load1m", "load_1m"])),
+                number(pick(row, ["load1m", "loadAverage", "load_1m"])),
                 number(pick(row, ["load5m", "load_5m"])),
                 number(pick(row, ["load15m", "load_15m"]))
             ].filter(function (v) { return v !== null; });
