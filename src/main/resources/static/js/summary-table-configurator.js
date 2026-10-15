@@ -216,11 +216,40 @@
             .map(item => [String(item.field || item.key), item]));
     }
 
+    function fieldBooleanType(field) {
+        if (!field || !Array.isArray(state.rows) || !state.rows.length) return null;
+        const values = state.rows.map(row => {
+            if (row && Object.prototype.hasOwnProperty.call(row, field)) return row[field];
+            return String(field).split(".").reduce((value, key) => value == null ? undefined : value[key], row);
+        }).filter(value => value !== null && value !== undefined && value !== "");
+        if (!values.length) return null;
+        return values.every(value => typeof value === "boolean" ||
+            (typeof value === "string" && /^(true|false)$/i.test(value.trim())));
+    }
+
+    function syncSummaryCardBooleanFields() {
+        const host = byId("summaryTableCardsEditor");
+        if (!host) return;
+        host.querySelectorAll("[data-summary-card-row]").forEach(row => {
+            const field = row.querySelector(".summary-card-field").value;
+            const groupBy = row.querySelector(".summary-card-group-by").value;
+            const fieldType = fieldBooleanType(field), groupType = fieldBooleanType(groupBy);
+            const mapping = row.querySelector(".summary-card-boolean-mapping");
+            const hasLegacyMapping = row.querySelector(".summary-card-true-label").value !== "" ||
+                row.querySelector(".summary-card-false-label").value !== "";
+            if (mapping) mapping.hidden = !(fieldType === true || groupType === true ||
+                (fieldType === null && groupType === null && hasLegacyMapping));
+        });
+    }
+
     function renderSummaryCardsEditor(config) {
         const host = byId("summaryTableCardsEditor"); if (!host) return;
         const summary = config.summary && typeof config.summary === "object" ? config.summary : {};
         const details = config.details && typeof config.details === "object" ? config.details : {};
-        const cards = (Array.isArray(summary.cards) && (summary.cards.length || !Array.isArray(details.summaryCards)) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : [])).map(card => Object.assign({}, card));
+        const sourceCards = (Array.isArray(summary.cards) && (summary.cards.length || !Array.isArray(details.summaryCards)) ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : [])).map(card => Object.assign({}, card));
+        const legacyTotal = sourceCards.find(card => String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
+        const totalRows = summary.totalRowsCard && typeof summary.totalRowsCard === "object" ? summary.totalRowsCard : {};
+        const cards = sourceCards.filter(card => !(String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || "")));
         const fields = Array.from(new Set([...(state.fields || []), ...cards.map(card => String(card.field || "")).filter(Boolean)]));
         const options = selected => '<option value="">All rows</option>' + fields.map(field => '<option value="' + escapeHtml(field) + '"' + (String(selected || "") === field ? ' selected' : '') + '>' + escapeHtml(humanize(field)) + ' (' + escapeHtml(field) + ')</option>').join("");
         const ops = [["COUNT_ROWS","Count rows"],["VALUE","Field value"],["COUNT_NON_EMPTY","Count non-empty"],["COUNT_TRUE","Count true"],["COUNT_FALSE","Count false"],["SUM","Sum"],["AVG","Average"],["MAX","Maximum"],["MIN","Minimum"]];
@@ -235,17 +264,25 @@
             '<div class="col-md-4"><label class="form-label small">Format</label><select class="form-select form-select-sm summary-card-format">' + [["","Default"],["number","Number"],["percentage","Percentage"],["duration","Duration"],["datetime","Date / time"]].map(o=>'<option value="'+o[0]+'"'+(String(card.format||"")===o[0]?' selected':'')+'>'+o[1]+'</option>').join("") + '</select></div>' +
             '<div class="col-md-3"><div class="form-check mt-2"><input class="form-check-input summary-card-icon-enabled" type="checkbox"' + (icon.enabled===true?' checked':'') + '><label class="form-check-label small">Show icon</label></div></div>' +
             '<div class="col-md-3"><label class="form-label small">Bootstrap icon</label><input class="form-control form-control-sm summary-card-icon-name" value="' + escapeHtml(icon.name || "activity") + '"></div>' +
-            '<div class="col-md-3"><label class="form-label small">True label</label><input class="form-control form-control-sm summary-card-true-label" value="' + escapeHtml(map.true===undefined?'':map.true) + '" placeholder="Enabled"></div>' +
-            '<div class="col-md-3"><label class="form-label small">False label</label><input class="form-control form-control-sm summary-card-false-label" value="' + escapeHtml(map.false===undefined?'':map.false) + '" placeholder="Disabled"></div></div></div>';
+            '<div class="col-12 summary-card-boolean-mapping" hidden><div class="row g-2"><div class="col-md-6"><label class="form-label small">True label</label><input class="form-control form-control-sm summary-card-true-label" value="' + escapeHtml(map.true===undefined?'':map.true) + '" placeholder="Active"></div>' +
+            '<div class="col-md-6"><label class="form-label small">False label</label><input class="form-control form-control-sm summary-card-false-label" value="' + escapeHtml(map.false===undefined?'':map.false) + '" placeholder="Inactive"></div></div></div></div></div></div>';
         }).join("") || '<div class="text-muted small">No cards configured. Select Add card to create one.</div>';
         const layout = String(summary.layout || (details.enabled === false ? "CARDS_ONLY" : "BOTH")).toUpperCase();
         byId("summaryTableLayout").value = ["BOTH","CARDS_ONLY","TABLE_ONLY"].includes(layout) ? layout : "BOTH";
+        byId("summaryTableShowTotalRowsCard").checked = totalRows.enabled === true || (!summary.totalRowsCard && Boolean(legacyTotal));
+        byId("summaryTableTotalRowsLabel").value = totalRows.label || (legacyTotal && legacyTotal.label) || "Total Rows";
+        byId("summaryTableTotalRowsClick").value = totalRows.filterable === true ? "FILTER_SELF" : "NONE";
+        syncSummaryCardBooleanFields();
     }
     function readSummaryCardsEditor() {
         return Array.from(byId("summaryTableCardsEditor").querySelectorAll("[data-summary-card-row]")).map(row => {
             const field = row.querySelector(".summary-card-field").value, groupBy = row.querySelector(".summary-card-group-by").value;
             const mapping = {}, t = row.querySelector(".summary-card-true-label").value, f = row.querySelector(".summary-card-false-label").value;
-            if (t !== "") mapping.true = t; if (f !== "") mapping.false = f;
+            const fieldType = fieldBooleanType(field), groupType = fieldBooleanType(groupBy);
+            if (fieldType === true || groupType === true || (fieldType === null && groupType === null && (t !== "" || f !== ""))) {
+                if (t !== "") mapping.true = t;
+                if (f !== "") mapping.false = f;
+            }
             const card = {field, label:row.querySelector(".summary-card-label").value.trim() || (field ? humanize(field) : "Total Rows"),
                 operation:row.querySelector(".summary-card-operation").value, format:row.querySelector(".summary-card-format").value,
                 filterable:row.querySelector(".summary-card-click").value === "FILTER_SELF",
@@ -458,7 +495,6 @@
         const oldCards = Array.isArray(summary.cards) && (summary.cards.length > 0 || !Array.isArray(details.summaryCards))
             ? summary.cards : (Array.isArray(details.summaryCards) ? details.summaryCards : (Array.isArray(summary.cards) ? summary.cards : null));
         const selectedCardFields = new Set((oldCards || []).map(card => String(card.field || "")).filter(Boolean));
-        const showTotalRowsCard = (oldCards || []).some(card => String(card.operation || "").toUpperCase() === "COUNT_ROWS" && !String(card.field || ""));
         const groupedSummaryFields = new Set((Array.isArray(summary.groupByFields) ? summary.groupByFields : []).map(String));
         const cardsByField = new Map((oldCards || []).filter(card => card && card.field)
             .map(card => [String(card.field), card]));
@@ -480,7 +516,6 @@
         ];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ? 
-            '<div class="d-flex align-items-center gap-2 mb-2"><input class="form-check-input mt-0" type="checkbox" id="summaryTableShowTotalRowsCard"' + (showTotalRowsCard ? " checked" : "") + '><label class="form-check-label small" for="summaryTableShowTotalRowsCard">Show Total Rows summary card</label></div>' +
             '<div class="table-responsive border rounded"><table class="table table-sm align-middle mb-0">' +
             '<thead><tr><th>Order</th><th>Show</th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th>Groupable</th></tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
@@ -572,6 +607,11 @@
         config.summary = Object.assign({}, config.summary || {});
         config.summary.groupByFields = Array.isArray(config.summary.groupByFields) ? config.summary.groupByFields : [];
         config.summary.cards = readSummaryCardsEditor();
+        config.summary.totalRowsCard = {
+            enabled: byId("summaryTableShowTotalRowsCard").checked,
+            label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
+            filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF"
+        };
         config.summary.layout = byId("summaryTableLayout").value;
         config.details.enabled = config.summary.layout !== "CARDS_ONLY";
         if (config.summary.enabled === undefined) config.summary.enabled = true;
@@ -654,6 +694,11 @@
             delete summaryConfig.details.summaryCards;
             summaryConfig.summary = Object.assign({}, summaryConfig.summary || {});
             summaryConfig.summary.cards = readSummaryCardsEditor();
+            summaryConfig.summary.totalRowsCard = {
+                enabled: byId("summaryTableShowTotalRowsCard").checked,
+                label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
+                filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF"
+            };
             summaryConfig.summary.layout = byId("summaryTableLayout").value;
             summaryConfig.details.enabled = summaryConfig.summary.layout !== "CARDS_ONLY";
             setConfig(summaryConfig);
@@ -808,7 +853,7 @@
                         groupBy: { enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true },
                         conditionalFormatting: { enabled: true, rules: [] },
                     },
-                    summary: { enabled: true, cards: [] }
+                    summary: { enabled: true, cards: [], totalRowsCard: { enabled: false, label: "Total Rows", filterable: false } }
                 };
             case "TABLE":
                 return { renderer: "TABLE", responseParser: { type: "AUTO" }, rowPath: "", columns: [], visibleFields: [], labels: {}, sorting: { enabled: true }, search: { enabled: true }, pagination: { enabled: true, pageSize: 10 } };
@@ -854,6 +899,7 @@
         byId("dashboardWidgetAdvancedConfig").open = false;
         byId("summaryTableGroupBySection").hidden = !isSummary;
         byId("summaryTableCardsSection").hidden = !isSummary;
+        byId("summaryTableMappingActions").hidden = !isSummary;
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
         byId("summaryTableFieldEditorGroup").hidden = !isTable;
@@ -1004,6 +1050,11 @@
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
+        byId("summaryTableShowTotalRowsCard").addEventListener("change", refreshConfigFromEditor);
+        ["summaryTableTotalRowsLabel", "summaryTableTotalRowsClick"].forEach(id => {
+            byId(id).addEventListener("change", refreshConfigFromEditor);
+            byId(id).addEventListener("input", refreshConfigFromEditor);
+        });
         byId("summaryTableAddCard").addEventListener("click", function () {
             const config = getConfig(), summary = config.summary && typeof config.summary === "object" ? config.summary : {};
             const details = config.details && typeof config.details === "object" ? config.details : {};
@@ -1015,8 +1066,47 @@
             const button = event.target.closest(".summary-card-remove"); if (!button) return;
             button.closest("[data-summary-card-row]").remove(); refreshConfigFromEditor();
         });
-        ["change","input"].forEach(name => byId("summaryTableCardsEditor").addEventListener(name, refreshConfigFromEditor));
+        ["change","input"].forEach(name => byId("summaryTableCardsEditor").addEventListener(name, function (event) {
+            if (event.target.matches(".summary-card-field, .summary-card-group-by")) syncSummaryCardBooleanFields();
+            refreshConfigFromEditor();
+        }));
         byId("summaryTableLayout").addEventListener("change", refreshConfigFromEditor);
+        function clearSummaryTableMapping(resetToDefaults) {
+            const message = resetToDefaults
+                ? "Reset mapping to defaults? Column display settings, summary cards, grouping, and conditional formatting will be reset. The response parser and row path will be preserved."
+                : "Clear the current mapping? Columns will be hidden, summary cards and grouping cleared, and conditional-formatting rules removed. The response parser and row path will be preserved.";
+            if (!window.confirm(message)) return;
+            const config = getConfig();
+            config.renderer = "SUMMARY_TABLE";
+            config.details = config.details && typeof config.details === "object" ? config.details : {};
+            config.summary = config.summary && typeof config.summary === "object" ? config.summary : {};
+            if (resetToDefaults) {
+                delete config.details.columns;
+            } else {
+                const mappingFields = Array.from(new Set([...configuredColumns(config).keys(), ...(state.fields || [])]));
+                config.details.columns = mappingFields.map(field => ({
+                    field, label: humanize(field), visible: false, groupable: true,
+                    sortable: true, searchable: true, format: "", aggregation: "none"
+                }));
+            }
+            config.details.sorting = Object.assign({}, config.details.sorting || {}, { defaultField: "", enabled: true, direction: "asc" });
+            config.details.groupBy = Object.assign({}, config.details.groupBy || {}, {
+                enabled: false, fields: [], initialState: "EXPANDED", order: "VALUE_ASC", showAggregates: true
+            });
+            config.details.conditionalFormatting = { enabled: true, rules: [] };
+            delete config.details.summaryCards;
+            config.summary.cards = [];
+            config.summary.totalRowsCard = { enabled: false, label: "Total Rows", filterable: false };
+            delete config.summary.groupByFields;
+            config.summary.layout = "BOTH";
+            config.summary.enabled = true;
+            config.details.enabled = true;
+            setConfig(config);
+            renderFields();
+            refreshConfigFromEditor();
+        }
+        byId("summaryTableClearMapping").addEventListener("click", function () { clearSummaryTableMapping(false); });
+        byId("summaryTableResetMapping").addEventListener("click", function () { clearSummaryTableMapping(true); });
         byId("summaryTableFieldEditor").addEventListener("click", function (event) {
             const button = event.target.closest(".summary-config-move-up, .summary-config-move-down");
             if (!button) return;
