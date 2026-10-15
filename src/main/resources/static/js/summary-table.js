@@ -369,7 +369,7 @@
                     else if (operation === "MIN") value = numbers.length ? Math.min(...numbers) : null;
                 }
                 const configuredFilterField = String(card.filterField || "");
-                const filterType = configuredFilterField ? "custom-rule" : (field ? "custom-field" : "all");
+                const filterType = configuredFilterField || operation === "VALUE" ? "custom-rule" : (field ? "custom-field" : "all");
                 const defaultFilterable = Boolean(configuredFilterField || field || operation !== "COUNT_ROWS");
                 const mapping = card.valueMapping && typeof card.valueMapping === "object" ? card.valueMapping : {};
                 const mapped = value === true ? mapping.true : value === false ? mapping.false : value;
@@ -398,15 +398,19 @@
                                 : operation === "MAX" ? (nums.length ? Math.max(...nums) : null)
                                 : (nums.length ? Math.min(...nums) : null);
                         }
-                        cards.push({label:label + ": " + (groupValue === "" ? "(empty)" : display(groupValue)),
-                            value:result === null ? "—" : formatValue(result,card.format), cls:"",
+                        const mappedResult = result === true ? mapping.true : result === false ? mapping.false : result;
+                        const mappedGroup = String(groupValue).toLowerCase() === "true" && mapping.true !== undefined ? mapping.true
+                            : String(groupValue).toLowerCase() === "false" && mapping.false !== undefined ? mapping.false
+                            : (groupValue === "" ? "(empty)" : display(groupValue));
+                        cards.push({label:label + ": " + mappedGroup,
+                            value:result === null ? "—" : formatValue(mappedResult === undefined ? result : mappedResult,card.format), cls:"",
                             filterField:String(card.groupBy),filterValue:groupValue,filterType:"grouped-value",
                             filterOperation:operation,filterable,icon});
                     });
                 } else {
                     cards.push({ label, value: value === null ? "—" : formatValue(mapped === undefined ? value : mapped, card.format), cls: "",
                         filterField: configuredFilterField || field || null,
-                        filterValue: card.filterValue, filterOperator: card.filterOperator || "equals",
+                        filterValue: operation === "VALUE" ? value : card.filterValue, filterOperator: card.filterOperator || "equals",
                         filterType, filterOperation: operation, filterable, icon });
                 }
             });
