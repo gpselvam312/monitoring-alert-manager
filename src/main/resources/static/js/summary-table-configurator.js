@@ -468,6 +468,17 @@
         }
     }
 
+    function syncColumnVisibilitySelectAll() {
+        const host = byId("summaryTableFieldEditor");
+        const selectAll = host.querySelector(".summary-config-visible-all");
+        if (!selectAll) return;
+        const checkboxes = Array.from(host.querySelectorAll("tbody .summary-config-visible"));
+        const checkedCount = checkboxes.filter(checkbox => checkbox.checked).length;
+        selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
+        selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        selectAll.disabled = checkboxes.length === 0;
+        }
+
     function renderFields() {
         const collection = selectedCollection();
         const config = getConfig();
@@ -1154,17 +1165,6 @@
             });
             refreshConfigFromEditor();
         });
-        function syncColumnVisibilitySelectAll() {
-            const host = byId("summaryTableFieldEditor");
-            const selectAll = host.querySelector(".summary-config-visible-all");
-            if (!selectAll) return;
-            const checkboxes = Array.from(host.querySelectorAll("tbody .summary-config-visible"));
-            const checkedCount = checkboxes.filter(checkbox => checkbox.checked).length;
-            selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
-            selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
-            selectAll.disabled = checkboxes.length === 0;
-        }
-
         byId("summaryTableFieldEditor").addEventListener("change", function (event) {
             if (event.target.matches(".summary-config-visible-all")) {
                 byId("summaryTableFieldEditor").querySelectorAll("tbody .summary-config-visible")
