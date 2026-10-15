@@ -275,30 +275,61 @@
                 htmlRows.push(renderRow(node.row, columns, config, state));
                 return;
             }
+
             const collapsed = state.collapsed.has(node.id);
             const groupConfig = (config.details && config.details.groupBy) || config.groupBy || config;
             const showAggregates = groupConfig.showAggregates === true;
             const count = node.rows.length;
-            let aggregate = "";
+            const aggregateByField = new Map();
+
             if (showAggregates) {
-                const aggregateColumns = columns.filter(column => String(column.aggregation || "none").toLowerCase() !== "none");
-                aggregate = aggregateColumns.map(column => {
-                    const operation = String(column.aggregation || "none").toLowerCase();
-                    const values = node.rows.map(row => rowValue(row, column.field)).filter(value => value !== null && value !== undefined && value !== "");
-                    let result;
-                    if (operation === "count") result = values.length;
-                    else {
-                        const numbers = values.map(numeric).filter(value => value !== null);
-                        if (!numbers.length) return "";
-                        if (operation === "sum") result = numbers.reduce((sum, value) => sum + value, 0);
-                        else if (operation === "avg") result = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
-                        else if (operation === "max") result = Math.max(...numbers);
-                        else if (operation === "min") result = Math.min(...numbers);
-                    }
-                    return esc(column.label) + " (" + esc(operation.toUpperCase()) + "): " + esc(result === undefined ? "—" : Number.isFinite(result) ? result.toLocaleString() : result);
-                }).filter(Boolean).join(" · ");
+                columns.filter(column => String(column.aggregation || "none").toLowerCase() !== "none")
+                    .forEach(column => {
+                        const operation = String(column.aggregation || "none").toLowerCase();
+                        const values = node.rows.map(row => rowValue(row, column.field))
+                            .filter(value => value !== null && value !== undefined && value !== "");
+                        let result;
+
+                        if (operation === "count") {
+                            result = values.length;
+                        } else {
+                            const numbers = values.map(numeric).filter(value => value !== null);
+                            if (!numbers.length) return;
+                            if (operation === "sum") result = numbers.reduce((sum, value) => sum + value, 0);
+                            else if (operation === "avg") result = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+                            else if (operation === "max") result = Math.max(...numbers);
+                            else if (operation === "min") result = Math.min(...numbers);
+                        }
+
+                        if (result !== undefined) {
+                            aggregateByField.set(column.field,
+                                Number.isFinite(result) ? result.toLocaleString() : String(result));
+                        }
+                    });
             }
-            htmlRows.push('<tr class="summary-table-group-row"><td colspan="' + (columns.length + 1) + '"><button type="button" class="summary-table-group-toggle" data-group-id="' + esc(node.id) + '" aria-expanded="' + (!collapsed) + '"><i class="bi ' + (collapsed ? "bi-chevron-right" : "bi-chevron-down") + '"></i><strong>' + esc(node.field) + ': ' + esc(node.value) + '</strong><span class="summary-table-group-count">' + count + ' rows</span>' + (aggregate ? '<span class="summary-table-group-aggregate">' + aggregate + '</span>' : '') + '</button></td></tr>');
+
+            const groupColumnIndex = columns.findIndex(column => column.field === node.field);
+            const fallbackColumnIndex = groupColumnIndex >= 0 ? groupColumnIndex : 0;
+            const cells = columns.map((column, index) => {
+                const aggregate = aggregateByField.get(column.field);
+                const groupLabel = index === fallbackColumnIndex
+                    ? '<button type="button" class="summary-table-group-toggle" data-group-id="' + esc(node.id) +
+                        '" aria-expanded="' + (!collapsed) + '"><i class="bi ' +
+                        (collapsed ? "bi-chevron-right" : "bi-chevron-down") +
+                        '"></i><strong>' + esc(node.field) + ': ' + esc(node.value) +
+                        '</strong><span class="summary-table-group-count">' + count + ' rows</span></button>'
+                    : "";
+
+                if (index === groupColumnIndex) {
+                    return '<td class="summary-table-group-value-cell">' + groupLabel + '</td>';
+                }
+                if (aggregate !== undefined) {
+                    return '<td class="summary-table-group-aggregate-cell">' + esc(aggregate) + '</td>';
+                }
+                return '<td>' + groupLabel + '</td>';
+            }).join("");
+
+            htmlRows.push('<tr class="summary-table-group-row"><td class="summary-table-select-cell"></td>' + cells + '</tr>');
             if (!collapsed) flattenNodes(node.children, config, state, columns, htmlRows);
         });
     }
