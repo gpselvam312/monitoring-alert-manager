@@ -357,6 +357,7 @@
                 const values = field ? subset.map(row => rowValue(row, field)) : [];
                 let value = 0;
                 if (operation === "COUNT_ROWS") value = subset.length;
+                else if (operation === "VALUE") value = values.length ? values[0] : null;
                 else if (operation === "COUNT_NON_EMPTY") value = values.filter(item => item !== null && item !== undefined && item !== "").length;
                 else if (operation === "COUNT_TRUE") value = values.filter(item => item === true || String(item).toLowerCase() === "true").length;
                 else if (operation === "COUNT_FALSE") value = values.filter(item => item === false || String(item).toLowerCase() === "false").length;
@@ -386,7 +387,8 @@
                     groups.forEach((groupRows, groupValue) => {
                         const groupValues = field ? groupRows.map(row => rowValue(row, field)) : [];
                         let result = groupRows.length;
-                        if (operation === "COUNT_NON_EMPTY") result = groupValues.filter(item => item !== null && item !== undefined && item !== "").length;
+                        if (operation === "VALUE") result = groupValues.length ? groupValues[0] : null;
+                        else if (operation === "COUNT_NON_EMPTY") result = groupValues.filter(item => item !== null && item !== undefined && item !== "").length;
                         else if (operation === "COUNT_TRUE") result = groupValues.filter(item => item === true || String(item).toLowerCase() === "true").length;
                         else if (operation === "COUNT_FALSE") result = groupValues.filter(item => item === false || String(item).toLowerCase() === "false").length;
                         else if (["SUM","AVG","MAX","MIN"].includes(operation)) {
