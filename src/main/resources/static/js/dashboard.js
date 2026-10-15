@@ -1317,6 +1317,8 @@
             return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>No machine metrics were returned. Health status is unknown until data is collected.</span></div>';
         }
         const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
+        const view = config.view && typeof config.view === "object" ? config.view : {};
+        if (view.showSummaryCards === false) state.status = "ALL";
         const fields = Object.assign({
             hostname: "hostname", cpu: "cpu_used_percent", ram: "ram_used_percent",
             load1m: "load_1m", load5m: "load_5m", load15m: "load_15m",
@@ -1418,7 +1420,8 @@
         const counts = { total: items.length, CRITICAL: 0, WARNING: 0, UNKNOWN: 0, HEALTHY: 0 };
         items.forEach(function (item) { counts[item.status]++; });
         const filtered = state.status === "ALL" ? items : items.filter(function (item) { return item.status === state.status; });
-        const size = 12, pages = Math.max(1, Math.ceil(filtered.length / size));
+        const size = [6, 12, 24, 48].includes(Number(view.pageSize)) ? Number(view.pageSize) : 12;
+        const pages = Math.max(1, Math.ceil(filtered.length / size));
         state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
         const pageItems = filtered.slice(state.page * size, (state.page + 1) * size);
@@ -1427,7 +1430,7 @@
             ["Warning", counts.WARNING, "warning", "bi-exclamation-triangle"], ["Critical", counts.CRITICAL, "critical", "bi-x-octagon"],
             ["Unknown", counts.UNKNOWN, "unknown", "bi-question-circle"]
         ];
-        const summary = '<div class="server-health-summary">' + summaries.map(function (x)
+        const summary = view.showSummaryCards === false ? "" : '<div class="server-health-summary">' + summaries.map(function (x)
         {
             const statusFilter = x[2] === "total" ? "ALL" : x[2].toUpperCase();
             return '<button type="button" class="server-health-summary-item server-health-summary-' + x[2] + ' server-health-summary-filter' +
@@ -1462,13 +1465,14 @@
             const ramUsed = pick(row, ["ramUsedMb", "ram_used_mb"]), ramTotal = pick(row, ["ramTotalMb", "ram_total_mb"]);
             const statusIcon = { CRITICAL: "bi-x-octagon-fill", WARNING: "bi-exclamation-triangle-fill", UNKNOWN: "bi-question-circle-fill", HEALTHY: "bi-check-circle-fill" }[item.status];
             let extra = "";
-            extra += '<div class="server-health-detail"><span><i class="bi bi-activity" aria-hidden="true"></i> ' + escapeHtml(label("load1m", "Load (1m / 5m / 15m)")) + '</span><strong>' + escapeHtml(loadText) + '</strong></div>';
-            extra += '<div class="server-health-detail"><span><i class="bi bi-clock-history" aria-hidden="true"></i> ' + escapeHtml(label("uptimeSeconds", "Uptime")) + '</span><strong>' + escapeHtml(uptime) + '</strong></div>';
-            extra += '<div class="server-health-detail"><span><i class="bi bi-device-hdd" aria-hidden="true"></i> ' + escapeHtml(label("diskUsedPercent", "/u01 Used")) + '</span><strong>' + escapeHtml(disk) + '</strong></div>';
-            const ramCapacity = ramUsed !== null && ramTotal !== null ? '<div class="server-health-foot">' + escapeHtml(ramUsed) + " / " + escapeHtml(ramTotal) + ' MB RAM</div>' : "";
+            if (view.showLoad !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-activity" aria-hidden="true"></i> ' + escapeHtml(label("load1m", "Load (1m / 5m / 15m)")) + '</span><strong>' + escapeHtml(loadText) + '</strong></div>';
+            if (view.showUptime !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-clock-history" aria-hidden="true"></i> ' + escapeHtml(label("uptimeSeconds", "Uptime")) + '</span><strong>' + escapeHtml(uptime) + '</strong></div>';
+            if (view.showDisk !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-device-hdd" aria-hidden="true"></i> ' + escapeHtml(label("diskUsedPercent", "/u01 Used")) + '</span><strong>' + escapeHtml(disk) + '</strong></div>';
+            const ramCapacity = view.showRamCapacity !== false && ramUsed !== null && ramTotal !== null
+                ? '<div class="server-health-foot">' + escapeHtml(ramUsed) + " / " + escapeHtml(ramTotal) + ' MB ' + escapeHtml(label("ramCapacity", "RAM")) + '</div>' : "";
             return '<article class="server-health-card server-health-card-' + sev + '"><header class="server-health-card-header"><div class="server-health-host"><i class="bi bi-hdd-network" aria-hidden="true"></i><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong></div><span class="server-health-status server-health-status-' + sev + '"><i class="bi ' + statusIcon + '" aria-hidden="true"></i> ' + item.status + '</span></header>' +
-                metric("bi-cpu", label("cpu", "CPU"), item.cpu, item.cpu) +
-                metric("bi-memory", label("ram", "RAM"), item.ram, item.ram) + extra + ramCapacity + '</article>';
+                (view.showCpu === false ? "" : metric("bi-cpu", label("cpu", "CPU"), item.cpu, item.cpu)) +
+                (view.showRam === false ? "" : metric("bi-memory", label("ram", "RAM"), item.ram, item.ram)) + extra + ramCapacity + '</article>';
         }).join("");
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
         return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
