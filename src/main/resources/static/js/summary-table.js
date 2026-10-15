@@ -693,7 +693,8 @@
             '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>Clear grouping</button></div></div></div>' : "";
         const selectionCount = state.selectedRows.size;
         const selectionStatus = selectionCount ? '<span class="small text-muted summary-table-selection-count" aria-live="polite">' + selectionCount + ' selected</span>' : "";
-        const exportButton = '<button type="button" class="btn btn-sm btn-outline-secondary summary-table-export" title="Export all filtered rows as CSV"><i class="bi bi-download me-1" aria-hidden="true"></i>Export CSV</button>';
+        const exportConfig = details.exportCsv && typeof details.exportCsv === "object" ? details.exportCsv : {};
+        const exportButton = exportConfig.enabled === false ? "" : '<button type="button" class="btn btn-sm btn-outline-secondary summary-table-export" title="Export all filtered rows as CSV"><i class="bi bi-download me-1" aria-hidden="true"></i>Export CSV</button>';
         const tableControls = '<div class="summary-table-control-row">' + toolbar + groupSelector + exportButton + selectionStatus + '</div>';
         return (summaryLayout === "TABLE_ONLY" ? "" : renderCards(state)) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
