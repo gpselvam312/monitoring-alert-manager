@@ -477,7 +477,7 @@
         selectAll.checked = checkboxes.length > 0 && checkedCount === checkboxes.length;
         selectAll.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
         selectAll.disabled = checkboxes.length === 0;
-        }
+    }
 
     function renderFields() {
         const collection = selectedCollection();
