@@ -816,9 +816,10 @@
         setFieldOptions("widgetValueField", fields, config.valueField, "Select value field");
         setFieldOptions("widgetSeriesField", fields, config.seriesField, "No series field");
         setFieldOptions("widgetSingleValueField", fields, config.valueField, "Select value field");
-        setFieldOptions("widgetStatusField", fields, config.statusField, "No status field");
+        setFieldOptions("widgetStatusField", fields,
+            config.statusField || (config.fields && !Array.isArray(config.fields) ? config.fields.status : ""),
+            type === "SYSTEM_METRICS" ? "Auto-detect status field" : "No status field");
         setFieldOptions("widgetTextFields", fields, config.textFields, "");
-        setFieldOptions("widgetMetricFields", fields, config.fields, "");
         byId("widgetTextTemplate").value = config.textTemplate || "";
     }
 
@@ -853,7 +854,10 @@
                 break;
             case "SYSTEM_METRICS":
                 config.renderer = "SYSTEM_METRICS";
-                config.fields = selectedValues("widgetMetricFields");
+                config.statusField = byId("widgetStatusField").value;
+                // Preserve the advanced per-metric mapping object; older versions incorrectly
+                // serialized the guided multi-select as an array, so normalize that legacy shape.
+                if (!config.fields || typeof config.fields !== "object" || Array.isArray(config.fields)) config.fields = {};
                 config.labels = Object.assign({}, config.labels || {});
                 break;
             case "ELASTICSEARCH":
@@ -908,7 +912,7 @@
             case "TEXT":
                 return { renderer: "TEXT", responseParser: { type: "AUTO" }, textFields: [], textTemplate: "" };
             case "SYSTEM_METRICS":
-                return { renderer: "SYSTEM_METRICS", responseParser: { type: "AUTO" }, rowPath: "", fields: [], labels: {} };
+                return { renderer: "SYSTEM_METRICS", responseParser: { type: "AUTO" }, rowPath: "", fields: {}, statusField: "", labels: {} };
             case "ELASTICSEARCH":
                 return { renderer: "ELASTICSEARCH", responseParser: { type: "AUTO" } };
             default:
@@ -1090,7 +1094,7 @@
             refreshConfigFromEditor();
         });
         ["widgetCategoryField", "widgetValueField", "widgetSeriesField", "widgetSingleValueField",
-            "widgetStatusField", "widgetTextFields", "widgetMetricFields"].forEach(id => {
+            "widgetStatusField", "widgetTextFields"].forEach(id => {
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
