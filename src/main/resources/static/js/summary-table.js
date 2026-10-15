@@ -602,7 +602,12 @@
 
     function exportTableCsv(state) {
         const columns = state.columns.filter(column => column.visible !== false);
-        const rows = getFilteredSortedRows(state);
+        const filteredRows = getFilteredSortedRows(state);
+        // When the user has selected rows, export only those selected rows.
+        // With no explicit selection, preserve the existing export-all-filtered-rows behavior.
+        const rows = state.selectedRows.size
+            ? filteredRows.filter(row => state.selectedRows.has(state.rowIds.get(row)))
+            : filteredRows;
         const quote = value => {
             const text = String(value === null || value === undefined ? "" : display(value));
             return '"' + text.replace(/"/g, '""') + '"';
@@ -694,7 +699,7 @@
         const selectionCount = state.selectedRows.size;
         const selectionStatus = selectionCount ? '<span class="small text-muted summary-table-selection-count" aria-live="polite">' + selectionCount + ' selected</span>' : "";
         const exportConfig = details.exportCsv && typeof details.exportCsv === "object" ? details.exportCsv : {};
-        const exportButton = exportConfig.enabled === false ? "" : '<button type="button" class="btn btn-sm btn-outline-secondary summary-table-export" title="Export all filtered rows as CSV"><i class="bi bi-download me-1" aria-hidden="true"></i>Export CSV</button>';
+        const exportButton = exportConfig.enabled === false ? "" : '<button type="button" class="btn btn-sm btn-outline-secondary summary-table-export" title="Export selected rows as CSV, or all filtered rows when none are selected"><i class="bi bi-download me-1" aria-hidden="true"></i>Export CSV</button>';
         const tableControls = '<div class="summary-table-control-row">' + toolbar + groupSelector + exportButton + selectionStatus + '</div>';
         return (summaryLayout === "TABLE_ONLY" ? "" : renderCards(state)) + tableControls + '<div class="summary-table-scroll"><table class="table summary-table-grid mb-0"><thead><tr>' + header +
             '</tr></thead><tbody>' + body + '</tbody></table></div>' + pager;
