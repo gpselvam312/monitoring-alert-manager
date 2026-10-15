@@ -1652,6 +1652,11 @@
                                             <div class="text-muted small">Load sample data and discover fields to configure columns.</div>
                                         </div>
                                     </div>
+                                    <section class="border rounded p-3 mb-4" id="summaryTableCardsSection" aria-labelledby="summaryTableCardsHeading" hidden>
+                                        <div class="d-flex align-items-center justify-content-between gap-3 mb-3"><div><h6 class="mb-1" id="summaryTableCardsHeading">Summary Cards</h6><div class="form-text">Configure cards independently from table columns. Hidden fields are supported.</div></div><button type="button" class="btn btn-sm btn-outline-primary" id="summaryTableAddCard">Add card</button></div>
+                                        <div class="row g-2 mb-3"><div class="col-md-6"><label for="summaryTableLayout" class="form-label">Layout</label><select id="summaryTableLayout" class="form-select"><option value="BOTH">Cards and table</option><option value="CARDS_ONLY">Cards only</option><option value="TABLE_ONLY">Table only</option></select></div></div>
+                                        <div id="summaryTableCardsEditor"><div class="text-muted small">Discover fields to configure summary cards.</div></div>
+                                    </section>
                                     <section class="border rounded p-3 mb-4" id="summaryTableGroupBySection" aria-labelledby="summaryTableGroupByHeading">
                                         <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
                                             <div>
