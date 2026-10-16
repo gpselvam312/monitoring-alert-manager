@@ -1450,6 +1450,72 @@
             return '<div class="server-health-metric"><div><span><i class="bi ' + icon + '" aria-hidden="true"></i> ' + escapeHtml(name) + '</span><strong>' + display + '</strong></div>' +
                 (meter === null ? "" : '<div class="server-health-meter"><span style="width:' + width + '%"></span></div>') + '</div>';
         };
+        const renderDynamicMetrics = function (row)
+        {
+            const rawMetrics = Array.isArray(row.metrics) ? row.metrics : Object.entries(row.metrics || {}).map(function (entry)
+            {
+                return entry[1] && typeof entry[1] === "object" ? Object.assign({ name: entry[0] }, entry[1]) : { name: entry[0], value: entry[1] };
+            });
+            const settings = Array.isArray(view.metrics) ? view.metrics : [];
+            const settingsByName = new Map(settings.filter(function (setting) { return setting && setting.name; })
+                .map(function (setting) { return [String(setting.name), setting]; }));
+            const indexed = rawMetrics.map(function (metric, index)
+            {
+                const name = metric && (metric.name !== undefined ? metric.name : metric.key);
+                return { metric: metric, index: index, name: name === null || name === undefined ? "" : String(name) };
+            }).filter(function (item) { return item.name && item.metric && typeof item.metric === "object"; });
+            indexed.sort(function (a, b)
+            {
+                const ai = settings.findIndex(function (setting) { return setting && String(setting.name) === a.name; });
+                const bi = settings.findIndex(function (setting) { return setting && String(setting.name) === b.name; });
+                if (ai >= 0 && bi >= 0) return ai - bi || a.index - b.index;
+                if (ai >= 0) return -1;
+                if (bi >= 0) return 1;
+                return a.index - b.index;
+            });
+            return indexed.map(function (entry)
+            {
+                const metricValue = entry.metric, setting = settingsByName.get(entry.name);
+                if (setting && setting.enabled === false) return "";
+                const label = setting && setting.label ? setting.label : entry.name;
+                const rawValue = metricValue.value;
+                const unit = metricValue.unit === null || metricValue.unit === undefined ? "" : String(metricValue.unit);
+                const type = String(metricValue.type || "").toLowerCase();
+                let format = String(setting && setting.format || "auto").toLowerCase();
+                if (format === "auto" || !format) {
+                    if (type === "percentage" || type === "percent" || unit === "%") format = "meter";
+                    else if (type === "duration") format = "duration";
+                    else if (type === "number" || type === "capacity" || typeof rawValue === "number") format = "number";
+                    else format = "text";
+                }
+                const rawStatus = String(metricValue.status || "").trim().toUpperCase();
+                const statusAliases = {
+                    HEALTHY: "HEALTHY", HEALTH: "HEALTHY", OK: "HEALTHY", GREEN: "HEALTHY", SUCCESS: "HEALTHY", UP: "HEALTHY",
+                    WARNING: "WARNING", WARN: "WARNING", YELLOW: "WARNING", DEGRADED: "WARNING",
+                    CRITICAL: "CRITICAL", ERROR: "CRITICAL", FAILED: "CRITICAL", FAILURE: "CRITICAL", RED: "CRITICAL", DOWN: "CRITICAL",
+                    UNKNOWN: "UNKNOWN"
+                };
+                const metricStatus = statusAliases[rawStatus] || "";
+                const statusClass = metricStatus ? " server-health-metric-status-" + metricStatus.toLowerCase() : "";
+                let displayValue = rawValue === null || rawValue === undefined || rawValue === "" ? "N/A" :
+                    (typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue));
+                let meterValue = null;
+                if (format === "duration" && rawValue !== null && rawValue !== undefined && Number.isFinite(Number(rawValue))) displayValue = uptimeText(Number(rawValue));
+                else if (format === "number" && rawValue !== null && rawValue !== undefined && Number.isFinite(Number(rawValue)))
+                    displayValue = Number(rawValue).toLocaleString(undefined, { maximumFractionDigits: 2 });
+                else if (format === "meter" && rawValue !== null && rawValue !== undefined && Number.isFinite(Number(rawValue)))
+                    meterValue = Math.max(0, Math.min(100, Number(rawValue)));
+                if (displayValue !== "N/A" && unit && !(format === "meter" && unit === "%"))
+                    displayValue += (unit.startsWith(" ") ? "" : " ") + unit;
+                else if (displayValue !== "N/A" && format === "meter" && unit === "%") displayValue += "%";
+                const statusBadge = metricStatus ? '<span class="server-health-status server-health-status-' + metricStatus.toLowerCase() + '">' + metricStatus + '</span>' : "";
+                return '<div class="server-health-metric' + statusClass + '"><div><span><i class="bi bi-activity" aria-hidden="true"></i> ' +
+                    escapeHtml(label) + '</span><strong>' + escapeHtml(displayValue) + '</strong>' + statusBadge + '</div>' +
+                    (meterValue === null ? "" : '<div class="server-health-meter server-health-metric-meter-' +
+                        (metricStatus ? metricStatus.toLowerCase() : "healthy") + '"><span style="width:' + meterValue + '%"></span></div>') + '</div>';
+            }).join("");
+        };
+
         const cards = pageItems.map(function (item)
         {
             const row = item.row, host = pick(row, ["hostname", "hostName", "server", "name"]) || "Unknown host";
@@ -1464,15 +1530,19 @@
             const disk = item.disk === null ? "N/A" : item.disk + "%";
             const ramUsed = pick(row, ["ramUsedMb", "ram_used_mb"]), ramTotal = pick(row, ["ramTotalMb", "ram_total_mb"]);
             const statusIcon = { CRITICAL: "bi-x-octagon-fill", WARNING: "bi-exclamation-triangle-fill", UNKNOWN: "bi-question-circle-fill", HEALTHY: "bi-check-circle-fill" }[item.status];
+            const hasDynamicMetrics = Array.isArray(row.metrics) || (row.metrics && typeof row.metrics === "object");
             let extra = "";
-            if (view.showLoad !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-activity" aria-hidden="true"></i> ' + escapeHtml(label("load1m", "Load (1m / 5m / 15m)")) + '</span><strong>' + escapeHtml(loadText) + '</strong></div>';
-            if (view.showUptime !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-clock-history" aria-hidden="true"></i> ' + escapeHtml(label("uptimeSeconds", "Uptime")) + '</span><strong>' + escapeHtml(uptime) + '</strong></div>';
-            if (view.showDisk !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-device-hdd" aria-hidden="true"></i> ' + escapeHtml(label("diskUsedPercent", "/u01 Used")) + '</span><strong>' + escapeHtml(disk) + '</strong></div>';
-            const ramCapacity = view.showRamCapacity !== false && ramUsed !== null && ramTotal !== null
+            if (hasDynamicMetrics) extra = renderDynamicMetrics(row);
+            else {
+                if (view.showLoad !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-activity" aria-hidden="true"></i> ' + escapeHtml(label("load1m", "Load (1m / 5m / 15m)")) + '</span><strong>' + escapeHtml(loadText) + '</strong></div>';
+                if (view.showUptime !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-clock-history" aria-hidden="true"></i> ' + escapeHtml(label("uptimeSeconds", "Uptime")) + '</span><strong>' + escapeHtml(uptime) + '</strong></div>';
+                if (view.showDisk !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-device-hdd" aria-hidden="true"></i> ' + escapeHtml(label("diskUsedPercent", "/u01 Used")) + '</span><strong>' + escapeHtml(disk) + '</strong></div>';
+            }
+            const ramCapacity = !hasDynamicMetrics && view.showRamCapacity !== false && ramUsed !== null && ramTotal !== null
                 ? '<div class="server-health-foot">' + escapeHtml(ramUsed) + " / " + escapeHtml(ramTotal) + ' MB ' + escapeHtml(label("ramCapacity", "RAM")) + '</div>' : "";
             return '<article class="server-health-card server-health-card-' + sev + '"><header class="server-health-card-header"><div class="server-health-host"><i class="bi bi-hdd-network" aria-hidden="true"></i><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong></div><span class="server-health-status server-health-status-' + sev + '"><i class="bi ' + statusIcon + '" aria-hidden="true"></i> ' + item.status + '</span></header>' +
-                (view.showCpu === false ? "" : metric("bi-cpu", label("cpu", "CPU"), item.cpu, item.cpu)) +
-                (view.showRam === false ? "" : metric("bi-memory", label("ram", "RAM"), item.ram, item.ram)) + extra + ramCapacity + '</article>';
+                (hasDynamicMetrics ? "" : (view.showCpu === false ? "" : metric("bi-cpu", label("cpu", "CPU"), item.cpu, item.cpu))) +
+                (hasDynamicMetrics ? "" : (view.showRam === false ? "" : metric("bi-memory", label("ram", "RAM"), item.ram, item.ram))) + extra + ramCapacity + '</article>';
         }).join("");
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
         return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;

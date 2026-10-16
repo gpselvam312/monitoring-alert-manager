@@ -4804,3 +4804,8 @@ textarea.form-control {
     filter: invert(1) grayscale(100%) brightness(200%);
     opacity: 1;
 }
+
+/* Per-metric status is supplied by the collector and is independent of machine status. */
+.server-health-metric-meter-warning > span { background: var(--warning) !important; }
+.server-health-metric-meter-critical > span { background: var(--danger) !important; }
+.server-health-metric-meter-unknown > span { background: var(--text-secondary) !important; }
