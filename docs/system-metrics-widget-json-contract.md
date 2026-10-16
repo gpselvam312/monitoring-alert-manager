@@ -43,7 +43,7 @@ The example collector at `scripts/system-metrics-example.sh` demonstrates genera
 
 ## Backward-compatible flat-field response
 
-Existing scripts that return flat fields continue to use the legacy renderer and mappings. For example:
+Existing scripts that return flat fields remain supported through the same mapping table. If no new mapping is configured, the renderer retains the previous fallback field detection and health inference. For example:
 
 ```json
 {
