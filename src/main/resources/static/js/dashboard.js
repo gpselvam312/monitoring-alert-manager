@@ -1559,8 +1559,25 @@
             const sev = item.status.toLowerCase();
             const statusIcon = { CRITICAL: "bi-x-octagon-fill", WARNING: "bi-exclamation-triangle-fill", UNKNOWN: "bi-question-circle-fill", HEALTHY: "bi-check-circle-fill" }[item.status];
 
+            // Unknown machines often contain only a Collection Status metric, leaving every
+            // regular metric as N/A. Show one actionable explanation instead of a wall of N/A.
+            const collectionMetric = metricObject(row, "metrics::Collection Status");
+            const collectionDetail = legacyPick(row, [
+                "collection_error", "collectionError", "error_message", "errorMessage",
+                "collection_status", "collectionStatus"
+            ]) || (collectionMetric && collectionMetric.value);
+            const normalizedDetail = String(collectionDetail === null || collectionDetail === undefined ? "" : collectionDetail).trim();
+            const genericDetails = /^(|n\/?a|unknown|not available|not collected|unavailable)$/i.test(normalizedDetail);
+            let unknownMessage = "Metrics could not be collected for this machine. Check connectivity, SSH credentials and permissions, then review the monitoring job execution logs.";
+            if (!genericDetails && !/^(healthy|ok|success|succeeded)$/i.test(normalizedDetail)) {
+                unknownMessage = "Metrics could not be collected: " + normalizedDetail;
+            }
+            const cardBody = item.status === "UNKNOWN"
+                ? '<div class="server-health-collection-message" role="status"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><div><strong>Metrics unavailable</strong><p>' + escapeHtml(unknownMessage) + '</p></div></div>'
+                : renderMappedFields(row);
+
             return '<article class="server-health-card server-health-card-' + sev + '"><header class="server-health-card-header"><div class="server-health-host"><i class="bi bi-hdd-network" aria-hidden="true"></i><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong></div><span class="server-health-status server-health-status-' + sev + '"><i class="bi ' + statusIcon + '" aria-hidden="true"></i> ' + item.status + '</span></header>' +
-                renderMappedFields(row) +
+                cardBody +
                 '</article>';
         }).join("");
 
