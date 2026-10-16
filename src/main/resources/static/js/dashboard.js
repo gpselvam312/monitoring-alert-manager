@@ -1580,9 +1580,9 @@
             const estimatedCardWidth = 320;
             columnCount = Math.max(1, Math.floor((Math.max(estimatedCardWidth, gridWidth) + gridGap) / (estimatedCardWidth + gridGap)));
         }
-        const configuredPageSize = config.details && config.details.pagination && Number(config.details.pagination.pageSize);
-        const requestedSize = Number.isFinite(configuredPageSize) && configuredPageSize > 0 ? configuredPageSize : columnCount * 2;
-        const size = Math.max(columnCount, Math.floor(requestedSize / columnCount) * columnCount);
+        // System Metrics cards always show two complete responsive rows per page.
+        // Do not let a saved pageSize (for example 12) override the layout.
+        const size = columnCount * 2;
         const pages = Math.max(1, Math.ceil(filtered.length / size));
         state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
@@ -1761,7 +1761,31 @@
         const counts = { total: ranked.length, HEALTHY: 0, WARNING: 0, CRITICAL: 0 };
         ranked.forEach(function (item) { counts[item.status]++; });
         const filtered = state.status === "ALL" ? ranked : ranked.filter(function (item) { return item.status === state.status; });
-        const pageSize = 12, pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        // Legacy SERVER_HEALTH cards also paginate by two complete responsive rows.
+        const existingGrid = document.querySelector(".server-health-grid");
+        const gridGap = existingGrid ? (parseFloat(window.getComputedStyle(existingGrid).columnGap) || 12) : 12;
+        const cardMinWidth = 275;
+        let columnCount = 0;
+        if (existingGrid) {
+            const renderedCards = Array.from(existingGrid.querySelectorAll(".server-health-card"));
+            if (renderedCards.length) {
+                const firstRowTop = renderedCards[0].getBoundingClientRect().top;
+                columnCount = renderedCards.filter(function (card) {
+                    return Math.abs(card.getBoundingClientRect().top - firstRowTop) < 2;
+                }).length;
+            }
+        }
+        if (!columnCount) {
+            const content = document.querySelector(".app-content");
+            let gridWidth = content ? content.clientWidth : window.innerWidth;
+            if (content) {
+                const styles = window.getComputedStyle(content);
+                gridWidth -= (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+            }
+            const estimatedCardWidth = 320;
+            columnCount = Math.max(1, Math.floor((Math.max(estimatedCardWidth, gridWidth) + gridGap) / (estimatedCardWidth + gridGap)));
+        }
+        const pageSize = columnCount * 2, pages = Math.max(1, Math.ceil(filtered.length / pageSize));
         state.page = Math.min(Math.max(0, state.page || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
         const pageRows = filtered.slice(state.page * pageSize, (state.page + 1) * pageSize);
