@@ -211,7 +211,15 @@
 
     function configuredColumns(config) {
         const details = config.details && typeof config.details === "object" ? config.details : {};
-        const configured = Array.isArray(details.columns) ? details.columns : (Array.isArray(config.columns) ? config.columns : []);
+        let configured = Array.isArray(details.columns) && details.columns.length ? details.columns
+            : (Array.isArray(config.columns) ? config.columns : []);
+        if (!configured.length && config.view && Array.isArray(config.view.metrics)) {
+            configured = config.view.metrics.filter(item => item && item.name).map(item => ({
+                field: "metrics::" + String(item.name), label: item.label || humanize(item.name),
+                visible: item.enabled !== false, format: item.format === "auto" ? "" : (item.format || ""),
+                sortable: true, searchable: true, groupable: false, aggregation: "none"
+            }));
+        }
         return new Map(configured.filter(item => item && (item.field || item.key))
             .map(item => [String(item.field || item.key), item]));
     }
@@ -973,46 +981,68 @@
                 config.textFields = selectedValues("widgetTextFields");
                 config.textTemplate = byId("widgetTextTemplate").value;
                 break;
-            case "SYSTEM_METRICS":
+            case "SYSTEM_METRICS": {
                 config.renderer = "SYSTEM_METRICS";
-                config.statusField = byId("widgetMetricStatusField").value;
-                // Keep field mapping and presentation preferences separate from collector thresholds.
-                if (!config.fields || typeof config.fields !== "object" || Array.isArray(config.fields)) config.fields = {};
-                const metricFieldControls = {
-                    hostname: "systemMetricHostnameField", cpu: "systemMetricCpuField", ram: "systemMetricRamField",
-                    load1m: "systemMetricLoad1Field", load5m: "systemMetricLoad5Field", load15m: "systemMetricLoad15Field",
-                    cpuCores: "systemMetricCoresField", uptimeSeconds: "systemMetricUptimeSecondsField",
-                    uptimeHours: "systemMetricUptimeHoursField", diskUsedPercent: "systemMetricDiskField",
-                    ramUsedMb: "systemMetricRamUsedField", ramTotalMb: "systemMetricRamTotalField"
-                };
-                Object.keys(metricFieldControls).forEach(key => {
-                    const value = byId(metricFieldControls[key]).value;
-                    if (value) config.fields[key] = value;
-                    else delete config.fields[key];
-                });
-                config.labels = Object.assign({}, config.labels || {});
-                const labelControls = {
-                    cpu: "systemMetricCpuLabel", ram: "systemMetricRamLabel", load1m: "systemMetricLoadLabel",
-                    uptimeSeconds: "systemMetricUptimeLabel", diskUsedPercent: "systemMetricDiskLabel",
-                    ramCapacity: "systemMetricRamCapacityLabel"
-                };
-                Object.keys(labelControls).forEach(key => {
-                    const value = byId(labelControls[key]).value.trim();
-                    if (value) config.labels[key] = value;
-                    else delete config.labels[key];
-                });
+                config.details = config.details && typeof config.details === "object" ? config.details : {};
+                const columns = readFieldEditor().map(({ aggregation, groupable, sortable, searchable, ...column }) => column);
+                config.details.columns = columns;
+                config.fields = config.fields && typeof config.fields === "object" && !Array.isArray(config.fields) ? config.fields : {};
+                const hostnameColumn = columns.find(column => column.field === "hostname");
+                const statusColumn = columns.find(column => column.field === "status");
+                if (hostnameColumn) {
+                    config.fields.hostname = hostnameColumn.field;
+                    config.labels = Object.assign({}, config.labels || {}, { hostname: hostnameColumn.label });
+                }
+                if (statusColumn) config.statusField = statusColumn.field;
+                // Dynamic metrics use the same mapping table as Summary Table. The specialized
+                // renderer consumes these rows while retaining its existing machine health cards.
                 config.view = Object.assign({}, config.view || {}, {
                     showSummaryCards: byId("systemMetricShowSummaryCards").checked,
-                    showCpu: byId("systemMetricShowCpu").checked,
-                    showRam: byId("systemMetricShowRam").checked,
-                    showLoad: byId("systemMetricShowLoad").checked,
-                    showUptime: byId("systemMetricShowUptime").checked,
-                    showDisk: byId("systemMetricShowDisk").checked,
-                    showRamCapacity: byId("systemMetricShowRamCapacity").checked,
                     pageSize: Number(byId("systemMetricPageSize").value) || 12,
-                    metrics: readSystemMetricSettings()
+                    metrics: columns.filter(column => String(column.field).startsWith("metrics::")).map((column, index) => ({
+                        name: String(column.field).slice("metrics::".length),
+                        enabled: column.visible !== false,
+                        label: column.label || String(column.field).slice("metrics::".length),
+                        format: column.format || "auto",
+                        order: index
+                    }))
                 });
+                // Preserve legacy flat-field mapping controls for older scripts.
+                if (!state.rows.some(row => row && row.metrics)) {
+                    const legacyControls = {
+                        hostname: "systemMetricHostnameField", cpu: "systemMetricCpuField", ram: "systemMetricRamField",
+                        load1m: "systemMetricLoad1Field", load5m: "systemMetricLoad5Field", load15m: "systemMetricLoad15Field",
+                        cpuCores: "systemMetricCoresField", uptimeSeconds: "systemMetricUptimeSecondsField",
+                        uptimeHours: "systemMetricUptimeHoursField", diskUsedPercent: "systemMetricDiskField",
+                        ramUsedMb: "systemMetricRamUsedField", ramTotalMb: "systemMetricRamTotalField"
+                    };
+                    Object.keys(legacyControls).forEach(key => {
+                        const value = byId(legacyControls[key]).value;
+                        if (value) config.fields[key] = value;
+                        else delete config.fields[key];
+                    });
+                    config.labels = Object.assign({}, config.labels || {});
+                    const labelControls = {
+                        cpu: "systemMetricCpuLabel", ram: "systemMetricRamLabel", load1m: "systemMetricLoadLabel",
+                        uptimeSeconds: "systemMetricUptimeLabel", diskUsedPercent: "systemMetricDiskLabel",
+                        ramCapacity: "systemMetricRamCapacityLabel"
+                    };
+                    Object.keys(labelControls).forEach(key => {
+                        const value = byId(labelControls[key]).value.trim();
+                        if (value) config.labels[key] = value;
+                        else delete config.labels[key];
+                    });
+                    config.view = Object.assign({}, config.view, {
+                        showCpu: byId("systemMetricShowCpu").checked,
+                        showRam: byId("systemMetricShowRam").checked,
+                        showLoad: byId("systemMetricShowLoad").checked,
+                        showUptime: byId("systemMetricShowUptime").checked,
+                        showDisk: byId("systemMetricShowDisk").checked,
+                        showRamCapacity: byId("systemMetricShowRamCapacity").checked
+                    });
+                }
                 break;
+            }
             case "ELASTICSEARCH":
                 config.renderer = "ELASTICSEARCH";
                 break;
