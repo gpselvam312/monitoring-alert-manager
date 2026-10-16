@@ -1335,7 +1335,16 @@
         rows = rows.map(function (row) { return Object.assign({}, row); });
         if (!rows.length)
         {
-            return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>No machine metrics were returned. Check that the latest job output contains a machines array and that the configured row path points to it.</span></div>';
+            const jobName = result && (result.monitoringJobName || result.jobName
+                    || (result.monitoringJob && result.monitoringJob.name)
+                    || (result.job && result.job.name))
+                || widget.monitoringJobName
+                || widget.jobName
+                || (widget.dataSourceId !== null && widget.dataSourceId !== undefined
+                    ? "ID " + widget.dataSourceId : null)
+                || widget.name
+                || "Unknown";
+            return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>Machine metrics are currently unavailable for monitoring job <strong>' + escapeHtml(jobName) + '</strong>. Please contact your system administrator if the issue persists.</span></div>';
         }
 
         const state = Object.assign({ status: "ALL", page: 0, groupBy: "", sortBy: "__health", sortDirection: "asc" }, serverHealthState.get(String(widget.id)) || {});
