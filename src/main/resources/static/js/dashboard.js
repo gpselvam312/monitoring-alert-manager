@@ -1299,8 +1299,14 @@
 
     function renderSystemMetricsCards(result, widget, config)
     {
-        const payload = result && result.payload;
+        let payload = result && result.payload;
+        // Monitoring outputs may be stored as serialized JSON or wrapped under data.
+        // Normalize them before applying the configured rowPath.
+        if (typeof payload === "string") {
+            try { payload = JSON.parse(payload); } catch (ignore) { /* Keep the original value for the error/empty state. */ }
+        }
         const payloadObject = payload && typeof payload === "object" ? payload : {};
+        const normalizedResult = Object.assign({}, result || {}, { payload: payload });
         const failure = result && (result.success === false || result.ok === false)
             ? (result.error || result.message || "The monitoring script reported a collection failure.")
             : payloadObject.success === false || payloadObject.ok === false || payloadObject.error
@@ -1312,10 +1318,19 @@
             return '<div class="server-health-empty server-health-collection-error"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>System metrics collection failed: ' + escapeHtml(message) + '</span></div>';
         }
 
-        const rows = getConfiguredTableRows(result || {}, config).map(function (row) { return Object.assign({}, row); });
+        let rows = getConfiguredTableRows(normalizedResult, config);
+        // Accept common response wrappers while keeping the configured rowPath authoritative
+        // whenever it resolves to an array.
+        if (!rows.length && payloadObject.data && typeof payloadObject.data === "object") {
+            rows = getConfiguredTableRows({ payload: payloadObject.data }, config);
+        }
+        if (!rows.length && Array.isArray(payloadObject.machines)) {
+            rows = payloadObject.machines.filter(isObjectRow);
+        }
+        rows = rows.map(function (row) { return Object.assign({}, row); });
         if (!rows.length)
         {
-            return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>No machine metrics were returned. Health status is unknown until data is collected.</span></div>';
+            return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>No machine metrics were returned. Check that the latest job output contains a machines array and that the configured row path points to it.</span></div>';
         }
 
         const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
