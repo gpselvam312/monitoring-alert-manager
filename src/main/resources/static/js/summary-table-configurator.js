@@ -529,7 +529,7 @@
                     : (String(field).startsWith("metrics::") ? String(field).slice("metrics::".length) : humanize(field)),
                 visible: saved ? saved.visible !== false : true,
                 format: saved && saved.format !== undefined ? String(saved.format).toLowerCase()
-                    : (systemMetricDefaultFormat(field, collection ? collection.rows : []) || ""),
+                    : (currentWidgetType() === "SYSTEM_METRICS" ? (systemMetricDefaultFormat(field, collection ? collection.rows : []) || "") : ""),
                 aggregation: saved && saved.aggregation ? String(saved.aggregation).toLowerCase() : "none",
                 summaryCard: false,
                 sortable: saved ? saved.sortable !== false : true,
@@ -559,7 +559,7 @@
         });
         const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
         const formats = systemMetrics
-            ? [["", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration"], ["status", "Status badge"]]
+            ? [["", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration"]]
             : [["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
                 ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
@@ -669,7 +669,7 @@
     }
 
     function systemMetricDefaultFormat(field, rows) {
-        if (!String(field || "").startsWith("metrics::")) return field === "status" ? "status" : "";
+        if (!String(field || "").startsWith("metrics::")) return "";
         const name = String(field).slice("metrics::".length);
         for (const row of rows || []) {
             const metrics = row && row.metrics;
