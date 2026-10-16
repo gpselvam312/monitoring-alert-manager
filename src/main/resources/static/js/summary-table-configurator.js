@@ -447,7 +447,7 @@
             const preferRoot = ["STAT", "STATUS", "TEXT", "ELASTICSEARCH"].includes(currentWidgetType())
                 && !["DELIMITED", "KEY_VALUE", "REGEX", "PLAIN_TEXT"].includes(parserType);
             const systemMetricsCollection = currentWidgetType() === "SYSTEM_METRICS"
-                ? collections.find(item => /(^|\\.)machines$/.test(item.path))
+                ? collections.find(item => /(^|\.)machines$/.test(item.path))
                 : null;
             // A blank saved rowPath used to select the synthetic root-object row, which
             // exposed wrapper fields such as "machines" instead of one row per machine.
