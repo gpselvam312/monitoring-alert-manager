@@ -3981,8 +3981,27 @@
     environmentFilter.addEventListener("change", function () { loadDashboard(); });
     contentElement.addEventListener("change", function (event)
     {
+        const control = event.target.closest(".server-health-group-by, .server-health-sort-by, .server-health-sort-direction");
+        if (control)
+        {
+            const widgetId = String(control.dataset.widgetId || "");
+            if (!widgetId) return;
+            const state = Object.assign({ status: "ALL", page: 0, groupBy: "", sortBy: "__health", sortDirection: "asc" }, serverHealthState.get(widgetId) || {});
+            if (control.classList.contains("server-health-group-by")) state.groupBy = control.value;
+            else if (control.classList.contains("server-health-sort-by")) state.sortBy = control.value;
+            else state.sortDirection = control.value === "desc" ? "desc" : "asc";
+            state.page = 0;
+            serverHealthState.set(widgetId, state);
+            // Sorting and grouping only rearrange the response already held by the dashboard.
+            renderTabs(activeTabId);
+            return;
+        }
         if (!event.target.classList.contains("server-health-filter")) return;
-        serverHealthState.set(String(event.target.dataset.widgetId), { status: event.target.value, page: 0 });
+        const widgetId = String(event.target.dataset.widgetId || "");
+        const state = Object.assign({ status: "ALL", page: 0, groupBy: "", sortBy: "__health", sortDirection: "asc" }, serverHealthState.get(widgetId) || {});
+        state.status = event.target.value;
+        state.page = 0;
+        serverHealthState.set(widgetId, state);
         loadDashboard(activeTabId);
     });
     contentElement.addEventListener("click", function (event)
