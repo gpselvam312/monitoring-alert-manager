@@ -77,8 +77,8 @@ fi
 
 if [ -r /proc/loadavg ]; then
     set -- $(awk '{print $1,$2,$3}' /proc/loadavg); load1=$1; load5=$2; load15=$3
-    load_status=$(awk -v load="$load1" -v cores="$cores" -v warning="$LOAD_WARNING_PER_CORE" -v critical="$LOAD_CRITICAL_PER_CORE" 'BEGIN {
-        ratio=load/cores; if(ratio>=critical) print "CRITICAL"; else if(ratio>=warning) print "WARNING"; else print "HEALTHY"
+    load_status=$(awk -v loadval="$load1" -v cores="$cores" -v warning="$LOAD_WARNING_PER_CORE" -v critical="$LOAD_CRITICAL_PER_CORE" 'BEGIN {
+        ratio=loadval/cores; if(ratio>=critical) print "CRITICAL"; else if(ratio>=warning) print "WARNING"; else print "HEALTHY"
     }')
     append_metric "Load Average" "" "text" "$load_status" "$load1 / $load5 / $load15 (1m / 5m / 15m)" text
     merge_status "$load_status"
