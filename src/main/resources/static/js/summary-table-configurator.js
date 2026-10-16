@@ -213,12 +213,16 @@
         const details = config.details && typeof config.details === "object" ? config.details : {};
         let configured = Array.isArray(details.columns) && details.columns.length ? details.columns
             : (Array.isArray(config.columns) ? config.columns : []);
-        if (!configured.length && config.view && Array.isArray(config.view.metrics)) {
-            configured = config.view.metrics.filter(item => item && item.name).map(item => ({
-                field: "metrics::" + String(item.name), label: item.label || humanize(item.name),
-                visible: item.enabled !== false, format: item.format === "auto" ? "" : (item.format || ""),
-                sortable: true, searchable: true, groupable: false, aggregation: "none"
-            }));
+        if (config.view && Array.isArray(config.view.metrics)) {
+            const existingFields = new Set(configured.map(item => String(item.field || item.key || "")));
+            config.view.metrics.filter(item => item && item.name).forEach(item => {
+                const field = "metrics::" + String(item.name);
+                if (!existingFields.has(field)) configured.push({
+                    field, label: item.label || String(item.name),
+                    visible: item.enabled !== false, format: item.format === "auto" ? "" : (item.format || ""),
+                    sortable: true, searchable: true, groupable: false, aggregation: "none"
+                });
+            });
         }
         return new Map(configured.filter(item => item && (item.field || item.key))
             .map(item => [String(item.field || item.key), item]));
@@ -521,7 +525,8 @@
             const saved = existing.get(field);
             return {
                 field,
-                label: saved && saved.label ? saved.label : humanize(field),
+                label: saved && saved.label ? saved.label
+                    : (String(field).startsWith("metrics::") ? String(field).slice("metrics::".length) : humanize(field)),
                 visible: saved ? saved.visible !== false : true,
                 format: saved && saved.format !== undefined ? String(saved.format).toLowerCase()
                     : (systemMetricDefaultFormat(field, collection ? collection.rows : []) || ""),
@@ -750,7 +755,7 @@
             '</tr></thead><tbody>' + previewRows.map(row => {
                 const rowClass = conditionalPreviewClass(row, previewConfig, "row");
                 return '<tr class="' + rowClass + '">' + columns.map(column => {
-                    let value = row[column.field];
+                    let value = rowValueForConfigurator(row, column.field);
                     if (value !== null && typeof value === "object") value = JSON.stringify(value);
                     const rawBoolean = value === true || value === false || (typeof value === "string" && /^(true|false)$/i.test(String(value).trim()));
                     const statusValue = String(value == null ? "" : value).trim().toLowerCase();
@@ -943,7 +948,9 @@
         byId("systemMetricShowDisk").checked = view.showDisk !== false;
         byId("systemMetricShowRamCapacity").checked = view.showRamCapacity !== false;
         byId("systemMetricPageSize").value = ["6", "12", "24", "48"].includes(String(view.pageSize)) ? String(view.pageSize) : "12";
-        const dynamicMetricsPresent = discoveredSystemMetricNames().length > 0;
+        const dynamicMetricsPresent = discoveredSystemMetricNames().length > 0 ||
+            (state.fields || []).some(field => String(field).startsWith("metrics::")) ||
+            (Array.isArray(view.metrics) && view.metrics.length > 0);
         ["systemMetricCpuField", "systemMetricRamField", "systemMetricLoad1Field", "systemMetricLoad5Field", "systemMetricLoad15Field",
             "systemMetricCoresField", "systemMetricUptimeSecondsField", "systemMetricUptimeHoursField", "systemMetricDiskField",
             "systemMetricRamUsedField", "systemMetricRamTotalField"].forEach(id => {
@@ -1198,7 +1205,7 @@
         syncGroupByControlState();
         syncParserOptionVisibility();
         renderTypeMappingOptions();
-        if (state.sample) renderFields();
+        if (state.sample || type === "SYSTEM_METRICS") renderFields();
     }
 
     document.addEventListener("DOMContentLoaded", function () {
