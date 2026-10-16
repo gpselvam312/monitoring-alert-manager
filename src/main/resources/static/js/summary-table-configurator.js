@@ -964,7 +964,8 @@
             "systemMetricDiskLabel", "systemMetricRamCapacityLabel"].forEach(id => {
             const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
         });
-        const mappingHeading = Array.from(mapping.querySelectorAll("h6")).find(element => element.textContent.trim() === "Machine field mapping");
+        const mappingHeading = Array.from(mapping.querySelectorAll("h6")).find(element =>
+            ["Machine field mapping", "Legacy flat-field mapping"].includes(element.textContent.trim()));
         if (mappingHeading) {
             mappingHeading.textContent = "Legacy flat-field mapping";
             if (mappingHeading.closest(".col-12")) mappingHeading.closest(".col-12").hidden = dynamicMetricsPresent;
