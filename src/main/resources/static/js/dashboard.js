@@ -1338,7 +1338,7 @@
             return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>No machine metrics were returned. Check that the latest job output contains a machines array and that the configured row path points to it.</span></div>';
         }
 
-        const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
+        const state = Object.assign({ status: "ALL", page: 0, groupBy: "", sortBy: "__health", sortDirection: "asc" }, serverHealthState.get(String(widget.id)) || {});
         const columns = config.details && Array.isArray(config.details.columns)
             ? config.details.columns.filter(function (column) { return column && column.field; })
             : [];
@@ -1457,8 +1457,6 @@
 
         const items = rows.map(function (row)
         {
-            // Overall machine health must come from the machine-level status first.
-            // Collection Status is only a fallback and must not mask status=HEALTHY/WARNING/CRITICAL.
             const explicitStatus = legacyPick(row, ["status", "healthStatus", "health_status"]);
             const status = explicitStatus !== null
                 ? normalizeStatus(explicitStatus)
@@ -1471,18 +1469,83 @@
                 if (value !== null && (format === "meter" || format === "percentage")) pressure = Math.max(pressure, value / 100);
             });
             return { row: row, status: status, pressure: pressure };
-        }).sort(function (a, b)
-        {
-            const rank = { CRITICAL: 0, WARNING: 1, UNKNOWN: 2, HEALTHY: 3 };
-            return rank[a.status] - rank[b.status] || b.pressure - a.pressure;
         });
+
+        // Grouping and sorting options come from mapped fields and metadata present in the response.
+        // No machine inventory records are required.
+        const availableFields = new Map();
+        configuredColumns.forEach(function (column) {
+            if (column && column.field) availableFields.set(String(column.field), String(column.label || column.field));
+        });
+        const addResponseFields = function (object, prefix, depth) {
+            if (!object || typeof object !== "object" || Array.isArray(object) || depth > 2) return;
+            Object.keys(object).forEach(function (key) {
+                if (key === "metrics") return;
+                const field = prefix ? prefix + "." + key : key;
+                if (!availableFields.has(field)) {
+                    const label = field.split(".").map(function (part) {
+                        return part.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ")
+                            .replace(/^./, function (character) { return character.toUpperCase(); });
+                    }).join(" / ");
+                    availableFields.set(field, label);
+                }
+                const value = object[key];
+                if (value && typeof value === "object" && !Array.isArray(value)) addResponseFields(value, field, depth + 1);
+            });
+        };
+        rows.forEach(function (row) { addResponseFields(row, "", 0); });
+        const fieldLabel = function (field) {
+            if (field === "__health") return "Health Status";
+            if (field === "__hostname") return "Hostname";
+            return availableFields.get(field) || field;
+        };
+        const fieldValue = function (item, field) {
+            if (field === "__health") return item.status;
+            if (field === "__hostname") {
+                const host = hostColumn ? valueOf(item.row, hostColumn.field) : legacyPick(item.row, ["hostname", "hostName", "server", "name"]);
+                return host === null || host === undefined || host === "" ? "Unknown host" : host;
+            }
+            return valueOf(item.row, field);
+        };
+        const healthRank = { CRITICAL: 0, WARNING: 1, UNKNOWN: 2, HEALTHY: 3 };
+        const compareValues = function (left, right, direction) {
+            const leftMissing = left === null || left === undefined || String(left).trim() === "";
+            const rightMissing = right === null || right === undefined || String(right).trim() === "";
+            if (leftMissing || rightMissing) return leftMissing === rightMissing ? 0 : (leftMissing ? 1 : -1);
+            const leftNumber = number(left), rightNumber = number(right);
+            let comparison;
+            if (leftNumber !== null && rightNumber !== null) comparison = leftNumber - rightNumber;
+            else comparison = String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
+            return direction === "desc" ? -comparison : comparison;
+        };
+        const sortItems = function (source) {
+            const direction = state.sortDirection === "desc" ? "desc" : "asc";
+            return source.slice().sort(function (a, b) {
+                let comparison = 0;
+                if (state.sortBy === "__health") {
+                    comparison = (healthRank[a.status] - healthRank[b.status]) * (direction === "desc" ? -1 : 1);
+                    if (comparison === 0) comparison = b.pressure - a.pressure;
+                } else {
+                    comparison = compareValues(fieldValue(a, state.sortBy), fieldValue(b, state.sortBy), direction);
+                    if (comparison === 0) comparison = healthRank[a.status] - healthRank[b.status] || b.pressure - a.pressure;
+                }
+                if (comparison === 0) comparison = String(fieldValue(a, "__hostname")).localeCompare(String(fieldValue(b, "__hostname")), undefined, { numeric: true, sensitivity: "base" });
+                return comparison;
+            });
+        };
+        if (state.sortBy !== "__health" && state.sortBy !== "__hostname" && !availableFields.has(state.sortBy)) {
+            state.sortBy = "__health";
+            state.sortDirection = "asc";
+        }
+        if (state.groupBy && state.groupBy !== "__health" && !availableFields.has(state.groupBy)) state.groupBy = "";
+        const sortedItems = sortItems(items);
 
         const counts = { total: items.length, CRITICAL: 0, WARNING: 0, UNKNOWN: 0, HEALTHY: 0 };
         items.forEach(function (item) { counts[item.status]++; });
 
         const filtered = state.status === "ALL"
-            ? items
-            : items.filter(function (item) { return item.status === state.status; });
+            ? sortedItems
+            : sortedItems.filter(function (item) { return item.status === state.status; });
 
         const pageSize = config.details && config.details.pagination && Number(config.details.pagination.pageSize);
         const size = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 12;
@@ -1507,9 +1570,32 @@
                 '">' + x[1] + '</strong></button>';
         }).join("") + '</div>';
 
-        const filters = '<div class="server-health-toolbar"><span class="small text-muted">Showing ' +
-            (filtered.length ? state.page * size + 1 : 0) + "–" + Math.min((state.page + 1) * size, filtered.length) +
-            " of " + filtered.length + ' servers</span></div>';
+        const groupOptions = [['', 'None'], ['__health', 'Health Status']].concat(Array.from(availableFields.entries()).map(function (entry) {
+            return [entry[0], entry[1]];
+        }));
+        const sortOptions = [['__health', 'Health Status'], ['__hostname', 'Hostname']].concat(Array.from(availableFields.entries()).map(function (entry) {
+            return [entry[0], entry[1]];
+        }));
+        const optionMarkup = function (options, selected) {
+            const seen = new Set();
+            return options.filter(function (option) {
+                if (seen.has(option[0])) return false;
+                seen.add(option[0]); return true;
+            }).map(function (option) {
+                return '<option value="' + escapeHtml(option[0]) + '"' + (String(selected) === String(option[0]) ? ' selected' : '') + '>' +
+                    escapeHtml(option[1]) + '</option>';
+            }).join("");
+        };
+        const filters = '<div class="server-health-toolbar"><label class="server-health-control-label">Group by ' +
+            '<select class="form-select form-select-sm server-health-group-by" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Group machines by">' +
+            optionMarkup(groupOptions, state.groupBy) + '</select></label><label class="server-health-control-label">Sort by ' +
+            '<select class="form-select form-select-sm server-health-sort-by" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Sort machines by">' +
+            optionMarkup(sortOptions, state.sortBy) + '</select></label><label class="server-health-control-label">Order ' +
+            '<select class="form-select form-select-sm server-health-sort-direction" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Sort direction">' +
+            '<option value="asc"' + (state.sortDirection !== "desc" ? ' selected' : '') + '>Ascending</option>' +
+            '<option value="desc"' + (state.sortDirection === "desc" ? ' selected' : '') + '>Descending</option></select></label>' +
+            '<span class="small text-muted">Showing ' + (filtered.length ? state.page * size + 1 : 0) + "–" +
+            Math.min((state.page + 1) * size, filtered.length) + " of " + filtered.length + ' machines</span></div>';
 
         const renderMappedFields = function (row)
         {
@@ -1551,7 +1637,7 @@
             }).join("");
         };
 
-        const cards = pageItems.map(function (item)
+        const renderCard = function (item)
         {
             const row = item.row;
             const hostValue = hostColumn ? valueOf(row, hostColumn.field) : legacyPick(row, ["hostname", "hostName", "server", "name"]);
@@ -1579,7 +1665,42 @@
             return '<article class="server-health-card server-health-card-' + sev + '"><header class="server-health-card-header"><div class="server-health-host"><i class="bi bi-hdd-network" aria-hidden="true"></i><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong></div><span class="server-health-status server-health-status-' + sev + '"><i class="bi ' + statusIcon + '" aria-hidden="true"></i> ' + item.status + '</span></header>' +
                 cardBody +
                 '</article>';
-        }).join("");
+        };
+        let cards = pageItems.map(renderCard).join("");
+        if (state.groupBy) {
+            const grouped = new Map();
+            pageItems.forEach(function (item) {
+                const raw = fieldValue(item, state.groupBy);
+                const label = raw === null || raw === undefined || String(raw).trim() === "" ? "Unknown / Not Assigned" :
+                    (typeof raw === "object" ? JSON.stringify(raw) : String(raw));
+                if (!grouped.has(label)) grouped.set(label, []);
+                grouped.get(label).push(item);
+            });
+            const groupEntries = Array.from(grouped.entries());
+            if (state.groupBy === "__health") {
+                groupEntries.sort(function (a, b) {
+                    const rank = { CRITICAL: 0, WARNING: 1, UNKNOWN: 2, HEALTHY: 3 };
+                    return (rank[a[0]] === undefined ? 4 : rank[a[0]]) - (rank[b[0]] === undefined ? 4 : rank[b[0]]);
+                });
+            } else {
+                groupEntries.sort(function (a, b) {
+                    const aMissing = a[0] === "Unknown / Not Assigned", bMissing = b[0] === "Unknown / Not Assigned";
+                    if (aMissing !== bMissing) return aMissing ? 1 : -1;
+                    return a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: "base" });
+                });
+            }
+            cards = groupEntries.map(function (entry) {
+                const label = entry[0];
+                const groupCount = filtered.filter(function (item) {
+                    const raw = fieldValue(item, state.groupBy);
+                    const value = raw === null || raw === undefined || String(raw).trim() === "" ? "Unknown / Not Assigned" :
+                        (typeof raw === "object" ? JSON.stringify(raw) : String(raw));
+                    return value === label;
+                }).length;
+                return '<div class="server-health-group-heading"><strong>' + escapeHtml(fieldLabel(state.groupBy) + ': ' + label) +
+                    '</strong><span>' + groupCount + '</span></div>' + entry[1].map(renderCard).join("");
+            }).join("");
+        }
 
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
 
