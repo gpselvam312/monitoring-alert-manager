@@ -3781,6 +3781,10 @@ textarea.form-control {
 .server-health-card-warning { border-color: var(--warning); }
 .server-health-card-critical { border-color: var(--danger); }
 .server-health-card-unknown { border-color: var(--text-secondary); }
+.server-health-collection-message { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border-color)); border-radius: 7px; background: color-mix(in srgb, var(--warning) 8%, var(--card-bg)); color: var(--text-primary); }
+.server-health-collection-message > i { flex: 0 0 auto; margin-top: 2px; color: var(--warning); font-size: 18px; }
+.server-health-collection-message strong { display: block; margin-bottom: 4px; font-size: 12px; }
+.server-health-collection-message p { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .server-health-card:hover { transform: translateY(-1px); box-shadow: 0 5px 16px color-mix(in srgb, var(--text-primary) 9%, transparent); }
 .server-health-card-header { align-items: flex-start; }
 .server-health-host { display: flex; align-items: center; gap: .5rem; min-width: 0; }
