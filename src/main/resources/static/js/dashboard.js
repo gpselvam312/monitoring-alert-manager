@@ -1553,8 +1553,24 @@
             ? sortedItems
             : sortedItems.filter(function (item) { return item.status === state.status; });
 
-        const pageSize = config.details && config.details.pagination && Number(config.details.pagination.pageSize);
-        const size = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 12;
+        // Keep each page to exactly two complete machine-card rows. Use the rendered
+        // grid width when available so browser zoom and responsive layout are respected.
+        const existingGrid = document.querySelector(".server-health-grid");
+        const content = existingGrid || document.querySelector(".app-content");
+        let gridWidth = existingGrid ? existingGrid.clientWidth : (content ? content.clientWidth : window.innerWidth);
+        if (!existingGrid && content) {
+            const styles = window.getComputedStyle(content);
+            gridWidth -= (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+            const sidebar = document.querySelector(".app-sidebar");
+            if (sidebar && window.innerWidth > 991) gridWidth -= sidebar.getBoundingClientRect().width;
+        }
+        const gridStyles = existingGrid ? window.getComputedStyle(existingGrid) : null;
+        const gridGap = gridStyles ? (parseFloat(gridStyles.columnGap) || 12) : 12;
+        const cardMinWidth = 275;
+        const columns = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
+        const configuredPageSize = config.details && config.details.pagination && Number(config.details.pagination.pageSize);
+        const requestedSize = Number.isFinite(configuredPageSize) && configuredPageSize > 0 ? configuredPageSize : columns * 2;
+        const size = Math.max(columns, Math.floor(requestedSize / columns) * columns);
         const pages = Math.max(1, Math.ceil(filtered.length / size));
         state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
