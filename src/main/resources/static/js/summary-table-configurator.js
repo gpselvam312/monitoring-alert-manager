@@ -831,6 +831,17 @@
             config.details = config.details && typeof config.details === "object" ? config.details : {};
             config.details.columns = columns.map(({ summaryCard, summaryFilterable, groupSummary, ...column }) => column);
             config.details.pagination = Object.assign({}, config.details.pagination || {}, { enabled: true, pageSize: 12 });
+            config.summary = Object.assign({}, config.summary || {});
+            config.summary.cards = readSummaryCardsEditor();
+            config.summary.totalRowsCard = {
+                enabled: byId("summaryTableShowTotalRowsCard").checked,
+                label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
+                filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF",
+                icon: {
+                    enabled: byId("summaryTableTotalRowsIconEnabled").checked,
+                    name: byId("summaryTableTotalRowsIconName").value.trim() || (byId("summaryTableTotalRowsIconPreset").value === "custom" ? "list-check" : byId("summaryTableTotalRowsIconPreset").value)
+                }
+            };
             delete config.fields;
             delete config.labels;
             delete config.view;
@@ -1167,11 +1178,12 @@
         byId("summaryTableConfigurator").hidden = !type;
         byId("dashboardWidgetAdvancedConfig").open = false;
         byId("summaryTableGroupBySection").hidden = !isSummary;
-        byId("summaryTableCardsSection").hidden = !isSummary;
+        byId("summaryTableCardsSection").hidden = !(isSummary || type === "SYSTEM_METRICS");
         byId("summaryTableMappingActions").hidden = !isSummary;
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
         byId("summaryTableExportCsvOption").hidden = !isSummary;
+        byId("summaryTableLayoutControl").hidden = type === "SYSTEM_METRICS";
         byId("summaryTableFieldEditorGroup").hidden = !isFieldMapping;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
         byId("widgetMappingHeading").textContent = type === "SUMMARY_TABLE" ? "Summary Table data and columns" : "Widget data and mapping";
