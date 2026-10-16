@@ -1335,13 +1335,10 @@
         rows = rows.map(function (row) { return Object.assign({}, row); });
         if (!rows.length)
         {
-            const jobName = result && (result.monitoringJobName || result.jobName
+            const jobName = widget.monitoringJobName
+                || (result && (result.monitoringJobName || result.jobName
                     || (result.monitoringJob && result.monitoringJob.name)
-                    || (result.job && result.job.name))
-                || widget.monitoringJobName
-                || widget.jobName
-                || (widget.dataSourceId !== null && widget.dataSourceId !== undefined
-                    ? "ID " + widget.dataSourceId : null)
+                    || (result.job && result.job.name)))
                 || widget.name
                 || "Unknown";
             return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>Machine metrics are currently unavailable for monitoring job <strong>' + escapeHtml(jobName) + '</strong>. Please contact your system administrator if the issue persists.</span></div>';
