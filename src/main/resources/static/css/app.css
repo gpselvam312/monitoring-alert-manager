@@ -3737,7 +3737,7 @@ textarea.form-control {
 .server-health-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 12px; }
 .server-health-toolbar select { width: 150px; }
 .server-health-toolbar > span { margin-left: auto; }
-.server-health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr)); gap: 12px; }
+.server-health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 275px), 1fr)); gap: 12px; }
 .server-health-card { min-width: 0; border: 1px solid var(--border-color); border-left: 4px solid var(--success); border-radius: 9px; padding: 14px; background: var(--card-bg); }
 .server-health-card-warning { border-left-color: var(--warning); }
 .server-health-card-critical { border-left-color: var(--danger); }
