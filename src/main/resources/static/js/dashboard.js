@@ -1564,6 +1564,7 @@
         const gridGap = 12;
         const cardMinWidth = 275;
         const columnCount = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
+        const size = columnCount * 2;
         const pages = Math.max(1, Math.ceil(filtered.length / size));
         state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
