@@ -824,6 +824,19 @@
         }
         const config = getConfig();
         config.responseParser = currentParserConfig();
+        if (type === "SYSTEM_METRICS" && state.sample && selectedCollection()) {
+            const columns = readFieldEditor();
+            config.renderer = "SYSTEM_METRICS";
+            config.rowPath = byId("summaryTableRowPath").value || "";
+            config.details = config.details && typeof config.details === "object" ? config.details : {};
+            config.details.columns = columns.map(({ summaryCard, summaryFilterable, groupSummary, ...column }) => column);
+            config.details.pagination = Object.assign({}, config.details.pagination || {}, { enabled: true, pageSize: 12 });
+            delete config.fields;
+            delete config.labels;
+            delete config.view;
+            setConfig(config);
+            return;
+        }
         if (type === "TABLE" && state.sample && selectedCollection()) {
             const columns = readFieldEditor();
             config.renderer = "TABLE";
@@ -888,7 +901,7 @@
         const config = getConfig();
         const mapping = byId("widgetTypeMappingOptions");
         if (!mapping) return;
-        const hasDedicatedMapping = ["CHART", "STAT", "STATUS", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH"].includes(type);
+        const hasDedicatedMapping = ["CHART", "STAT", "STATUS", "TEXT", "ELASTICSEARCH"].includes(type);
         mapping.hidden = !hasDedicatedMapping;
         byId("widgetTypeMappingTitle").textContent = ({
             CHART: "Chart field mapping",
