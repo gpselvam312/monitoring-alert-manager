@@ -522,10 +522,19 @@
             : [];
         // Keep saved mappings even when a field is absent from the current sample/latest job response.
         // Otherwise a partial or changing response silently drops display and aggregation settings.
-        const allFields = [
-            ...Array.from(existing.keys()),
-            ...discoveredFields.filter(field => !existing.has(field))
-        ];
+        const isSystemMetrics = currentWidgetType() === "SYSTEM_METRICS";
+        const allFields = isSystemMetrics
+            ? [
+                // Keep saved dynamic metric mappings (mounts/metrics can be temporarily absent),
+                // but discard stale flat fields and wrapper keys from an earlier row-path selection.
+                ...Array.from(existing.keys()).filter(field =>
+                    String(field).startsWith("metrics::") && !discoveredFields.includes(field)),
+                ...discoveredFields
+            ]
+            : [
+                ...Array.from(existing.keys()),
+                ...discoveredFields.filter(field => !existing.has(field))
+            ];
         state.fields = allFields;
         const anyExisting = existing.size > 0;
         const fields = allFields.map(field => {
