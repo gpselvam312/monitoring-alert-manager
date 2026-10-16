@@ -1311,31 +1311,52 @@
             const message = typeof failure === "string" ? failure : JSON.stringify(failure);
             return '<div class="server-health-empty server-health-collection-error"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>System metrics collection failed: ' + escapeHtml(message) + '</span></div>';
         }
+
         const rows = getConfiguredTableRows(result || {}, config).map(function (row) { return Object.assign({}, row); });
         if (!rows.length)
         {
             return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>No machine metrics were returned. Health status is unknown until data is collected.</span></div>';
         }
+
         const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
-        const view = config.view && typeof config.view === "object" ? config.view : {};
-        if (view.showSummaryCards === false) state.status = "ALL";
-        const fields = Object.assign({
-            hostname: "hostname", cpu: "cpu_used_percent", ram: "ram_used_percent",
-            load1m: "load_1m", load5m: "load_5m", load15m: "load_15m",
-            uptimeSeconds: "uptime_seconds", uptimeHours: "uptimeHours", diskUsedPercent: "u01_used_percent",
-            collectionStatus: "collection_status", cpuCores: "cpu_cores",
-            ramUsedMb: "ram_used_mb", ramTotalMb: "ram_total_mb"
-        }, config.fields && typeof config.fields === "object" ? config.fields : {});
-        const pick = function (row, keys)
+        const columns = config.details && Array.isArray(config.details.columns)
+            ? config.details.columns.filter(function (column) { return column && column.field; })
+            : [];
+        const legacyView = config.view && typeof config.view === "object" ? config.view : {};
+        if (legacyView.showSummaryCards === false) state.status = "ALL";
+
+        const metricObject = function (row, field)
         {
-            for (const key of keys)
+            const source = String(field || "");
+            if (!source.startsWith("metrics::")) return null;
+            const name = source.slice("metrics::".length);
+            const metrics = row && row.metrics;
+            if (Array.isArray(metrics))
             {
-                const mapped = fields[key] || key;
-                if (row[mapped] !== undefined && row[mapped] !== null && row[mapped] !== "") return row[mapped];
-                if (row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+                const metric = metrics.find(function (item) {
+                    return item && String(item.name !== undefined ? item.name : item.key) === name;
+                });
+                return metric && typeof metric === "object" ? metric : null;
+            }
+            if (metrics && typeof metrics === "object")
+            {
+                const metric = metrics[name];
+                return metric && typeof metric === "object" ? metric : null;
             }
             return null;
         };
+
+        const valueOf = function (row, field)
+        {
+            const source = String(field || "");
+            if (source.startsWith("metrics::"))
+            {
+                const metric = metricObject(row, source);
+                return metric ? metric.value : undefined;
+            }
+            return getJsonPath(row, source);
+        };
+
         const number = function (value)
         {
             if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -1343,16 +1364,35 @@
             const parsed = Number(value);
             return Number.isFinite(parsed) ? parsed : null;
         };
-        const label = function (key, fallback)
+
+        const normalizeStatus = function (value)
         {
-            const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
-            return labels[key] || labels[fields[key]] || fallback;
+            const normalized = String(value === null || value === undefined ? "" : value).trim().toUpperCase();
+            if (["HEALTHY", "HEALTH", "OK", "GREEN", "SUCCESS", "SUCCEEDED", "UP", "PASS", "PASSED"].includes(normalized)) return "HEALTHY";
+            if (["WARNING", "WARN", "YELLOW", "DEGRADED"].includes(normalized)) return "WARNING";
+            if (["CRITICAL", "ERROR", "FAILED", "FAILURE", "RED", "DOWN"].includes(normalized)) return "CRITICAL";
+            return "UNKNOWN";
         };
-        const collected = function (row)
+
+        const configuredColumns = columns.length ? columns : [];
+        const hostColumn = configuredColumns.find(function (column) {
+            return /^(hostname|hostName|host|server|machine|name)$/i.test(String(column.field));
+        });
+        const statusColumn = configuredColumns.find(function (column) {
+            return String(column.format || "").toLowerCase() === "status"
+                || /^(status|healthStatus|health_status|collection_status|collectionStatus)$/i.test(String(column.field));
+        });
+
+        const legacyPick = function (row, keys)
         {
-            return ["SUCCESS", "SUCCEEDED", "OK", "COLLECTED", "HEALTHY", "TRUE"].includes(
-                String(pick(row, ["collectionStatus", "collection_status"]) || "").trim().toUpperCase());
+            for (const key of keys)
+            {
+                const value = valueOf(row, key);
+                if (value !== undefined && value !== null && value !== "") return value;
+            }
+            return null;
         };
+
         const uptimeText = function (seconds)
         {
             const v = number(seconds);
@@ -1360,77 +1400,76 @@
             const d = Math.floor(v / 86400), h = Math.floor((v % 86400) / 3600), m = Math.floor((v % 3600) / 60);
             return d > 0 ? d + "d " + h + "h" : h > 0 ? h + "h " + m + "m" : m + "m";
         };
+
+        const formatValue = function (value, format, unit)
+        {
+            if (value === null || value === undefined || value === "") return "N/A";
+            const normalized = String(format || "").toLowerCase();
+            if (normalized === "duration" && Number.isFinite(Number(value))) return uptimeText(Number(value));
+            if (normalized === "number" && Number.isFinite(Number(value))) return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            if (normalized === "meter" && Number.isFinite(Number(value))) return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
+            if (normalized === "percentage" && Number.isFinite(Number(value))) return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
+            let text = typeof value === "object" ? JSON.stringify(value) : String(value);
+            if (unit && text !== "N/A" && !text.endsWith(String(unit))) text += (String(unit).startsWith(" ") ? "" : " ") + unit;
+            return text;
+        };
+
+        const inferLegacyStatus = function (row)
+        {
+            const explicit = legacyPick(row, ["status", "healthStatus", "health_status"]);
+            if (explicit !== null) return normalizeStatus(explicit);
+            const cpu = number(legacyPick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
+            const ram = number(legacyPick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
+            const load = number(legacyPick(row, ["load_1m", "load1m", "load_average_1m"]));
+            const cores = Math.max(1, number(legacyPick(row, ["cpu_cores", "cpuCores"])) || 1);
+            const disk = number(legacyPick(row, ["u01_used_percent", "u01_percent", "disk_u01_used_percent"]));
+            const levels = [];
+            if (cpu !== null) levels.push(cpu >= 85 ? 2 : cpu >= 70 ? 1 : 0);
+            if (ram !== null) levels.push(ram >= 90 ? 2 : ram >= 75 ? 1 : 0);
+            if (load !== null) levels.push(load / cores >= 1 ? 2 : load / cores >= 0.70 ? 1 : 0);
+            if (disk !== null) levels.push(disk >= 95 ? 2 : disk >= 85 ? 1 : 0);
+            if (!levels.length) return "UNKNOWN";
+            const worst = Math.max.apply(null, levels);
+            return worst === 2 ? "CRITICAL" : worst === 1 ? "WARNING" : "HEALTHY";
+        };
+
         const items = rows.map(function (row)
         {
-            const cpu = number(pick(row, ["cpu", "cpuPercent", "cpu_percent", "cpu_used_percent", "cpuUsedPercent"]));
-            const ram = number(pick(row, ["ram", "memoryPercent", "ramPercent", "ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
-            const load1 = number(pick(row, ["load1m", "loadAverage", "load_1m", "load_average_1m"]));
-            const cores = Math.max(1, number(pick(row, ["cpuCores", "cpu_cores"])) || 1);
-            const uptimeSeconds = number(pick(row, ["uptimeSeconds", "uptime_seconds", "uptime_sec"]));
-            const uptimeHours = number(pick(row, ["uptimeHours", "uptime_hours"]));
-            const uptime = uptimeSeconds !== null ? uptimeSeconds : uptimeHours !== null ? uptimeHours * 3600 : null;
-            const disk = number(pick(row, ["diskUsedPercent", "diskU01Percent", "u01_used_percent", "u01_used_percentage", "u01_percent", "disk_u01_used_percent", "u01_usage_percent"]));
-            // If the shell script supplies a health status, trust it. Thresholds belong
-            // to the collector script/config, not the UI. Missing or unrecognized status is UNKNOWN.
-            const configuredStatusField = typeof config.statusField === "string" && config.statusField.trim()
-                ? config.statusField.trim()
-                : config.fields && typeof config.fields.status === "string" && config.fields.status.trim()
-                    ? config.fields.status.trim()
-                    : "";
-            const statusKeys = configuredStatusField
-                ? [configuredStatusField]
-                : ["status", "healthStatus", "health_status"];
-            let rawStatus = null;
-            for (const statusKey of statusKeys)
+            const status = statusColumn ? normalizeStatus(valueOf(row, statusColumn.field)) : inferLegacyStatus(row);
+            let pressure = 0;
+            configuredColumns.forEach(function (column)
             {
-                if (row[statusKey] !== undefined && row[statusKey] !== null && String(row[statusKey]).trim() !== "")
-                {
-                    rawStatus = String(row[statusKey]).trim().toUpperCase();
-                    break;
-                }
-            }
-            const hasScriptStatus = Boolean(configuredStatusField) || rawStatus !== null;
-            const normalizeHealthStatus = function (value)
-            {
-                if (["HEALTHY", "HEALTH", "OK", "GREEN", "SUCCESS", "SUCCEEDED", "UP", "PASS"].includes(value)) return "HEALTHY";
-                if (["WARNING", "WARN", "YELLOW", "DEGRADED"].includes(value)) return "WARNING";
-                if (["CRITICAL", "ERROR", "FAILED", "FAILURE", "RED", "DOWN"].includes(value)) return "CRITICAL";
-                return "UNKNOWN";
-            };
-            let status = "UNKNOWN";
-            if (hasScriptStatus)
-            {
-                status = rawStatus === null ? "UNKNOWN" : normalizeHealthStatus(rawStatus);
-            }
-            // Backward compatibility: older payloads without a health status retain the
-            // previous inferred status behavior and completeness checks.
-            else if (collected(row) && cpu !== null && ram !== null && load1 !== null && uptime !== null && disk !== null)
-            {
-                const critical = cpu >= 85 || ram >= 90 || load1 / cores >= 1 || disk >= 95;
-                const warning = cpu >= 70 || ram >= 75 || load1 / cores >= 0.70 || disk >= 85 || uptime < 72 * 3600;
-                status = critical ? "CRITICAL" : warning ? "WARNING" : "HEALTHY";
-            }
-            return { row: row, cpu: cpu, ram: ram, load1: load1, uptime: uptime, disk: disk, status: status,
-                pressure: Math.max((cpu || 0) / 85, (ram || 0) / 90, (load1 || 0) / cores, (disk || 0) / 95) };
+                const format = String(column.format || "").toLowerCase();
+                const value = number(valueOf(row, column.field));
+                if (value !== null && (format === "meter" || format === "percentage")) pressure = Math.max(pressure, value / 100);
+            });
+            return { row: row, status: status, pressure: pressure };
         }).sort(function (a, b)
         {
             const rank = { CRITICAL: 0, WARNING: 1, UNKNOWN: 2, HEALTHY: 3 };
             return rank[a.status] - rank[b.status] || b.pressure - a.pressure;
         });
+
         const counts = { total: items.length, CRITICAL: 0, WARNING: 0, UNKNOWN: 0, HEALTHY: 0 };
         items.forEach(function (item) { counts[item.status]++; });
-        const filtered = state.status === "ALL" ? items : items.filter(function (item) { return item.status === state.status; });
-        const size = [6, 12, 24, 48].includes(Number(view.pageSize)) ? Number(view.pageSize) : 12;
+
+        const filtered = state.status === "ALL"
+            ? items
+            : items.filter(function (item) { return item.status === state.status; });
+
+        const pageSize = config.details && config.details.pagination && Number(config.details.pagination.pageSize);
+        const size = Number.isFinite(pageSize) && pageSize > 0 ? pageSize : 12;
         const pages = Math.max(1, Math.ceil(filtered.length / size));
         state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
         const pageItems = filtered.slice(state.page * size, (state.page + 1) * size);
+
         const summaries = [
             ["Total", counts.total, "total", "bi-hdd-rack"], ["Healthy", counts.HEALTHY, "healthy", "bi-check-circle"],
             ["Warning", counts.WARNING, "warning", "bi-exclamation-triangle"], ["Critical", counts.CRITICAL, "critical", "bi-x-octagon"],
             ["Unknown", counts.UNKNOWN, "unknown", "bi-question-circle"]
         ];
-        const summary = view.showSummaryCards === false ? "" : '<div class="server-health-summary">' + summaries.map(function (x)
+        const summary = legacyView.showSummaryCards === false ? "" : '<div class="server-health-summary">' + summaries.map(function (x)
         {
             const statusFilter = x[2] === "total" ? "ALL" : x[2].toUpperCase();
             return '<button type="button" class="server-health-summary-item server-health-summary-' + x[2] + ' server-health-summary-filter' +
@@ -1440,114 +1479,68 @@
                 '" aria-hidden="true"></i> ' + x[0] + '</span><strong class="server-health-' + x[2] +
                 '">' + x[1] + '</strong></button>';
         }).join("") + '</div>';
+
         const filters = '<div class="server-health-toolbar"><span class="small text-muted">Showing ' +
             (filtered.length ? state.page * size + 1 : 0) + "–" + Math.min((state.page + 1) * size, filtered.length) +
             " of " + filtered.length + ' servers</span></div>';
-        const metric = function (icon, name, value, meter)
+
+        const renderMappedFields = function (row)
         {
-            const display = value === null || value === undefined || value === "" ? "N/A" : escapeHtml(value) + (meter === null ? "" : "%");
-            const width = Math.max(0, Math.min(100, number(meter) || 0));
-            return '<div class="server-health-metric"><div><span><i class="bi ' + icon + '" aria-hidden="true"></i> ' + escapeHtml(name) + '</span><strong>' + display + '</strong></div>' +
-                (meter === null ? "" : '<div class="server-health-meter"><span style="width:' + width + '%"></span></div>') + '</div>';
-        };
-        const renderDynamicMetrics = function (row)
-        {
-            const rawMetrics = Array.isArray(row.metrics) ? row.metrics : Object.entries(row.metrics || {}).map(function (entry)
-            {
-                return entry[1] && typeof entry[1] === "object" ? Object.assign({ name: entry[0] }, entry[1]) : { name: entry[0], value: entry[1] };
+            const visible = configuredColumns.filter(function (column) {
+                return column.visible !== false
+                    && column.field !== (hostColumn && hostColumn.field)
+                    && column.field !== (statusColumn && statusColumn.field);
             });
-            const settings = Array.isArray(view.metrics) ? view.metrics : [];
-            const settingsByName = new Map(settings.filter(function (setting) { return setting && setting.name; })
-                .map(function (setting) { return [String(setting.name), setting]; }));
-            const indexed = rawMetrics.map(function (metric, index)
+
+            if (!visible.length) return "";
+
+            return visible.map(function (column)
             {
-                const name = metric && (metric.name !== undefined ? metric.name : metric.key);
-                return { metric: metric, index: index, name: name === null || name === undefined ? "" : String(name) };
-            }).filter(function (item) { return item.name && item.metric && typeof item.metric === "object"; });
-            indexed.sort(function (a, b)
-            {
-                const ai = settings.findIndex(function (setting) { return setting && String(setting.name) === a.name; });
-                const bi = settings.findIndex(function (setting) { return setting && String(setting.name) === b.name; });
-                if (ai >= 0 && bi >= 0) return ai - bi || a.index - b.index;
-                if (ai >= 0) return -1;
-                if (bi >= 0) return 1;
-                return a.index - b.index;
-            });
-            return indexed.map(function (entry)
-            {
-                const metricValue = entry.metric, setting = settingsByName.get(entry.name);
-                if (setting && setting.enabled === false) return "";
-                const label = setting && setting.label ? setting.label : entry.name;
-                const rawValue = metricValue.value;
-                const unit = metricValue.unit === null || metricValue.unit === undefined ? "" : String(metricValue.unit);
-                const type = String(metricValue.type || "").toLowerCase();
-                let format = String(setting && setting.format || "auto").toLowerCase();
-                if (format === "auto" || !format) {
-                    if (type === "percentage" || type === "percent" || unit === "%") format = "meter";
-                    else if (type === "duration") format = "duration";
-                    else if (type === "number" || type === "capacity" || typeof rawValue === "number") format = "number";
+                const metric = metricObject(row, column.field);
+                const value = metric ? metric.value : valueOf(row, column.field);
+                const unit = metric && metric.unit !== undefined ? metric.unit : "";
+                const rawFormat = String(column.format || "").toLowerCase();
+                let format = rawFormat;
+                if (!format || format === "auto")
+                {
+                    if (metric && (String(metric.type || "").toLowerCase() === "percentage" || metric.unit === "%")) format = "meter";
+                    else if (metric && String(metric.type || "").toLowerCase() === "duration") format = "duration";
+                    else if (typeof value === "number") format = "number";
                     else format = "text";
                 }
-                const rawStatus = String(metricValue.status || "").trim().toUpperCase();
-                const statusAliases = {
-                    HEALTHY: "HEALTHY", HEALTH: "HEALTHY", OK: "HEALTHY", GREEN: "HEALTHY", SUCCESS: "HEALTHY", UP: "HEALTHY",
-                    WARNING: "WARNING", WARN: "WARNING", YELLOW: "WARNING", DEGRADED: "WARNING",
-                    CRITICAL: "CRITICAL", ERROR: "CRITICAL", FAILED: "CRITICAL", FAILURE: "CRITICAL", RED: "CRITICAL", DOWN: "CRITICAL",
-                    UNKNOWN: "UNKNOWN"
-                };
-                const metricStatus = statusAliases[rawStatus] || "";
-                const statusClass = metricStatus ? " server-health-metric-status-" + metricStatus.toLowerCase() : "";
-                let displayValue = rawValue === null || rawValue === undefined || rawValue === "" ? "N/A" :
-                    (typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue));
-                let meterValue = null;
-                if (format === "duration" && rawValue !== null && rawValue !== undefined && Number.isFinite(Number(rawValue))) displayValue = uptimeText(Number(rawValue));
-                else if (format === "number" && rawValue !== null && rawValue !== undefined && Number.isFinite(Number(rawValue)))
-                    displayValue = Number(rawValue).toLocaleString(undefined, { maximumFractionDigits: 2 });
-                else if (format === "meter" && rawValue !== null && rawValue !== undefined && Number.isFinite(Number(rawValue)))
-                    meterValue = Math.max(0, Math.min(100, Number(rawValue)));
-                if (displayValue !== "N/A" && unit && !(format === "meter" && unit === "%") && !(format === "duration" && /^seconds?$/i.test(unit.trim())))
-                    displayValue += (unit.startsWith(" ") ? "" : " ") + unit;
-                else if (displayValue !== "N/A" && format === "meter" && unit === "%") displayValue += "%";
-                const statusBadge = metricStatus ? '<span class="server-health-status server-health-status-' + metricStatus.toLowerCase() + '">' + metricStatus + '</span>' : "";
-                return '<div class="server-health-metric' + statusClass + '"><div><span><i class="bi bi-activity" aria-hidden="true"></i> ' +
-                    escapeHtml(label) + '</span><strong>' + escapeHtml(displayValue) + '</strong>' + statusBadge + '</div>' +
-                    (meterValue === null ? "" : '<div class="server-health-meter server-health-metric-meter-' +
-                        (metricStatus ? metricStatus.toLowerCase() : "healthy") + '"><span style="width:' + meterValue + '%"></span></div>') + '</div>';
+
+                const status = metric ? normalizeStatus(metric.status) : "";
+                const statusBadge = metric && metric.status
+                    ? '<span class="server-health-status server-health-status-' + status.toLowerCase() + '">' + status + '</span>'
+                    : "";
+                const display = formatValue(value, format, unit);
+                const meter = (format === "meter" || format === "percentage") && Number.isFinite(Number(value))
+                    ? Math.max(0, Math.min(100, Number(value))) : null;
+
+                return '<div class="server-health-metric' + (status ? ' server-health-metric-status-' + status.toLowerCase() : '') + '"><div><span><i class="bi bi-activity" aria-hidden="true"></i> ' +
+                    escapeHtml(column.label || column.field) + '</span><strong>' + escapeHtml(display) + '</strong>' + statusBadge + '</div>' +
+                    (meter === null ? "" : '<div class="server-health-meter server-health-metric-meter-' + (status ? status.toLowerCase() : "healthy") + '"><span style="width:' + meter + '%"></span></div>') +
+                    '</div>';
             }).join("");
         };
 
         const cards = pageItems.map(function (item)
         {
-            const row = item.row, host = pick(row, ["hostname", "hostName", "server", "name"]) || "Unknown host";
+            const row = item.row;
+            const hostValue = hostColumn ? valueOf(row, hostColumn.field) : legacyPick(row, ["hostname", "hostName", "server", "name"]);
+            const host = hostValue === null || hostValue === undefined || hostValue === "" ? "Unknown host" : hostValue;
             const sev = item.status.toLowerCase();
-            const loads = [
-                number(pick(row, ["load1m", "loadAverage", "load_1m"])),
-                number(pick(row, ["load5m", "load_5m"])),
-                number(pick(row, ["load15m", "load_15m"]))
-            ].filter(function (v) { return v !== null; });
-            const loadText = loads.length ? loads.map(function (v) { return v.toFixed(2); }).join(" / ") : "N/A";
-            const uptime = item.uptime === null ? "N/A" : uptimeText(item.uptime);
-            const disk = item.disk === null ? "N/A" : item.disk + "%";
-            const ramUsed = pick(row, ["ramUsedMb", "ram_used_mb"]), ramTotal = pick(row, ["ramTotalMb", "ram_total_mb"]);
             const statusIcon = { CRITICAL: "bi-x-octagon-fill", WARNING: "bi-exclamation-triangle-fill", UNKNOWN: "bi-question-circle-fill", HEALTHY: "bi-check-circle-fill" }[item.status];
-            const hasDynamicMetrics = Array.isArray(row.metrics) || (row.metrics && typeof row.metrics === "object");
-            let extra = "";
-            if (hasDynamicMetrics) extra = renderDynamicMetrics(row);
-            else {
-                if (view.showLoad !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-activity" aria-hidden="true"></i> ' + escapeHtml(label("load1m", "Load (1m / 5m / 15m)")) + '</span><strong>' + escapeHtml(loadText) + '</strong></div>';
-                if (view.showUptime !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-clock-history" aria-hidden="true"></i> ' + escapeHtml(label("uptimeSeconds", "Uptime")) + '</span><strong>' + escapeHtml(uptime) + '</strong></div>';
-                if (view.showDisk !== false) extra += '<div class="server-health-detail"><span><i class="bi bi-device-hdd" aria-hidden="true"></i> ' + escapeHtml(label("diskUsedPercent", "/u01 Used")) + '</span><strong>' + escapeHtml(disk) + '</strong></div>';
-            }
-            const ramCapacity = !hasDynamicMetrics && view.showRamCapacity !== false && ramUsed !== null && ramTotal !== null
-                ? '<div class="server-health-foot">' + escapeHtml(ramUsed) + " / " + escapeHtml(ramTotal) + ' MB ' + escapeHtml(label("ramCapacity", "RAM")) + '</div>' : "";
+
             return '<article class="server-health-card server-health-card-' + sev + '"><header class="server-health-card-header"><div class="server-health-host"><i class="bi bi-hdd-network" aria-hidden="true"></i><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong></div><span class="server-health-status server-health-status-' + sev + '"><i class="bi ' + statusIcon + '" aria-hidden="true"></i> ' + item.status + '</span></header>' +
-                (hasDynamicMetrics ? "" : (view.showCpu === false ? "" : metric("bi-cpu", label("cpu", "CPU"), item.cpu, item.cpu))) +
-                (hasDynamicMetrics ? "" : (view.showRam === false ? "" : metric("bi-memory", label("ram", "RAM"), item.ram, item.ram))) + extra + ramCapacity + '</article>';
+                renderMappedFields(row) +
+                '</article>';
         }).join("");
+
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
+
         return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
     }
-
     // Backward-compatible renderer for existing TABLE widgets configured with renderer: SERVER_HEALTH.
     function renderServerHealthCards(result, widget, config)
     {
