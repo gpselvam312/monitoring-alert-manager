@@ -1567,10 +1567,10 @@
         const gridStyles = existingGrid ? window.getComputedStyle(existingGrid) : null;
         const gridGap = gridStyles ? (parseFloat(gridStyles.columnGap) || 12) : 12;
         const cardMinWidth = 275;
-        const columns = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
+        const columnCount = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
         const configuredPageSize = config.details && config.details.pagination && Number(config.details.pagination.pageSize);
-        const requestedSize = Number.isFinite(configuredPageSize) && configuredPageSize > 0 ? configuredPageSize : columns * 2;
-        const size = Math.max(columns, Math.floor(requestedSize / columns) * columns);
+        const requestedSize = Number.isFinite(configuredPageSize) && configuredPageSize > 0 ? configuredPageSize : columnCount * 2;
+        const size = Math.max(columnCount, Math.floor(requestedSize / columnCount) * columnCount);
         const pages = Math.max(1, Math.ceil(filtered.length / size));
         state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
