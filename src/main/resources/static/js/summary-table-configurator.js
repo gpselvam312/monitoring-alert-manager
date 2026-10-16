@@ -506,7 +506,8 @@
         if (!collection && !existing.size && !(state.fields || []).length) return;
         state.rows = collection ? collection.rows : [];
         const discoveredFields = collection
-            ? Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])))
+            ? (currentWidgetType() === "SYSTEM_METRICS" ? discoverSystemMetricFields(collection.rows)
+                : Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), []))))
             : [];
         // Keep saved mappings even when a field is absent from the current sample/latest job response.
         // Otherwise a partial or changing response silently drops display and aggregation settings.
@@ -522,7 +523,8 @@
                 field,
                 label: saved && saved.label ? saved.label : humanize(field),
                 visible: saved ? saved.visible !== false : true,
-                format: saved && saved.format ? String(saved.format).toLowerCase() : "",
+                format: saved && saved.format !== undefined ? String(saved.format).toLowerCase()
+                    : (systemMetricDefaultFormat(field, collection ? collection.rows : []) || ""),
                 aggregation: saved && saved.aggregation ? String(saved.aggregation).toLowerCase() : "none",
                 summaryCard: false,
                 sortable: saved ? saved.sortable !== false : true,
@@ -550,29 +552,33 @@
             item.summaryCard = selectedCardFields.has(item.field) && item.aggregation !== "none";
             item.groupSummary = groupedSummaryFields.has(item.field);
         });
-        const formats = [
-            ["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
-            ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]
-        ];
+        const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
+        const formats = systemMetrics
+            ? [["", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration"], ["status", "Status badge"]]
+            : [["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
+                ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
-        byId("summaryTableFieldEditor").innerHTML = fields.length ? 
+        byId("summaryTableFieldEditor").innerHTML = fields.length ?
             '<div class="table-responsive border rounded"><table class="table table-sm table-striped align-middle mb-0 summary-config-mapping-table">' +
-            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all columns"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-groupable-all" type="checkbox" aria-label="Allow grouping by all columns"><label class="form-check-label">Groupable</label></div></th></tr></thead><tbody>' +
+            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all fields"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th>' +
+            (systemMetrics ? '' : '<th>Aggregate</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-groupable-all" type="checkbox" aria-label="Allow grouping by all columns"><label class="form-check-label">Groupable</label></div></th>') +
+            '</tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
                 '<td><input class="form-check-input summary-config-visible" type="checkbox" aria-label="Show ' + escapeHtml(item.field) + '"' + (item.visible ? ' checked' : '') + '></td>' +
-                '<td><code>' + escapeHtml(item.field) + '</code></td>' +
+                '<td><code>' + escapeHtml(displaySourceField(item.field)) + '</code></td>' +
                 '<td><input class="form-control form-control-sm summary-config-label" type="text" maxlength="120" value="' + escapeHtml(item.label) + '" aria-label="Label for ' + escapeHtml(item.field) + '"></td>' +
                 '<td><select class="form-select form-select-sm summary-config-format" aria-label="Format for ' + escapeHtml(item.field) + '">' +
                 formats.map(option => '<option value="' + option[0] + '"' + (item.format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
-                '<td><select class="form-select form-select-sm summary-config-aggregation" aria-label="Aggregation for ' + escapeHtml(item.field) + '">' +
+                (systemMetrics ? '' : '<td><select class="form-select form-select-sm summary-config-aggregation" aria-label="Aggregation for ' + escapeHtml(item.field) + '">' +
                 aggregations.map(option => '<option value="' + option[0] + '"' + (item.aggregation === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
-                '</select></td>' +
-                '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>' +
+                '</select></td><td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>') +
                 '</tr>').join("") +
-            '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
+            '</tbody></table></div><div class="form-text">' + (systemMetrics
+                ? 'Configure machine identity, overall status, and each discovered metric in one mapping table. New metric names appear automatically when discovered.'
+                : 'Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.') + '</div>'
             : '<div class="text-muted small">No fields were found in this collection.</div>'; 
         syncColumnVisibilitySelectAll();
         syncGroupableSelectAll();
@@ -615,8 +621,64 @@
     }
 
     function rowValueForConfigurator(row, field) {
+        const source = String(field || "");
+        if (source.startsWith("metrics::")) {
+            const name = source.slice("metrics::".length);
+            const metrics = row && row.metrics;
+            if (Array.isArray(metrics)) {
+                const metric = metrics.find(item => item && String(item.name !== undefined ? item.name : item.key) === name);
+                return metric && typeof metric === "object" ? metric.value : undefined;
+            }
+            if (metrics && typeof metrics === "object") {
+                const metric = metrics[name];
+                return metric && typeof metric === "object" ? metric.value : metric;
+            }
+            return undefined;
+        }
         if (row && Object.prototype.hasOwnProperty.call(row, field)) return row[field];
-        return String(field || "").split(".").reduce((value, key) => value == null ? undefined : value[key], row);
+        return source.split(".").reduce((value, key) => value == null ? undefined : value[key], row);
+    }
+
+    function displaySourceField(field) {
+        return String(field || "").startsWith("metrics::")
+            ? "metrics[" + String(field).slice("metrics::".length) + "].value" : field;
+    }
+
+    function discoverSystemMetricFields(rows) {
+        const fields = [], metricNames = [];
+        (rows || []).forEach(row => {
+            if (!row || typeof row !== "object") return;
+            Object.keys(row).filter(key => key !== "metrics").forEach(key => {
+                if (!fields.includes(key)) fields.push(key);
+            });
+            const metrics = row.metrics;
+            if (Array.isArray(metrics)) metrics.forEach(metric => {
+                const name = metric && (metric.name !== undefined ? metric.name : metric.key);
+                if (name !== null && name !== undefined && String(name).trim() && !metricNames.includes(String(name).trim())) metricNames.push(String(name).trim());
+            });
+            else if (metrics && typeof metrics === "object") Object.keys(metrics).forEach(name => {
+                if (!metricNames.includes(name)) metricNames.push(name);
+            });
+        });
+        return fields.concat(metricNames.map(name => "metrics::" + name));
+    }
+
+    function systemMetricDefaultFormat(field, rows) {
+        if (!String(field || "").startsWith("metrics::")) return field === "status" ? "status" : "";
+        const name = String(field).slice("metrics::".length);
+        for (const row of rows || []) {
+            const metrics = row && row.metrics;
+            let metric;
+            if (Array.isArray(metrics)) metric = metrics.find(item => item && String(item.name !== undefined ? item.name : item.key) === name);
+            else if (metrics && typeof metrics === "object") metric = metrics[name];
+            if (metric && typeof metric === "object") {
+                const type = String(metric.type || "").toLowerCase();
+                if (["percentage", "percent"].includes(type) || metric.unit === "%") return "meter";
+                if (type === "duration") return "duration";
+                if (["number", "capacity"].includes(type) || typeof metric.value === "number") return "number";
+            } else if (typeof metric === "number") return "number";
+        }
+        return "";
     }
 
     function buildConfig() {
@@ -896,7 +958,10 @@
             const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
         });
         const mappingHeading = Array.from(mapping.querySelectorAll("h6")).find(element => element.textContent.trim() === "Machine field mapping");
-        if (mappingHeading) mappingHeading.textContent = "Legacy flat-field mapping";
+        if (mappingHeading) {
+            mappingHeading.textContent = "Legacy flat-field mapping";
+            if (mappingHeading.closest(".col-12")) mappingHeading.closest(".col-12").hidden = dynamicMetricsPresent;
+        }
         const metricStatusGroup = byId("widgetMetricStatusField") && byId("widgetMetricStatusField").closest(".col-md-6");
         if (metricStatusGroup) metricStatusGroup.hidden = dynamicMetricsPresent;
         const dynamicEditorGroup = byId("systemMetricDetailsEditor") && byId("systemMetricDetailsEditor").closest(".col-12");
@@ -1078,6 +1143,7 @@
         const type = currentWidgetType();
         const isSummary = type === "SUMMARY_TABLE";
         const isTable = type === "TABLE" || isSummary;
+        const isFieldMapping = isTable || type === "SYSTEM_METRICS";
         const rowPathTypes = ["TABLE", "SUMMARY_TABLE", "CHART", "SYSTEM_METRICS"];
         byId("summaryTableConfigurator").hidden = !type;
         byId("dashboardWidgetAdvancedConfig").open = false;
@@ -1087,10 +1153,10 @@
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
         byId("summaryTableExportCsvOption").hidden = !isSummary;
-        byId("summaryTableFieldEditorGroup").hidden = !isTable;
+        byId("summaryTableFieldEditorGroup").hidden = !isFieldMapping;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
         byId("widgetMappingHeading").textContent = type === "SUMMARY_TABLE" ? "Summary Table data and columns" : "Widget data and mapping";
-        byId("widgetFieldMappingHeading").textContent = isSummary ? "Column mapping" : "Field mapping";
+        byId("widgetFieldMappingHeading").textContent = isSummary ? "Column mapping" : type === "SYSTEM_METRICS" ? "Machine and metric field mapping" : "Field mapping";
         const config = getConfig();
         const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
         byId("summaryTableResponseFormat").value = ["AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX"].includes(String(parser.type || "AUTO").toUpperCase())
