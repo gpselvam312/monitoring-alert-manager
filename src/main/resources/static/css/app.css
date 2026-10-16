@@ -3743,7 +3743,7 @@ textarea.form-control {
 .server-health-group-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; margin-top: 4px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--surface-secondary, var(--card-bg)); color: var(--text-primary); }
 .server-health-group-heading strong { font-size: 13px; overflow-wrap: anywhere; }
 .server-health-group-heading span { flex: 0 0 auto; min-width: 26px; padding: 2px 7px; border-radius: 999px; background: var(--border-color); color: var(--text-primary); text-align: center; font-size: 11px; font-weight: 700; }
-.server-health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 275px), 1fr)); gap: 12px; }
+.server-health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 275px), 320px)); gap: 12px; }
 .server-health-card { min-width: 0; border: 1px solid var(--border-color); border-left: 4px solid var(--success); border-radius: 9px; padding: 14px; background: var(--card-bg); }
 .server-health-card-warning { border-left-color: var(--warning); }
 .server-health-card-critical { border-left-color: var(--danger); }
