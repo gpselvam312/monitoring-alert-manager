@@ -1539,7 +1539,36 @@
 
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
 
-        return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
+
+        const summaryConfig = config.summary && typeof config.summary === "object" ? config.summary : {};
+        const configuredSummaryCards = Array.isArray(summaryConfig.cards) ? summaryConfig.cards : [];
+        const customSummary = configuredSummaryCards.filter(function (card) {
+            return card && (card.field || String(card.operation || "").toUpperCase() === "COUNT_ROWS");
+        }).map(function (card) {
+            const field = String(card.field || "");
+            const operation = String(card.operation || "COUNT_ROWS").toUpperCase();
+            const values = field ? rows.map(function (row) { return valueOf(row, field); })
+                .filter(function (value) { return value !== null && value !== undefined && value !== ""; }) : [];
+            const numeric = values.map(number).filter(function (value) { return value !== null; });
+            let value = 0;
+            if (operation === "COUNT_ROWS") value = rows.length;
+            else if (operation === "COUNT_NON_EMPTY") value = values.length;
+            else if (operation === "COUNT_TRUE") value = values.filter(function (item) { return item === true || /^(true|yes|1|healthy|up|active|enabled|ok)$/i.test(String(item)); }).length;
+            else if (operation === "COUNT_FALSE") value = values.filter(function (item) { return item === false || /^(false|no|0|unhealthy|down|inactive|disabled|error)$/i.test(String(item)); }).length;
+            else if (operation === "SUM") value = numeric.reduce(function (sum, item) { return sum + item; }, 0);
+            else if (operation === "AVG") value = numeric.length ? numeric.reduce(function (sum, item) { return sum + item; }, 0) / numeric.length : "N/A";
+            else if (operation === "MAX") value = numeric.length ? Math.max.apply(null, numeric) : "N/A";
+            else if (operation === "MIN") value = numeric.length ? Math.min.apply(null, numeric) : "N/A";
+            else if (operation === "VALUE") value = values.length ? values[0] : "N/A";
+            value = formatValue(value, String(card.format || "").toLowerCase(), "");
+            const icon = card.icon && typeof card.icon === "object" && card.icon.enabled === true && card.icon.name
+                ? '<i class="bi bi-' + escapeHtml(String(card.icon.name).replace(/^bi-/, "")) + '" aria-hidden="true"></i> ' : "";
+            return '<div class="server-health-summary-item server-health-summary-custom"><span>' + icon + escapeHtml(card.label || (field ? field : "Total Rows")) +
+                '</span><strong>' + escapeHtml(value) + '</strong></div>';
+        }).join("");
+        const customSummaryMarkup = customSummary ? '<div class="server-health-summary server-health-summary-configured">' + customSummary + '</div>' : "";
+
+        return summary + customSummaryMarkup + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
     }
     // Backward-compatible renderer for existing TABLE widgets configured with renderer: SERVER_HEALTH.
     function renderServerHealthCards(result, widget, config)
