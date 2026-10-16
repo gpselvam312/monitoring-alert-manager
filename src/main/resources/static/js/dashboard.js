@@ -1576,31 +1576,13 @@
                 '">' + x[1] + '</strong></button>';
         }).join("") + '</div>';
 
-        const groupOptions = [['', 'None'], ['__health', 'Health Status']].concat(Array.from(availableFields.entries()).map(function (entry) {
-            return [entry[0], entry[1]];
-        }));
-        const sortOptions = [['__health', 'Health Status'], ['__hostname', 'Hostname']].concat(Array.from(availableFields.entries()).map(function (entry) {
-            return [entry[0], entry[1]];
-        }));
-        const optionMarkup = function (options, selected) {
-            const seen = new Set();
-            return options.filter(function (option) {
-                if (seen.has(option[0])) return false;
-                seen.add(option[0]); return true;
-            }).map(function (option) {
-                return '<option value="' + escapeHtml(option[0]) + '"' + (String(selected) === String(option[0]) ? ' selected' : '') + '>' +
-                    escapeHtml(option[1]) + '</option>';
-            }).join("");
-        };
-        const filters = '<div class="server-health-toolbar"><label class="server-health-control-label">Group by ' +
-            '<select class="form-select form-select-sm server-health-group-by" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Group machines by">' +
-            optionMarkup(groupOptions, state.groupBy) + '</select></label><label class="server-health-control-label">Sort by ' +
-            '<select class="form-select form-select-sm server-health-sort-by" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Sort machines by">' +
-            optionMarkup(sortOptions, state.sortBy) + '</select></label><label class="server-health-control-label">Order ' +
-            '<select class="form-select form-select-sm server-health-sort-direction" data-widget-id="' + escapeHtml(widget.id) + '" aria-label="Sort direction">' +
-            '<option value="asc"' + (state.sortDirection !== "desc" ? ' selected' : '') + '>Ascending</option>' +
-            '<option value="desc"' + (state.sortDirection === "desc" ? ' selected' : '') + '>Descending</option></select></label>' +
-            '<span class="small text-muted">Showing ' + (filtered.length ? state.page * size + 1 : 0) + "–" +
+        // Machine cards use a consistent health-first order. Grouping and sorting controls
+        // are reserved for a future table view to keep the card dashboard uncluttered.
+        state.groupBy = "";
+        state.sortBy = "__health";
+        state.sortDirection = "asc";
+        const filters = '<div class="server-health-toolbar"><span class="small text-muted">Showing ' +
+            (filtered.length ? state.page * size + 1 : 0) + "–" +
             Math.min((state.page + 1) * size, filtered.length) + " of " + filtered.length + ' machines</span></div>';
 
         const renderMappedFields = function (row)
@@ -1672,41 +1654,7 @@
                 cardBody +
                 '</article>';
         };
-        let cards = pageItems.map(renderCard).join("");
-        if (state.groupBy) {
-            const grouped = new Map();
-            pageItems.forEach(function (item) {
-                const raw = fieldValue(item, state.groupBy);
-                const label = raw === null || raw === undefined || String(raw).trim() === "" ? "Unknown / Not Assigned" :
-                    (typeof raw === "object" ? JSON.stringify(raw) : String(raw));
-                if (!grouped.has(label)) grouped.set(label, []);
-                grouped.get(label).push(item);
-            });
-            const groupEntries = Array.from(grouped.entries());
-            if (state.groupBy === "__health") {
-                groupEntries.sort(function (a, b) {
-                    const rank = { CRITICAL: 0, WARNING: 1, UNKNOWN: 2, HEALTHY: 3 };
-                    return (rank[a[0]] === undefined ? 4 : rank[a[0]]) - (rank[b[0]] === undefined ? 4 : rank[b[0]]);
-                });
-            } else {
-                groupEntries.sort(function (a, b) {
-                    const aMissing = a[0] === "Unknown / Not Assigned", bMissing = b[0] === "Unknown / Not Assigned";
-                    if (aMissing !== bMissing) return aMissing ? 1 : -1;
-                    return a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: "base" });
-                });
-            }
-            cards = groupEntries.map(function (entry) {
-                const label = entry[0];
-                const groupCount = filtered.filter(function (item) {
-                    const raw = fieldValue(item, state.groupBy);
-                    const value = raw === null || raw === undefined || String(raw).trim() === "" ? "Unknown / Not Assigned" :
-                        (typeof raw === "object" ? JSON.stringify(raw) : String(raw));
-                    return value === label;
-                }).length;
-                return '<div class="server-health-group-heading"><strong>' + escapeHtml(fieldLabel(state.groupBy) + ': ' + label) +
-                    '</strong><span>' + groupCount + '</span></div>' + entry[1].map(renderCard).join("");
-            }).join("");
-        }
+        const cards = pageItems.map(renderCard).join("");
 
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
 
@@ -3987,21 +3935,6 @@
     environmentFilter.addEventListener("change", function () { loadDashboard(); });
     contentElement.addEventListener("change", function (event)
     {
-        const control = event.target.closest(".server-health-group-by, .server-health-sort-by, .server-health-sort-direction");
-        if (control)
-        {
-            const widgetId = String(control.dataset.widgetId || "");
-            if (!widgetId) return;
-            const state = Object.assign({ status: "ALL", page: 0, groupBy: "", sortBy: "__health", sortDirection: "asc" }, serverHealthState.get(widgetId) || {});
-            if (control.classList.contains("server-health-group-by")) state.groupBy = control.value;
-            else if (control.classList.contains("server-health-sort-by")) state.sortBy = control.value;
-            else state.sortDirection = control.value === "desc" ? "desc" : "asc";
-            state.page = 0;
-            serverHealthState.set(widgetId, state);
-            // Sorting and grouping only rearrange the response already held by the dashboard.
-            renderTabs(activeTabId);
-            return;
-        }
         if (!event.target.classList.contains("server-health-filter")) return;
         const widgetId = String(event.target.dataset.widgetId || "");
         const state = Object.assign({ status: "ALL", page: 0, groupBy: "", sortBy: "__health", sortDirection: "asc" }, serverHealthState.get(widgetId) || {});
