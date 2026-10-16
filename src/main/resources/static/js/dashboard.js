@@ -1553,21 +1553,33 @@
             ? sortedItems
             : sortedItems.filter(function (item) { return item.status === state.status; });
 
-        // Keep each page to exactly two complete machine-card rows. Use the rendered
-        // grid width when available so browser zoom and responsive layout are respected.
+        // Keep each page to two complete rows. Prefer measuring the actual rendered
+        // grid: viewport estimates can disagree with CSS grid sizing (especially at zoom).
         const existingGrid = document.querySelector(".server-health-grid");
-        const content = existingGrid || document.querySelector(".app-content");
-        let gridWidth = existingGrid ? existingGrid.clientWidth : (content ? content.clientWidth : window.innerWidth);
-        if (!existingGrid && content) {
-            const styles = window.getComputedStyle(content);
-            gridWidth -= (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
-            const sidebar = document.querySelector(".app-sidebar");
-            if (sidebar && window.innerWidth > 991) gridWidth -= sidebar.getBoundingClientRect().width;
-        }
-        const gridStyles = existingGrid ? window.getComputedStyle(existingGrid) : null;
-        const gridGap = gridStyles ? (parseFloat(gridStyles.columnGap) || 12) : 12;
+        const gridGap = existingGrid ? (parseFloat(window.getComputedStyle(existingGrid).columnGap) || 12) : 12;
         const cardMinWidth = 275;
-        const columnCount = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
+        let columnCount = 0;
+        if (existingGrid) {
+            const renderedCards = Array.from(existingGrid.querySelectorAll(".server-health-card"));
+            if (renderedCards.length) {
+                const firstRowTop = renderedCards[0].getBoundingClientRect().top;
+                columnCount = renderedCards.filter(function (card) {
+                    return Math.abs(card.getBoundingClientRect().top - firstRowTop) < 2;
+                }).length;
+            }
+        }
+        if (!columnCount) {
+            // app-content is already inside the main content area, so do not subtract
+            // the sidebar a second time. Use a conservative card width for first render.
+            const content = document.querySelector(".app-content");
+            let gridWidth = content ? content.clientWidth : window.innerWidth;
+            if (content) {
+                const styles = window.getComputedStyle(content);
+                gridWidth -= (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+            }
+            const estimatedCardWidth = 320;
+            columnCount = Math.max(1, Math.floor((Math.max(estimatedCardWidth, gridWidth) + gridGap) / (estimatedCardWidth + gridGap)));
+        }
         const configuredPageSize = config.details && config.details.pagination && Number(config.details.pagination.pageSize);
         const requestedSize = Number.isFinite(configuredPageSize) && configuredPageSize > 0 ? configuredPageSize : columnCount * 2;
         const size = Math.max(columnCount, Math.floor(requestedSize / columnCount) * columnCount);
