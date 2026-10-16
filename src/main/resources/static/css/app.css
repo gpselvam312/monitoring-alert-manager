@@ -4819,3 +4819,34 @@ textarea.form-control {
 .server-health-metric-meter-warning > span { background: var(--warning) !important; }
 .server-health-metric-meter-critical > span { background: var(--danger) !important; }
 .server-health-metric-meter-unknown > span { background: var(--text-secondary) !important; }
+
+
+/* System Metrics machine cards: compact two-column metric layout (two rows of metrics per pair). */
+.server-health-card {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    column-gap: 1rem;
+}
+.server-health-card > header,
+.server-health-card > .server-health-collection-message {
+    grid-column: 1 / -1;
+}
+.server-health-card > .server-health-metric {
+    min-width: 0;
+    margin: .45rem 0;
+}
+.server-health-card .server-health-metric > div:first-child {
+    align-items: baseline;
+    flex-wrap: wrap;
+    row-gap: .2rem;
+}
+@media (max-width: 359.98px) {
+    .server-health-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .server-health-card > header,
+    .server-health-card > .server-health-collection-message {
+        grid-column: 1;
+    }
+}
