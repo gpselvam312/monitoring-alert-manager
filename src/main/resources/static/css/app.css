@@ -4210,7 +4210,7 @@ textarea.form-control {
 .server-health-metric > div:first-child span { display: inline-flex; align-items: center; gap: .35rem; }
 .server-health-metric > div:first-child span i { color: var(--server-health-accent); }
 .server-health-metric > div:first-child strong { color: var(--text-primary); font-size: .95rem; font-weight: 750; font-variant-numeric: tabular-nums; }
-.server-health-meter { height: .42rem; margin-top: .5rem; background: color-mix(in srgb, var(--border-color) 75%, transparent); border-radius: 999px; }
+.server-health-meter { height: .22rem; margin-top: .5rem; background: color-mix(in srgb, var(--border-color) 75%, transparent); border-radius: 999px; }
 .server-health-meter > span { background: var(--server-health-accent); }
 .server-health-detail { padding-top: .7rem; }
 .server-health-detail > span i { color: var(--server-health-accent); }
