@@ -1,10 +1,49 @@
 # System Metrics Widget JSON Contract
 
-The System Metrics widget keeps its existing machine-card layout, summary counts, client-side status filters, severity ordering, and pagination. The collector script owns threshold evaluation; the browser renders the status supplied in the response.
+The System Metrics widget preserves its existing machine cards, health summary cards (Total, Healthy, Warning, Critical, Unknown), client-side status filters, severity ordering, and pagination. The collector script owns threshold evaluation. The widget renders the overall machine status and any per-metric status supplied by the script.
 
-## Successful response
+## Preferred successful response: dynamic metrics
 
-Return a JSON object with a `machines` array. Use these field names where possible:
+Return a JSON object with a `machines` array. Each machine has an overall `status` and a `metrics` array. Metric names are data, not application-defined fields, so any filesystem mount or newly added metric can be included without changing the application.
+
+```json
+{
+  "machines": [
+    {
+      "hostname": "app-server-01",
+      "status": "WARNING",
+      "metrics": [
+        { "name": "CPU Usage", "value": 88.5, "unit": "%", "type": "percentage", "status": "CRITICAL" },
+        { "name": "RAM Usage", "value": 82.0, "unit": "%", "type": "percentage", "status": "WARNING" },
+        { "name": "Load Average", "value": "2.40 / 1.80 / 1.20", "unit": "", "type": "text" },
+        { "name": "Uptime", "value": 432000, "unit": "seconds", "type": "duration" },
+        { "name": "Memory Capacity", "value": "6550 / 8192 MB used / total", "unit": "", "type": "text" },
+        { "name": "/u01", "value": 88.0, "unit": "%", "type": "percentage", "status": "WARNING" },
+        { "name": "/u02", "value": 45.0, "unit": "%", "type": "percentage", "status": "HEALTHY" }
+      ]
+    }
+  ]
+}
+```
+
+Required machine fields are `hostname`, `status`, and `metrics`. Each metric should include `name` and `value`; `unit`, `type`, and `status` are optional. Recommended types are `percentage`, `number`, `capacity`, `duration`, and `text`. Metric status values may be `HEALTHY`, `WARNING`, `CRITICAL`, or `UNKNOWN`; common aliases are normalized. Overall status is used for summary counts, filtering, and severity ordering. Metric status colors the individual meter/value. Do not duplicate threshold calculations in the dashboard.
+
+### Representation defaults
+
+- `percentage`: health meter.
+- `number` or numeric `capacity`: numeric value.
+- `duration`: duration display; value is seconds.
+- `text`: text display.
+
+Dashboard Configuration discovers metric names across the selected sample rows. For each discovered metric, you can enable/disable it, change its display label, choose Automatic / Health meter / Numeric value / Text / Duration, and set its order. New metric names remain displayable automatically. Saved settings are retained if a metric is temporarily absent from a sample. Health summary cards are configured separately.
+
+## Linux shell collection
+
+The example collector at `scripts/system-metrics-example.sh` demonstrates generating this JSON with standard Linux sources: `/proc/stat` for CPU, `/proc/meminfo` for memory, `/proc/loadavg` for load, `/proc/uptime` for uptime, `df -P -l` for mounted local filesystems, and `hostname` for the host name. It uses `jq` to emit valid JSON and exposes threshold values as environment variables. Metric names and filesystem mounts are discovered at runtime; the script does not hardcode `/u01` or any other mount point.
+
+## Backward-compatible flat-field response
+
+Existing scripts that return flat fields continue to use the legacy renderer and mappings. For example:
 
 ```json
 {
@@ -18,24 +57,12 @@ Return a JSON object with a `machines` array. Use these field names where possib
       "uptimeHours": 120,
       "diskU01Percent": 88.0,
       "status": "CRITICAL"
-    },
-    {
-      "hostname": "app-server-02",
-      "cpuPercent": 32.0,
-      "memoryPercent": 48.0,
-      "loadAverage": 0.8,
-      "cpuCores": 8,
-      "uptimeHours": 360,
-      "diskU01Percent": 45.0,
-      "status": "HEALTHY"
     }
   ]
 }
 ```
 
-Accepted status values are `HEALTHY`, `WARNING`, `CRITICAL`, and `UNKNOWN`. Common aliases such as `OK`, `GREEN`, `WARN`, `YELLOW`, `FAILED`, and `RED` are normalized by the renderer. Missing or unrecognized status values display as `UNKNOWN` when the response uses a status field.
-
-The shell script or its configuration should calculate thresholds and set each machine's `status`. Do not duplicate threshold rules in the widget configuration. If required measurements cannot be collected, report `UNKNOWN` rather than `HEALTHY`.
+Legacy responses without a status field retain the existing fallback inference for backward compatibility. If a response supplies a status field but its value is missing or unrecognized, the renderer displays Unknown rather than silently marking the machine healthy.
 
 ## Collection-level failure
 
@@ -44,35 +71,10 @@ Do not return an empty `machines` array as if collection succeeded. Return an ex
 ```json
 {
   "success": false,
-  "error": "Unable to connect to app-server-01"
+  "error": "Unable to collect system metrics"
 }
 ```
 
 The widget displays a collection-failed message for this response. A successful response with no machine rows displays a separate no-data/unknown message.
 
-## Field mapping and view customization
-
-In Dashboard Configuration, choose **System Metrics**, paste a sample response (or load the latest job output), then select **Discover fields / preview**. The System Metrics mapping panel lets you map the hostname, CPU, memory, load averages, CPU cores, uptime, disk, and optional memory-capacity fields to the response. The health status field can be selected separately. These controls save to the widget's field configuration; Advanced JSON remains available for unusual schemas.
-
-The same panel lets you show or hide the summary cards and individual metric rows, customize metric labels, and choose 6, 12, 24, or 48 machines per page. The defaults preserve the existing card layout and all current metrics. The shell script still owns threshold evaluation; the widget does not recalculate thresholds.
-
-For an unusual schema, the equivalent Advanced JSON configuration looks like this:
-
-```json
-{
-  "rowPath": "machines",
-  "statusField": "health",
-  "fields": {
-    "hostname": "host",
-    "cpu": "cpuUsage",
-    "ram": "memoryUsage",
-    "load1m": "load",
-    "cpuCores": "cores",
-    "uptimeHours": "uptime",
-    "diskUsedPercent": "diskUsage",
-    "status": "health"
-  }
-}
-```
-
-Existing responses without a status field retain the legacy status inference for backward compatibility. Existing System Metrics styling and the client-side filter/sort/pagination behavior are unchanged. Filtering and paging do not trigger backend requests; refresh behavior remains controlled by the dashboard's existing manual/auto-refresh settings.
+Filtering and paging are client-side and do not trigger backend requests. Refresh behavior remains controlled by the dashboard's existing manual/auto-refresh settings.
