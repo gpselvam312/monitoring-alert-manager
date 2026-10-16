@@ -1505,7 +1505,7 @@
                     displayValue = Number(rawValue).toLocaleString(undefined, { maximumFractionDigits: 2 });
                 else if (format === "meter" && rawValue !== null && rawValue !== undefined && Number.isFinite(Number(rawValue)))
                     meterValue = Math.max(0, Math.min(100, Number(rawValue)));
-                if (displayValue !== "N/A" && unit && !(format === "meter" && unit === "%"))
+                if (displayValue !== "N/A" && unit && !(format === "meter" && unit === "%") && !(format === "duration" && /^seconds?$/i.test(unit.trim())))
                     displayValue += (unit.startsWith(" ") ? "" : " ") + unit;
                 else if (displayValue !== "N/A" && format === "meter" && unit === "%") displayValue += "%";
                 const statusBadge = metricStatus ? '<span class="server-health-status server-health-status-' + metricStatus.toLowerCase() + '">' + metricStatus + '</span>' : "";

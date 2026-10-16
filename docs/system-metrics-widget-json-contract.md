@@ -11,7 +11,7 @@ Return a JSON object with a `machines` array. Each machine has an overall `statu
   "machines": [
     {
       "hostname": "app-server-01",
-      "status": "WARNING",
+      "status": "CRITICAL",
       "metrics": [
         { "name": "CPU Usage", "value": 88.5, "unit": "%", "type": "percentage", "status": "CRITICAL" },
         { "name": "RAM Usage", "value": 82.0, "unit": "%", "type": "percentage", "status": "WARNING" },

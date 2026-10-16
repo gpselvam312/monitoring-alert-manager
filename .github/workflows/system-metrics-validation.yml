@@ -1,0 +1,32 @@
+name: System Metrics validation
+
+on:
+  push:
+    branches:
+      - feature/system-metrics-widget
+  pull_request:
+    branches:
+      - feature/monitoring-execution-scheduling
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/main/resources/static/js/dashboard.js
+          node --check src/main/resources/static/js/summary-table-configurator.js
+      - name: Check shell syntax
+        run: bash -n scripts/system-metrics-example.sh
+      - name: Validate generated JSON contract
+        run: |
+          bash scripts/system-metrics-example.sh > /tmp/system-metrics.json
+          jq -e '.machines | length == 1' /tmp/system-metrics.json
+          jq -e '.machines[0] | (.hostname | length > 0) and (.status == "HEALTHY" or .status == "WARNING" or .status == "CRITICAL" or .status == "UNKNOWN") and (.metrics | length >= 4)' /tmp/system-metrics.json
+          jq -e '.machines[0].metrics | all(.[]; has("name") and has("value") and has("unit") and has("type"))' /tmp/system-metrics.json
