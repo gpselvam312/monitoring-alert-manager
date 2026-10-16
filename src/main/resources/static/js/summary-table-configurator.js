@@ -559,7 +559,7 @@
         });
         const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
         const formats = systemMetrics
-            ? [["", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration"]]
+            ? [["", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration"], ["status", "Status"]]
             : [["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
                 ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
@@ -1175,7 +1175,7 @@
         byId("summaryTableFieldEditorGroup").hidden = !isFieldMapping;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
         byId("widgetMappingHeading").textContent = type === "SUMMARY_TABLE" ? "Summary Table data and columns" : "Widget data and mapping";
-        byId("widgetFieldMappingHeading").textContent = isSummary ? "Column mapping" : type === "SYSTEM_METRICS" ? "Machine and metric field mapping" : "Field mapping";
+        byId("widgetFieldMappingHeading").textContent = isSummary ? "Column mapping" : type === "SYSTEM_METRICS" ? "Machine and metric mapping" : "Field mapping";
         const config = getConfig();
         const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
         byId("summaryTableResponseFormat").value = ["AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX"].includes(String(parser.type || "AUTO").toUpperCase())
