@@ -446,10 +446,17 @@
             const parserType = String((config.responseParser || {}).type || "AUTO").toUpperCase();
             const preferRoot = ["STAT", "STATUS", "TEXT", "ELASTICSEARCH"].includes(currentWidgetType())
                 && !["DELIMITED", "KEY_VALUE", "REGEX", "PLAIN_TEXT"].includes(parserType);
-            const preferredPath = rowPath && collections.some(item => item.path === rowPath)
-                ? rowPath
-                : (preferRoot && collections.some(item => item.path === "") ? "" :
-                    (collections.find(item => item.path !== "") || collections[0]).path);
+            const systemMetricsCollection = currentWidgetType() === "SYSTEM_METRICS"
+                ? collections.find(item => /(^|\\.)machines$/.test(item.path))
+                : null;
+            // A blank saved rowPath used to select the synthetic root-object row, which
+            // exposed wrapper fields such as "machines" instead of one row per machine.
+            const preferredPath = systemMetricsCollection
+                ? systemMetricsCollection.path
+                : (rowPath && collections.some(item => item.path === rowPath)
+                    ? rowPath
+                    : (preferRoot && collections.some(item => item.path === "") ? "" :
+                        (collections.find(item => item.path !== "") || collections[0]).path));
             select.value = preferredPath;
 
             const details = config.details && typeof config.details === "object" ? config.details : {};
