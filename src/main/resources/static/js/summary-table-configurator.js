@@ -525,11 +525,13 @@
         const isSystemMetrics = currentWidgetType() === "SYSTEM_METRICS";
         const allFields = isSystemMetrics
             ? [
-                // Keep saved dynamic metric mappings (mounts/metrics can be temporarily absent),
-                // but discard stale flat fields and wrapper keys from an earlier row-path selection.
+                // Keep the user's saved mapping order for every field that still exists,
+                // preserve dynamic metrics that are temporarily absent, then append new fields
+                // in the order they are discovered. This keeps the preview/runtime aligned
+                // with the mapping table instead of resetting columns on every discovery.
                 ...Array.from(existing.keys()).filter(field =>
-                    String(field).startsWith("metrics::") && !discoveredFields.includes(field)),
-                ...discoveredFields
+                    discoveredFields.includes(field) || String(field).startsWith("metrics::")),
+                ...discoveredFields.filter(field => !existing.has(field))
             ]
             : [
                 ...Array.from(existing.keys()),
@@ -674,7 +676,8 @@
             });
             const metrics = row.metrics;
             if (Array.isArray(metrics)) metrics.forEach(metric => {
-                const name = metric && (metric.name !== undefined ? metric.name : metric.key);
+                const name = metric && (metric.name !== undefined && String(metric.name).trim()
+                    ? metric.name : (metric.key !== undefined && String(metric.key).trim() ? metric.key : metric.label));
                 if (name !== null && name !== undefined && String(name).trim() && !metricNames.includes(String(name).trim())) metricNames.push(String(name).trim());
             });
             else if (metrics && typeof metrics === "object") Object.keys(metrics).forEach(name => {
