@@ -1239,6 +1239,18 @@
         if (!type || !sample || !discoverButton) return;
 
         discoverButton.addEventListener("click", discover);
+        // Restore the editor preview from the latest saved job output when reopening
+        // a System Metrics widget. The sample JSON itself is not persisted.
+        const widgetModal = byId("dashboardWidgetModal");
+        if (widgetModal) {
+            widgetModal.addEventListener("shown.bs.modal", function () {
+                if (currentWidgetType() !== "SYSTEM_METRICS") return;
+                if (sample.value.trim()) return;
+                if (!byId("dashboardWidgetJobSourceId").value) return;
+                byId("summaryTableLoadLatest").click();
+            });
+        }
+
         byId("summaryTableLoadLatest").addEventListener("click", async function () {
             const jobId = byId("dashboardWidgetJobSourceId").value;
             const message = byId("summaryTableDiscoveryMessage");
