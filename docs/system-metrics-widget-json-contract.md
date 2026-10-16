@@ -35,7 +35,7 @@ Required machine fields are `hostname`, `status`, and `metrics`. Each metric sho
 - `duration`: duration display; value is seconds.
 - `text`: text display.
 
-Dashboard Configuration discovers metric names across the selected sample rows. For each discovered metric, you can enable/disable it, change its display label, choose Automatic / Health meter / Numeric value / Text / Duration, and set its order. New metric names remain displayable automatically. Saved settings are retained if a metric is temporarily absent from a sample. Health summary cards are configured separately.
+Dashboard Configuration uses the same shared field-mapping table as the Summary Table widget. The table discovers machine fields such as `hostname` and `status`, plus each metric value in `metrics`. For each field you can enable/disable it, change its display label, choose a representation, and set its order. Percentage metrics default to a health meter, numeric metrics to a number, duration metrics to a duration, and other values to text. Metric `unit` and `status` remain attached to the metric and are used automatically for display. New metric names appear when discovered; saved settings are retained when a metric is temporarily absent from the sample. Health summary cards and machine pagination remain separate controls. The specialized metric editor is not used.
 
 ## Linux shell collection
 
