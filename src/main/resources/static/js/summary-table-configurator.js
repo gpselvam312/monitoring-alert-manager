@@ -972,8 +972,6 @@
         }
         const metricStatusGroup = byId("widgetMetricStatusField") && byId("widgetMetricStatusField").closest(".col-md-6");
         if (metricStatusGroup) metricStatusGroup.hidden = dynamicMetricsPresent;
-        const dynamicEditorGroup = byId("systemMetricDetailsEditor") && byId("systemMetricDetailsEditor").closest(".col-12");
-        if (dynamicEditorGroup) dynamicEditorGroup.hidden = true;
         const labelsHeading = Array.from(mapping.querySelectorAll("h6")).find(element => element.textContent.trim() === "Legacy flat-field metric labels");
         if (labelsHeading && labelsHeading.parentElement) labelsHeading.parentElement.hidden = dynamicMetricsPresent;
         setFieldOptions("widgetTextFields", fields, config.textFields, "");
