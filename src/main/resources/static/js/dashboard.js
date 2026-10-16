@@ -1318,14 +1318,19 @@
             return '<div class="server-health-empty server-health-collection-error"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>System metrics collection failed: ' + escapeHtml(message) + '</span></div>';
         }
 
-        let rows = getConfiguredTableRows(normalizedResult, config);
-        // Accept common response wrappers while keeping the configured rowPath authoritative
-        // whenever it resolves to an array.
+        // The System Metrics contract uses machines[] as its canonical row collection.
+        // Prefer it over a stale saved rowPath (for example, an old root-object selection).
+        const canonicalMachines = Array.isArray(payloadObject.machines)
+            ? payloadObject.machines
+            : payloadObject.data && Array.isArray(payloadObject.data.machines)
+                ? payloadObject.data.machines
+                : null;
+        let rows = canonicalMachines
+            ? canonicalMachines.filter(isObjectRow)
+            : getConfiguredTableRows(normalizedResult, config);
+        // Accept common response wrappers when no canonical machines[] array is present.
         if (!rows.length && payloadObject.data && typeof payloadObject.data === "object") {
             rows = getConfiguredTableRows({ payload: payloadObject.data }, config);
-        }
-        if (!rows.length && Array.isArray(payloadObject.machines)) {
-            rows = payloadObject.machines.filter(isObjectRow);
         }
         rows = rows.map(function (row) { return Object.assign({}, row); });
         if (!rows.length)
@@ -1394,8 +1399,10 @@
             return /^(hostname|hostName|host|server|machine|name)$/i.test(String(column.field));
         });
         const statusColumn = configuredColumns.find(function (column) {
+            return /^(status|healthStatus|health_status)$/i.test(String(column.field));
+        }) || configuredColumns.find(function (column) {
             return String(column.format || "").toLowerCase() === "status"
-                || /^(status|healthStatus|health_status|collection_status|collectionStatus)$/i.test(String(column.field));
+                || /^(collection_status|collectionStatus)$/i.test(String(column.field));
         });
 
         const legacyPick = function (row, keys)
@@ -1450,7 +1457,12 @@
 
         const items = rows.map(function (row)
         {
-            const status = statusColumn ? normalizeStatus(valueOf(row, statusColumn.field)) : inferLegacyStatus(row);
+            // Overall machine health must come from the machine-level status first.
+            // Collection Status is only a fallback and must not mask status=HEALTHY/WARNING/CRITICAL.
+            const explicitStatus = legacyPick(row, ["status", "healthStatus", "health_status"]);
+            const status = explicitStatus !== null
+                ? normalizeStatus(explicitStatus)
+                : (statusColumn ? normalizeStatus(valueOf(row, statusColumn.field)) : inferLegacyStatus(row));
             let pressure = 0;
             configuredColumns.forEach(function (column)
             {
