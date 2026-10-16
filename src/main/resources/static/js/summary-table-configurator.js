@@ -593,15 +593,16 @@
     }
 
     function readFieldEditor() {
+        const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
         return Array.from(byId("summaryTableFieldEditor").querySelectorAll("tr[data-field]")).map(row => ({
             field: row.getAttribute("data-field"),
             label: row.querySelector(".summary-config-label").value.trim() || humanize(row.getAttribute("data-field")),
             visible: row.querySelector(".summary-config-visible").checked,
-            groupable: row.querySelector(".summary-config-groupable").checked,
+            groupable: systemMetrics ? false : row.querySelector(".summary-config-groupable").checked,
             sortable: row.getAttribute("data-sortable") !== "false",
             searchable: row.getAttribute("data-searchable") !== "false",
             format: row.querySelector(".summary-config-format").value,
-            aggregation: row.querySelector(".summary-config-aggregation").value,
+            aggregation: systemMetrics ? "none" : row.querySelector(".summary-config-aggregation").value,
         }));
     }
 
@@ -815,55 +816,6 @@
         return Array.from(new Set(names));
     }
 
-    function readSystemMetricSettings() {
-        const editor = byId("systemMetricDetailsEditor");
-        if (!editor) return [];
-        return Array.from(editor.querySelectorAll("tr[data-system-metric-name]")).map((row, index) => ({
-            name: row.getAttribute("data-system-metric-name"),
-            enabled: row.querySelector(".system-metric-enabled").checked,
-            label: row.querySelector(".system-metric-label").value.trim() || row.getAttribute("data-system-metric-name"),
-            format: row.querySelector(".system-metric-format").value || "auto",
-            order: index
-        }));
-    }
-
-    function renderSystemMetricDetailsEditor(config) {
-        const editor = byId("systemMetricDetailsEditor");
-        if (!editor) return;
-        const view = config.view && typeof config.view === "object" ? config.view : {};
-        const saved = Array.isArray(view.metrics) ? view.metrics.filter(item => item && item.name)
-            .map(item => Object.assign({}, item, { name: String(item.name) })) : [];
-        const savedByName = new Map(saved.map(item => [item.name, item]));
-        const names = saved.map(item => item.name);
-        discoveredSystemMetricNames().forEach(name => { if (!names.includes(name)) names.push(name); });
-        if (!names.length) {
-            editor.innerHTML = '<div class="text-muted small">Load a sample response containing a machines array and metrics entries, then choose Discover fields / preview. Discovered metrics will appear here.</div>';
-            return;
-        }
-        const formats = [["auto", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration (seconds)"]];
-        editor.innerHTML = '<div class="table-responsive border rounded"><table class="table table-sm table-striped align-middle mb-0"><thead><tr><th>Order</th><th>Show</th><th>Metric name</th><th>Display label</th><th>Representation</th></tr></thead><tbody>' +
-            names.map((name, index) => {
-                const setting = savedByName.get(name) || {};
-                const enabled = setting.enabled !== false;
-                const label = setting.label || humanize(name);
-                const format = formats.some(option => option[0] === String(setting.format || "auto")) ? String(setting.format || "auto") : "auto";
-                return '<tr data-system-metric-name="' + escapeHtml(name) + '"><td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm system-metric-move-up" aria-label="Move ' + escapeHtml(name) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button><button type="button" class="btn btn-outline-secondary btn-sm system-metric-move-down" aria-label="Move ' + escapeHtml(name) + ' down"' + (index === names.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
-                    '<td><input class="form-check-input system-metric-enabled" type="checkbox" aria-label="Show ' + escapeHtml(name) + '"' + (enabled ? ' checked' : '') + '></td>' +
-                    '<td><code>' + escapeHtml(name) + '</code></td>' +
-                    '<td><input class="form-control form-control-sm system-metric-label" maxlength="120" value="' + escapeHtml(label) + '" aria-label="Display label for ' + escapeHtml(name) + '"></td>' +
-                    '<td><select class="form-select form-select-sm system-metric-format" aria-label="Representation for ' + escapeHtml(name) + '">' +
-                    formats.map(option => '<option value="' + option[0] + '"' + (format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") + '</select></td></tr>';
-            }).join("") + '</tbody></table></div><div class="form-text">New metric names are discovered from the JSON response. Existing settings are retained when a metric is temporarily absent from the sample.</div>';
-    }
-
-    function syncSystemMetricOrderButtons(editor) {
-        const rows = Array.from(editor.querySelectorAll("tr[data-system-metric-name]"));
-        rows.forEach((row, index) => {
-            row.querySelector(".system-metric-move-up").disabled = index === 0;
-            row.querySelector(".system-metric-move-down").disabled = index === rows.length - 1;
-        });
-    }
-
     function renderTypeMappingOptions() {
         const type = currentWidgetType();
         const config = getConfig();
@@ -929,7 +881,6 @@
         byId("systemMetricShowDisk").checked = view.showDisk !== false;
         byId("systemMetricShowRamCapacity").checked = view.showRamCapacity !== false;
         byId("systemMetricPageSize").value = ["6", "12", "24", "48"].includes(String(view.pageSize)) ? String(view.pageSize) : "12";
-        renderSystemMetricDetailsEditor(config);
         const dynamicMetricsPresent = discoveredSystemMetricNames().length > 0;
         ["systemMetricCpuField", "systemMetricRamField", "systemMetricLoad1Field", "systemMetricLoad5Field", "systemMetricLoad15Field",
             "systemMetricCoresField", "systemMetricUptimeSecondsField", "systemMetricUptimeHoursField", "systemMetricDiskField",
@@ -945,7 +896,11 @@
             const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
         });
         const mappingHeading = Array.from(mapping.querySelectorAll("h6")).find(element => element.textContent.trim() === "Machine field mapping");
-        if (mappingHeading) mappingHeading.textContent = dynamicMetricsPresent ? "Machine identity and health status" : "Machine field mapping";
+        if (mappingHeading) mappingHeading.textContent = "Legacy flat-field mapping";
+        const metricStatusGroup = byId("widgetMetricStatusField") && byId("widgetMetricStatusField").closest(".col-md-6");
+        if (metricStatusGroup) metricStatusGroup.hidden = dynamicMetricsPresent;
+        const dynamicEditorGroup = byId("systemMetricDetailsEditor") && byId("systemMetricDetailsEditor").closest(".col-12");
+        if (dynamicEditorGroup) dynamicEditorGroup.hidden = true;
         const labelsHeading = Array.from(mapping.querySelectorAll("h6")).find(element => element.textContent.trim() === "Legacy flat-field metric labels");
         if (labelsHeading && labelsHeading.parentElement) labelsHeading.parentElement.hidden = dynamicMetricsPresent;
         setFieldOptions("widgetTextFields", fields, config.textFields, "");
@@ -1292,22 +1247,6 @@
             byId(id).addEventListener("input", refreshConfigFromEditor);
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
-        const systemMetricEditor = byId("systemMetricDetailsEditor");
-        if (systemMetricEditor) {
-            ["change", "input"].forEach(eventName => systemMetricEditor.addEventListener(eventName, function (event) {
-                if (event.target.matches(".system-metric-enabled, .system-metric-label, .system-metric-format")) refreshConfigFromEditor();
-            }));
-            systemMetricEditor.addEventListener("click", function (event) {
-                const button = event.target.closest(".system-metric-move-up, .system-metric-move-down");
-                if (!button) return;
-                const row = button.closest("tr[data-system-metric-name]");
-                if (!row) return;
-                if (button.classList.contains("system-metric-move-up") && row.previousElementSibling) row.parentElement.insertBefore(row, row.previousElementSibling);
-                else if (button.classList.contains("system-metric-move-down") && row.nextElementSibling) row.parentElement.insertBefore(row.nextElementSibling, row);
-                syncSystemMetricOrderButtons(systemMetricEditor);
-                refreshConfigFromEditor();
-            });
-        }
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
         byId("summaryTableShowTotalRowsCard").addEventListener("change", refreshConfigFromEditor);
         ["summaryTableTotalRowsLabel", "summaryTableTotalRowsClick", "summaryTableTotalRowsIconEnabled", "summaryTableTotalRowsIconPreset", "summaryTableTotalRowsIconName"].forEach(id => {
