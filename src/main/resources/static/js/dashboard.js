@@ -558,6 +558,15 @@
         const theme = getChartTheme();
         config = config || {};
         const legendPosition = String(config.legendPosition || "bottom").toLowerCase();
+        const numberFormat = String(config.numberFormat || "auto").toLowerCase();
+        const formatNumber = function (value) {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return value;
+            if (numberFormat === "percent") return number.toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
+            if (numberFormat === "compact") return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(number);
+            if (numberFormat === "number") return number.toLocaleString();
+            return String(value);
+        };
         const options = {
             responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
             plugins: {
@@ -566,7 +575,13 @@
                     position: ["top", "bottom", "left", "right"].includes(legendPosition) ? legendPosition : "bottom",
                     labels: { color: theme.textPrimary, usePointStyle: true, padding: 16 }
                 },
-                tooltip: { enabled: true }
+                tooltip: {
+                    enabled: true,
+                    callbacks: { label: function (context) {
+                        const label = context.dataset && context.dataset.label ? context.dataset.label + ": " : "";
+                        return label + formatNumber(context.parsed && typeof context.parsed.y !== "undefined" ? context.parsed.y : context.raw);
+                    }}
+                }
             }
         };
         if (config.title) options.plugins.title = {
@@ -585,7 +600,8 @@
                     min: config.yAxisMin === undefined ? undefined : Number(config.yAxisMin),
                     max: config.yAxisMax === undefined ? undefined : Number(config.yAxisMax),
                     title: { display: !!config.yAxisTitle, text: config.yAxisTitle || "", color: theme.textSecondary },
-                    ticks: { color: theme.textSecondary }, grid: { color: theme.border }
+                    ticks: { color: theme.textSecondary, callback: function (value) { return formatNumber(value); } },
+                    grid: { color: theme.border }
                 }
             };
         }
