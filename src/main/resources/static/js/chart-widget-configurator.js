@@ -93,6 +93,9 @@
         const max = byId("chartMapMax").value.trim();
         if (min === "") delete config.yAxisMin; else config.yAxisMin = Number(min);
         if (max === "") delete config.yAxisMax; else config.yAxisMax = Number(max);
+        if (min !== "" && !Number.isFinite(config.yAxisMin)) throw new Error("Y-axis minimum must be a valid number.");
+        if (max !== "" && !Number.isFinite(config.yAxisMax)) throw new Error("Y-axis maximum must be a valid number.");
+        if (min !== "" && max !== "" && config.yAxisMin > config.yAxisMax) throw new Error("Y-axis minimum must not exceed its maximum.");
         config.numberFormat = byId("chartMapNumberFormat").value || "auto";\n        const seriesText = byId("chartMapSeriesJson").value.trim();
         if (seriesText) {
             const parsed = JSON.parse(seriesText);
@@ -144,6 +147,8 @@
         if (panel) panel.classList.toggle("d-none", !isChart);
         const group = byId("dashboardWidgetChartTypeGroup");
         if (group) group.classList.toggle("d-none", !isChart);
+        const genericMapping = byId("widgetTypeMappingOptions");
+        if (genericMapping && isChart) genericMapping.hidden = true;
     }
 
     function initialize() {
