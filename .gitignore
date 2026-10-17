@@ -1,0 +1,14 @@
+# Maven build output
+/target/
+
+# Eclipse project metadata
+.classpath
+.project
+.settings/
+
+# Log files
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
