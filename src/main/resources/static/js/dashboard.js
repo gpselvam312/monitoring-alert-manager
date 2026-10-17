@@ -416,28 +416,9 @@
 
     function toChartNumber(value)
     {
-        if (typeof value === "number")
-        {
-            return Number.isFinite(value)
-                ? value
-                : 0;
-        }
-
-        if (
-            value === null ||
-            value === undefined ||
-            value === ""
-        )
-        {
-            return 0;
-        }
-
-        const number =
-            Number(value);
-
-        return Number.isFinite(number)
-            ? number
-            : 0;
+        if (value === null || value === undefined || String(value).trim() === "") return null;
+        const number = typeof value === "number" ? value : Number(String(value).replace(/,/g, "").trim());
+        return Number.isFinite(number) ? number : null;
     }
 
 
@@ -507,43 +488,20 @@
         });
 
 
-        const datasets =
-            seriesNames.map(function (series, index)
-            {
-                const color =
-                    palette[index % palette.length];
-
-
-                return {
-                    label: series,
-
-                    data: labels.map(function (label)
-                    {
-                        const key =
-                            series + "\u0000" + label;
-
-                        return values.has(key)
-                            ? values.get(key)
-                            : null;
-                    }),
-
-                    backgroundColor: color,
-
-                    borderColor: color,
-
-                    borderWidth: 2,
-
-                    borderRadius: 4,
-
-                    tension: 0.3,
-
-                    pointRadius: 3,
-
-                    pointHoverRadius: 5,
-
-                    fill: false
-                };
-            });
+        const datasets = seriesNames.map(function (series, index) {
+            const seriesPoint = data.find(point => point && String(point.series ?? "Value") === series);
+            const color = seriesPoint && seriesPoint.color ? seriesPoint.color : palette[index % palette.length];
+            return {
+                label: series,
+                data: labels.map(function (label) {
+                    const key = series + "\u0000" + label;
+                    return values.has(key) ? values.get(key) : null;
+                }),
+                backgroundColor: color, borderColor: color, borderWidth: 2,
+                borderRadius: 4, tension: 0.3, pointRadius: 3,
+                pointHoverRadius: 5, pointBackgroundColor: color, fill: false
+            };
+        });
 
 
         return {
@@ -556,153 +514,123 @@
     /*
      * Build PIE data.
      */
-    function buildPieChartData(data)
+    function buildPieChartData(data, config)
     {
         const labels = [];
         const values = [];
+        const colors = [];
+        const themeColors = getThemeChartColors();
+        const colorScheme = String(config && config.pieColorScheme || "categorical").toLowerCase();
+        const configuredSeries = Array.isArray(config && config.series) ? config.series : [];
+        const valueSeries = configuredSeries.find(function (series) {
+            return series && series.valueField === (config && (config.pieValueField || config.valueField));
+        });
+        const singleColor = valueSeries && valueSeries.color ? valueSeries.color :
+            (themeColors[0] || getChartTheme().primary || "#0d6efd");
 
-        data.forEach(function (point)
+        (data || []).forEach(function (point, index)
         {
-            if (!point)
-            {
-                return;
-            }
-
-            labels.push(
-                point.label === null ||
-                point.label === undefined
-                    ? ""
-                    : String(point.label)
-            );
-
-            values.push(
-                toChartNumber(point.value)
-            );
+            if (!point) return;
+            labels.push(point.label === null || point.label === undefined ? "" : String(point.label));
+            values.push(toChartNumber(point.value));
+            // Use a category palette for pie slices; numeric series colours are for line/bar series.
+            // The golden-angle hue spacing keeps adjacent categories visually distinct and stable.
+            colors.push(colorScheme === "single"
+                ? singleColor
+                : "hsl(" + Math.round((index * 137.508 + 18) % 360) + ", 68%, 52%)");
         });
 
-
-        const colors =
-            getThemeChartColors();
-
-
+        const theme = getChartTheme();
         return {
             labels: labels,
-
-            datasets:
-            [
-                {
-                    label: "Value",
-
-                    data: values,
-
-                    backgroundColor:
-                        labels.map(function (_, index)
-                        {
-                            return colors[
-                                index % colors.length
-                            ];
-                        }),
-
-                    borderColor:
-                        getChartTheme().border,
-
-                    borderWidth: 1
-                }
-            ]
+            datasets: [{
+                label: "Value",
+                data: values,
+                backgroundColor: colors,
+                // Use thin white separators between slices instead of heavy slice outlines.
+                borderColor: "#ffffff",
+                borderWidth: 1,
+                hoverBorderColor: "#ffffff",
+                hoverBorderWidth: 1,
+                hoverOffset: 8,
+                spacing: 0,
+                borderAlign: "inner"
+            }]
         };
     }
 
 
-    function createChartOptions(chartType)
+    function createChartOptions(chartType, config)
     {
-        const theme =
-            getChartTheme();
-
-
-        const options =
-        {
-            responsive: true,
-
-            maintainAspectRatio: false,
-
-            animation:
-            {
-                duration: 250
-            },
-
-            plugins:
-            {
-                legend:
-                {
-                    position: "bottom",
-
-                    labels:
-                    {
-                        color: theme.textPrimary,
-
-                        usePointStyle: true,
-
-                        padding: 16
-                    }
+        const theme = getChartTheme();
+        config = config || {};
+        const legendPosition = String(config.legendPosition || "bottom").toLowerCase();
+        const numberFormat = String(config.numberFormat || "auto").toLowerCase();
+        const formatNumber = function (value) {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return value;
+            if (numberFormat === "percent") return number.toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
+            if (numberFormat === "compact") return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(number);
+            if (numberFormat === "number") return number.toLocaleString();
+            return String(value);
+        };
+        const options = {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+            plugins: {
+                legend: {
+                    display: legendPosition !== "none",
+                    position: ["top", "bottom", "left", "right"].includes(legendPosition) ? legendPosition : "bottom",
+                    labels: { color: theme.textPrimary, usePointStyle: true, padding: 16 }
                 },
-
-                tooltip:
-                {
-                    enabled: true
+                tooltip: {
+                    enabled: true,
+                    displayColors: true,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function (context) {
+                            const rawValue = context.parsed && typeof context.parsed.y !== "undefined"
+                                ? context.parsed.y : context.raw;
+                            if (chartType === "pie" || chartType === "doughnut") {
+                                const values = context.dataset && Array.isArray(context.dataset.data) ? context.dataset.data : [];
+                                const total = values.reduce(function (sum, value) {
+                                    const number = toChartNumber(value);
+                                    return sum + (number === null ? 0 : number);
+                                }, 0);
+                                const numeric = toChartNumber(rawValue);
+                                const percentage = numeric !== null && total > 0
+                                    ? " (" + (numeric / total * 100).toLocaleString(undefined, { maximumFractionDigits: 1 }) + "%)"
+                                    : "";
+                                return formatNumber(rawValue) + percentage;
+                            }
+                            const label = context.dataset && context.dataset.label ? context.dataset.label + ": " : "";
+                            return label + formatNumber(rawValue);
+                        }
+                    }
                 }
             }
         };
-
-
-        if (
-            chartType === "bar" ||
-            chartType === "line"
-        )
-        {
-            options.interaction =
-            {
-                mode: "index",
-                intersect: false
-            };
-
-
-            options.scales =
-            {
-                x:
-                {
-                    ticks:
-                    {
-                        color:
-                            theme.textSecondary
-                    },
-
-                    grid:
-                    {
-                        color:
-                            theme.border
-                    }
+        if (config.title) options.plugins.title = {
+            display: true, text: String(config.title), color: theme.textPrimary,
+            padding: { top: 4, bottom: 12 }
+        };
+        if (chartType === "bar" || chartType === "line") {
+            options.interaction = { mode: "index", intersect: false };
+            options.scales = {
+                x: {
+                    title: { display: !!config.xAxisTitle, text: config.xAxisTitle || "", color: theme.textSecondary },
+                    ticks: { color: theme.textSecondary }, grid: { color: theme.border }
                 },
-
-                y:
-                {
-                    beginAtZero: true,
-
-                    ticks:
-                    {
-                        color:
-                            theme.textSecondary
-                    },
-
-                    grid:
-                    {
-                        color:
-                            theme.border
-                    }
+                y: {
+                    beginAtZero: config.yAxisMin === undefined,
+                    min: config.yAxisMin === undefined ? undefined : Number(config.yAxisMin),
+                    max: config.yAxisMax === undefined ? undefined : Number(config.yAxisMax),
+                    title: { display: !!config.yAxisTitle, text: config.yAxisTitle || "", color: theme.textSecondary },
+                    ticks: { color: theme.textSecondary, callback: function (value) { return formatNumber(value); } },
+                    grid: { color: theme.border }
                 }
             };
         }
-
-
         return options;
     }
 
@@ -807,10 +735,10 @@
 
 	            let chartData;
 
-	            if (chartType === "pie")
+	            if (chartType === "pie" || chartType === "doughnut")
 	            {
 	                chartData =
-	                    buildPieChartData(data);
+	                    buildPieChartData(data, parseWidgetFieldConfig(widget));
 	            }
 	            else
 	            {
@@ -818,69 +746,14 @@
 	                    buildChartDatasets(data);
 	            }
 
-	            /*
-	             * Generate a new random palette for
-	             * every dashboard initialization.
-	             */
-	            const colors =
-	                generateRandomChartColors(
-	                    data.length
-	                );
+	            const config = parseWidgetFieldConfig(widget);
+            const chart = new Chart(canvas, {
+                type: chartType,
+                data: chartData,
+                options: createChartOptions(chartType, config)
+            });
 
-	            if (
-	                chartType === "bar" ||
-	                chartType === "pie" ||
-	                chartType === "doughnut"
-	            )
-	            {
-	                chartData.datasets.forEach(
-	                    function (dataset)
-	                    {
-	                        dataset.backgroundColor =
-	                            colors;
-
-	                        dataset.borderColor =
-	                            colors;
-	                    }
-	                );
-	            }
-	            else if (chartType === "line")
-	            {
-	                const lineColor =
-	                    colors[0];
-
-	                chartData.datasets.forEach(
-	                    function (dataset)
-	                    {
-	                        dataset.borderColor =
-	                            lineColor;
-
-	                        dataset.backgroundColor =
-	                            lineColor;
-
-	                        dataset.pointBackgroundColor =
-	                            lineColor;
-
-	                        dataset.pointBorderColor =
-	                            lineColor;
-	                    }
-	                );
-	            }
-
-	            const chart =
-	                new Chart(
-	                    canvas,
-	                    {
-	                        type: chartType,
-	                        data: chartData,
-	                        options:
-	                            createChartOptions(
-	                                chartType
-	                            )
-	                    }
-	                );
-
-	            dashboardCharts.set(
+            dashboardCharts.set(
 	                canvasId,
 	                chart
 	            );
@@ -1167,12 +1040,32 @@
         return value !== null && typeof value === "object" && !Array.isArray(value);
     }
 
+    function parseJsonPayload(value)
+    {
+        if (typeof value !== "string") return value;
+        const text = value.trim();
+        if (!text) return value;
+        try { return JSON.parse(text); }
+        catch (ignore) { return value; }
+    }
+
     function getConfiguredTableRows(result, config)
     {
-        const payload = result.payload;
+        result = result || {};
+        // Monitoring outputs are not always normalized identically: some jobs return
+        // payload as an object, while others persist the raw JSON as a string.
+        let payload = parseJsonPayload(result.payload);
+        if (payload === undefined || payload === null)
+            payload = parseJsonPayload(result.data);
+
         if (config.rowPath)
         {
-            const configuredRows = getJsonPath(payload, config.rowPath);
+            let configuredRows = getJsonPath(payload, config.rowPath);
+            if (!Array.isArray(configuredRows) && payload && typeof payload === "object" &&
+                !Array.isArray(payload) && payload.data !== undefined)
+            {
+                configuredRows = getJsonPath(payload.data, config.rowPath);
+            }
             if (Array.isArray(configuredRows)) return configuredRows.filter(isObjectRow);
             // Accept root arrays from PDSH scripts even if an older config specifies rowPath.
             if (Array.isArray(payload)) return payload.filter(isObjectRow);
@@ -1245,31 +1138,99 @@
 
     function getConfiguredChartData(result, widget)
     {
-        if (Array.isArray(result.data) && result.data.length > 0)
-        {
-            return result.data;
-        }
-
         const config = parseWidgetFieldConfig(widget);
         const categoryField = config.categoryField || config.labelField;
-        const valueField = config.valueField;
-        if (!categoryField || !valueField)
-        {
-            return [];
+        const explicitSeries = Array.isArray(config.series) ? config.series : [];
+        const enabledSeries = explicitSeries.filter(function (series) { return series && series.enabled !== false; });
+        const chartType = normalizeChartType(widget && widget.chartType);
+
+        // Pie and Donut charts represent category aggregates, not one slice per row/series.
+        // This prevents duplicate category slices when several records share the same label.
+        if ((chartType === "pie" || chartType === "doughnut") && categoryField) {
+            const rows = getConfiguredTableRows(result, config);
+            if (rows.length) {
+                const valueField = config.pieValueField || config.valueField ||
+                    (enabledSeries[0] && enabledSeries[0].valueField) || "";
+                const aggregation = String(config.pieAggregation || "sum").toLowerCase();
+                const groups = new Map();
+
+                rows.forEach(function (row) {
+                    const rawLabel = getJsonPath(row, categoryField);
+                    if (rawLabel === null || rawLabel === undefined || String(rawLabel).trim() === "") return;
+                    const label = String(rawLabel);
+                    if (!groups.has(label)) groups.set(label, { label: label, values: [], distinct: new Set(), count: 0 });
+                    const group = groups.get(label);
+                    group.count++;
+                    if (!valueField) return;
+                    const rawValue = getJsonPath(row, valueField);
+                    if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") return;
+                    if (aggregation === "countdistinct") {
+                        group.distinct.add(typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue));
+                        return;
+                    }
+                    if (aggregation === "count") return;
+                    const numeric = toChartNumber(rawValue);
+                    if (numeric !== null) group.values.push(numeric);
+                });
+
+                return Array.from(groups.values()).map(function (group) {
+                    let value;
+                    switch (aggregation) {
+                        case "count": value = group.count; break;
+                        case "countdistinct": value = group.distinct.size; break;
+                        case "average":
+                        case "avg": value = group.values.length
+                            ? group.values.reduce((total, number) => total + number, 0) / group.values.length : null; break;
+                        case "min": value = group.values.length ? Math.min.apply(null, group.values) : null; break;
+                        case "max": value = group.values.length ? Math.max.apply(null, group.values) : null; break;
+                        case "sum":
+                        default: value = group.values.length
+                            ? group.values.reduce((total, number) => total + number, 0) : null; break;
+                    }
+                    return value === null ? null : { label: group.label, value: value };
+                }).filter(Boolean);
+            }
         }
 
-        return getConfiguredTableRows(result, config).map(function (row)
-        {
-            return {
-                label: getJsonPath(row, categoryField),
-                value: getJsonPath(row, valueField),
-                series: config.seriesField ? getJsonPath(row, config.seriesField) : undefined
-            };
-        }).filter(function (point)
-        {
-            return point.label !== null && point.label !== undefined
-                && point.value !== null && point.value !== undefined;
-        });
+        const rows = categoryField && (config.valueField || enabledSeries.length)
+            ? getConfiguredTableRows(result, config) : [];
+
+        if (explicitSeries.length && !enabledSeries.length) return [];
+
+        if (rows.length && enabledSeries.length) {
+            const mapped = [];
+            rows.forEach(function (row) {
+                enabledSeries.forEach(function (series) {
+                    const numeric = toChartNumber(getJsonPath(row, series.valueField));
+                    if (numeric === null) return;
+                    mapped.push({ label: getJsonPath(row, categoryField), value: numeric, series: series.label, color: series.color });
+                });
+            });
+            return mapped.filter(point => point.label !== null && point.label !== undefined);
+        }
+
+        if (rows.length && categoryField && config.valueField) {
+            return rows.map(function (row) {
+                return {
+                    label: getJsonPath(row, categoryField),
+                    value: toChartNumber(getJsonPath(row, config.valueField)),
+                    series: config.seriesField ? getJsonPath(row, config.seriesField) : undefined
+                };
+            }).filter(function (point) {
+                return point.label !== null && point.label !== undefined && point.value !== null;
+            });
+        }
+
+        // Preserve support for previously pre-mapped data, including JSON strings.
+        const preMappedData = parseJsonPayload(result.data);
+        if (Array.isArray(preMappedData)) {
+            return preMappedData.map(function (point) {
+                if (!point || point.label === null || point.label === undefined) return null;
+                const numeric = toChartNumber(point.value);
+                return numeric === null ? null : { label: point.label, value: numeric, series: point.series };
+            }).filter(Boolean);
+        }
+        return [];
     }
 
 
