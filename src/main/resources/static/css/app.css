@@ -4798,9 +4798,11 @@ textarea.form-control {
 .execution-sort-button.active .table-sort-icon { color: var(--theme-primary); }
 
 
-/* Bootstrap's default close icon is dark; invert it only for the dark widget-config modal. */
+/* Bootstrap's default close icon is dark; keep modal close icons visible in dark themes. */
 [data-theme="orange-dark"] #dashboardWidgetModal .btn-close,
-[data-theme="blue-dark"] #dashboardWidgetModal .btn-close {
+[data-theme="blue-dark"] #dashboardWidgetModal .btn-close,
+[data-theme="orange-dark"] #dashboardTabModal .btn-close,
+[data-theme="blue-dark"] #dashboardTabModal .btn-close {
     filter: invert(1) grayscale(100%) brightness(200%);
     opacity: 1;
 }
