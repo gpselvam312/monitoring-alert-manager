@@ -60,7 +60,7 @@
               <div class="col-md-6"><label class="form-label" for="chartMapXAxis">X-axis title</label><input class="form-control" id="chartMapXAxis" placeholder="Category"></div>
               <div class="col-md-6"><label class="form-label" for="chartMapYAxis">Y-axis title</label><input class="form-control" id="chartMapYAxis" placeholder="Value"></div>
               <div class="col-md-6"><label class="form-label" for="chartMapMin">Y-axis minimum (optional)</label><input class="form-control" id="chartMapMin" type="number" step="any" placeholder="Auto"></div>
-              <div class="col-md-6"><label class="form-label" for="chartMapMax">Y-axis maximum (optional)</label><input class="form-control" id="chartMapMax" type="number" step="any" placeholder="Auto"></div>
+              <div class="col-md-6"><label class="form-label" for="chartMapMax">Y-axis maximum (optional)</label><input class="form-control" id="chartMapMax" type="number" step="any" placeholder="Auto"></div>\n              <div class="col-md-6"><label class="form-label" for="chartMapNumberFormat">Number format</label><select class="form-select" id="chartMapNumberFormat"><option value="auto">Automatic</option><option value="number">Thousands separators</option><option value="compact">Compact (K/M)</option><option value="percent">Percentage</option></select></div>
               <div class="col-12"><label class="form-label" for="chartMapSeriesJson">Explicit series (optional JSON array)</label><textarea class="form-control font-monospace" id="chartMapSeriesJson" rows="3" placeholder='[{"label":"Healthy","valueField":"healthy","color":"#198754"},{"label":"Warning","valueField":"warning","color":"#ffc107"}]'></textarea><div class="form-text">Use this for separate numeric fields per series. Each item supports label, valueField and optional color. When configured, seriesField is not used.</div></div>
               <div class="col-12"><div class="small" id="chartMapValidation" role="status" aria-live="polite"></div></div>
             </div>
@@ -93,7 +93,7 @@
         const max = byId("chartMapMax").value.trim();
         if (min === "") delete config.yAxisMin; else config.yAxisMin = Number(min);
         if (max === "") delete config.yAxisMax; else config.yAxisMax = Number(max);
-        const seriesText = byId("chartMapSeriesJson").value.trim();
+        config.numberFormat = byId("chartMapNumberFormat").value || "auto";\n        const seriesText = byId("chartMapSeriesJson").value.trim();
         if (seriesText) {
             const parsed = JSON.parse(seriesText);
             if (!Array.isArray(parsed) || !parsed.every(item => item && typeof item.label === "string" && typeof item.valueField === "string")) {
@@ -135,7 +135,7 @@
             const control = byId(id);
             if (control) control.value = config[key] ?? (id === "chartMapLegend" ? "bottom" : "");
         });
-        byId("chartMapSeriesJson").value = Array.isArray(config.series) ? JSON.stringify(config.series, null, 2) : "";
+        byId("chartMapSeriesJson").value = Array.isArray(config.series) ? JSON.stringify(config.series, null, 2) : "";\n        byId("chartMapNumberFormat").value = config.numberFormat || "auto";
     }
 
     function updateVisibility() {
