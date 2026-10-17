@@ -191,12 +191,11 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
 
     function readSeriesRows() {
         return Array.from(byId("chartMapSeriesRows").querySelectorAll("[data-chart-series-row]"))
-            .filter(row => row.querySelector(".chart-map-series-enabled").checked)
             .map(row => {
                 const valueField = row.getAttribute("data-field");
                 const label = row.querySelector(".chart-map-series-label").value.trim() || humanize(valueField);
                 const color = row.querySelector(".chart-map-series-color").value;
-                const item = { label, valueField };
+                const item = { label, valueField, enabled: row.querySelector(".chart-map-series-enabled").checked };
                 if (color) item.color = color;
                 return item;
             });
@@ -220,7 +219,7 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
             const saved = savedByField.get(field);
             const label = saved ? (saved.label || saved.name || humanize(field)) : humanize(field);
             const color = /^#[0-9a-f]{6}$/i.test(String(saved?.color || "")) ? saved.color : "#0d6efd";
-            const enabled = true;
+            const enabled = saved ? saved.enabled !== false : true;
             return '<tr data-chart-series-row data-field="' + esc(field) + '">' +
                 '<td><input class="form-check-input chart-map-series-enabled" type="checkbox" aria-label="Enable ' + esc(field) + '"' + (enabled ? ' checked' : '') + '></td>' +
                 '<td><code>' + esc(field) + (fieldInfo.savedOnly ? ' <span class="text-muted">(not in sample)</span>' : '') + '</code></td>' +
