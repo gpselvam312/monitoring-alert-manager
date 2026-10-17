@@ -6,6 +6,7 @@
     const typeId = "dashboardWidgetType";
     const chartTypeId = "dashboardWidgetChartType";
     let syncing = false;
+    const sampleState = { collections: [] };
 
     function parseConfig() {
         try {
@@ -50,11 +51,20 @@
               <h6 class="mb-1">Chart configuration</h6>
               <p class="small text-muted mb-0">Map the response fields and tune the chart. These settings are saved with this widget.</p>
             </div>
-            <div class="row g-3">
-              <div class="col-md-6"><label class="form-label" for="chartMapRowPath">Data rows path</label><input class="form-control" id="chartMapRowPath" placeholder="data.metrics"><div class="form-text">Path to an array of records. Leave blank for a root array.</div></div>
-              <div class="col-md-6"><label class="form-label" for="chartMapCategory">Category / label path</label><input class="form-control" id="chartMapCategory" placeholder="name"></div>
-              <div class="col-md-6"><label class="form-label" for="chartMapValue">Numeric value path</label><input class="form-control" id="chartMapValue" placeholder="value"></div>
-              <div class="col-md-6"><label class="form-label" for="chartMapSeries">Group into series by (optional)</label><input class="form-control" id="chartMapSeries" placeholder="cluster"></div>
+            <div class="mb-3">
+              <label class="form-label" for="chartMapSampleJson">Sample JSON response</label>
+              <textarea class="form-control font-monospace" id="chartMapSampleJson" rows="5" spellcheck="false" placeholder="Paste a sample JSON response, or load the latest job output."></textarea>
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapLoadLatest">Load latest job output</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="chartMapDiscover">Discover fields</button>
+                <span class="small text-muted align-self-center" id="chartMapSampleMessage" role="status" aria-live="polite">Paste JSON or load the latest output to begin.</span>
+              </div>
+          </div>
+          <div class="row g-3">
+              <div class="col-md-6"><label class="form-label" for="chartMapRowPath">Data rows path</label><select class="form-select" id="chartMapRowPath" disabled><option value="">Discover fields first</option></select><div class="form-text">Select the array containing chart records.</div></div>
+              <div class="col-md-6"><label class="form-label" for="chartMapCategory">Category / label field</label><select class="form-select" id="chartMapCategory" disabled><option value="">Discover fields first</option></select></div>
+              <div class="col-md-6"><label class="form-label" for="chartMapValue">Numeric value field</label><select class="form-select" id="chartMapValue" disabled><option value="">Discover fields first</option></select></div>
+              <div class="col-md-6"><label class="form-label" for="chartMapSeries">Group into series by (optional)</label><select class="form-select" id="chartMapSeries" disabled><option value="">No grouping</option></select></div>
               <div class="col-md-6"><label class="form-label" for="chartMapTitle">Chart title</label><input class="form-control" id="chartMapTitle" placeholder="Monitoring metrics"></div>
               <div class="col-md-6"><label class="form-label" for="chartMapLegend">Legend position</label><select class="form-select" id="chartMapLegend"><option value="top">Top</option><option value="bottom">Bottom</option><option value="left">Left</option><option value="right">Right</option><option value="none">Hidden</option></select></div>
               <div class="col-md-6"><label class="form-label" for="chartMapXAxis">X-axis title</label><input class="form-control" id="chartMapXAxis" placeholder="Category"></div>
@@ -70,6 +80,117 @@
             control.addEventListener("input", syncToJson);
             control.addEventListener("change", syncToJson);
         });
+        byId("chartMapDiscover").addEventListener("click", discoverSample);
+        byId("chartMapLoadLatest").addEventListener("click", loadLatestSample);
+        byId("chartMapRowPath").addEventListener("change", function () {
+            populateFieldSelectors(parseConfig(), true);
+            syncToJson();
+        });
+    }
+
+    function chartMessage(message, error) {
+        const node = byId("chartMapSampleMessage");
+        if (!node) return;
+        node.textContent = message;
+        node.classList.toggle("text-danger", !!error);
+        node.classList.toggle("text-muted", !error);
+    }
+
+    function discoverSample() {
+        try {
+            const raw = byId("chartMapSampleJson").value.trim();
+            if (!raw) throw new Error("Paste a sample JSON response or load the latest job output first.");
+            const sample = JSON.parse(raw);
+            if (!sample || typeof sample !== "object") throw new Error("The sample must be a JSON object or array.");
+            const collections = [];
+            function visit(value, path, depth) {
+                if (depth > 12 || value === null || typeof value !== "object") return;
+                if (Array.isArray(value)) {
+                    const rows = value.filter(item => item && typeof item === "object" && !Array.isArray(item));
+                    if (rows.length) collections.push({ path, rows, label: path || "(root array)" });
+                    return;
+                }
+                Object.keys(value).forEach(key => visit(value[key], path ? path + "." + key : key, depth + 1));
+            }
+            if (Array.isArray(sample)) {
+                const rows = sample.filter(item => item && typeof item === "object" && !Array.isArray(item));
+                if (rows.length) collections.push({ path: "", rows, label: "(root array)" });
+            } else collections.push({ path: "", rows: [sample], label: "(root object)" });
+            visit(sample, "", 0);
+            sampleState.collections = Array.from(new Map(collections.map(item => [item.path, item])).values());
+            if (!sampleState.collections.length) throw new Error("No array of records or object fields were found.");
+            const config = parseConfig();
+            const rowSelect = byId("chartMapRowPath");
+            rowSelect.innerHTML = sampleState.collections.map(item => '<option value="' + esc(item.path) + '">' + esc(item.label) + ' (' + item.rows.length + ' rows)</option>').join("");
+            rowSelect.disabled = false;
+            rowSelect.value = sampleState.collections.some(item => item.path === config.rowPath)
+                ? (config.rowPath || "") : (sampleState.collections.find(item => item.path) || sampleState.collections[0]).path;
+            populateFieldSelectors(config, false);
+            chartMessage("Discovered " + sampleState.collections.length + " row collection(s). Choose fields below.", false);
+            syncToJson();
+        } catch (error) {
+            chartMessage(error.message || "Unable to discover sample fields.", true);
+        }
+    }
+
+    function populateFieldSelectors(config, preserve) {
+        const collection = sampleState.collections.find(item => item.path === byId("chartMapRowPath").value);
+        if (!collection) return;
+        const discovered = new Map();
+        function visit(value, prefix, depth) {
+            if (depth > 8 || value === null || value === undefined || Array.isArray(value)) return;
+            if (typeof value === "object") {
+                Object.keys(value).forEach(key => visit(value[key], prefix ? prefix + "." + key : key, depth + 1));
+            } else if (prefix) {
+                const item = discovered.get(prefix) || { path: prefix, numeric: false };
+                if (typeof value === "number" || (typeof value === "string" && value.trim() && Number.isFinite(Number(value.replace(/,/g, "")))) ) item.numeric = true;
+                discovered.set(prefix, item);
+            }
+        }
+        collection.rows.slice(0, 100).forEach(row => visit(row, "", 0));
+        const fields = Array.from(discovered.values()).sort((a, b) => a.path.localeCompare(b.path));
+        const configValue = preserve ? byId("chartMapValue").value : (config.valueField || "");
+        const configCategory = preserve ? byId("chartMapCategory").value : (config.categoryField || config.labelField || "");
+        const configSeries = preserve ? byId("chartMapSeries").value : (config.seriesField || "");
+        function fill(id, values, selected, emptyLabel) {
+            const select = byId(id);
+            select.innerHTML = '<option value="">' + emptyLabel + '</option>' + values.map(field =>
+                '<option value="' + esc(field.path) + '"' + (field.path === selected ? ' selected' : '') + '>' +
+                esc(field.path + (field.numeric ? " (number)" : "")) + '</option>').join("");
+            select.disabled = values.length === 0;
+            if (selected && !values.some(field => field.path === selected)) {
+                select.insertAdjacentHTML("beforeend", '<option value="' + esc(selected) + '" selected>' + esc(selected + " (not in sample)") + '</option>');
+                select.value = selected;
+            }
+        }
+        fill("chartMapCategory", fields, configCategory, "Select category field");
+        fill("chartMapValue", fields.filter(field => field.numeric), configValue, "Select numeric value field");
+        fill("chartMapSeries", fields, configSeries, "No grouping");
+        if (!byId("chartMapCategory").value && fields.length) byId("chartMapCategory").value = fields[0].path;
+        if (!byId("chartMapValue").value && fields.some(field => field.numeric)) byId("chartMapValue").value = fields.find(field => field.numeric).path;
+    }
+
+    async function loadLatestSample() {
+        const jobId = byId("dashboardWidgetJobSourceId")?.value;
+        if (!jobId) { chartMessage("Select a Monitoring Job before loading its latest output.", true); return; }
+        chartMessage("Loading the latest saved result…", false);
+        try {
+            const response = await fetch("/administration/dashboard/widgets/source-sample?jobId=" + encodeURIComponent(jobId), {
+                method: "GET", headers: { "Accept": "application/json" }, credentials: "same-origin"
+            });
+            if (!response.ok) throw new Error("Unable to load the latest result (HTTP " + response.status + ").");
+            const result = await response.json();
+            const candidates = [result?.rawOutput, result?.resultData, result?.output, result?.responseBody, result?.payload, result?.data];
+            let output = "";
+            for (const candidate of candidates) {
+                if (typeof candidate === "string" && candidate.trim()) { output = candidate; break; }
+                if (candidate && typeof candidate === "object") { output = JSON.stringify(candidate, null, 2); if (output) break; }
+            }
+            if (!output.trim()) throw new Error(result?.message || "No saved output is available. Run the job or paste a sample response.");
+            byId("chartMapSampleJson").value = output;
+            discoverSample();
+            if (result.createdAt) chartMessage("Loaded saved output from " + result.createdAt + ".", false);
+        } catch (error) { chartMessage(error.message || "Unable to load latest output.", true); }
     }
 
     function readUi(config) {
@@ -128,8 +249,6 @@
     function loadFromJson() {
         const config = parseConfig();
         const ids = {
-            chartMapRowPath: "rowPath", chartMapCategory: "categoryField",
-            chartMapValue: "valueField", chartMapSeries: "seriesField",
             chartMapTitle: "title", chartMapLegend: "legendPosition",
             chartMapXAxis: "xAxisTitle", chartMapYAxis: "yAxisTitle",
             chartMapMin: "yAxisMin", chartMapMax: "yAxisMax"
@@ -139,6 +258,10 @@
             if (control) control.value = config[key] ?? (id === "chartMapLegend" ? "bottom" : "");
         });
         byId("chartMapSeriesJson").value = Array.isArray(config.series) ? JSON.stringify(config.series, null, 2) : "";\n        byId("chartMapNumberFormat").value = config.numberFormat || "auto";
+        if (sampleState.collections.length) {
+            byId("chartMapRowPath").value = config.rowPath || "";
+            populateFieldSelectors(config, false);
+        }
     }
 
     function updateVisibility() {
@@ -159,6 +282,19 @@
         updateVisibility();
         byId(typeId)?.addEventListener("change", updateVisibility);
         byId(chartTypeId)?.addEventListener("change", syncToJson);
+        byId("dashboardWidgetModal")?.addEventListener("shown.bs.modal", function () {
+            loadFromJson();
+            updateVisibility();
+            if (String(byId(typeId)?.value || "").toUpperCase() === "CHART" &&
+                !byId("chartMapSampleJson").value.trim() && byId("dashboardWidgetJobSourceId")?.value) loadLatestSample();
+        });
+        byId("dashboardWidgetJobSourceId")?.addEventListener("change", function () {
+            if (String(byId(typeId)?.value || "").toUpperCase() === "CHART") {
+                byId("chartMapSampleJson").value = "";
+                sampleState.collections = [];
+                loadFromJson();
+            }
+        });
         const form = byId(fieldId).closest("form");
         form?.addEventListener("submit", function (event) {
             try {
