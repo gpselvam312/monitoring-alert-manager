@@ -74,7 +74,8 @@ public class ExternalApplicationConfigurationController
         {
             externalApplicationService.save(form);
             redirectAttributes.addFlashAttribute("successMessage",
-                    updating ? "External application updated successfully." : "External application saved successfully.");
+                    updating ? "External application updated successfully."
+                            : "External application saved successfully.");
             return "redirect:/administration/external-applications";
         }
         catch (IllegalArgumentException | IllegalStateException exception)
