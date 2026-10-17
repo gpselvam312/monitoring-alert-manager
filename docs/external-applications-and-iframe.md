@@ -16,7 +16,9 @@ The application can start without the key if no encrypted secret is being saved.
 
 ## Configure an external application
 
-Open **Administration → External Applications** and configure a unique application code, display name, base URL, authentication type, and optional shared account metadata. One shared account row is allowed per external application. The internal `ra_fcb.users` table and its RBAC model are not changed.
+Open **Administration → External Applications** and create one registry entry for each external instance. Select the external product (Grafana, Consul, or Other), the internal application, and one of that application's enabled environments. Use a unique instance code and a clear display name such as `GRAFANA-RETAIL-SIT` / `Grafana - Retail - SIT`, then enter the instance base URL, authentication type, and optional shared account metadata. The list supports filtering by internal application, environment, and external product. Only enabled entries with enabled application/environment mappings are offered in the dashboard widget selector.
+
+Each application/environment instance has its own URL and one optional shared account row. The internal `ra_fcb.users` table and its RBAC model are not changed. Existing registry rows remain migration-compatible but must be assigned to an application and environment before they can be selected for new dashboard widgets.
 
 The secret field is write-only. It is never populated from the database or returned by the administration controller. Leave it blank to retain an existing encrypted secret; use the clear-secret checkbox to remove the stored secret/reference.
 
