@@ -761,7 +761,7 @@
                                 <td>
 
                                     <span class="table-secondary-text"
-                                          th:text="${widget.widgetType == 'SUMMARY_TABLE' ? 'Summary Table' : widget.widgetType}">
+                                          th:text="${widget.widgetType == 'SUMMARY_TABLE' ? 'Summary Table' : (widget.widgetType == 'IFRAME' ? 'iFrame / External Dashboard' : widget.widgetType)}">
                                         STATUS
                                     </span>
 
