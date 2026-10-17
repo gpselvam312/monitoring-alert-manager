@@ -194,16 +194,18 @@
     }
 
     function readUi(config) {
-        const mapping = {
-            rowPath: byId("chartMapRowPath").value.trim(),
-            categoryField: byId("chartMapCategory").value.trim(),
-            valueField: byId("chartMapValue").value.trim(),
-            seriesField: byId("chartMapSeries").value.trim()
-        };
-        Object.keys(mapping).forEach(key => {
-            if (mapping[key]) config[key] = mapping[key];
-            else delete config[key];
-        });
+        if (sampleState.collections.length) {
+            const mapping = {
+                rowPath: byId("chartMapRowPath").value,
+                categoryField: byId("chartMapCategory").value,
+                valueField: byId("chartMapValue").value,
+                seriesField: byId("chartMapSeries").value
+            };
+            Object.keys(mapping).forEach(key => {
+                if (mapping[key]) config[key] = mapping[key];
+                else delete config[key];
+            });
+        }
         const title = byId("chartMapTitle").value.trim();
         if (title) config.title = title; else delete config.title;
         config.legendPosition = byId("chartMapLegend").value;
@@ -217,7 +219,8 @@
         if (min !== "" && !Number.isFinite(config.yAxisMin)) throw new Error("Y-axis minimum must be a valid number.");
         if (max !== "" && !Number.isFinite(config.yAxisMax)) throw new Error("Y-axis maximum must be a valid number.");
         if (min !== "" && max !== "" && config.yAxisMin > config.yAxisMax) throw new Error("Y-axis minimum must not exceed its maximum.");
-        config.numberFormat = byId("chartMapNumberFormat").value || "auto";\n        const seriesText = byId("chartMapSeriesJson").value.trim();
+        config.numberFormat = byId("chartMapNumberFormat").value || "auto";
+        const seriesText = byId("chartMapSeriesJson").value.trim();
         if (seriesText) {
             const parsed = JSON.parse(seriesText);
             if (!Array.isArray(parsed) || !parsed.every(item => item && typeof item.label === "string" && typeof item.valueField === "string")) {
@@ -257,7 +260,8 @@
             const control = byId(id);
             if (control) control.value = config[key] ?? (id === "chartMapLegend" ? "bottom" : "");
         });
-        byId("chartMapSeriesJson").value = Array.isArray(config.series) ? JSON.stringify(config.series, null, 2) : "";\n        byId("chartMapNumberFormat").value = config.numberFormat || "auto";
+        byId("chartMapSeriesJson").value = Array.isArray(config.series) ? JSON.stringify(config.series, null, 2) : "";
+        byId("chartMapNumberFormat").value = config.numberFormat || "auto";
         if (sampleState.collections.length) {
             byId("chartMapRowPath").value = config.rowPath || "";
             populateFieldSelectors(config, false);
