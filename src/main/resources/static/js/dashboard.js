@@ -333,6 +333,9 @@
         case "ELASTICSEARCH":
             return "bi-database-check";
 
+        case "IFRAME":
+            return "bi-window";
+
 
 	        case "TEXT":
 	            return "bi-card-text";
@@ -2473,6 +2476,7 @@
 
 		const isStat =
 		    widgetType === "STAT";
+        const isIframeWidget = widgetType === "IFRAME";
 
 
         const isSystemMetrics = widgetType === "SYSTEM_METRICS";
@@ -2509,13 +2513,18 @@
                 : "";
 
 
-        const refreshButton =
+        const refreshButton = isIframeWidget ? "" :
             '<button type="button"' +
                     ' class="btn btn-sm btn-link dashboard-widget-refresh"' +
                     ' data-widget-id="' + escapeHtml(widget.id) + '"' +
                     ' title="Refresh widget" aria-label="Refresh widget">' +
                 '<i class="bi bi-arrow-clockwise"></i>' +
             '</button>';
+
+        const iframeConfig = isIframeWidget ? parseWidgetFieldConfig(widget) : {};
+        const iframeExpandButton = isIframeWidget && iframeConfig.allowExpand !== false
+            ? '<button type="button" class="btn btn-sm btn-link dashboard-iframe-expand" title="Expand embedded page" aria-label="Expand embedded page"><i class="bi bi-arrows-fullscreen"></i></button>'
+            : "";
 
         const runNowEnabled =
             widget.runNowEnabled === true;
@@ -2558,6 +2567,19 @@
 		{
 		    widgetContentHtml = renderTextWidget(result, widget);
 		}
+        else if (isIframeWidget)
+        {
+            const rawUrl = typeof iframeConfig.url === "string" ? iframeConfig.url.trim() : "";
+            let safeUrl = "";
+            try {
+                const parsedUrl = new URL(rawUrl, window.location.origin);
+                if ((parsedUrl.protocol === "https:" || parsedUrl.protocol === "http:") && parsedUrl.username === "" && parsedUrl.password === "") safeUrl = parsedUrl.href;
+            } catch (error) { safeUrl = ""; }
+            const iframeHeight = Number.isInteger(iframeConfig.defaultHeight) && iframeConfig.defaultHeight >= 250 && iframeConfig.defaultHeight <= 2000 ? iframeConfig.defaultHeight : 520;
+            widgetContentHtml = safeUrl
+                ? '<div class="dashboard-iframe-wrapper"><iframe class="dashboard-iframe" src="' + escapeHtml(safeUrl) + '" title="' + escapeHtml(widget.name || "Embedded dashboard") + '" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; clipboard-read; clipboard-write" style="height:' + iframeHeight + 'px"></iframe></div>'
+                : '<div class="alert alert-warning mb-0">Configure a valid HTTP or HTTPS URL for this iFrame widget.</div>';
+        }
 
         /*
          * TABLE
@@ -2657,10 +2679,8 @@
 
         return (
 
-            '<div class="' +
-                getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) +
-            '">' +
-
+            '<div class="dashboard-widget-column' + (isIframeWidget ? ' dashboard-iframe-column' : '') + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
+            '<div class="' + getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) + '">' +
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
 
 
@@ -2712,7 +2732,7 @@
                             headerUpdatedHtml +
 
 
-                            '<span class="dashboard-status ' +
+                            (isIframeWidget ? "" : '<span class="dashboard-status ' +
                                 statusClass +
                             '">' +
 
@@ -2726,13 +2746,10 @@
                                     ) +
                                 '</span>' +
 
-                            '</span>' +
-
-
+                            '</span>' +) +
                             refreshButton +
-
-
-                            detailsButton +
+                            iframeExpandButton +
+                            (isIframeWidget ? "" : detailsButton) +
 
 
                         '</div>' +
@@ -2754,6 +2771,8 @@
 
                 '</div>' +
 
+            '
+                '</div>' +
             '</div>'
         );
     }
@@ -3977,6 +3996,40 @@
     });
     contentElement.addEventListener("click", function (event)
     {
+        const expandButton = event.target.closest(".dashboard-iframe-expand");
+        const collapseButton = event.target.closest(".dashboard-iframe-collapse");
+        if (expandButton || collapseButton)
+        {
+            const column = (expandButton || collapseButton).closest(".dashboard-widget-column");
+            if (!column) return;
+            if (expandButton)
+            {
+                document.querySelectorAll(".dashboard-iframe-expanded-column").forEach(function (existing) { existing.classList.remove("dashboard-iframe-expanded-column"); });
+                column.classList.add("dashboard-iframe-expanded-column");
+                document.body.classList.add("dashboard-iframe-expanded");
+                const actions = column.querySelector(".dashboard-widget-actions");
+                if (actions && !actions.querySelector(".dashboard-iframe-collapse"))
+                {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "btn btn-sm btn-link dashboard-iframe-collapse";
+                    button.title = "Collapse embedded page";
+                    button.setAttribute("aria-label", "Collapse embedded page");
+                    button.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+                    actions.appendChild(button);
+                }
+                expandButton.hidden = true;
+            }
+            else
+            {
+                column.classList.remove("dashboard-iframe-expanded-column");
+                document.body.classList.remove("dashboard-iframe-expanded");
+                const expand = column.querySelector(".dashboard-iframe-expand");
+                if (expand) expand.hidden = false;
+                collapseButton.remove();
+            }
+            return;
+        }
         const summaryCard = event.target.closest(".server-health-summary-filter");
         if (summaryCard)
         {
@@ -4000,6 +4053,18 @@
         serverHealthState.set(String(button.dataset.widgetId), state);
         // Pagination is client-side; do not reload dashboard data from the server.
         renderTabs(activeTabId);
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key !== "Escape" || !document.body.classList.contains("dashboard-iframe-expanded")) return;
+        const column = document.querySelector(".dashboard-iframe-expanded-column");
+        if (!column) return;
+        column.classList.remove("dashboard-iframe-expanded-column");
+        document.body.classList.remove("dashboard-iframe-expanded");
+        const expand = column.querySelector(".dashboard-iframe-expand");
+        if (expand) expand.hidden = false;
+        const collapse = column.querySelector(".dashboard-iframe-collapse");
+        if (collapse) collapse.remove();
     });
 
     /* Initial load. */
