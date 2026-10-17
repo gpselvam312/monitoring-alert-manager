@@ -494,7 +494,7 @@
             return {
                 label: series,
                 data: labels.map(function (label) {
-                    const key = series + "\\u0000" + label;
+                    const key = series + "\u0000" + label;
                     return values.has(key) ? values.get(key) : null;
                 }),
                 backgroundColor: color, borderColor: color, borderWidth: 2,
@@ -693,7 +693,7 @@
 
 	            let chartData;
 
-	            if (chartType === "pie")
+	            if (chartType === "pie" || chartType === "doughnut")
 	            {
 	                chartData =
 	                    buildPieChartData(data);
