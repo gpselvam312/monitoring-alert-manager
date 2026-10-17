@@ -148,6 +148,15 @@
 			if (config.tabId) {
 			    params.set('tabId', config.tabId);
 			}
+            if (config.filterIds && typeof config.filterIds === 'object') {
+                Object.entries(config.filterIds).forEach(function (entry) {
+                    const parameterName = entry[0];
+                    const filter = document.getElementById(entry[1]);
+                    if (filter && filter.value !== '') {
+                        params.set(parameterName, filter.value);
+                    }
+                });
+            }
             if (config.sort) {
 
                 params.set(
