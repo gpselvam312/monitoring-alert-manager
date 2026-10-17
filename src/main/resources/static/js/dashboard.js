@@ -2697,7 +2697,7 @@
         return (
 
             '<div class="' +
-                getWidgetSizeClass((widgetType === "SYSTEM_METRICS" || widgetType === "ELASTICSEARCH") ? "FULL" : widget.size) +
+                getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) +
             '">' +
 
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
