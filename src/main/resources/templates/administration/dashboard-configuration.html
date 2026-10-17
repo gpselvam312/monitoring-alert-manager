@@ -1945,15 +1945,21 @@
         }
 
         function syncDashboardWidgetDataSourceFields(clearSelection) {
-            const sourceType = document.getElementById('dashboardWidgetDataSourceType').value;
+            const sourceSelect = document.getElementById('dashboardWidgetDataSourceType');
+            const sourceType = sourceSelect.value;
+            const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
             const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
-            const useJob = sourceType === 'MONITORING_JOB';
+            const useJob = sourceType === 'MONITORING_JOB' && !isIframe;
 
-            if (clearSelection || !useJob) {
+            if (isIframe) {
+                sourceSelect.value = '';
+                jobSelect.value = '';
+            } else if (clearSelection || !useJob) {
                 jobSelect.value = '';
             }
 
+            sourceSelect.disabled = isIframe;
             jobGroup.classList.toggle('d-none', !useJob);
             jobSelect.disabled = !useJob;
             jobSelect.required = useJob;
