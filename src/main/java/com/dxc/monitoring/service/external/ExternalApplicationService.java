@@ -108,7 +108,12 @@ public class ExternalApplicationService
             account.setUsername(blankToNull(form.getUsername()));
             account.setEnabled(form.isAccountEnabled());
 
-            if (secretReference != null)
+            if (form.isClearSecret())
+            {
+                account.setEncryptedSecret(null);
+                account.setSecretReference(null);
+            }
+            else if (secretReference != null)
             {
                 account.setSecretReference(secretReference);
                 account.setEncryptedSecret(null);
@@ -116,11 +121,6 @@ public class ExternalApplicationService
             else if (secret != null && !secret.isBlank())
             {
                 account.setEncryptedSecret(encryptionService.encrypt(secret));
-                account.setSecretReference(null);
-            }
-            else if (form.isClearSecret())
-            {
-                account.setEncryptedSecret(null);
                 account.setSecretReference(null);
             }
             accountRepository.save(account);
