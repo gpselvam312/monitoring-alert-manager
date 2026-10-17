@@ -1553,8 +1553,9 @@
             ? sortedItems
             : sortedItems.filter(function (item) { return item.status === state.status; });
 
-        // Match pagination to the actual responsive grid's minimum card width.
-        // Avoid measuring a different widget's existing grid or using a wider estimate.
+        // Use the last measured page size when available. The post-render synchronizer
+        // reads the real CSS grid column count, so browser zoom and responsive layout
+        // determine how many cards fit on each page.
         const content = document.querySelector(".app-content");
         let gridWidth = content ? content.clientWidth : window.innerWidth;
         if (content) {
@@ -1563,8 +1564,10 @@
         }
         const gridGap = 12;
         const cardMinWidth = 275;
-        const columnCount = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
-        const size = columnCount * 2;
+        const estimatedColumns = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
+        const estimatedSize = estimatedColumns * 2;
+        const size = Number(state.pageSize) > 0 ? Number(state.pageSize) : estimatedSize;
+        state.pageSize = size;
         const pages = Math.max(1, Math.ceil(filtered.length / size));
         state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
@@ -1787,7 +1790,7 @@
                 (used !== null && total !== null ? '<span>RAM: ' + escapeHtml(used) + " / " + escapeHtml(total) + " MB</span>" : "") + "</div></article>";
         }).join("");
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + ">Previous</button><span class=\"small text-muted\">Page " + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + ">Next</button></div>";
-        return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="text-muted small p-3">No servers match this status filter.</div>') + "</div>" + pager;
+        return summary + filters + '<div class="server-health-grid" data-widget-id="' + escapeHtml(widget.id) + '">' + (cards || '<div class="text-muted small p-3">No servers match this status filter.</div>') + "</div>" + pager;
     }
 
     function renderKafkaConsumerHealthWidget(result, widget)
@@ -2964,6 +2967,10 @@
 
         configureAutoRefresh();
 
+        // The HTML above is now in the DOM. Use the actual CSS grid columns rather
+        // than estimating them from .app-content, which can differ from widget width.
+        synchronizeSystemMetricsPageSizes();
+
 
         /*
          * Resize the charts in the first visible tab.
@@ -2975,6 +2982,44 @@
             );
         }
     }
+
+
+    function synchronizeSystemMetricsPageSizes()
+    {
+        const activePane = contentElement.querySelector(".dashboard-tab-pane.active");
+        if (!activePane) return;
+
+        let pageSizeChanged = false;
+        activePane.querySelectorAll(".server-health-grid[data-widget-id]").forEach(function (grid) {
+            // Hidden grids do not have a meaningful computed column layout yet.
+            if (grid.clientWidth <= 0) return;
+
+            const template = window.getComputedStyle(grid).gridTemplateColumns;
+            const columns = template && template !== "none"
+                ? template.trim().split(/\\s+/).filter(Boolean).length
+                : 0;
+            if (!columns) return;
+
+            const widgetId = String(grid.dataset.widgetId);
+            const state = serverHealthState.get(widgetId) || { status: "ALL", page: 0 };
+            const actualPageSize = columns * 2;
+            if (Number(state.pageSize) !== actualPageSize) {
+                state.pageSize = actualPageSize;
+                // Keep the current page where possible; renderSystemMetricsCards clamps
+                // it if the new responsive page size leaves fewer pages.
+                serverHealthState.set(widgetId, state);
+                pageSizeChanged = true;
+            }
+        });
+
+        // One rerender applies the measured page sizes. The next pass is stable because
+        // the stored page size now matches the rendered grid's actual column count.
+        if (pageSizeChanged) renderTabs(activeTabId);
+    }
+
+    // Browser zoom changes the CSS layout and fires resize; only rerender when the
+    // actual column count changes.
+    window.addEventListener("resize", synchronizeSystemMetricsPageSizes);
 
 
     function bindConfigurableTableEvents()
