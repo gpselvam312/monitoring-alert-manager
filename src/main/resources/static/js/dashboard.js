@@ -540,11 +540,20 @@
                 : "hsl(" + Math.round((index * 137.508 + 18) % 360) + ", 68%, 52%)");
         });
 
+        const theme = getChartTheme();
         return {
             labels: labels,
             datasets: [{
-                label: "Value", data: values, backgroundColor: colors,
-                borderColor: getChartTheme().border, borderWidth: 1
+                label: "Value",
+                data: values,
+                backgroundColor: colors,
+                borderColor: theme.border || "#ffffff",
+                borderWidth: 3,
+                hoverBorderColor: theme.textPrimary || "#ffffff",
+                hoverBorderWidth: 4,
+                hoverOffset: 12,
+                spacing: 2,
+                borderAlign: "inner"
             }]
         };
     }
@@ -574,10 +583,29 @@
                 },
                 tooltip: {
                     enabled: true,
-                    callbacks: { label: function (context) {
-                        const label = context.dataset && context.dataset.label ? context.dataset.label + ": " : "";
-                        return label + formatNumber(context.parsed && typeof context.parsed.y !== "undefined" ? context.parsed.y : context.raw);
-                    }}
+                    displayColors: true,
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function (context) {
+                            const rawValue = context.parsed && typeof context.parsed.y !== "undefined"
+                                ? context.parsed.y : context.raw;
+                            if (chartType === "pie" || chartType === "doughnut") {
+                                const values = context.dataset && Array.isArray(context.dataset.data) ? context.dataset.data : [];
+                                const total = values.reduce(function (sum, value) {
+                                    const number = toChartNumber(value);
+                                    return sum + (number === null ? 0 : number);
+                                }, 0);
+                                const numeric = toChartNumber(rawValue);
+                                const percentage = numeric !== null && total > 0
+                                    ? " (" + (numeric / total * 100).toLocaleString(undefined, { maximumFractionDigits: 1 }) + "%)"
+                                    : "";
+                                return formatNumber(rawValue) + percentage;
+                            }
+                            const label = context.dataset && context.dataset.label ? context.dataset.label + ": " : "";
+                            return label + formatNumber(rawValue);
+                        }
+                    }
                 }
             }
         };
