@@ -183,11 +183,11 @@
                                 <td th:text="${app.authType}">OIDC</td>
                                 <td>
                                     <span th:if="${configuredAccounts[app.id]}" class="status-badge status-success">Configured</span>
-                                    <span th:unless="${configuredAccounts[app.id]}" class="status-badge status-secondary">Not configured</span>
+                                    <span th:unless="${configuredAccounts[app.id]}" class="status-badge status-disabled">Not configured</span>
                                 </td>
                                 <td>
                                     <span th:if="${app.enabled}" class="status-badge status-success">Enabled</span>
-                                    <span th:unless="${app.enabled}" class="status-badge status-secondary">Disabled</span>
+                                    <span th:unless="${app.enabled}" class="status-badge status-disabled">Disabled</span>
                                 </td>
                                 <td class="text-end text-nowrap">
                                     <a class="btn btn-sm btn-outline-primary"
