@@ -94,8 +94,14 @@
             renderSeriesRows(parseConfig().series || []);
             syncToJson();
         });
-        byId("chartMapSeriesRows").addEventListener("change", syncToJson);
-        byId("chartMapSeriesRows").addEventListener("input", syncToJson);
+        byId("chartMapSeriesRows").addEventListener("change", function () {
+            updateEnableAllControl();
+            syncToJson();
+        });
+        byId("chartMapSeriesRows").addEventListener("input", function () {
+            updateEnableAllControl();
+            syncToJson();
+        });
         byId("chartMapEnableAll").addEventListener("change", function () {
             byId("chartMapSeriesRows").querySelectorAll(".chart-map-series-enabled").forEach(control => {
                 control.checked = byId("chartMapEnableAll").checked;
@@ -199,6 +205,15 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
                 if (color) item.color = color;
                 return item;
             });
+    }
+
+    function updateEnableAllControl() {
+        const master = byId("chartMapEnableAll");
+        const controls = Array.from(byId("chartMapSeriesRows").querySelectorAll(".chart-map-series-enabled"));
+        if (!master) return;
+        master.checked = controls.length > 0 && controls.every(control => control.checked);
+        master.indeterminate = controls.some(control => control.checked) && !master.checked;
+        master.disabled = controls.length === 0;
     }
 
     function renderSeriesRows(series) {
