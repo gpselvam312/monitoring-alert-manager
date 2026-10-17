@@ -2,6 +2,10 @@ package com.dxc.monitoring.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
+
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +28,7 @@ import com.dxc.monitoring.entity.DashboardTab;
 import com.dxc.monitoring.entity.DashboardWidget;
 import com.dxc.monitoring.service.dashboard.DashboardConfigurationService;
 import com.dxc.monitoring.service.dashboard.DashboardWidgetForm;
+import com.dxc.monitoring.service.external.ExternalApplicationService;
 
 import jakarta.validation.Valid;
 
@@ -33,10 +38,15 @@ import jakarta.validation.Valid;
 public class DashboardConfigurationController
 {
     private final DashboardConfigurationService dashboardConfigurationService;
+    private final ExternalApplicationService externalApplicationService;
+    private final ObjectMapper objectMapper;
 
-    public DashboardConfigurationController(DashboardConfigurationService dashboardConfigurationService)
+    public DashboardConfigurationController(DashboardConfigurationService dashboardConfigurationService,
+            ExternalApplicationService externalApplicationService, ObjectMapper objectMapper)
     {
         this.dashboardConfigurationService = dashboardConfigurationService;
+        this.externalApplicationService = externalApplicationService;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping
@@ -118,6 +128,21 @@ public class DashboardConfigurationController
 
         try
         {
+            if ("IFRAME".equals(form.getWidgetType()))
+            {
+                Map<String, Object> iframeConfig = objectMapper.readValue(
+                        form.getFieldConfigJson() == null || form.getFieldConfigJson().isBlank()
+                                ? "{}" : form.getFieldConfigJson(),
+                        new TypeReference<Map<String, Object>>() {});
+                Object selectedId = iframeConfig.get("externalApplicationId");
+                Long externalApplicationId = selectedId instanceof Number number
+                        ? number.longValue()
+                        : selectedId == null ? null : Long.valueOf(String.valueOf(selectedId));
+                var externalApplication = externalApplicationService.findEnabledById(externalApplicationId);
+                iframeConfig.put("url", externalApplication.getBaseUrl());
+                iframeConfig.put("externalApplicationId", externalApplication.getId());
+                form.setFieldConfigJson(objectMapper.writeValueAsString(iframeConfig));
+            }
             dashboardConfigurationService.saveWidget(form);
         }
         catch (IllegalArgumentException exception)
@@ -307,6 +332,7 @@ public class DashboardConfigurationController
         model.addAttribute("selectedTab", selectedTab);
         model.addAttribute("widgets", widgets);
         model.addAttribute("monitoringJobs", dashboardConfigurationService.findDashboardMonitoringJobs());
+        model.addAttribute("externalApplications", externalApplicationService.findEnabled());
         model.addAttribute("tabSearch", tabSearch);
         model.addAttribute("widgetSearch", widgetSearch);
         model.addAttribute("widgetPage", widgetPage);
