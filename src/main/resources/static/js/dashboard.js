@@ -514,39 +514,36 @@
     /*
      * Build PIE data.
      */
-    function buildPieChartData(data)
+    function buildPieChartData(data, config)
     {
         const labels = [];
         const values = [];
+        const colors = [];
+        const themeColors = getThemeChartColors();
+        const colorScheme = String(config && config.pieColorScheme || "categorical").toLowerCase();
+        const configuredSeries = Array.isArray(config && config.series) ? config.series : [];
+        const valueSeries = configuredSeries.find(function (series) {
+            return series && series.valueField === (config && (config.pieValueField || config.valueField));
+        });
+        const singleColor = valueSeries && valueSeries.color ? valueSeries.color :
+            (themeColors[0] || getChartTheme().primary || "#0d6efd");
 
-        data.forEach(function (point)
+        (data || []).forEach(function (point, index)
         {
-            if (!point)
-            {
-                return;
-            }
-
-            labels.push(
-                point.label === null ||
-                point.label === undefined
-                    ? ""
-                    : String(point.label)
-            );
-
-            values.push(
-                toChartNumber(point.value)
-            );
+            if (!point) return;
+            labels.push(point.label === null || point.label === undefined ? "" : String(point.label));
+            values.push(toChartNumber(point.value));
+            // Use a category palette for pie slices; numeric series colours are for line/bar series.
+            // The golden-angle hue spacing keeps adjacent categories visually distinct and stable.
+            colors.push(colorScheme === "single"
+                ? singleColor
+                : "hsl(" + Math.round((index * 137.508 + 18) % 360) + ", 68%, 52%)");
         });
 
-
-        const colors = getThemeChartColors();
-        const dataColors = data.map(function (point, index) {
-            return point && point.color ? point.color : colors[index % colors.length];
-        });
         return {
             labels: labels,
             datasets: [{
-                label: "Value", data: values, backgroundColor: dataColors,
+                label: "Value", data: values, backgroundColor: colors,
                 borderColor: getChartTheme().border, borderWidth: 1
             }]
         };
@@ -712,7 +709,7 @@
 	            if (chartType === "pie" || chartType === "doughnut")
 	            {
 	                chartData =
-	                    buildPieChartData(data);
+	                    buildPieChartData(data, parseWidgetFieldConfig(widget));
 	            }
 	            else
 	            {
@@ -1116,6 +1113,56 @@
         const categoryField = config.categoryField || config.labelField;
         const explicitSeries = Array.isArray(config.series) ? config.series : [];
         const enabledSeries = explicitSeries.filter(function (series) { return series && series.enabled !== false; });
+        const chartType = normalizeChartType(widget && widget.chartType);
+
+        // Pie and Donut charts represent category aggregates, not one slice per row/series.
+        // This prevents duplicate category slices when several records share the same label.
+        if ((chartType === "pie" || chartType === "doughnut") && categoryField) {
+            const rows = getConfiguredTableRows(result, config);
+            if (rows.length) {
+                const valueField = config.pieValueField || config.valueField ||
+                    (enabledSeries[0] && enabledSeries[0].valueField) || "";
+                const aggregation = String(config.pieAggregation || "sum").toLowerCase();
+                const groups = new Map();
+
+                rows.forEach(function (row) {
+                    const rawLabel = getJsonPath(row, categoryField);
+                    if (rawLabel === null || rawLabel === undefined || String(rawLabel).trim() === "") return;
+                    const label = String(rawLabel);
+                    if (!groups.has(label)) groups.set(label, { label: label, values: [], distinct: new Set(), count: 0 });
+                    const group = groups.get(label);
+                    group.count++;
+                    if (!valueField) return;
+                    const rawValue = getJsonPath(row, valueField);
+                    if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") return;
+                    if (aggregation === "countdistinct") {
+                        group.distinct.add(typeof rawValue === "object" ? JSON.stringify(rawValue) : String(rawValue));
+                        return;
+                    }
+                    if (aggregation === "count") return;
+                    const numeric = toChartNumber(rawValue);
+                    if (numeric !== null) group.values.push(numeric);
+                });
+
+                return Array.from(groups.values()).map(function (group) {
+                    let value;
+                    switch (aggregation) {
+                        case "count": value = group.count; break;
+                        case "countdistinct": value = group.distinct.size; break;
+                        case "average":
+                        case "avg": value = group.values.length
+                            ? group.values.reduce((total, number) => total + number, 0) / group.values.length : null; break;
+                        case "min": value = group.values.length ? Math.min.apply(null, group.values) : null; break;
+                        case "max": value = group.values.length ? Math.max.apply(null, group.values) : null; break;
+                        case "sum":
+                        default: value = group.values.length
+                            ? group.values.reduce((total, number) => total + number, 0) : null; break;
+                    }
+                    return value === null ? null : { label: group.label, value: value };
+                }).filter(Boolean);
+            }
+        }
+
         const rows = categoryField && (config.valueField || enabledSeries.length)
             ? getConfiguredTableRows(result, config) : [];
 
