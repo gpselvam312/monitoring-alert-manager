@@ -5,6 +5,9 @@ public class ExternalApplicationForm
     private Long id;
     private String applicationCode;
     private String applicationName;
+    private String externalType = "OTHER";
+    private Long applicationId;
+    private Long environmentId;
     private String baseUrl;
     private String authType = "NONE";
     private boolean enabled = true;
@@ -21,6 +24,12 @@ public class ExternalApplicationForm
     public void setApplicationCode(String applicationCode) { this.applicationCode = applicationCode; }
     public String getApplicationName() { return applicationName; }
     public void setApplicationName(String applicationName) { this.applicationName = applicationName; }
+    public String getExternalType() { return externalType; }
+    public void setExternalType(String externalType) { this.externalType = externalType; }
+    public Long getApplicationId() { return applicationId; }
+    public void setApplicationId(Long applicationId) { this.applicationId = applicationId; }
+    public Long getEnvironmentId() { return environmentId; }
+    public void setEnvironmentId(Long environmentId) { this.environmentId = environmentId; }
     public String getBaseUrl() { return baseUrl; }
     public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
     public String getAuthType() { return authType; }
