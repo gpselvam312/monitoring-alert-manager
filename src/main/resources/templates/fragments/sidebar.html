@@ -26,14 +26,5 @@
                 <span th:text="${item.label}">Menu item</span>
             </a>
         </div>
-        <div class="sidebar-section" sec:authorize="hasAuthority('MONITORING_CONFIG')">
-            <div class="sidebar-section-title">Administration</div>
-            <a th:href="@{/administration/external-applications}"
-               class="sidebar-link"
-               th:classappend="${currentPage == 'external-applications'} ? ' active' : ''">
-                <i class="bi bi-window-stack" aria-hidden="true"></i>
-                <span>External Applications</span>
-            </a>
-        </div>
     </nav>
 </aside>
