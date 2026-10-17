@@ -547,12 +547,13 @@
                 label: "Value",
                 data: values,
                 backgroundColor: colors,
-                borderColor: theme.border || "#ffffff",
-                borderWidth: 3,
-                hoverBorderColor: theme.textPrimary || "#ffffff",
-                hoverBorderWidth: 4,
-                hoverOffset: 12,
-                spacing: 2,
+                // Use thin white separators between slices instead of heavy slice outlines.
+                borderColor: "#ffffff",
+                borderWidth: 1,
+                hoverBorderColor: "#ffffff",
+                hoverBorderWidth: 1,
+                hoverOffset: 8,
+                spacing: 0,
                 borderAlign: "inner"
             }]
         };
