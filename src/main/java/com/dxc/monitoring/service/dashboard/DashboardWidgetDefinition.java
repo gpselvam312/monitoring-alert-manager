@@ -27,6 +27,8 @@ public class DashboardWidgetDefinition
 
     private Long dataSourceId;
 
+    private String monitoringJobName;
+
     private String fieldConfigJson;
 
     private Boolean autoRefresh;
@@ -159,6 +161,16 @@ public class DashboardWidgetDefinition
     public void setDataSourceId(Long dataSourceId)
     {
         this.dataSourceId = dataSourceId;
+    }
+
+    public String getMonitoringJobName()
+    {
+        return monitoringJobName;
+    }
+
+    public void setMonitoringJobName(String monitoringJobName)
+    {
+        this.monitoringJobName = monitoringJobName;
     }
 
     public String getFieldConfigJson()

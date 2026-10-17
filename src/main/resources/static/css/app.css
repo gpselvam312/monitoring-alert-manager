@@ -3737,7 +3737,13 @@ textarea.form-control {
 .server-health-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0 12px; }
 .server-health-toolbar select { width: 150px; }
 .server-health-toolbar > span { margin-left: auto; }
-.server-health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr)); gap: 12px; }
+
+.server-health-control-label { display: flex; flex-direction: column; gap: 4px; color: var(--text-secondary); font-size: 11px; }
+.server-health-control-label select { width: 160px; max-width: 100%; color: var(--text-primary); background-color: var(--input-bg, var(--card-bg)); border-color: var(--border-color); }
+.server-health-group-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; margin-top: 4px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--surface-secondary, var(--card-bg)); color: var(--text-primary); }
+.server-health-group-heading strong { font-size: 13px; overflow-wrap: anywhere; }
+.server-health-group-heading span { flex: 0 0 auto; min-width: 26px; padding: 2px 7px; border-radius: 999px; background: var(--border-color); color: var(--text-primary); text-align: center; font-size: 11px; font-weight: 700; }
+.server-health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 275px), 1fr)); gap: 12px; }
 .server-health-card { min-width: 0; border: 1px solid var(--border-color); border-left: 4px solid var(--success); border-radius: 9px; padding: 14px; background: var(--card-bg); }
 .server-health-card-warning { border-left-color: var(--warning); }
 .server-health-card-critical { border-left-color: var(--danger); }
@@ -3781,6 +3787,10 @@ textarea.form-control {
 .server-health-card-warning { border-color: var(--warning); }
 .server-health-card-critical { border-color: var(--danger); }
 .server-health-card-unknown { border-color: var(--text-secondary); }
+.server-health-collection-message { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border-color)); border-radius: 7px; background: color-mix(in srgb, var(--warning) 8%, var(--card-bg)); color: var(--text-primary); }
+.server-health-collection-message > i { flex: 0 0 auto; margin-top: 2px; color: var(--warning); font-size: 18px; }
+.server-health-collection-message strong { display: block; margin-bottom: 4px; font-size: 12px; }
+.server-health-collection-message p { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .server-health-card:hover { transform: translateY(-1px); box-shadow: 0 5px 16px color-mix(in srgb, var(--text-primary) 9%, transparent); }
 .server-health-card-header { align-items: flex-start; }
 .server-health-host { display: flex; align-items: center; gap: .5rem; min-width: 0; }
@@ -4206,7 +4216,7 @@ textarea.form-control {
 .server-health-metric > div:first-child span { display: inline-flex; align-items: center; gap: .35rem; }
 .server-health-metric > div:first-child span i { color: var(--server-health-accent); }
 .server-health-metric > div:first-child strong { color: var(--text-primary); font-size: .95rem; font-weight: 750; font-variant-numeric: tabular-nums; }
-.server-health-meter { height: .42rem; margin-top: .5rem; background: color-mix(in srgb, var(--border-color) 75%, transparent); border-radius: 999px; }
+.server-health-meter { height: .22rem; margin-top: .5rem; background: color-mix(in srgb, var(--border-color) 75%, transparent); border-radius: 999px; }
 .server-health-meter > span { background: var(--server-health-accent); }
 .server-health-detail { padding-top: .7rem; }
 .server-health-detail > span i { color: var(--server-health-accent); }
@@ -4805,4 +4815,33 @@ textarea.form-control {
 [data-theme="blue-dark"] #dashboardTabModal .btn-close {
     filter: invert(1) grayscale(100%) brightness(200%);
     opacity: 1;
+}
+
+/* Per-metric status is supplied by the collector and is independent of machine status. */
+.server-health-metric-meter-warning > span { background: var(--warning) !important; }
+.server-health-metric-meter-critical > span { background: var(--danger) !important; }
+.server-health-metric-meter-unknown > span { background: var(--text-secondary) !important; }
+
+
+/* System Metrics: keep each metric on its own full-width row within the machine card. */
+.server-health-card > .server-health-metric {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: .65rem 0;
+}
+.server-health-card .server-health-metric > div:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: .75rem;
+}
+.server-health-card .server-health-metric > div:first-child span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.server-health-card .server-health-metric > div:first-child strong {
+    flex: 0 0 auto;
+    text-align: right;
 }

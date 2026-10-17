@@ -1299,25 +1299,90 @@
 
     function renderSystemMetricsCards(result, widget, config)
     {
-        const rows = getConfiguredTableRows(result, config).map(function (row) { return Object.assign({}, row); });
-        const state = serverHealthState.get(String(widget.id)) || { status: "ALL", page: 0 };
-        const fields = Object.assign({
-            hostname: "hostname", cpu: "cpu_used_percent", ram: "ram_used_percent",
-            load1m: "load_1m", load5m: "load_5m", load15m: "load_15m",
-            uptimeSeconds: "uptime_seconds", diskUsedPercent: "u01_used_percent",
-            collectionStatus: "collection_status", cpuCores: "cpu_cores",
-            ramUsedMb: "ram_used_mb", ramTotalMb: "ram_total_mb"
-        }, config.fields && typeof config.fields === "object" ? config.fields : {});
-        const pick = function (row, keys)
+        let payload = result && result.payload;
+        // Monitoring outputs may be stored as serialized JSON or wrapped under data.
+        // Normalize them before applying the configured rowPath.
+        if (typeof payload === "string") {
+            try { payload = JSON.parse(payload); } catch (ignore) { /* Keep the original value for the error/empty state. */ }
+        }
+        const payloadObject = payload && typeof payload === "object" ? payload : {};
+        const normalizedResult = Object.assign({}, result || {}, { payload: payload });
+        const failure = result && (result.success === false || result.ok === false)
+            ? (result.error || result.message || "The monitoring script reported a collection failure.")
+            : payloadObject.success === false || payloadObject.ok === false || payloadObject.error
+                ? (payloadObject.error || payloadObject.message || "The monitoring script reported a collection failure.")
+                : null;
+        if (failure)
         {
-            for (const key of keys)
+            const message = typeof failure === "string" ? failure : JSON.stringify(failure);
+            return '<div class="server-health-empty server-health-collection-error"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>System metrics collection failed: ' + escapeHtml(message) + '</span></div>';
+        }
+
+        // The System Metrics contract uses machines[] as its canonical row collection.
+        // Prefer it over a stale saved rowPath (for example, an old root-object selection).
+        const canonicalMachines = Array.isArray(payloadObject.machines)
+            ? payloadObject.machines
+            : payloadObject.data && Array.isArray(payloadObject.data.machines)
+                ? payloadObject.data.machines
+                : null;
+        let rows = canonicalMachines
+            ? canonicalMachines.filter(isObjectRow)
+            : getConfiguredTableRows(normalizedResult, config);
+        // Accept common response wrappers when no canonical machines[] array is present.
+        if (!rows.length && payloadObject.data && typeof payloadObject.data === "object") {
+            rows = getConfiguredTableRows({ payload: payloadObject.data }, config);
+        }
+        rows = rows.map(function (row) { return Object.assign({}, row); });
+        if (!rows.length)
+        {
+            const jobName = widget.monitoringJobName
+                || (result && (result.monitoringJobName || result.jobName
+                    || (result.monitoringJob && result.monitoringJob.name)
+                    || (result.job && result.job.name)))
+                || widget.name
+                || "Unknown";
+            return '<div class="server-health-empty"><i class="bi bi-question-circle" aria-hidden="true"></i><span>Machine metrics are currently unavailable for monitoring job <strong>' + escapeHtml(jobName) + '</strong>. Please contact your system administrator if the issue persists.</span></div>';
+        }
+
+        const state = Object.assign({ status: "ALL", page: 0, groupBy: "", sortBy: "__health", sortDirection: "asc" }, serverHealthState.get(String(widget.id)) || {});
+        const columns = config.details && Array.isArray(config.details.columns)
+            ? config.details.columns.filter(function (column) { return column && column.field; })
+            : [];
+        const legacyView = config.view && typeof config.view === "object" ? config.view : {};
+        if (legacyView.showSummaryCards === false) state.status = "ALL";
+
+        const metricObject = function (row, field)
+        {
+            const source = String(field || "");
+            if (!source.startsWith("metrics::")) return null;
+            const name = source.slice("metrics::".length);
+            const metrics = row && row.metrics;
+            if (Array.isArray(metrics))
             {
-                const mapped = fields[key] || key;
-                if (row[mapped] !== undefined && row[mapped] !== null && row[mapped] !== "") return row[mapped];
-                if (row[key] !== undefined && row[key] !== null && row[key] !== "") return row[key];
+                const metric = metrics.find(function (item) {
+                    return item && String(item.name !== undefined ? item.name : item.key) === name;
+                });
+                return metric && typeof metric === "object" ? metric : null;
+            }
+            if (metrics && typeof metrics === "object")
+            {
+                const metric = metrics[name];
+                return metric && typeof metric === "object" ? metric : null;
             }
             return null;
         };
+
+        const valueOf = function (row, field)
+        {
+            const source = String(field || "");
+            if (source.startsWith("metrics::"))
+            {
+                const metric = metricObject(row, source);
+                return metric ? metric.value : undefined;
+            }
+            return getJsonPath(row, source);
+        };
+
         const number = function (value)
         {
             if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -1325,16 +1390,37 @@
             const parsed = Number(value);
             return Number.isFinite(parsed) ? parsed : null;
         };
-        const label = function (key, fallback)
+
+        const normalizeStatus = function (value)
         {
-            const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
-            return labels[key] || labels[fields[key]] || fallback;
+            const normalized = String(value === null || value === undefined ? "" : value).trim().toUpperCase();
+            if (["HEALTHY", "HEALTH", "OK", "GREEN", "SUCCESS", "SUCCEEDED", "UP", "PASS", "PASSED"].includes(normalized)) return "HEALTHY";
+            if (["WARNING", "WARN", "YELLOW", "DEGRADED"].includes(normalized)) return "WARNING";
+            if (["CRITICAL", "ERROR", "FAILED", "FAILURE", "RED", "DOWN"].includes(normalized)) return "CRITICAL";
+            return "UNKNOWN";
         };
-        const collected = function (row)
+
+        const configuredColumns = columns.length ? columns : [];
+        const hostColumn = configuredColumns.find(function (column) {
+            return /^(hostname|hostName|host|server|machine|name)$/i.test(String(column.field));
+        });
+        const statusColumn = configuredColumns.find(function (column) {
+            return /^(status|healthStatus|health_status)$/i.test(String(column.field));
+        }) || configuredColumns.find(function (column) {
+            return String(column.format || "").toLowerCase() === "status"
+                || /^(collection_status|collectionStatus)$/i.test(String(column.field));
+        });
+
+        const legacyPick = function (row, keys)
         {
-            return ["SUCCESS", "SUCCEEDED", "OK", "COLLECTED", "HEALTHY", "TRUE"].includes(
-                String(pick(row, ["collectionStatus", "collection_status"]) || "").trim().toUpperCase());
+            for (const key of keys)
+            {
+                const value = valueOf(row, key);
+                if (value !== undefined && value !== null && value !== "") return value;
+            }
+            return null;
         };
+
         const uptimeText = function (seconds)
         {
             const v = number(seconds);
@@ -1342,43 +1428,157 @@
             const d = Math.floor(v / 86400), h = Math.floor((v % 86400) / 3600), m = Math.floor((v % 3600) / 60);
             return d > 0 ? d + "d " + h + "h" : h > 0 ? h + "h " + m + "m" : m + "m";
         };
+
+        const formatValue = function (value, format, unit)
+        {
+            if (value === null || value === undefined || value === "") return "N/A";
+            const normalized = String(format || "").toLowerCase();
+            if (normalized === "duration" && Number.isFinite(Number(value))) return uptimeText(Number(value));
+            if (normalized === "number" && Number.isFinite(Number(value))) return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            if (normalized === "meter" && Number.isFinite(Number(value))) return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
+            if (normalized === "percentage" && Number.isFinite(Number(value))) return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) + "%";
+            let text = typeof value === "object" ? JSON.stringify(value) : String(value);
+            if (unit && text !== "N/A" && !text.endsWith(String(unit))) text += (String(unit).startsWith(" ") ? "" : " ") + unit;
+            return text;
+        };
+
+        const inferLegacyStatus = function (row)
+        {
+            const explicit = legacyPick(row, ["status", "healthStatus", "health_status"]);
+            if (explicit !== null) return normalizeStatus(explicit);
+            const cpu = number(legacyPick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
+            const ram = number(legacyPick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
+            const load = number(legacyPick(row, ["load_1m", "load1m", "load_average_1m"]));
+            const cores = Math.max(1, number(legacyPick(row, ["cpu_cores", "cpuCores"])) || 1);
+            const disk = number(legacyPick(row, ["u01_used_percent", "u01_percent", "disk_u01_used_percent"]));
+            const levels = [];
+            if (cpu !== null) levels.push(cpu >= 85 ? 2 : cpu >= 70 ? 1 : 0);
+            if (ram !== null) levels.push(ram >= 90 ? 2 : ram >= 75 ? 1 : 0);
+            if (load !== null) levels.push(load / cores >= 1 ? 2 : load / cores >= 0.70 ? 1 : 0);
+            if (disk !== null) levels.push(disk >= 95 ? 2 : disk >= 85 ? 1 : 0);
+            if (!levels.length) return "UNKNOWN";
+            const worst = Math.max.apply(null, levels);
+            return worst === 2 ? "CRITICAL" : worst === 1 ? "WARNING" : "HEALTHY";
+        };
+
         const items = rows.map(function (row)
         {
-            const cpu = number(pick(row, ["cpu", "cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
-            const ram = number(pick(row, ["ram", "ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
-            const load1 = number(pick(row, ["load1m", "load_1m", "load_average_1m"]));
-            const cores = Math.max(1, number(pick(row, ["cpuCores", "cpu_cores"])) || 1);
-            const uptime = number(pick(row, ["uptimeSeconds", "uptime_seconds", "uptime_sec"]));
-            const disk = number(pick(row, ["diskUsedPercent", "u01_used_percent", "u01_used_percentage", "u01_percent", "disk_u01_used_percent", "u01_usage_percent"]));
-            let status = "UNKNOWN";
-            // A successful collection must contain all required System Metrics before health is inferred.
-            // Missing uptime or /u01 data is incomplete collection, not a healthy server.
-            if (collected(row) && cpu !== null && ram !== null && load1 !== null && uptime !== null && disk !== null)
+            const explicitStatus = legacyPick(row, ["status", "healthStatus", "health_status"]);
+            const status = explicitStatus !== null
+                ? normalizeStatus(explicitStatus)
+                : (statusColumn ? normalizeStatus(valueOf(row, statusColumn.field)) : inferLegacyStatus(row));
+            let pressure = 0;
+            configuredColumns.forEach(function (column)
             {
-                const critical = cpu >= 85 || ram >= 90 || load1 / cores >= 1 || disk >= 95;
-                const warning = cpu >= 70 || ram >= 75 || load1 / cores >= 0.70 || disk >= 85 || uptime < 72 * 3600;
-                status = critical ? "CRITICAL" : warning ? "WARNING" : "HEALTHY";
-            }
-            return { row: row, cpu: cpu, ram: ram, load1: load1, uptime: uptime, disk: disk, status: status,
-                pressure: Math.max((cpu || 0) / 85, (ram || 0) / 90, (load1 || 0) / cores, (disk || 0) / 95) };
-        }).sort(function (a, b)
-        {
-            const rank = { CRITICAL: 0, WARNING: 1, UNKNOWN: 2, HEALTHY: 3 };
-            return rank[a.status] - rank[b.status] || b.pressure - a.pressure;
+                const format = String(column.format || "").toLowerCase();
+                const value = number(valueOf(row, column.field));
+                if (value !== null && (format === "meter" || format === "percentage")) pressure = Math.max(pressure, value / 100);
+            });
+            return { row: row, status: status, pressure: pressure };
         });
+
+        // Grouping and sorting options come from mapped fields and metadata present in the response.
+        // No machine inventory records are required.
+        const availableFields = new Map();
+        configuredColumns.forEach(function (column) {
+            if (column && column.field) availableFields.set(String(column.field), String(column.label || column.field));
+        });
+        const addResponseFields = function (object, prefix, depth) {
+            if (!object || typeof object !== "object" || Array.isArray(object) || depth > 2) return;
+            Object.keys(object).forEach(function (key) {
+                if (key === "metrics") return;
+                const field = prefix ? prefix + "." + key : key;
+                if (!availableFields.has(field)) {
+                    const label = field.split(".").map(function (part) {
+                        return part.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ")
+                            .replace(/^./, function (character) { return character.toUpperCase(); });
+                    }).join(" / ");
+                    availableFields.set(field, label);
+                }
+                const value = object[key];
+                if (value && typeof value === "object" && !Array.isArray(value)) addResponseFields(value, field, depth + 1);
+            });
+        };
+        rows.forEach(function (row) { addResponseFields(row, "", 0); });
+        const fieldLabel = function (field) {
+            if (field === "__health") return "Health Status";
+            if (field === "__hostname") return "Hostname";
+            return availableFields.get(field) || field;
+        };
+        const fieldValue = function (item, field) {
+            if (field === "__health") return item.status;
+            if (field === "__hostname") {
+                const host = hostColumn ? valueOf(item.row, hostColumn.field) : legacyPick(item.row, ["hostname", "hostName", "server", "name"]);
+                return host === null || host === undefined || host === "" ? "Unknown host" : host;
+            }
+            return valueOf(item.row, field);
+        };
+        const healthRank = { CRITICAL: 0, WARNING: 1, UNKNOWN: 2, HEALTHY: 3 };
+        const compareValues = function (left, right, direction) {
+            const leftMissing = left === null || left === undefined || String(left).trim() === "";
+            const rightMissing = right === null || right === undefined || String(right).trim() === "";
+            if (leftMissing || rightMissing) return leftMissing === rightMissing ? 0 : (leftMissing ? 1 : -1);
+            const leftNumber = number(left), rightNumber = number(right);
+            let comparison;
+            if (leftNumber !== null && rightNumber !== null) comparison = leftNumber - rightNumber;
+            else comparison = String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
+            return direction === "desc" ? -comparison : comparison;
+        };
+        const sortItems = function (source) {
+            const direction = state.sortDirection === "desc" ? "desc" : "asc";
+            return source.slice().sort(function (a, b) {
+                let comparison = 0;
+                if (state.sortBy === "__health") {
+                    comparison = (healthRank[a.status] - healthRank[b.status]) * (direction === "desc" ? -1 : 1);
+                    if (comparison === 0) comparison = b.pressure - a.pressure;
+                } else {
+                    comparison = compareValues(fieldValue(a, state.sortBy), fieldValue(b, state.sortBy), direction);
+                    if (comparison === 0) comparison = healthRank[a.status] - healthRank[b.status] || b.pressure - a.pressure;
+                }
+                if (comparison === 0) comparison = String(fieldValue(a, "__hostname")).localeCompare(String(fieldValue(b, "__hostname")), undefined, { numeric: true, sensitivity: "base" });
+                return comparison;
+            });
+        };
+        if (state.sortBy !== "__health" && state.sortBy !== "__hostname" && !availableFields.has(state.sortBy)) {
+            state.sortBy = "__health";
+            state.sortDirection = "asc";
+        }
+        if (state.groupBy && state.groupBy !== "__health" && !availableFields.has(state.groupBy)) state.groupBy = "";
+        const sortedItems = sortItems(items);
+
         const counts = { total: items.length, CRITICAL: 0, WARNING: 0, UNKNOWN: 0, HEALTHY: 0 };
         items.forEach(function (item) { counts[item.status]++; });
-        const filtered = state.status === "ALL" ? items : items.filter(function (item) { return item.status === state.status; });
-        const size = 12, pages = Math.max(1, Math.ceil(filtered.length / size));
+
+        const filtered = state.status === "ALL"
+            ? sortedItems
+            : sortedItems.filter(function (item) { return item.status === state.status; });
+
+        // Use the last measured page size when available. The post-render synchronizer
+        // reads the real CSS grid column count, so browser zoom and responsive layout
+        // determine how many cards fit on each page.
+        const content = document.querySelector(".app-content");
+        let gridWidth = content ? content.clientWidth : window.innerWidth;
+        if (content) {
+            const styles = window.getComputedStyle(content);
+            gridWidth -= (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+        }
+        const gridGap = 12;
+        const cardMinWidth = 275;
+        const estimatedColumns = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
+        const estimatedSize = estimatedColumns * 2;
+        const size = Number(state.pageSize) > 0 ? Number(state.pageSize) : estimatedSize;
+        state.pageSize = size;
+        const pages = Math.max(1, Math.ceil(filtered.length / size));
         state.page = Math.min(Math.max(0, Number(state.page) || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
         const pageItems = filtered.slice(state.page * size, (state.page + 1) * size);
+
         const summaries = [
             ["Total", counts.total, "total", "bi-hdd-rack"], ["Healthy", counts.HEALTHY, "healthy", "bi-check-circle"],
             ["Warning", counts.WARNING, "warning", "bi-exclamation-triangle"], ["Critical", counts.CRITICAL, "critical", "bi-x-octagon"],
             ["Unknown", counts.UNKNOWN, "unknown", "bi-question-circle"]
         ];
-        const summary = '<div class="server-health-summary">' + summaries.map(function (x)
+        const summary = legacyView.showSummaryCards === false ? "" : '<div class="server-health-summary">' + summaries.map(function (x)
         {
             const statusFilter = x[2] === "total" ? "ALL" : x[2].toUpperCase();
             return '<button type="button" class="server-health-summary-item server-health-summary-' + x[2] + ' server-health-summary-filter' +
@@ -1388,43 +1588,120 @@
                 '" aria-hidden="true"></i> ' + x[0] + '</span><strong class="server-health-' + x[2] +
                 '">' + x[1] + '</strong></button>';
         }).join("") + '</div>';
-        const filters = '<div class="server-health-toolbar"><span class="small text-muted">Showing ' +
-            (filtered.length ? state.page * size + 1 : 0) + "–" + Math.min((state.page + 1) * size, filtered.length) +
-            " of " + filtered.length + ' servers</span></div>';
-        const metric = function (icon, name, value, meter)
-        {
-            const display = value === null || value === undefined || value === "" ? "N/A" : escapeHtml(value) + (meter === null ? "" : "%");
-            const width = Math.max(0, Math.min(100, number(meter) || 0));
-            return '<div class="server-health-metric"><div><span><i class="bi ' + icon + '" aria-hidden="true"></i> ' + escapeHtml(name) + '</span><strong>' + display + '</strong></div>' +
-                (meter === null ? "" : '<div class="server-health-meter"><span style="width:' + width + '%"></span></div>') + '</div>';
-        };
-        const cards = pageItems.map(function (item)
-        {
-            const row = item.row, host = pick(row, ["hostname", "hostName", "server", "name"]) || "Unknown host";
-            const sev = item.status.toLowerCase();
-            const loads = [
-                number(pick(row, ["load1m", "load_1m"])),
-                number(pick(row, ["load5m", "load_5m"])),
-                number(pick(row, ["load15m", "load_15m"]))
-            ].filter(function (v) { return v !== null; });
-            const loadText = loads.length ? loads.map(function (v) { return v.toFixed(2); }).join(" / ") : "N/A";
-            const uptime = item.uptime === null ? "N/A" : uptimeText(item.uptime);
-            const disk = item.disk === null ? "N/A" : item.disk + "%";
-            const ramUsed = pick(row, ["ramUsedMb", "ram_used_mb"]), ramTotal = pick(row, ["ramTotalMb", "ram_total_mb"]);
-            const statusIcon = { CRITICAL: "bi-x-octagon-fill", WARNING: "bi-exclamation-triangle-fill", UNKNOWN: "bi-question-circle-fill", HEALTHY: "bi-check-circle-fill" }[item.status];
-            let extra = "";
-            extra += '<div class="server-health-detail"><span><i class="bi bi-activity" aria-hidden="true"></i> ' + escapeHtml(label("load1m", "Load (1m / 5m / 15m)")) + '</span><strong>' + escapeHtml(loadText) + '</strong></div>';
-            extra += '<div class="server-health-detail"><span><i class="bi bi-clock-history" aria-hidden="true"></i> ' + escapeHtml(label("uptimeSeconds", "Uptime")) + '</span><strong>' + escapeHtml(uptime) + '</strong></div>';
-            extra += '<div class="server-health-detail"><span><i class="bi bi-device-hdd" aria-hidden="true"></i> ' + escapeHtml(label("diskUsedPercent", "/u01 Used")) + '</span><strong>' + escapeHtml(disk) + '</strong></div>';
-            const ramCapacity = ramUsed !== null && ramTotal !== null ? '<div class="server-health-foot">' + escapeHtml(ramUsed) + " / " + escapeHtml(ramTotal) + ' MB RAM</div>' : "";
-            return '<article class="server-health-card server-health-card-' + sev + '"><header class="server-health-card-header"><div class="server-health-host"><i class="bi bi-hdd-network" aria-hidden="true"></i><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong></div><span class="server-health-status server-health-status-' + sev + '"><i class="bi ' + statusIcon + '" aria-hidden="true"></i> ' + item.status + '</span></header>' +
-                metric("bi-cpu", label("cpu", "CPU"), item.cpu, item.cpu) +
-                metric("bi-memory", label("ram", "RAM"), item.ram, item.ram) + extra + ramCapacity + '</article>';
-        }).join("");
-        const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
-        return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
-    }
 
+        // Machine cards use a consistent health-first order. Grouping and sorting controls
+        // are reserved for a future table view to keep the card dashboard uncluttered.
+        state.groupBy = "";
+        state.sortBy = "__health";
+        state.sortDirection = "asc";
+        const filters = '<div class="server-health-toolbar"><span class="small text-muted">Showing ' +
+            (filtered.length ? state.page * size + 1 : 0) + "–" +
+            Math.min((state.page + 1) * size, filtered.length) + " of " + filtered.length + ' machines</span></div>';
+
+        const renderMappedFields = function (row)
+        {
+            const visible = configuredColumns.filter(function (column) {
+                return column.visible !== false
+                    && column.field !== (hostColumn && hostColumn.field)
+                    && column.field !== (statusColumn && statusColumn.field);
+            });
+
+            if (!visible.length) return "";
+
+            return visible.map(function (column)
+            {
+                const metric = metricObject(row, column.field);
+                const value = metric ? metric.value : valueOf(row, column.field);
+                const unit = metric && metric.unit !== undefined ? metric.unit : "";
+                const rawFormat = String(column.format || "").toLowerCase();
+                let format = rawFormat;
+                if (!format || format === "auto")
+                {
+                    if (metric && (String(metric.type || "").toLowerCase() === "percentage" || metric.unit === "%")) format = "meter";
+                    else if (metric && String(metric.type || "").toLowerCase() === "duration") format = "duration";
+                    else if (typeof value === "number") format = "number";
+                    else format = "text";
+                }
+
+                const status = metric ? normalizeStatus(metric.status) : "";
+                const statusBadge = metric && metric.status
+                    ? '<span class="server-health-status server-health-status-' + status.toLowerCase() + '">' + status + '</span>'
+                    : "";
+                const display = formatValue(value, format, unit);
+                const meter = (format === "meter" || format === "percentage") && Number.isFinite(Number(value))
+                    ? Math.max(0, Math.min(100, Number(value))) : null;
+
+                return '<div class="server-health-metric' + (status ? ' server-health-metric-status-' + status.toLowerCase() : '') + '"><div><span><i class="bi bi-activity" aria-hidden="true"></i> ' +
+                    escapeHtml(column.label || column.field) + '</span><strong>' + escapeHtml(display) + '</strong>' + statusBadge + '</div>' +
+                    (meter === null ? "" : '<div class="server-health-meter server-health-metric-meter-' + (status ? status.toLowerCase() : "healthy") + '"><span style="width:' + meter + '%"></span></div>') +
+                    '</div>';
+            }).join("");
+        };
+
+        const renderCard = function (item)
+        {
+            const row = item.row;
+            const hostValue = hostColumn ? valueOf(row, hostColumn.field) : legacyPick(row, ["hostname", "hostName", "server", "name"]);
+            const host = hostValue === null || hostValue === undefined || hostValue === "" ? "Unknown host" : hostValue;
+            const sev = item.status.toLowerCase();
+            const statusIcon = { CRITICAL: "bi-x-octagon-fill", WARNING: "bi-exclamation-triangle-fill", UNKNOWN: "bi-question-circle-fill", HEALTHY: "bi-check-circle-fill" }[item.status];
+
+            // Unknown machines often contain only a Collection Status metric, leaving every
+            // regular metric as N/A. Show one actionable explanation instead of a wall of N/A.
+            const collectionMetric = metricObject(row, "metrics::Collection Status");
+            const collectionDetail = legacyPick(row, [
+                "collection_error", "collectionError", "error_message", "errorMessage",
+                "collection_status", "collectionStatus"
+            ]) || (collectionMetric && collectionMetric.value);
+            const normalizedDetail = String(collectionDetail === null || collectionDetail === undefined ? "" : collectionDetail).trim();
+            const genericDetails = /^(|n\/?a|unknown|not available|not collected|unavailable)$/i.test(normalizedDetail);
+            let unknownMessage = "Metrics could not be collected for this machine. Check connectivity, SSH credentials and permissions, then review the monitoring job execution logs.";
+            if (!genericDetails && !/^(healthy|ok|success|succeeded)$/i.test(normalizedDetail)) {
+                unknownMessage = "Metrics could not be collected: " + normalizedDetail;
+            }
+            const cardBody = item.status === "UNKNOWN"
+                ? '<div class="server-health-collection-message" role="status"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><div><strong>Metrics unavailable</strong><p>' + escapeHtml(unknownMessage) + '</p></div></div>'
+                : renderMappedFields(row);
+
+            return '<article class="server-health-card server-health-card-' + sev + '"><header class="server-health-card-header"><div class="server-health-host"><i class="bi bi-hdd-network" aria-hidden="true"></i><strong title="' + escapeHtml(host) + '">' + escapeHtml(host) + '</strong></div><span class="server-health-status server-health-status-' + sev + '"><i class="bi ' + statusIcon + '" aria-hidden="true"></i> ' + item.status + '</span></header>' +
+                cardBody +
+                '</article>';
+        };
+        const cards = pageItems.map(renderCard).join("");
+
+        const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + '><i class="bi bi-chevron-left me-1" aria-hidden="true"></i>Previous</button><span class="small text-muted">Page ' + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + '>Next<i class="bi bi-chevron-right ms-1" aria-hidden="true"></i></button></div>';
+
+
+        const summaryConfig = config.summary && typeof config.summary === "object" ? config.summary : {};
+        const configuredSummaryCards = Array.isArray(summaryConfig.cards) ? summaryConfig.cards : [];
+        const customSummary = configuredSummaryCards.filter(function (card) {
+            return card && (card.field || String(card.operation || "").toUpperCase() === "COUNT_ROWS");
+        }).map(function (card) {
+            const field = String(card.field || "");
+            const operation = String(card.operation || "COUNT_ROWS").toUpperCase();
+            const values = field ? rows.map(function (row) { return valueOf(row, field); })
+                .filter(function (value) { return value !== null && value !== undefined && value !== ""; }) : [];
+            const numeric = values.map(number).filter(function (value) { return value !== null; });
+            let value = 0;
+            if (operation === "COUNT_ROWS") value = rows.length;
+            else if (operation === "COUNT_NON_EMPTY") value = values.length;
+            else if (operation === "COUNT_TRUE") value = values.filter(function (item) { return item === true || /^(true|yes|1|healthy|up|active|enabled|ok)$/i.test(String(item)); }).length;
+            else if (operation === "COUNT_FALSE") value = values.filter(function (item) { return item === false || /^(false|no|0|unhealthy|down|inactive|disabled|error)$/i.test(String(item)); }).length;
+            else if (operation === "SUM") value = numeric.reduce(function (sum, item) { return sum + item; }, 0);
+            else if (operation === "AVG") value = numeric.length ? numeric.reduce(function (sum, item) { return sum + item; }, 0) / numeric.length : "N/A";
+            else if (operation === "MAX") value = numeric.length ? Math.max.apply(null, numeric) : "N/A";
+            else if (operation === "MIN") value = numeric.length ? Math.min.apply(null, numeric) : "N/A";
+            else if (operation === "VALUE") value = values.length ? values[0] : "N/A";
+            value = formatValue(value, String(card.format || "").toLowerCase(), "");
+            const icon = card.icon && typeof card.icon === "object" && card.icon.enabled === true && card.icon.name
+                ? '<i class="bi bi-' + escapeHtml(String(card.icon.name).replace(/^bi-/, "")) + '" aria-hidden="true"></i> ' : "";
+            return '<div class="server-health-summary-item server-health-summary-custom"><span>' + icon + escapeHtml(card.label || (field ? field : "Total Rows")) +
+                '</span><strong>' + escapeHtml(value) + '</strong></div>';
+        }).join("");
+        const customSummaryMarkup = customSummary ? '<div class="server-health-summary server-health-summary-configured">' + customSummary + '</div>' : "";
+
+        return summary + customSummaryMarkup + filters + '<div class="server-health-grid" data-widget-id="' + escapeHtml(widget.id) + '">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
+    }
     // Backward-compatible renderer for existing TABLE widgets configured with renderer: SERVER_HEALTH.
     function renderServerHealthCards(result, widget, config)
     {
@@ -1469,7 +1746,18 @@
         const counts = { total: ranked.length, HEALTHY: 0, WARNING: 0, CRITICAL: 0 };
         ranked.forEach(function (item) { counts[item.status]++; });
         const filtered = state.status === "ALL" ? ranked : ranked.filter(function (item) { return item.status === state.status; });
-        const pageSize = 12, pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+        // Match pagination to the actual responsive grid's minimum card width.
+        // Avoid measuring a different widget's existing grid or using a wider estimate.
+        const content = document.querySelector(".app-content");
+        let gridWidth = content ? content.clientWidth : window.innerWidth;
+        if (content) {
+            const styles = window.getComputedStyle(content);
+            gridWidth -= (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+        }
+        const gridGap = 12;
+        const cardMinWidth = 275;
+        const columnCount = Math.max(1, Math.floor((Math.max(cardMinWidth, gridWidth) + gridGap) / (cardMinWidth + gridGap)));
+        const pageSize = columnCount * 2, pages = Math.max(1, Math.ceil(filtered.length / pageSize));
         state.page = Math.min(Math.max(0, state.page || 0), pages - 1);
         serverHealthState.set(String(widget.id), state);
         const pageRows = filtered.slice(state.page * pageSize, (state.page + 1) * pageSize);
@@ -1502,7 +1790,7 @@
                 (used !== null && total !== null ? '<span>RAM: ' + escapeHtml(used) + " / " + escapeHtml(total) + " MB</span>" : "") + "</div></article>";
         }).join("");
         const pager = '<div class="server-health-pagination"><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.max(0, state.page - 1) + '"' + (state.page === 0 ? " disabled" : "") + ">Previous</button><span class=\"small text-muted\">Page " + (state.page + 1) + " of " + pages + '</span><button type="button" class="btn btn-sm btn-outline-secondary server-health-page" data-widget-id="' + escapeHtml(widget.id) + '" data-page="' + Math.min(pages - 1, state.page + 1) + '"' + (state.page >= pages - 1 ? " disabled" : "") + ">Next</button></div>";
-        return summary + filters + '<div class="server-health-grid">' + (cards || '<div class="text-muted small p-3">No servers match this status filter.</div>') + "</div>" + pager;
+        return summary + filters + '<div class="server-health-grid" data-widget-id="' + escapeHtml(widget.id) + '">' + (cards || '<div class="text-muted small p-3">No servers match this status filter.</div>') + "</div>" + pager;
     }
 
     function renderKafkaConsumerHealthWidget(result, widget)
@@ -2409,7 +2697,7 @@
         return (
 
             '<div class="' +
-                getWidgetSizeClass((widgetType === "SYSTEM_METRICS" || widgetType === "ELASTICSEARCH") ? "FULL" : widget.size) +
+                getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) +
             '">' +
 
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
@@ -2679,6 +2967,10 @@
 
         configureAutoRefresh();
 
+        // The HTML above is now in the DOM. Use the actual CSS grid columns rather
+        // than estimating them from .app-content, which can differ from widget width.
+        synchronizeSystemMetricsPageSizes();
+
 
         /*
          * Resize the charts in the first visible tab.
@@ -2690,6 +2982,44 @@
             );
         }
     }
+
+
+    function synchronizeSystemMetricsPageSizes()
+    {
+        const activePane = contentElement.querySelector(".dashboard-tab-pane.active");
+        if (!activePane) return;
+
+        let pageSizeChanged = false;
+        activePane.querySelectorAll(".server-health-grid[data-widget-id]").forEach(function (grid) {
+            // Hidden grids do not have a meaningful computed column layout yet.
+            if (grid.clientWidth <= 0) return;
+
+            const template = window.getComputedStyle(grid).gridTemplateColumns;
+            const columns = template && template !== "none"
+                ? template.trim().split(/\s+/).filter(Boolean).length
+                : 0;
+            if (!columns) return;
+
+            const widgetId = String(grid.dataset.widgetId);
+            const state = serverHealthState.get(widgetId) || { status: "ALL", page: 0 };
+            const actualPageSize = columns * 2;
+            if (Number(state.pageSize) !== actualPageSize) {
+                state.pageSize = actualPageSize;
+                // Keep the current page where possible; renderSystemMetricsCards clamps
+                // it if the new responsive page size leaves fewer pages.
+                serverHealthState.set(widgetId, state);
+                pageSizeChanged = true;
+            }
+        });
+
+        // One rerender applies the measured page sizes. The next pass is stable because
+        // the stored page size now matches the rendered grid's actual column count.
+        if (pageSizeChanged) renderTabs(activeTabId);
+    }
+
+    // Browser zoom changes the CSS layout and fires resize; only rerender when the
+    // actual column count changes.
+    window.addEventListener("resize", synchronizeSystemMetricsPageSizes);
 
 
     function bindConfigurableTableEvents()
@@ -3444,6 +3774,11 @@
             initializeKafkaHealthWidgets();
 
 			showState("content");
+
+            // Now that the dashboard container is visible, measure each System Metrics grid
+            // at its real widget width. This corrects the initial estimate for Large/Medium
+            // widgets without changing the working Full-size layout.
+            synchronizeSystemMetricsPageSizes();
         }
         catch (error)
         {
@@ -3672,7 +4007,11 @@
     contentElement.addEventListener("change", function (event)
     {
         if (!event.target.classList.contains("server-health-filter")) return;
-        serverHealthState.set(String(event.target.dataset.widgetId), { status: event.target.value, page: 0 });
+        const widgetId = String(event.target.dataset.widgetId || "");
+        const state = Object.assign({ status: "ALL", page: 0, groupBy: "", sortBy: "__health", sortDirection: "asc" }, serverHealthState.get(widgetId) || {});
+        state.status = event.target.value;
+        state.page = 0;
+        serverHealthState.set(widgetId, state);
         loadDashboard(activeTabId);
     });
     contentElement.addEventListener("click", function (event)

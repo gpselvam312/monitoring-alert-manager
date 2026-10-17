@@ -211,7 +211,19 @@
 
     function configuredColumns(config) {
         const details = config.details && typeof config.details === "object" ? config.details : {};
-        const configured = Array.isArray(details.columns) ? details.columns : (Array.isArray(config.columns) ? config.columns : []);
+        let configured = Array.isArray(details.columns) && details.columns.length ? details.columns
+            : (Array.isArray(config.columns) ? config.columns : []);
+        if (config.view && Array.isArray(config.view.metrics)) {
+            const existingFields = new Set(configured.map(item => String(item.field || item.key || "")));
+            config.view.metrics.filter(item => item && item.name).forEach(item => {
+                const field = "metrics::" + String(item.name);
+                if (!existingFields.has(field)) configured.push({
+                    field, label: item.label || String(item.name),
+                    visible: item.enabled !== false, format: item.format === "auto" ? "" : (item.format || ""),
+                    sortable: true, searchable: true, groupable: false, aggregation: "none"
+                });
+            });
+        }
         return new Map(configured.filter(item => item && (item.field || item.key))
             .map(item => [String(item.field || item.key), item]));
     }
@@ -434,10 +446,17 @@
             const parserType = String((config.responseParser || {}).type || "AUTO").toUpperCase();
             const preferRoot = ["STAT", "STATUS", "TEXT", "ELASTICSEARCH"].includes(currentWidgetType())
                 && !["DELIMITED", "KEY_VALUE", "REGEX", "PLAIN_TEXT"].includes(parserType);
-            const preferredPath = rowPath && collections.some(item => item.path === rowPath)
-                ? rowPath
-                : (preferRoot && collections.some(item => item.path === "") ? "" :
-                    (collections.find(item => item.path !== "") || collections[0]).path);
+            const systemMetricsCollection = currentWidgetType() === "SYSTEM_METRICS"
+                ? collections.find(item => /(^|\.)machines$/.test(item.path))
+                : null;
+            // A blank saved rowPath used to select the synthetic root-object row, which
+            // exposed wrapper fields such as "machines" instead of one row per machine.
+            const preferredPath = systemMetricsCollection
+                ? systemMetricsCollection.path
+                : (rowPath && collections.some(item => item.path === rowPath)
+                    ? rowPath
+                    : (preferRoot && collections.some(item => item.path === "") ? "" :
+                        (collections.find(item => item.path !== "") || collections[0]).path));
             select.value = preferredPath;
 
             const details = config.details && typeof config.details === "object" ? config.details : {};
@@ -498,23 +517,37 @@
         if (!collection && !existing.size && !(state.fields || []).length) return;
         state.rows = collection ? collection.rows : [];
         const discoveredFields = collection
-            ? Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), [])))
+            ? (currentWidgetType() === "SYSTEM_METRICS" ? discoverSystemMetricFields(collection.rows)
+                : Array.from(new Set(collection.rows.reduce((all, row) => all.concat(Object.keys(row)), []))))
             : [];
         // Keep saved mappings even when a field is absent from the current sample/latest job response.
         // Otherwise a partial or changing response silently drops display and aggregation settings.
-        const allFields = [
-            ...Array.from(existing.keys()),
-            ...discoveredFields.filter(field => !existing.has(field))
-        ];
+        const isSystemMetrics = currentWidgetType() === "SYSTEM_METRICS";
+        const allFields = isSystemMetrics
+            ? [
+                // Keep the user's saved mapping order for every field that still exists,
+                // preserve dynamic metrics that are temporarily absent, then append new fields
+                // in the order they are discovered. This keeps the preview/runtime aligned
+                // with the mapping table instead of resetting columns on every discovery.
+                ...Array.from(existing.keys()).filter(field =>
+                    discoveredFields.includes(field) || String(field).startsWith("metrics::")),
+                ...discoveredFields.filter(field => !existing.has(field))
+            ]
+            : [
+                ...Array.from(existing.keys()),
+                ...discoveredFields.filter(field => !existing.has(field))
+            ];
         state.fields = allFields;
         const anyExisting = existing.size > 0;
         const fields = allFields.map(field => {
             const saved = existing.get(field);
             return {
                 field,
-                label: saved && saved.label ? saved.label : humanize(field),
+                label: saved && saved.label ? saved.label
+                    : (String(field).startsWith("metrics::") ? String(field).slice("metrics::".length) : humanize(field)),
                 visible: saved ? saved.visible !== false : true,
-                format: saved && saved.format ? String(saved.format).toLowerCase() : "",
+                format: saved && saved.format !== undefined ? String(saved.format).toLowerCase()
+                    : (currentWidgetType() === "SYSTEM_METRICS" ? (systemMetricDefaultFormat(field, collection ? collection.rows : []) || "") : ""),
                 aggregation: saved && saved.aggregation ? String(saved.aggregation).toLowerCase() : "none",
                 summaryCard: false,
                 sortable: saved ? saved.sortable !== false : true,
@@ -542,29 +575,33 @@
             item.summaryCard = selectedCardFields.has(item.field) && item.aggregation !== "none";
             item.groupSummary = groupedSummaryFields.has(item.field);
         });
-        const formats = [
-            ["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
-            ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]
-        ];
+        const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
+        const formats = systemMetrics
+            ? [["", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration"], ["status", "Status"]]
+            : [["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
+                ["duration", "Duration (seconds)"], ["datetime", "Date / time"], ["status", "Status"]];
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
-        byId("summaryTableFieldEditor").innerHTML = fields.length ? 
+        byId("summaryTableFieldEditor").innerHTML = fields.length ?
             '<div class="table-responsive border rounded"><table class="table table-sm table-striped align-middle mb-0 summary-config-mapping-table">' +
-            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all columns"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th><th>Aggregate</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-groupable-all" type="checkbox" aria-label="Allow grouping by all columns"><label class="form-check-label">Groupable</label></div></th></tr></thead><tbody>' +
+            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all fields"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th>' +
+            (systemMetrics ? '' : '<th>Aggregate</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-groupable-all" type="checkbox" aria-label="Allow grouping by all columns"><label class="form-check-label">Groupable</label></div></th>') +
+            '</tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
                 '<td><div class="d-flex gap-1"><button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-up" aria-label="Move ' + escapeHtml(item.field) + ' up"' + (index === 0 ? ' disabled' : '') + '>↑</button>' +
                 '<button type="button" class="btn btn-outline-secondary btn-sm summary-config-move-down" aria-label="Move ' + escapeHtml(item.field) + ' down"' + (index === fields.length - 1 ? ' disabled' : '') + '>↓</button></div></td>' +
                 '<td><input class="form-check-input summary-config-visible" type="checkbox" aria-label="Show ' + escapeHtml(item.field) + '"' + (item.visible ? ' checked' : '') + '></td>' +
-                '<td><code>' + escapeHtml(item.field) + '</code></td>' +
+                '<td><code>' + escapeHtml(displaySourceField(item.field)) + '</code></td>' +
                 '<td><input class="form-control form-control-sm summary-config-label" type="text" maxlength="120" value="' + escapeHtml(item.label) + '" aria-label="Label for ' + escapeHtml(item.field) + '"></td>' +
                 '<td><select class="form-select form-select-sm summary-config-format" aria-label="Format for ' + escapeHtml(item.field) + '">' +
                 formats.map(option => '<option value="' + option[0] + '"' + (item.format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
-                '<td><select class="form-select form-select-sm summary-config-aggregation" aria-label="Aggregation for ' + escapeHtml(item.field) + '">' +
+                (systemMetrics ? '' : '<td><select class="form-select form-select-sm summary-config-aggregation" aria-label="Aggregation for ' + escapeHtml(item.field) + '">' +
                 aggregations.map(option => '<option value="' + option[0] + '"' + (item.aggregation === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
-                '</select></td>' +
-                '<td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>' +
+                '</select></td><td><input class="form-check-input summary-config-groupable" type="checkbox" aria-label="Allow grouping by ' + escapeHtml(item.field) + '"' + (item.groupable ? ' checked' : '') + '></td>') +
                 '</tr>').join("") +
-            '</tbody></table></div><div class="form-text">Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.</div>'
+            '</tbody></table></div><div class="form-text">' + (systemMetrics
+                ? 'Configure machine identity, overall status, and each discovered metric in one mapping table. New metric names appear automatically when discovered.'
+                : 'Source fields are preserved separately from display labels. Uncheck fields you do not want shown as columns.') + '</div>'
             : '<div class="text-muted small">No fields were found in this collection.</div>'; 
         syncColumnVisibilitySelectAll();
         syncGroupableSelectAll();
@@ -585,15 +622,16 @@
     }
 
     function readFieldEditor() {
+        const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
         return Array.from(byId("summaryTableFieldEditor").querySelectorAll("tr[data-field]")).map(row => ({
             field: row.getAttribute("data-field"),
             label: row.querySelector(".summary-config-label").value.trim() || humanize(row.getAttribute("data-field")),
             visible: row.querySelector(".summary-config-visible").checked,
-            groupable: row.querySelector(".summary-config-groupable").checked,
+            groupable: systemMetrics ? false : row.querySelector(".summary-config-groupable").checked,
             sortable: row.getAttribute("data-sortable") !== "false",
             searchable: row.getAttribute("data-searchable") !== "false",
             format: row.querySelector(".summary-config-format").value,
-            aggregation: row.querySelector(".summary-config-aggregation").value,
+            aggregation: systemMetrics ? "none" : row.querySelector(".summary-config-aggregation").value,
         }));
     }
 
@@ -606,8 +644,65 @@
     }
 
     function rowValueForConfigurator(row, field) {
+        const source = String(field || "");
+        if (source.startsWith("metrics::")) {
+            const name = source.slice("metrics::".length);
+            const metrics = row && row.metrics;
+            if (Array.isArray(metrics)) {
+                const metric = metrics.find(item => item && String(item.name !== undefined ? item.name : item.key) === name);
+                return metric && typeof metric === "object" ? metric.value : undefined;
+            }
+            if (metrics && typeof metrics === "object") {
+                const metric = metrics[name];
+                return metric && typeof metric === "object" ? metric.value : metric;
+            }
+            return undefined;
+        }
         if (row && Object.prototype.hasOwnProperty.call(row, field)) return row[field];
-        return String(field || "").split(".").reduce((value, key) => value == null ? undefined : value[key], row);
+        return source.split(".").reduce((value, key) => value == null ? undefined : value[key], row);
+    }
+
+    function displaySourceField(field) {
+        return String(field || "").startsWith("metrics::")
+            ? "metrics[" + String(field).slice("metrics::".length) + "].value" : field;
+    }
+
+    function discoverSystemMetricFields(rows) {
+        const fields = [], metricNames = [];
+        (rows || []).forEach(row => {
+            if (!row || typeof row !== "object") return;
+            Object.keys(row).filter(key => key !== "metrics").forEach(key => {
+                if (!fields.includes(key)) fields.push(key);
+            });
+            const metrics = row.metrics;
+            if (Array.isArray(metrics)) metrics.forEach(metric => {
+                const name = metric && (metric.name !== undefined && String(metric.name).trim()
+                    ? metric.name : (metric.key !== undefined && String(metric.key).trim() ? metric.key : metric.label));
+                if (name !== null && name !== undefined && String(name).trim() && !metricNames.includes(String(name).trim())) metricNames.push(String(name).trim());
+            });
+            else if (metrics && typeof metrics === "object") Object.keys(metrics).forEach(name => {
+                if (!metricNames.includes(name)) metricNames.push(name);
+            });
+        });
+        return fields.concat(metricNames.map(name => "metrics::" + name));
+    }
+
+    function systemMetricDefaultFormat(field, rows) {
+        if (!String(field || "").startsWith("metrics::")) return "";
+        const name = String(field).slice("metrics::".length);
+        for (const row of rows || []) {
+            const metrics = row && row.metrics;
+            let metric;
+            if (Array.isArray(metrics)) metric = metrics.find(item => item && String(item.name !== undefined ? item.name : item.key) === name);
+            else if (metrics && typeof metrics === "object") metric = metrics[name];
+            if (metric && typeof metric === "object") {
+                const type = String(metric.type || "").toLowerCase();
+                if (["percentage", "percent"].includes(type) || metric.unit === "%") return "meter";
+                if (type === "duration") return "duration";
+                if (["number", "capacity"].includes(type) || typeof metric.value === "number") return "number";
+            } else if (typeof metric === "number") return "number";
+        }
+        return "";
     }
 
     function buildConfig() {
@@ -679,7 +774,7 @@
             '</tr></thead><tbody>' + previewRows.map(row => {
                 const rowClass = conditionalPreviewClass(row, previewConfig, "row");
                 return '<tr class="' + rowClass + '">' + columns.map(column => {
-                    let value = row[column.field];
+                    let value = rowValueForConfigurator(row, column.field);
                     if (value !== null && typeof value === "object") value = JSON.stringify(value);
                     const rawBoolean = value === true || value === false || (typeof value === "string" && /^(true|false)$/i.test(String(value).trim()));
                     const statusValue = String(value == null ? "" : value).trim().toLowerCase();
@@ -748,6 +843,30 @@
         }
         const config = getConfig();
         config.responseParser = currentParserConfig();
+        if (type === "SYSTEM_METRICS" && state.sample && selectedCollection()) {
+            const columns = readFieldEditor();
+            config.renderer = "SYSTEM_METRICS";
+            config.rowPath = byId("summaryTableRowPath").value || "";
+            config.details = config.details && typeof config.details === "object" ? config.details : {};
+            config.details.columns = columns.map(({ summaryCard, summaryFilterable, groupSummary, ...column }) => column);
+            config.details.pagination = Object.assign({}, config.details.pagination || {}, { enabled: true, pageSize: 12 });
+            config.summary = Object.assign({}, config.summary || {});
+            config.summary.cards = readSummaryCardsEditor();
+            config.summary.totalRowsCard = {
+                enabled: byId("summaryTableShowTotalRowsCard").checked,
+                label: byId("summaryTableTotalRowsLabel").value.trim() || "Total Rows",
+                filterable: byId("summaryTableTotalRowsClick").value === "FILTER_SELF",
+                icon: {
+                    enabled: byId("summaryTableTotalRowsIconEnabled").checked,
+                    name: byId("summaryTableTotalRowsIconName").value.trim() || (byId("summaryTableTotalRowsIconPreset").value === "custom" ? "list-check" : byId("summaryTableTotalRowsIconPreset").value)
+                }
+            };
+            delete config.fields;
+            delete config.labels;
+            delete config.view;
+            setConfig(config);
+            return;
+        }
         if (type === "TABLE" && state.sample && selectedCollection()) {
             const columns = readFieldEditor();
             config.renderer = "TABLE";
@@ -793,12 +912,26 @@
         if (!multiple && !selectedValues.length) select.value = "";
     }
 
+
+    function discoveredSystemMetricNames() {
+        const names = [];
+        (state.rows || []).forEach(row => {
+            const metrics = row && row.metrics;
+            if (Array.isArray(metrics)) metrics.forEach(metric => {
+                const name = metric && (metric.name !== undefined ? metric.name : metric.key);
+                if (name !== null && name !== undefined && String(name).trim()) names.push(String(name).trim());
+            });
+            else if (metrics && typeof metrics === "object") Object.keys(metrics).forEach(name => names.push(name));
+        });
+        return Array.from(new Set(names));
+    }
+
     function renderTypeMappingOptions() {
         const type = currentWidgetType();
         const config = getConfig();
         const mapping = byId("widgetTypeMappingOptions");
         if (!mapping) return;
-        const hasDedicatedMapping = ["CHART", "STAT", "STATUS", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH"].includes(type);
+        const hasDedicatedMapping = ["CHART", "STAT", "STATUS", "TEXT", "ELASTICSEARCH"].includes(type);
         mapping.hidden = !hasDedicatedMapping;
         byId("widgetTypeMappingTitle").textContent = ({
             CHART: "Chart field mapping",
@@ -817,8 +950,73 @@
         setFieldOptions("widgetSeriesField", fields, config.seriesField, "No series field");
         setFieldOptions("widgetSingleValueField", fields, config.valueField, "Select value field");
         setFieldOptions("widgetStatusField", fields, config.statusField, "No status field");
+        setFieldOptions("widgetMetricStatusField", fields,
+            config.statusField || (config.fields && !Array.isArray(config.fields) ? config.fields.status : ""),
+            "Auto-detect status field");
+        const metricFields = config.fields && typeof config.fields === "object" && !Array.isArray(config.fields) ? config.fields : {};
+        const metricFieldDefaults = {
+            hostname: "hostname", cpu: "cpuPercent", ram: "memoryPercent",
+            load1m: "loadAverage", load5m: "load5m", load15m: "load15m",
+            cpuCores: "cpuCores", uptimeSeconds: "uptimeSeconds", uptimeHours: "uptimeHours",
+            diskUsedPercent: "diskU01Percent", ramUsedMb: "ramUsedMb", ramTotalMb: "ramTotalMb"
+        };
+        const metricFieldControls = {
+            hostname: "systemMetricHostnameField", cpu: "systemMetricCpuField", ram: "systemMetricRamField",
+            load1m: "systemMetricLoad1Field", load5m: "systemMetricLoad5Field", load15m: "systemMetricLoad15Field",
+            cpuCores: "systemMetricCoresField", uptimeSeconds: "systemMetricUptimeSecondsField",
+            uptimeHours: "systemMetricUptimeHoursField", diskUsedPercent: "systemMetricDiskField",
+            ramUsedMb: "systemMetricRamUsedField", ramTotalMb: "systemMetricRamTotalField"
+        };
+        Object.keys(metricFieldControls).forEach(key => {
+            setFieldOptions(metricFieldControls[key], fields, metricFields[key] || metricFieldDefaults[key], "Auto-detect field");
+        });
+        const metricLabels = config.labels && typeof config.labels === "object" ? config.labels : {};
+        const labelControls = {
+            cpu: ["systemMetricCpuLabel", "CPU"], ram: ["systemMetricRamLabel", "RAM"],
+            load1m: ["systemMetricLoadLabel", "Load (1m / 5m / 15m)"],
+            uptimeSeconds: ["systemMetricUptimeLabel", "Uptime"],
+            diskUsedPercent: ["systemMetricDiskLabel", "/u01 Used"],
+            ramCapacity: ["systemMetricRamCapacityLabel", "RAM"]
+        };
+        Object.keys(labelControls).forEach(key => {
+            const [id, fallback] = labelControls[key];
+            byId(id).value = metricLabels[key] === undefined ? fallback : metricLabels[key];
+        });
+        const view = config.view && typeof config.view === "object" ? config.view : {};
+        byId("systemMetricShowSummaryCards").checked = view.showSummaryCards !== false;
+        byId("systemMetricShowCpu").checked = view.showCpu !== false;
+        byId("systemMetricShowRam").checked = view.showRam !== false;
+        byId("systemMetricShowLoad").checked = view.showLoad !== false;
+        byId("systemMetricShowUptime").checked = view.showUptime !== false;
+        byId("systemMetricShowDisk").checked = view.showDisk !== false;
+        byId("systemMetricShowRamCapacity").checked = view.showRamCapacity !== false;
+        const dynamicMetricsPresent = discoveredSystemMetricNames().length > 0 ||
+            (state.fields || []).some(field => String(field).startsWith("metrics::")) ||
+            (Array.isArray(view.metrics) && view.metrics.length > 0);
+        ["systemMetricCpuField", "systemMetricRamField", "systemMetricLoad1Field", "systemMetricLoad5Field", "systemMetricLoad15Field",
+            "systemMetricCoresField", "systemMetricUptimeSecondsField", "systemMetricUptimeHoursField", "systemMetricDiskField",
+            "systemMetricRamUsedField", "systemMetricRamTotalField"].forEach(id => {
+            const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
+        });
+        ["systemMetricShowCpu", "systemMetricShowRam", "systemMetricShowLoad", "systemMetricShowUptime", "systemMetricShowDisk",
+            "systemMetricShowRamCapacity"].forEach(id => {
+            const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
+        });
+        ["systemMetricCpuLabel", "systemMetricRamLabel", "systemMetricLoadLabel", "systemMetricUptimeLabel",
+            "systemMetricDiskLabel", "systemMetricRamCapacityLabel"].forEach(id => {
+            const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
+        });
+        const mappingHeading = Array.from(mapping.querySelectorAll("h6")).find(element =>
+            ["Machine field mapping", "Legacy flat-field mapping"].includes(element.textContent.trim()));
+        if (mappingHeading) {
+            mappingHeading.textContent = "Legacy flat-field mapping";
+            if (mappingHeading.closest(".col-12")) mappingHeading.closest(".col-12").hidden = dynamicMetricsPresent;
+        }
+        const metricStatusGroup = byId("widgetMetricStatusField") && byId("widgetMetricStatusField").closest(".col-md-6");
+        if (metricStatusGroup) metricStatusGroup.hidden = dynamicMetricsPresent;
+        const labelsHeading = Array.from(mapping.querySelectorAll("h6")).find(element => element.textContent.trim() === "Legacy flat-field metric labels");
+        if (labelsHeading && labelsHeading.parentElement) labelsHeading.parentElement.hidden = dynamicMetricsPresent;
         setFieldOptions("widgetTextFields", fields, config.textFields, "");
-        setFieldOptions("widgetMetricFields", fields, config.fields, "");
         byId("widgetTextTemplate").value = config.textTemplate || "";
     }
 
@@ -851,11 +1049,67 @@
                 config.textFields = selectedValues("widgetTextFields");
                 config.textTemplate = byId("widgetTextTemplate").value;
                 break;
-            case "SYSTEM_METRICS":
+            case "SYSTEM_METRICS": {
                 config.renderer = "SYSTEM_METRICS";
-                config.fields = selectedValues("widgetMetricFields");
-                config.labels = Object.assign({}, config.labels || {});
+                config.details = config.details && typeof config.details === "object" ? config.details : {};
+                const columns = readFieldEditor().map(({ aggregation, groupable, sortable, searchable, ...column }) => column);
+                config.details.columns = columns;
+                config.fields = config.fields && typeof config.fields === "object" && !Array.isArray(config.fields) ? config.fields : {};
+                const hostnameColumn = columns.find(column => column.field === "hostname");
+                const statusColumn = columns.find(column => column.field === "status");
+                if (hostnameColumn) {
+                    config.fields.hostname = hostnameColumn.field;
+                    config.labels = Object.assign({}, config.labels || {}, { hostname: hostnameColumn.label });
+                }
+                if (statusColumn) config.statusField = statusColumn.field;
+                // Dynamic metrics use the same mapping table as Summary Table. The specialized
+                // renderer consumes these rows while retaining its existing machine health cards.
+                config.view = Object.assign({}, config.view || {}, {
+                    showSummaryCards: byId("systemMetricShowSummaryCards").checked,
+                    metrics: columns.filter(column => String(column.field).startsWith("metrics::")).map((column, index) => ({
+                        name: String(column.field).slice("metrics::".length),
+                        enabled: column.visible !== false,
+                        label: column.label || String(column.field).slice("metrics::".length),
+                        format: column.format || "auto",
+                        order: index
+                    }))
+                });
+                // Preserve legacy flat-field mapping controls for older scripts.
+                if (!state.rows.some(row => row && row.metrics)) {
+                    const legacyControls = {
+                        hostname: "systemMetricHostnameField", cpu: "systemMetricCpuField", ram: "systemMetricRamField",
+                        load1m: "systemMetricLoad1Field", load5m: "systemMetricLoad5Field", load15m: "systemMetricLoad15Field",
+                        cpuCores: "systemMetricCoresField", uptimeSeconds: "systemMetricUptimeSecondsField",
+                        uptimeHours: "systemMetricUptimeHoursField", diskUsedPercent: "systemMetricDiskField",
+                        ramUsedMb: "systemMetricRamUsedField", ramTotalMb: "systemMetricRamTotalField"
+                    };
+                    Object.keys(legacyControls).forEach(key => {
+                        const value = byId(legacyControls[key]).value;
+                        if (value) config.fields[key] = value;
+                        else delete config.fields[key];
+                    });
+                    config.labels = Object.assign({}, config.labels || {});
+                    const labelControls = {
+                        cpu: "systemMetricCpuLabel", ram: "systemMetricRamLabel", load1m: "systemMetricLoadLabel",
+                        uptimeSeconds: "systemMetricUptimeLabel", diskUsedPercent: "systemMetricDiskLabel",
+                        ramCapacity: "systemMetricRamCapacityLabel"
+                    };
+                    Object.keys(labelControls).forEach(key => {
+                        const value = byId(labelControls[key]).value.trim();
+                        if (value) config.labels[key] = value;
+                        else delete config.labels[key];
+                    });
+                    config.view = Object.assign({}, config.view, {
+                        showCpu: byId("systemMetricShowCpu").checked,
+                        showRam: byId("systemMetricShowRam").checked,
+                        showLoad: byId("systemMetricShowLoad").checked,
+                        showUptime: byId("systemMetricShowUptime").checked,
+                        showDisk: byId("systemMetricShowDisk").checked,
+                        showRamCapacity: byId("systemMetricShowRamCapacity").checked
+                    });
+                }
                 break;
+            }
             case "ELASTICSEARCH":
                 config.renderer = "ELASTICSEARCH";
                 break;
@@ -908,7 +1162,7 @@
             case "TEXT":
                 return { renderer: "TEXT", responseParser: { type: "AUTO" }, textFields: [], textTemplate: "" };
             case "SYSTEM_METRICS":
-                return { renderer: "SYSTEM_METRICS", responseParser: { type: "AUTO" }, rowPath: "", fields: [], labels: {} };
+                return { renderer: "SYSTEM_METRICS", responseParser: { type: "AUTO" }, rowPath: "", fields: {}, statusField: "", labels: {} };
             case "ELASTICSEARCH":
                 return { renderer: "ELASTICSEARCH", responseParser: { type: "AUTO" } };
             default:
@@ -936,19 +1190,21 @@
         const type = currentWidgetType();
         const isSummary = type === "SUMMARY_TABLE";
         const isTable = type === "TABLE" || isSummary;
+        const isFieldMapping = isTable || type === "SYSTEM_METRICS";
         const rowPathTypes = ["TABLE", "SUMMARY_TABLE", "CHART", "SYSTEM_METRICS"];
         byId("summaryTableConfigurator").hidden = !type;
         byId("dashboardWidgetAdvancedConfig").open = false;
         byId("summaryTableGroupBySection").hidden = !isSummary;
-        byId("summaryTableCardsSection").hidden = !isSummary;
+        byId("summaryTableCardsSection").hidden = !(isSummary || type === "SYSTEM_METRICS");
         byId("summaryTableMappingActions").hidden = !isSummary;
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
         byId("summaryTableExportCsvOption").hidden = !isSummary;
-        byId("summaryTableFieldEditorGroup").hidden = !isTable;
+        byId("summaryTableLayoutControl").hidden = type === "SYSTEM_METRICS";
+        byId("summaryTableFieldEditorGroup").hidden = !isFieldMapping;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
         byId("widgetMappingHeading").textContent = type === "SUMMARY_TABLE" ? "Summary Table data and columns" : "Widget data and mapping";
-        byId("widgetFieldMappingHeading").textContent = isSummary ? "Column mapping" : "Field mapping";
+        byId("widgetFieldMappingHeading").textContent = isSummary ? "Column mapping" : type === "SYSTEM_METRICS" ? "Machine and metric mapping" : "Field mapping";
         const config = getConfig();
         const parser = config.responseParser && typeof config.responseParser === "object" ? config.responseParser : {};
         byId("summaryTableResponseFormat").value = ["AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX"].includes(String(parser.type || "AUTO").toUpperCase())
@@ -990,7 +1246,7 @@
         syncGroupByControlState();
         syncParserOptionVisibility();
         renderTypeMappingOptions();
-        if (state.sample) renderFields();
+        if (state.sample || type === "SYSTEM_METRICS") renderFields();
     }
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -1000,6 +1256,18 @@
         if (!type || !sample || !discoverButton) return;
 
         discoverButton.addEventListener("click", discover);
+        // Restore the editor preview from the latest saved job output when reopening
+        // a System Metrics widget. The sample JSON itself is not persisted.
+        const widgetModal = byId("dashboardWidgetModal");
+        if (widgetModal) {
+            widgetModal.addEventListener("shown.bs.modal", function () {
+                if (currentWidgetType() !== "SYSTEM_METRICS") return;
+                if (sample.value.trim()) return;
+                if (!byId("dashboardWidgetJobSourceId").value) return;
+                byId("summaryTableLoadLatest").click();
+            });
+        }
+
         byId("summaryTableLoadLatest").addEventListener("click", async function () {
             const jobId = byId("dashboardWidgetJobSourceId").value;
             const message = byId("summaryTableDiscoveryMessage");
@@ -1090,7 +1358,19 @@
             refreshConfigFromEditor();
         });
         ["widgetCategoryField", "widgetValueField", "widgetSeriesField", "widgetSingleValueField",
-            "widgetStatusField", "widgetTextFields", "widgetMetricFields"].forEach(id => {
+            "widgetStatusField", "widgetMetricStatusField", "widgetTextFields",
+            "systemMetricHostnameField", "systemMetricCpuField", "systemMetricRamField",
+            "systemMetricLoad1Field", "systemMetricLoad5Field", "systemMetricLoad15Field",
+            "systemMetricCoresField", "systemMetricUptimeSecondsField", "systemMetricUptimeHoursField",
+            "systemMetricDiskField", "systemMetricRamUsedField", "systemMetricRamTotalField",
+            "systemMetricShowSummaryCards", "systemMetricShowCpu", "systemMetricShowRam",
+            "systemMetricShowLoad", "systemMetricShowUptime", "systemMetricShowDisk",
+            "systemMetricShowRamCapacity"].forEach(id => {
+            byId(id).addEventListener("change", refreshConfigFromEditor);
+        });
+        ["systemMetricCpuLabel", "systemMetricRamLabel", "systemMetricLoadLabel", "systemMetricUptimeLabel",
+            "systemMetricDiskLabel", "systemMetricRamCapacityLabel"].forEach(id => {
+            byId(id).addEventListener("input", refreshConfigFromEditor);
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);

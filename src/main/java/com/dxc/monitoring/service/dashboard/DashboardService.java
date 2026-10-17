@@ -211,6 +211,7 @@ public class DashboardService
         definition.setDetailsEnabled(widget.getDetailsEnabled());
         definition.setDataSourceType(widget.getDataSourceType());
         definition.setDataSourceId(widget.getDataSourceId());
+        definition.setMonitoringJobName(job == null ? null : job.getName());
         definition.setFieldConfigJson(widget.getFieldConfigJson());
         definition.setJobRunning(execution != null
                 && execution.getStatus() == MonitoringExecution.ExecutionStatus.RUNNING);
