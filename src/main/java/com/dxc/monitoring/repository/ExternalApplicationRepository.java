@@ -21,6 +21,20 @@ public interface ExternalApplicationRepository extends JpaRepository<ExternalApp
     @Query("""
             select externalApplication
             from ExternalApplication externalApplication
+            join externalApplication.application application
+            join externalApplication.environment environment
+            where externalApplication.enabled = true
+              and application.enabled = true
+              and environment.enabled = true
+              and environment.application.id = application.id
+            order by lower(externalApplication.applicationName)
+            """)
+    List<ExternalApplication> findAllEnabledInstancesForDashboard();
+
+    @EntityGraph(attributePaths = {"application", "environment"})
+    @Query("""
+            select externalApplication
+            from ExternalApplication externalApplication
             left join externalApplication.application application
             left join externalApplication.environment environment
             where (:applicationId is null or application.id = :applicationId)
