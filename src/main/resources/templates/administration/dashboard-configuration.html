@@ -1800,10 +1800,16 @@
                                     <h6 class="mb-2">Embedded page</h6>
                                     <div class="row g-3">
                                         <div class="col-12">
-                                            <label for="dashboardWidgetIframeUrl" class="form-label">External page URL <span class="text-danger">*</span></label>
-                                            <input type="url" class="form-control" id="dashboardWidgetIframeUrl" maxlength="2048"
-                                                   placeholder="https://grafana.example.com/d/overview">
-                                            <div class="form-text">Use an absolute HTTP or HTTPS URL. The external site must permit iframe embedding and allow the current user to access it.</div>
+                                            <label for="dashboardWidgetIframeApplication" class="form-label">External application <span class="text-danger">*</span></label>
+                                            <select class="form-select" id="dashboardWidgetIframeApplication">
+                                                <option value="">Select an enabled external application</option>
+                                                <option th:each="externalApp : ${externalApplications}"
+                                                        th:value="${externalApp.id}"
+                                                        th:text="${externalApp.applicationName}"
+                                                        th:attr="data-base-url=${externalApp.baseUrl},data-auth-type=${externalApp.authType}"></option>
+                                            </select>
+                                            <div class="form-text">Configure the embeddable page URL under Administration → External Applications. The external site must permit iframe embedding and allow the current user to access it.</div>
+                                            <div class="small text-muted mt-2 d-none" id="dashboardWidgetIframeApplicationUrl"></div>
                                         </div>
                                         <div class="col-md-4">
                                             <label for="dashboardWidgetIframeHeight" class="form-label">Default height (pixels)</label>
@@ -1982,17 +1988,31 @@
         function syncDashboardWidgetIframeFields(clearDisabledValues) {
             const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
             const group = document.getElementById('dashboardWidgetIframeConfig');
-            const url = document.getElementById('dashboardWidgetIframeUrl');
+            const application = document.getElementById('dashboardWidgetIframeApplication');
             const height = document.getElementById('dashboardWidgetIframeHeight');
             group.classList.toggle('d-none', !isIframe);
-            url.required = isIframe;
+            application.required = isIframe;
             height.required = isIframe;
             if (!isIframe && clearDisabledValues) {
-                url.value = '';
+                application.value = '';
+                document.getElementById('dashboardWidgetIframeApplicationUrl').textContent = '';
+                document.getElementById('dashboardWidgetIframeApplicationUrl').classList.add('d-none');
                 height.value = '520';
                 document.getElementById('dashboardWidgetIframeExpand').checked = true;
             }
         }
+
+        function updateDashboardWidgetIframeApplicationUrl() {
+            const select = document.getElementById('dashboardWidgetIframeApplication');
+            const option = select.options[select.selectedIndex];
+            const display = document.getElementById('dashboardWidgetIframeApplicationUrl');
+            const url = option && option.dataset.baseUrl ? option.dataset.baseUrl : '';
+            display.textContent = url;
+            display.classList.toggle('d-none', !url);
+        }
+
+        document.getElementById('dashboardWidgetIframeApplication')
+            .addEventListener('change', updateDashboardWidgetIframeApplicationUrl);
 
         function readWidgetConfigJson() {
             try {
@@ -2047,8 +2067,9 @@
         syncDashboardWidgetRefreshFields(false);
         if (document.getElementById('dashboardWidgetType').value === 'IFRAME') {
             const initialIframeConfig = readWidgetConfigJson();
-            document.getElementById('dashboardWidgetIframeUrl').value =
-                typeof initialIframeConfig.url === 'string' ? initialIframeConfig.url : '';
+            document.getElementById('dashboardWidgetIframeApplication').value =
+                initialIframeConfig.externalApplicationId == null ? '' : String(initialIframeConfig.externalApplicationId);
+            updateDashboardWidgetIframeApplicationUrl();
             document.getElementById('dashboardWidgetIframeHeight').value =
                 Number.isInteger(initialIframeConfig.defaultHeight) ? initialIframeConfig.defaultHeight : 520;
             document.getElementById('dashboardWidgetIframeExpand').checked =
@@ -2152,8 +2173,9 @@
                             widget.fieldConfigJson || '{}';
 
                         const iframeConfig = readWidgetConfigJson();
-                        document.getElementById('dashboardWidgetIframeUrl').value =
-                            typeof iframeConfig.url === 'string' ? iframeConfig.url : '';
+                        document.getElementById('dashboardWidgetIframeApplication').value =
+                            iframeConfig.externalApplicationId == null ? '' : String(iframeConfig.externalApplicationId);
+                        updateDashboardWidgetIframeApplicationUrl();
                         document.getElementById('dashboardWidgetIframeHeight').value =
                             Number.isInteger(iframeConfig.defaultHeight) ? iframeConfig.defaultHeight : 520;
                         document.getElementById('dashboardWidgetIframeExpand').checked =
@@ -2260,9 +2282,11 @@
             syncDashboardWidgetRefreshFields(false);
 
             if (widgetType.value === 'IFRAME') {
-                const url = document.getElementById('dashboardWidgetIframeUrl').value.trim();
+                const applicationSelect = document.getElementById('dashboardWidgetIframeApplication');
+                const selectedOption = applicationSelect.options[applicationSelect.selectedIndex];
                 const parsed = readWidgetConfigJson();
-                parsed.url = url;
+                parsed.externalApplicationId = applicationSelect.value ? Number(applicationSelect.value) : null;
+                parsed.url = selectedOption && selectedOption.dataset.baseUrl ? selectedOption.dataset.baseUrl : '';
                 parsed.defaultHeight = Number(document.getElementById('dashboardWidgetIframeHeight').value || 520);
                 parsed.allowExpand = document.getElementById('dashboardWidgetIframeExpand').checked;
                 document.getElementById('dashboardWidgetFieldConfigJson').value = JSON.stringify(parsed, null, 2);
