@@ -217,10 +217,14 @@ public class DashboardService
         definition.setDataSourceType(widget.getDataSourceType());
         definition.setDataSourceId(widget.getDataSourceId());
         definition.setMonitoringJobName(job == null ? null : job.getName());
-        definition.setFieldConfigJson(widget.getFieldConfigJson());
         if ("IFRAME".equals(widget.getWidgetType()))
         {
+            definition.setFieldConfigJson(iframeFieldConfigJson(widget));
             definition.setExternalApplicationUrl(resolveExternalApplicationUrl(widget));
+        }
+        else
+        {
+            definition.setFieldConfigJson(widget.getFieldConfigJson());
         }
         definition.setJobRunning(execution != null
                 && execution.getStatus() == MonitoringExecution.ExecutionStatus.RUNNING);
@@ -255,6 +259,21 @@ public class DashboardService
         response.setWidget(definition);
         response.setResult(result);
         return response;
+    }
+
+    private String iframeFieldConfigJson(DashboardWidget widget)
+    {
+        try
+        {
+            Map<String, Object> config = objectMapper.readValue(widget.getFieldConfigJson(),
+                    new TypeReference<Map<String, Object>>() {});
+            config.remove("url");
+            return objectMapper.writeValueAsString(config);
+        }
+        catch (Exception exception)
+        {
+            return "{}";
+        }
     }
 
     private String resolveExternalApplicationUrl(DashboardWidget widget)
