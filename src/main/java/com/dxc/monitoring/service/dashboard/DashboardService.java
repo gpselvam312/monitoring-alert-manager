@@ -11,11 +11,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.DashboardTab;
+import com.dxc.monitoring.entity.ExternalApplication;
 import com.dxc.monitoring.entity.DashboardWidget;
 import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringResult;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.DashboardTabRepository;
+import com.dxc.monitoring.repository.ExternalApplicationRepository;
 import com.dxc.monitoring.repository.DashboardWidgetRepository;
 import com.dxc.monitoring.repository.MonitoringExecutionRepository;
 import com.dxc.monitoring.repository.MonitoringResultRepository;
@@ -33,6 +35,7 @@ public class DashboardService
     private final MonitoringExecutionRepository monitoringExecutionRepository;
     private final MonitoringResultRepository monitoringResultRepository;
     private final MonitoringJobRepository monitoringJobRepository;
+    private final ExternalApplicationRepository externalApplicationRepository;
     private final ObjectMapper objectMapper;
     private final DashboardAccessService dashboardAccessService;
     private final MonitoringResultNormalizer monitoringResultNormalizer;
@@ -42,6 +45,7 @@ public class DashboardService
             MonitoringExecutionRepository monitoringExecutionRepository,
             MonitoringResultRepository monitoringResultRepository,
             MonitoringJobRepository monitoringJobRepository,
+            ExternalApplicationRepository externalApplicationRepository,
             ObjectMapper objectMapper, DashboardAccessService dashboardAccessService,
             MonitoringResultNormalizer monitoringResultNormalizer)
     {
@@ -50,6 +54,7 @@ public class DashboardService
         this.monitoringExecutionRepository = monitoringExecutionRepository;
         this.monitoringResultRepository = monitoringResultRepository;
         this.monitoringJobRepository = monitoringJobRepository;
+        this.externalApplicationRepository = externalApplicationRepository;
         this.objectMapper = objectMapper;
         this.dashboardAccessService = dashboardAccessService;
         this.monitoringResultNormalizer = monitoringResultNormalizer;
@@ -213,6 +218,10 @@ public class DashboardService
         definition.setDataSourceId(widget.getDataSourceId());
         definition.setMonitoringJobName(job == null ? null : job.getName());
         definition.setFieldConfigJson(widget.getFieldConfigJson());
+        if ("IFRAME".equals(widget.getWidgetType()))
+        {
+            definition.setExternalApplicationUrl(resolveExternalApplicationUrl(widget));
+        }
         definition.setJobRunning(execution != null
                 && execution.getStatus() == MonitoringExecution.ExecutionStatus.RUNNING);
         definition.setRunNowEnabled(canRunNow(widget, job, execution));
@@ -246,6 +255,35 @@ public class DashboardService
         response.setWidget(definition);
         response.setResult(result);
         return response;
+    }
+
+    private String resolveExternalApplicationUrl(DashboardWidget widget)
+    {
+        if (widget == null || widget.getFieldConfigJson() == null || widget.getFieldConfigJson().isBlank())
+        {
+            return null;
+        }
+        try
+        {
+            Map<String, Object> config = objectMapper.readValue(widget.getFieldConfigJson(),
+                    new TypeReference<Map<String, Object>>() {});
+            Object configuredId = config.get("externalApplicationId");
+            Long applicationId = configuredId instanceof Number number ? number.longValue()
+                    : configuredId == null ? null : Long.valueOf(String.valueOf(configuredId));
+            if (applicationId == null)
+            {
+                return null;
+            }
+            return externalApplicationRepository.findById(applicationId)
+                    .filter(ExternalApplication::isEnabled)
+                    .map(ExternalApplication::getBaseUrl)
+                    .orElse(null);
+        }
+        catch (Exception exception)
+        {
+            // An invalid or unavailable registry reference must not break the whole dashboard.
+            return null;
+        }
     }
 
     private WidgetResult createResult(DashboardWidget widget, MonitoringExecution execution, MonitoringResult monitoringResult)
