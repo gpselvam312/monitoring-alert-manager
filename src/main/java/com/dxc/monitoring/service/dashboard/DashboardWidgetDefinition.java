@@ -31,6 +31,8 @@ public class DashboardWidgetDefinition
 
     private String fieldConfigJson;
 
+    private String externalApplicationUrl;
+
     private Boolean autoRefresh;
 
     private Integer refreshInterval;
@@ -181,6 +183,16 @@ public class DashboardWidgetDefinition
     public void setFieldConfigJson(String fieldConfigJson)
     {
         this.fieldConfigJson = fieldConfigJson;
+    }
+
+    public String getExternalApplicationUrl()
+    {
+        return externalApplicationUrl;
+    }
+
+    public void setExternalApplicationUrl(String externalApplicationUrl)
+    {
+        this.externalApplicationUrl = externalApplicationUrl;
     }
 
     public Boolean getAutoRefresh()
