@@ -1014,12 +1014,32 @@
         return value !== null && typeof value === "object" && !Array.isArray(value);
     }
 
+    function parseJsonPayload(value)
+    {
+        if (typeof value !== "string") return value;
+        const text = value.trim();
+        if (!text) return value;
+        try { return JSON.parse(text); }
+        catch (ignore) { return value; }
+    }
+
     function getConfiguredTableRows(result, config)
     {
-        const payload = result.payload;
+        result = result || {};
+        // Monitoring outputs are not always normalized identically: some jobs return
+        // payload as an object, while others persist the raw JSON as a string.
+        let payload = parseJsonPayload(result.payload);
+        if (payload === undefined || payload === null)
+            payload = parseJsonPayload(result.data);
+
         if (config.rowPath)
         {
-            const configuredRows = getJsonPath(payload, config.rowPath);
+            let configuredRows = getJsonPath(payload, config.rowPath);
+            if (!Array.isArray(configuredRows) && payload && typeof payload === "object" &&
+                !Array.isArray(payload) && payload.data !== undefined)
+            {
+                configuredRows = getJsonPath(payload.data, config.rowPath);
+            }
             if (Array.isArray(configuredRows)) return configuredRows.filter(isObjectRow);
             // Accept root arrays from PDSH scripts even if an older config specifies rowPath.
             if (Array.isArray(payload)) return payload.filter(isObjectRow);
@@ -1122,9 +1142,10 @@
             });
         }
 
-        // Preserve support for previously pre-mapped result.data records.
-        if (Array.isArray(result.data)) {
-            return result.data.map(function (point) {
+        // Preserve support for previously pre-mapped data, including JSON strings.
+        const preMappedData = parseJsonPayload(result.data);
+        if (Array.isArray(preMappedData)) {
+            return preMappedData.map(function (point) {
                 if (!point || point.label === null || point.label === undefined) return null;
                 const numeric = toChartNumber(point.value);
                 return numeric === null ? null : { label: point.label, value: numeric, series: point.series };
