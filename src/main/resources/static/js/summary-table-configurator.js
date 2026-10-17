@@ -1200,7 +1200,7 @@
         byId("summaryTableConditionalFormattingSection").hidden = !isSummary;
         byId("summaryTableTableOptions").hidden = !isTable;
         byId("summaryTableExportCsvOption").hidden = !isSummary;
-        byId("summaryTableLayoutControl").hidden = type === "SYSTEM_METRICS";
+        byId("summaryTableLayoutControl").hidden = !isSummary;
         byId("summaryTableFieldEditorGroup").hidden = !isFieldMapping;
         byId("summaryTableRowPathGroup").hidden = !rowPathTypes.includes(type);
         byId("widgetMappingHeading").textContent = type === "SUMMARY_TABLE" ? "Summary Table data and columns" : "Widget data and mapping";
