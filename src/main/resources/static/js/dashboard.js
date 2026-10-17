@@ -1119,6 +1119,8 @@
         const rows = categoryField && (config.valueField || enabledSeries.length)
             ? getConfiguredTableRows(result, config) : [];
 
+        if (explicitSeries.length && !enabledSeries.length) return [];
+
         if (rows.length && enabledSeries.length) {
             const mapped = [];
             rows.forEach(function (row) {
