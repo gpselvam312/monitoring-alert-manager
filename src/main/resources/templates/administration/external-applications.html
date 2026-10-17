@@ -182,12 +182,12 @@
                                 <td class="text-break" th:text="${app.baseUrl}">https://grafana.example.com</td>
                                 <td th:text="${app.authType}">OIDC</td>
                                 <td>
-                                    <span th:if="${configuredAccounts[app.id]}" class="badge bg-success">Configured</span>
-                                    <span th:unless="${configuredAccounts[app.id]}" class="badge bg-secondary">Not configured</span>
+                                    <span th:if="${configuredAccounts[app.id]}" class="status-badge status-success">Configured</span>
+                                    <span th:unless="${configuredAccounts[app.id]}" class="status-badge status-secondary">Not configured</span>
                                 </td>
                                 <td>
-                                    <span th:if="${app.enabled}" class="badge bg-success">Enabled</span>
-                                    <span th:unless="${app.enabled}" class="badge bg-secondary">Disabled</span>
+                                    <span th:if="${app.enabled}" class="status-badge status-success">Enabled</span>
+                                    <span th:unless="${app.enabled}" class="status-badge status-secondary">Disabled</span>
                                 </td>
                                 <td class="text-end text-nowrap">
                                     <a class="btn btn-sm btn-outline-primary"
