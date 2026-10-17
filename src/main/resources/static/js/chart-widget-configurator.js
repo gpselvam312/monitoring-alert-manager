@@ -308,7 +308,6 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
             const preferredCategory = Array.from(new Set(nonNumeric)).sort((a, b) => a.localeCompare(b))[0];
             if (preferredCategory) categorySelect.value = preferredCategory;
         }
-        delete parseConfig().series;
         syncToJson();
         chartMessage("Mapping reset to defaults for the current sample.", false);
     }
