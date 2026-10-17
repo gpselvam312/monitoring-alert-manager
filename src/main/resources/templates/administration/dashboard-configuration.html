@@ -2004,7 +2004,11 @@
         }
 
         function syncDashboardWidgetRefreshFields(clearDisabledValues) {
-            const enabled = document.getElementById('dashboardWidgetAutoRefresh').checked;
+            const refreshCheckbox = document.getElementById('dashboardWidgetAutoRefresh');
+            const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
+            if (isIframe) refreshCheckbox.checked = false;
+            refreshCheckbox.disabled = isIframe;
+            const enabled = refreshCheckbox.checked && !isIframe;
             const interval = document.getElementById('dashboardWidgetRefreshInterval');
             const unit = document.getElementById('dashboardWidgetRefreshIntervalUnit');
 
@@ -2028,6 +2032,8 @@
             .addEventListener('change', function () {
                 syncDashboardWidgetChartFields(true);
                 syncDashboardWidgetIframeFields(true);
+                syncDashboardWidgetDataSourceFields(true);
+                syncDashboardWidgetRefreshFields(true);
             });
 
         document.getElementById('dashboardWidgetAutoRefresh')
