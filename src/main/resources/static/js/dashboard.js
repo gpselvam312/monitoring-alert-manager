@@ -2732,21 +2732,11 @@
                             headerUpdatedHtml +
 
 
-                            (isIframeWidget ? "" : '<span class="dashboard-status ' +
-                                statusClass +
-                            '">' +
-
-                                '<i class="bi ' +
-                                    statusIcon +
-                                '"></i>' +
-
-                                '<span>' +
-                                    escapeHtml(
-                                        statusLabel
-                                    ) +
-                                '</span>' +
-
-                            '</span>' +) +
+                            (isIframeWidget ? "" :
+                                '<span class="dashboard-status ' + statusClass + '">' +
+                                    '<i class="bi ' + statusIcon + '"></i>' +
+                                    '<span>' + escapeHtml(statusLabel) + '</span>' +
+                                '</span>') +
                             refreshButton +
                             iframeExpandButton +
                             (isIframeWidget ? "" : detailsButton) +
@@ -2770,9 +2760,7 @@
 
 
                 '</div>' +
-
-            '
-                '</div>' +
+            '</div>' +
             '</div>'
         );
     }
