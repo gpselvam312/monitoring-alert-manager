@@ -1805,7 +1805,7 @@
                                                 <option value="">Select an enabled external application</option>
                                                 <option th:each="externalApp : ${externalApplications}"
                                                         th:value="${externalApp.id}"
-                                                        th:text="${externalApp.applicationName}"
+                                                        th:text="${externalApp.externalType + ' — ' + externalApp.applicationName + ' (' + externalApp.application.name + ' / ' + externalApp.environment.name + ')'}"
                                                         th:attr="data-base-url=${externalApp.baseUrl},data-auth-type=${externalApp.authType}"></option>
                                             </select>
                                             <div class="form-text">Configure the embeddable page URL under Administration → External Applications. The external site must permit iframe embedding and allow the current user to access it.</div>
