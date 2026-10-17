@@ -140,7 +140,8 @@ public class DashboardConfigurationController
                         ? number.longValue()
                         : selectedId == null ? null : Long.valueOf(String.valueOf(selectedId));
                 var externalApplication = externalApplicationService.findEnabledById(externalApplicationId);
-                iframeConfig.put("url", externalApplication.getBaseUrl());
+                // The registry is the single source of truth for the URL; keep only the reference.
+                iframeConfig.remove("url");
                 iframeConfig.put("externalApplicationId", externalApplication.getId());
                 form.setFieldConfigJson(objectMapper.writeValueAsString(iframeConfig));
             }
