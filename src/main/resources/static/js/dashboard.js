@@ -2679,8 +2679,7 @@
 
         return (
 
-            '<div class="dashboard-widget-column' + (isIframeWidget ? ' dashboard-iframe-column' : '') + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
-            '<div class="' + getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) + '">' +
+            '<div class="dashboard-widget-column ' + getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) + (isIframeWidget ? ' dashboard-iframe-column' : '') + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
 
 
@@ -2760,7 +2759,6 @@
 
 
                 '</div>' +
-            '</div>' +
             '</div>'
         );
     }
