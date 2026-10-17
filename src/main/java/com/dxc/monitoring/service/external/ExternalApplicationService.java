@@ -53,9 +53,7 @@ public class ExternalApplicationService
     @Transactional(readOnly = true)
     public List<ExternalApplication> findEnabled()
     {
-        return applicationRepository.findAllByOrderByApplicationNameAsc().stream()
-                .filter(ExternalApplication::isEnabled)
-                .toList();
+        return applicationRepository.findAllEnabledInstancesForDashboard();
     }
 
     @Transactional(readOnly = true)
