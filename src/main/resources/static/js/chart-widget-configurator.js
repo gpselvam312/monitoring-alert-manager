@@ -63,8 +63,19 @@
           <div class="row g-3">
               <div class="col-md-6"><label class="form-label" for="chartMapRowPath">Data rows path</label><select class="form-select" id="chartMapRowPath" disabled><option value="">Discover fields first</option></select><div class="form-text">Select the array containing chart records.</div></div>
               <div class="col-md-6"><label class="form-label" for="chartMapCategory">Category / label field</label><select class="form-select" id="chartMapCategory" disabled><option value="">Discover fields first</option></select></div>
-              <div class="col-md-6"><label class="form-label" for="chartMapValue">Numeric value field</label><select class="form-select" id="chartMapValue" disabled><option value="">Discover fields first</option></select></div>
-              <div class="col-md-6"><label class="form-label" for="chartMapSeries">Group into series by (optional)</label><select class="form-select" id="chartMapSeries" disabled><option value="">No grouping</option></select></div>
+              <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <label class="form-label mb-0">Chart series / fields</label>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="chartMapAddSeries" disabled>Add field</button>
+                </div>
+                <div class="table-responsive border rounded">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th style="min-width:180px">Numeric field</th><th style="min-width:150px">Series label</th><th style="min-width:120px">Line colour</th><th class="text-end">Action</th></tr></thead>
+                    <tbody id="chartMapSeriesRows"><tr><td colspan="4" class="text-muted small p-3">Discover fields to configure chart series.</td></tr></tbody>
+                  </table>
+                </div>
+                <div class="form-text">Select one or more numeric fields. Each selected row becomes a separate line or chart series.</div>
+              </div>
               <div class="col-md-6"><label class="form-label" for="chartMapTitle">Chart title</label><input class="form-control" id="chartMapTitle" placeholder="Monitoring metrics"></div>
               <div class="col-md-6"><label class="form-label" for="chartMapLegend">Legend position</label><select class="form-select" id="chartMapLegend"><option value="top">Top</option><option value="bottom">Bottom</option><option value="left">Left</option><option value="right">Right</option><option value="none">Hidden</option></select></div>
               <div class="col-md-6"><label class="form-label" for="chartMapXAxis">X-axis title</label><input class="form-control" id="chartMapXAxis" placeholder="Category"></div>
@@ -149,10 +160,8 @@
         }
         collection.rows.slice(0, 100).forEach(row => visit(row, "", 0));
         const fields = Array.from(discovered.values()).sort((a, b) => a.path.localeCompare(b.path));
-        const configValue = preserve ? byId("chartMapValue").value : (config.valueField || "");
-        const configCategory = preserve ? byId("chartMapCategory").value : (config.categoryField || config.labelField || "");
-        const configSeries = preserve ? byId("chartMapSeries").value : (config.seriesField || "");
-        function fill(id, values, selected, emptyLabel) {
+const configCategory = preserve ? byId("chartMapCategory").value : (config.categoryField || config.labelField || "");
+function fill(id, values, selected, emptyLabel) {
             const select = byId(id);
             select.innerHTML = '<option value="">' + emptyLabel + '</option>' + values.map(field =>
                 '<option value="' + esc(field.path) + '"' + (field.path === selected ? ' selected' : '') + '>' +
@@ -198,9 +207,7 @@
             const mapping = {
                 rowPath: byId("chartMapRowPath").value,
                 categoryField: byId("chartMapCategory").value,
-                valueField: byId("chartMapValue").value,
-                seriesField: byId("chartMapSeries").value
-            };
+};
             Object.keys(mapping).forEach(key => {
                 if (mapping[key]) config[key] = mapping[key];
                 else delete config[key];
@@ -260,8 +267,7 @@
             const control = byId(id);
             if (control) control.value = config[key] ?? (id === "chartMapLegend" ? "bottom" : "");
         });
-        byId("chartMapSeriesJson").value = Array.isArray(config.series) ? JSON.stringify(config.series, null, 2) : "";
-        byId("chartMapNumberFormat").value = config.numberFormat || "auto";
+byId("chartMapNumberFormat").value = config.numberFormat || "auto";
         if (sampleState.collections.length) {
             byId("chartMapRowPath").value = config.rowPath || "";
             populateFieldSelectors(config, false);
