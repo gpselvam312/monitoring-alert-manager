@@ -5,11 +5,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.dxc.monitoring.entity.Application;
+import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.ExternalApplication;
 import com.dxc.monitoring.entity.ExternalApplicationAccount;
+import com.dxc.monitoring.repository.ApplicationRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.ExternalApplicationAccountRepository;
 import com.dxc.monitoring.repository.ExternalApplicationRepository;
 
@@ -17,18 +23,25 @@ import com.dxc.monitoring.repository.ExternalApplicationRepository;
 public class ExternalApplicationService
 {
     private static final Set<String> AUTH_TYPES = Set.of("NONE", "OIDC", "AUTH_PROXY", "BASIC", "CUSTOM");
+    private static final Set<String> EXTERNAL_TYPES = Set.of("GRAFANA", "CONSUL", "OTHER");
 
     private final ExternalApplicationRepository applicationRepository;
     private final ExternalApplicationAccountRepository accountRepository;
     private final ExternalSecretEncryptionService encryptionService;
+    private final ApplicationRepository internalApplicationRepository;
+    private final EnvironmentRepository environmentRepository;
 
     public ExternalApplicationService(ExternalApplicationRepository applicationRepository,
             ExternalApplicationAccountRepository accountRepository,
-            ExternalSecretEncryptionService encryptionService)
+            ExternalSecretEncryptionService encryptionService,
+            ApplicationRepository internalApplicationRepository,
+            EnvironmentRepository environmentRepository)
     {
         this.applicationRepository = applicationRepository;
         this.accountRepository = accountRepository;
         this.encryptionService = encryptionService;
+        this.internalApplicationRepository = internalApplicationRepository;
+        this.environmentRepository = environmentRepository;
     }
 
     @Transactional(readOnly = true)
@@ -55,10 +68,15 @@ public class ExternalApplicationService
     }
 
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<ExternalApplication> findPage(
-            String search, org.springframework.data.domain.Pageable pageable)
+    public Page<ExternalApplication> findPage(String search, Long applicationId, Long environmentId,
+            String externalType, Pageable pageable)
     {
-        return applicationRepository.search(search == null ? "" : search.trim(), pageable);
+        String normalizedType = externalType == null || externalType.isBlank()
+                ? null : externalType.trim().toUpperCase(Locale.ROOT);
+        if (normalizedType != null && !EXTERNAL_TYPES.contains(normalizedType))
+            normalizedType = null;
+        return applicationRepository.search(search == null ? "" : search.trim(),
+                applicationId, environmentId, normalizedType, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -73,6 +91,9 @@ public class ExternalApplicationService
         form.setId(app.getId());
         form.setApplicationCode(app.getApplicationCode());
         form.setApplicationName(app.getApplicationName());
+        form.setExternalType(app.getExternalType());
+        form.setApplicationId(app.getApplication() == null ? null : app.getApplication().getId());
+        form.setEnvironmentId(app.getEnvironment() == null ? null : app.getEnvironment().getId());
         form.setBaseUrl(app.getBaseUrl());
         form.setAuthType(app.getAuthType());
         form.setEnabled(app.isEnabled());
@@ -91,7 +112,21 @@ public class ExternalApplicationService
     public void save(ExternalApplicationForm form)
     {
         String code = required(form.getApplicationCode(), "Application code").toUpperCase(Locale.ROOT);
-        String name = required(form.getApplicationName(), "Application name");
+        String name = required(form.getApplicationName(), "Display name");
+        String externalType = required(form.getExternalType(), "External application type").toUpperCase(Locale.ROOT);
+        if (!EXTERNAL_TYPES.contains(externalType))
+            throw new IllegalArgumentException("Select a supported external application type.");
+
+        Application internalApplication = internalApplicationRepository.findById(form.getApplicationId())
+                .filter(Application::isEnabled)
+                .orElseThrow(() -> new IllegalArgumentException("Select an enabled internal application."));
+        Environment environment = environmentRepository.findById(form.getEnvironmentId())
+                .filter(Environment::isEnabled)
+                .filter(candidate -> candidate.getApplication().isEnabled())
+                .orElseThrow(() -> new IllegalArgumentException("Select an enabled environment."));
+        if (!environment.getApplication().getId().equals(internalApplication.getId()))
+            throw new IllegalArgumentException("The selected environment does not belong to the selected application.");
+
         String url = validateBaseUrl(form.getBaseUrl());
         String authType = required(form.getAuthType(), "Authentication type").toUpperCase(Locale.ROOT);
         if (!AUTH_TYPES.contains(authType))
@@ -106,6 +141,9 @@ public class ExternalApplicationService
                     .orElseThrow(() -> new IllegalArgumentException("External application was not found."));
         app.setApplicationCode(code);
         app.setApplicationName(name);
+        app.setExternalType(externalType);
+        app.setApplication(internalApplication);
+        app.setEnvironment(environment);
         app.setBaseUrl(url);
         app.setAuthType(authType);
         app.setEnabled(form.isEnabled());
