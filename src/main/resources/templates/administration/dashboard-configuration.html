@@ -1487,6 +1487,7 @@
 							    <option value="TEXT">Text / Info</option>
 							    <option value="SYSTEM_METRICS">System Metrics</option>
 							    <option value="ELASTICSEARCH">Elasticsearch</option>
+							    <option value="IFRAME">iFrame / External Dashboard</option>
 							
 							</select>
 							
@@ -1794,6 +1795,30 @@
                                 </div>
                             </div>
 
+                            <div class="col-12 d-none" id="dashboardWidgetIframeConfig">
+                                <div class="border rounded p-3">
+                                    <h6 class="mb-2">Embedded page</h6>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label for="dashboardWidgetIframeUrl" class="form-label">External page URL <span class="text-danger">*</span></label>
+                                            <input type="url" class="form-control" id="dashboardWidgetIframeUrl" maxlength="2048"
+                                                   placeholder="https://grafana.example.com/d/overview">
+                                            <div class="form-text">Use an absolute HTTP or HTTPS URL. The external site must permit iframe embedding and allow the current user to access it.</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="dashboardWidgetIframeHeight" class="form-label">Default height (pixels)</label>
+                                            <input type="number" class="form-control" id="dashboardWidgetIframeHeight" min="250" max="2000" step="50" value="520">
+                                        </div>
+                                        <div class="col-md-8 d-flex align-items-end">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="dashboardWidgetIframeExpand" checked>
+                                                <label class="form-check-label" for="dashboardWidgetIframeExpand">Allow expand / collapse</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="col-12">
                                 <details id="dashboardWidgetAdvancedConfig">
                                     <summary class="form-label mb-2">Advanced JSON configuration</summary>
@@ -1948,6 +1973,30 @@
             }
         }
 
+        function syncDashboardWidgetIframeFields(clearDisabledValues) {
+            const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
+            const group = document.getElementById('dashboardWidgetIframeConfig');
+            const url = document.getElementById('dashboardWidgetIframeUrl');
+            const height = document.getElementById('dashboardWidgetIframeHeight');
+            group.classList.toggle('d-none', !isIframe);
+            url.required = isIframe;
+            height.required = isIframe;
+            if (!isIframe && clearDisabledValues) {
+                url.value = '';
+                height.value = '520';
+                document.getElementById('dashboardWidgetIframeExpand').checked = true;
+            }
+        }
+
+        function readWidgetConfigJson() {
+            try {
+                const value = JSON.parse(document.getElementById('dashboardWidgetFieldConfigJson').value || '{}');
+                return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
         function syncDashboardWidgetRefreshFields(clearDisabledValues) {
             const enabled = document.getElementById('dashboardWidgetAutoRefresh').checked;
             const interval = document.getElementById('dashboardWidgetRefreshInterval');
@@ -1972,6 +2021,7 @@
         document.getElementById('dashboardWidgetType')
             .addEventListener('change', function () {
                 syncDashboardWidgetChartFields(true);
+                syncDashboardWidgetIframeFields(true);
             });
 
         document.getElementById('dashboardWidgetAutoRefresh')
@@ -1981,6 +2031,7 @@
 
         syncDashboardWidgetDataSourceFields(false);
         syncDashboardWidgetChartFields(true);
+        syncDashboardWidgetIframeFields(false);
         syncDashboardWidgetRefreshFields(false);
 
         window.DashboardConfig = {
@@ -2078,6 +2129,15 @@
                         document.getElementById('dashboardWidgetFieldConfigJson').value =
                             widget.fieldConfigJson || '{}';
 
+                        const iframeConfig = readWidgetConfigJson();
+                        document.getElementById('dashboardWidgetIframeUrl').value =
+                            typeof iframeConfig.url === 'string' ? iframeConfig.url : '';
+                        document.getElementById('dashboardWidgetIframeHeight').value =
+                            Number.isInteger(iframeConfig.defaultHeight) ? iframeConfig.defaultHeight : 520;
+                        document.getElementById('dashboardWidgetIframeExpand').checked =
+                            iframeConfig.allowExpand !== false;
+                        syncDashboardWidgetIframeFields(false);
+
                         document.getElementById('dashboardWidgetRefreshInterval').value =
                             widget.refreshInterval ?? '';
 
@@ -2174,7 +2234,17 @@
 
             syncDashboardWidgetDataSourceFields(false);
             syncDashboardWidgetChartFields(true);
+            syncDashboardWidgetIframeFields(false);
             syncDashboardWidgetRefreshFields(false);
+
+            if (widgetType.value === 'IFRAME') {
+                const url = document.getElementById('dashboardWidgetIframeUrl').value.trim();
+                const parsed = readWidgetConfigJson();
+                parsed.url = url;
+                parsed.defaultHeight = Number(document.getElementById('dashboardWidgetIframeHeight').value || 520);
+                parsed.allowExpand = document.getElementById('dashboardWidgetIframeExpand').checked;
+                document.getElementById('dashboardWidgetFieldConfigJson').value = JSON.stringify(parsed, null, 2);
+            }
 
             interval.required = autoRefresh;
             unit.required = autoRefresh;
@@ -2206,6 +2276,7 @@
 
             syncDashboardWidgetDataSourceFields(false);
             syncDashboardWidgetChartFields(true);
+            syncDashboardWidgetIframeFields(true);
             syncDashboardWidgetRefreshFields(false);
 
             document
