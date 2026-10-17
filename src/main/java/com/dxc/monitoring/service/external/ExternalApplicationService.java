@@ -61,7 +61,9 @@ public class ExternalApplicationService
     {
         if (id == null)
             throw new IllegalArgumentException("Select an external application.");
-        return applicationRepository.findById(id).filter(ExternalApplication::isEnabled)
+        return applicationRepository.findAllEnabledInstancesForDashboard().stream()
+                .filter(application -> application.getId().equals(id))
+                .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("The selected external application is not available."));
     }
 
