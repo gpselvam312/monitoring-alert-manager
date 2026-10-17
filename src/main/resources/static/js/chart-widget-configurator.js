@@ -6,6 +6,7 @@
     const typeId = "dashboardWidgetType";
     const chartTypeId = "dashboardWidgetChartType";
     let syncing = false;
+    let sampleDiscoveryTimer = null;
     const sampleState = { collections: [], numericFields: [] };
 
     function parseConfig() {
@@ -57,6 +58,8 @@
               <div class="d-flex flex-wrap gap-2 mt-2">
                 <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapLoadLatest">Load latest job output</button>
                 <button type="button" class="btn btn-outline-primary btn-sm" id="chartMapDiscover">Discover fields</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapClearMapping">Clear Mapping</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapResetMapping">Reset Default</button>
                 <span class="small text-muted align-self-center" id="chartMapSampleMessage" role="status" aria-live="polite">Paste JSON or load the latest output to begin.</span>
               </div>
           </div>
@@ -84,10 +87,20 @@
           </section>`;
         wrapper.parentNode.insertBefore(panel, wrapper);
         panel.querySelectorAll("input,select,textarea").forEach(control => {
+            if (control.id === "chartMapSampleJson") return;
             control.addEventListener("input", syncToJson);
             control.addEventListener("change", syncToJson);
         });
+        byId("chartMapSampleJson").addEventListener("input", function () {
+            if (sampleDiscoveryTimer) clearTimeout(sampleDiscoveryTimer);
+            sampleDiscoveryTimer = setTimeout(function () {
+                sampleDiscoveryTimer = null;
+                discoverSample();
+            }, 500);
+        });
         byId("chartMapDiscover").addEventListener("click", discoverSample);
+        byId("chartMapClearMapping").addEventListener("click", clearMapping);
+        byId("chartMapResetMapping").addEventListener("click", resetMappingToDefaults);
         byId("chartMapLoadLatest").addEventListener("click", loadLatestSample);
         byId("chartMapRowPath").addEventListener("change", function () {
             populateFieldSelectors(parseConfig(), true);
@@ -145,12 +158,17 @@
             const rowSelect = byId("chartMapRowPath");
             rowSelect.innerHTML = sampleState.collections.map(item => '<option value="' + esc(item.path) + '">' + esc(item.label) + ' (' + item.rows.length + ' rows)</option>').join("");
             rowSelect.disabled = false;
-            rowSelect.value = sampleState.collections.some(item => item.path === config.rowPath)
-                ? (config.rowPath || "") : (sampleState.collections.find(item => item.path) || sampleState.collections[0]).path;
+            const matchingCollection = sampleState.collections.find(item => item.path === config.rowPath
+                && (item.path || !sampleState.collections.some(candidate => candidate.path)));
+            rowSelect.value = matchingCollection
+                ? matchingCollection.path : (sampleState.collections.find(item => item.path) || sampleState.collections[0]).path;
             populateFieldSelectors(config, false);
-            renderSeriesRows(Array.isArray(config.series) ? config.series :
-                (config.valueField ? [{ label: config.title || humanize(config.valueField), valueField: config.valueField }] : []));
-            chartMessage("Discovered " + sampleState.collections.length + " row collection(s). Choose fields below.", false);
+            const savedSeries = Array.isArray(config.series) ? config.series :
+                (config.valueField ? [{ label: config.title || humanize(config.valueField), valueField: config.valueField }] : []);
+            // Keep custom labels/colours for fields that still exist, but remove stale mappings
+            // when the sample response changes and enable newly discovered numeric fields.
+            renderSeriesRows(savedSeries, false);
+            chartMessage("Discovered " + sampleState.collections.length + " row collection(s). Mapping refreshed from the current sample.", false);
             syncToJson();
         } catch (error) {
             chartMessage(error.message || "Unable to discover sample fields.", true);
@@ -216,19 +234,19 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
         master.disabled = controls.length === 0;
     }
 
-    function renderSeriesRows(series) {
+    function renderSeriesRows(series, includeSavedOnly = true) {
         const host = byId("chartMapSeriesRows");
         if (!host) return;
         const savedSeries = Array.isArray(series) ? series : [];
         const savedByField = new Map(savedSeries.map(item => [String(item.valueField || item.field || ""), item]));
         const fields = sampleState.numericFields || [];
-        const allFields = [
+        const allFields = includeSavedOnly ? [
             ...fields,
             ...savedSeries.filter(item => {
                 const field = String(item.valueField || item.field || "");
                 return field && !fields.some(candidate => candidate.path === field);
             }).map(item => ({ path: String(item.valueField || item.field), numeric: true, savedOnly: true }))
-        ];
+        ] : fields;
         host.innerHTML = allFields.map(fieldInfo => {
             const field = String(fieldInfo.path);
             const saved = savedByField.get(field);
@@ -249,6 +267,50 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
             enableAll.indeterminate = controls.some(control => control.checked) && !enableAll.checked;
             enableAll.disabled = controls.length === 0;
         }
+    }
+
+    function clearMapping() {
+        const rows = Array.from(byId("chartMapSeriesRows").querySelectorAll("[data-chart-series-row]"));
+        if (!rows.length) {
+            chartMessage("Discover fields from the sample JSON before clearing the mapping.", true);
+            return;
+        }
+        if (!window.confirm("Clear the chart field mapping? All chart series will be disabled. Chart titles and display options will be preserved.")) return;
+        rows.forEach(row => {
+            const enabled = row.querySelector(".chart-map-series-enabled");
+            if (enabled) enabled.checked = false;
+        });
+        updateEnableAllControl();
+        syncToJson();
+        chartMessage("Mapping cleared. All chart series are disabled.", false);
+    }
+
+    function resetMappingToDefaults() {
+        if (!sampleState.numericFields.length) {
+            chartMessage("Discover fields from the sample JSON before resetting the mapping.", true);
+            return;
+        }
+        if (!window.confirm("Reset chart field mapping to defaults? All discovered numeric fields will be enabled with default labels and colours. Chart display options will be preserved.")) return;
+        renderSeriesRows([], false);
+        const categorySelect = byId("chartMapCategory");
+        const collection = sampleState.collections.find(item => item.path === byId("chartMapRowPath").value);
+        if (collection && categorySelect) {
+            const nonNumeric = [];
+            function visit(value, prefix, depth) {
+                if (depth > 8 || value == null || Array.isArray(value)) return;
+                if (typeof value === "object") {
+                    Object.keys(value).forEach(key => visit(value[key], prefix ? prefix + "." + key : key, depth + 1));
+                } else if (prefix && !(typeof value === "number" || (typeof value === "string" && value.trim() && Number.isFinite(Number(value.replace(/,/g, "")))))) {
+                    nonNumeric.push(prefix);
+                }
+            }
+            collection.rows.slice(0, 100).forEach(row => visit(row, "", 0));
+            const preferredCategory = Array.from(new Set(nonNumeric)).sort((a, b) => a.localeCompare(b))[0];
+            if (preferredCategory) categorySelect.value = preferredCategory;
+        }
+        delete parseConfig().series;
+        syncToJson();
+        chartMessage("Mapping reset to defaults for the current sample.", false);
     }
 
     async function loadLatestSample() {
