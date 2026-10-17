@@ -2569,7 +2569,7 @@
 		}
         else if (isIframeWidget)
         {
-            const rawUrl = typeof iframeConfig.url === "string" ? iframeConfig.url.trim() : "";
+            const rawUrl = typeof widget.externalApplicationUrl === "string" ? widget.externalApplicationUrl.trim() : "";
             let safeUrl = "";
             try {
                 const parsedUrl = new URL(rawUrl, window.location.origin);
@@ -2578,7 +2578,7 @@
             const iframeHeight = Number.isInteger(iframeConfig.defaultHeight) && iframeConfig.defaultHeight >= 250 && iframeConfig.defaultHeight <= 2000 ? iframeConfig.defaultHeight : 520;
             widgetContentHtml = safeUrl
                 ? '<div class="dashboard-iframe-wrapper"><iframe class="dashboard-iframe" src="' + escapeHtml(safeUrl) + '" title="' + escapeHtml(widget.name || "Embedded dashboard") + '" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; clipboard-read; clipboard-write" style="height:' + iframeHeight + 'px"></iframe></div>'
-                : '<div class="alert alert-warning mb-0">Configure a valid HTTP or HTTPS URL for this iFrame widget.</div>';
+                : '<div class="alert alert-warning mb-0">The selected external application is unavailable or disabled. Check External Applications configuration.</div>';
         }
 
         /*
