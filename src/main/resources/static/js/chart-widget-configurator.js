@@ -76,7 +76,7 @@
                   </div>
                 </div>
               </div>
-              <div class="col-12">
+              <div class="col-12" id="chartMapSeriesSection">
                 <label class="form-label mb-2">Discovered fields and chart series</label>
                 <div class="table-responsive border rounded">
                   <table class="table table-sm table-striped align-middle mb-0">
@@ -383,9 +383,15 @@
         else if (sampleState.collections.length) delete config.pieValueField;
         config.pieAggregation = byId("chartMapPieAggregation").value || "sum";
         config.pieColorScheme = byId("chartMapPieColorScheme").value || "categorical";
-        const series = readSeriesRows();
-        if (series.some(item => !item.label || !item.valueField)) throw new Error("Each enabled chart series requires a numeric field and label.");
-        config.series = series;
+        const chartType = String(byId(chartTypeId)?.value || "").toUpperCase();
+        const isPie = chartType === "PIE" || chartType === "DONUT" || chartType === "DOUGHNUT";
+        if (!isPie) {
+            const series = readSeriesRows();
+            if (series.some(item => !item.label || !item.valueField)) throw new Error("Each enabled chart series requires a numeric field and label.");
+            config.series = series;
+        }
+        // Preserve any existing series mapping while Pie/Donut is selected so switching
+        // back to Line/Bar does not discard the user's previous configuration.
         delete config.valueField;
         delete config.seriesField;
         return config;
@@ -441,6 +447,9 @@ byId("chartMapNumberFormat").value = config.numberFormat || "auto";
         const isPie = chartType === "PIE" || chartType === "DONUT" || chartType === "DOUGHNUT";
         const pieOptions = byId("chartMapPieOptions");
         if (pieOptions) pieOptions.classList.toggle("d-none", !isPie);
+        // Pie/Donut charts use one category field and one value field, not multiple chart series.
+        const seriesSection = byId("chartMapSeriesSection");
+        if (seriesSection) seriesSection.classList.toggle("d-none", isPie);
         const genericMapping = byId("widgetTypeMappingOptions");
         if (genericMapping && isChart) genericMapping.hidden = true;
     }
