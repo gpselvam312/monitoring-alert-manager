@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.ExternalApplication;
+import com.dxc.monitoring.repository.ApplicationRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.service.external.ExternalApplicationForm;
 import com.dxc.monitoring.service.external.ExternalApplicationService;
 
@@ -32,13 +34,19 @@ public class ExternalApplicationConfigurationController
             "applicationName", "applicationName",
             "baseUrl", "baseUrl",
             "authType", "authType",
+            "externalType", "externalType",
             "enabled", "enabled");
 
     private final ExternalApplicationService externalApplicationService;
+    private final ApplicationRepository applicationRepository;
+    private final EnvironmentRepository environmentRepository;
 
-    public ExternalApplicationConfigurationController(ExternalApplicationService externalApplicationService)
+    public ExternalApplicationConfigurationController(ExternalApplicationService externalApplicationService,
+            ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository)
     {
         this.externalApplicationService = externalApplicationService;
+        this.applicationRepository = applicationRepository;
+        this.environmentRepository = environmentRepository;
     }
 
     @GetMapping
@@ -48,9 +56,12 @@ public class ExternalApplicationConfigurationController
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "applicationName") String sort,
             @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(required = false) Long applicationId,
+            @RequestParam(required = false) Long environmentId,
+            @RequestParam(defaultValue = "") String externalType,
             Model model)
     {
-        populateModel(model, id, page, size, search, sort, direction);
+        populateModel(model, id, page, size, search, sort, direction, applicationId, environmentId, externalType);
         return "administration/external-applications";
     }
 
@@ -60,9 +71,12 @@ public class ExternalApplicationConfigurationController
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "applicationName") String sort,
             @RequestParam(defaultValue = "asc") String direction,
+            @RequestParam(required = false) Long applicationId,
+            @RequestParam(required = false) Long environmentId,
+            @RequestParam(defaultValue = "") String externalType,
             Model model)
     {
-        populateTableModel(model, page, size, search, sort, direction);
+        populateTableModel(model, page, size, search, sort, direction, applicationId, environmentId, externalType);
         return "administration/external-applications :: externalApplicationsTable";
     }
 
@@ -80,11 +94,14 @@ public class ExternalApplicationConfigurationController
         }
         catch (IllegalArgumentException | IllegalStateException exception)
         {
-            populateModel(model, form.getId(), 0, 5, "", "applicationName", "asc");
+            populateModel(model, form.getId(), 0, 5, "", "applicationName", "asc", null, null, "");
             // Preserve non-secret form fields on validation errors. Never echo the submitted secret.
             ExternalApplicationForm safeForm = externalApplicationService.getForm(form.getId());
             safeForm.setApplicationCode(form.getApplicationCode());
             safeForm.setApplicationName(form.getApplicationName());
+            safeForm.setExternalType(form.getExternalType());
+            safeForm.setApplicationId(form.getApplicationId());
+            safeForm.setEnvironmentId(form.getEnvironmentId());
             safeForm.setBaseUrl(form.getBaseUrl());
             safeForm.setAuthType(form.getAuthType());
             safeForm.setEnabled(form.isEnabled());
@@ -107,15 +124,17 @@ public class ExternalApplicationConfigurationController
         return "redirect:/administration/external-applications";
     }
 
-    private void populateModel(Model model, Long id, int page, int size, String search, String sort, String direction)
+    private void populateModel(Model model, Long id, int page, int size, String search, String sort, String direction,
+            Long applicationId, Long environmentId, String externalType)
     {
-        populateTableModel(model, page, size, search, sort, direction);
+        populateTableModel(model, page, size, search, sort, direction, applicationId, environmentId, externalType);
         model.addAttribute("currentPage", "external-applications");
         if (!model.containsAttribute("externalApplicationForm"))
             model.addAttribute("externalApplicationForm", externalApplicationService.getForm(id));
     }
 
-    private void populateTableModel(Model model, int page, int size, String search, String sort, String direction)
+    private void populateTableModel(Model model, int page, int size, String search, String sort, String direction,
+            Long applicationId, Long environmentId, String externalType)
     {
         int pageSize = PAGE_SIZES.contains(size) ? size : 5;
         int requestedPage = Math.max(0, page);
@@ -124,12 +143,14 @@ public class ExternalApplicationConfigurationController
         Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction)
                 ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(requestedPage, pageSize, Sort.by(sortDirection, sortField));
-        Page<ExternalApplication> applications = externalApplicationService.findPage(normalizedSearch, pageable);
+        Page<ExternalApplication> applications = externalApplicationService.findPage(
+                normalizedSearch, applicationId, environmentId, externalType, pageable);
 
         if (applications.getTotalPages() > 0 && requestedPage >= applications.getTotalPages())
         {
             pageable = PageRequest.of(applications.getTotalPages() - 1, pageSize, Sort.by(sortDirection, sortField));
-            applications = externalApplicationService.findPage(normalizedSearch, pageable);
+            applications = externalApplicationService.findPage(
+                    normalizedSearch, applicationId, environmentId, externalType, pageable);
         }
 
         Map<Long, Boolean> configuredAccounts = new HashMap<>();
@@ -140,6 +161,11 @@ public class ExternalApplicationConfigurationController
         model.addAttribute("configuredAccounts", configuredAccounts);
         model.addAttribute("pageSize", pageSize);
         model.addAttribute("search", normalizedSearch);
+        model.addAttribute("selectedApplicationId", applicationId);
+        model.addAttribute("selectedEnvironmentId", environmentId);
+        model.addAttribute("selectedExternalType", externalType == null ? "" : externalType);
+        model.addAttribute("internalApplications", applicationRepository.findByEnabledTrueOrderByNameAsc());
+        model.addAttribute("environments", environmentRepository.findByEnabledTrueOrderByName());
         model.addAttribute("currentPage", "external-applications");
     }
 }
