@@ -117,6 +117,11 @@ public class ExternalApplicationService
         if (!EXTERNAL_TYPES.contains(externalType))
             throw new IllegalArgumentException("Select a supported external application type.");
 
+        if (form.getApplicationId() == null)
+            throw new IllegalArgumentException("Select an internal application.");
+        if (form.getEnvironmentId() == null)
+            throw new IllegalArgumentException("Select an environment.");
+
         Application internalApplication = internalApplicationRepository.findById(form.getApplicationId())
                 .filter(Application::isEnabled)
                 .orElseThrow(() -> new IllegalArgumentException("Select an enabled internal application."));
