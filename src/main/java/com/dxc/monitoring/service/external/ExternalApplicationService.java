@@ -85,17 +85,17 @@ public class ExternalApplicationService
         app.setBaseUrl(url);
         app.setAuthType(authType);
         app.setEnabled(form.isEnabled());
-        app = applicationRepository.save(app);
+        ExternalApplication savedApp = applicationRepository.save(app);
 
         String secretReference = blankToNull(form.getSecretReference());
         String secret = form.getSecret();
         if (secret != null && !secret.isBlank() && secretReference != null)
             throw new IllegalArgumentException("Use either an encrypted secret or a secret reference, not both.");
 
-        ExternalApplicationAccount account = accountRepository.findByExternalApplication_Id(app.getId())
+        ExternalApplicationAccount account = accountRepository.findByExternalApplication_Id(savedApp.getId())
                 .orElseGet(() -> {
                     ExternalApplicationAccount created = new ExternalApplicationAccount();
-                    created.setExternalApplication(app);
+                    created.setExternalApplication(savedApp);
                     return created;
                 });
 
@@ -103,7 +103,7 @@ public class ExternalApplicationService
                 || !blank(secret) || secretReference != null || form.isClearSecret();
         if (hasAccountData || account.getId() != null)
         {
-            account.setExternalApplication(app);
+            account.setExternalApplication(savedApp);
             account.setAccountName(blank(form.getAccountName()) ? "Shared account" : form.getAccountName().trim());
             account.setUsername(blankToNull(form.getUsername()));
             account.setEnabled(form.isAccountEnabled());
