@@ -21,6 +21,7 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
             from Environment e
             where e.application.id = :applicationId
               and e.enabled = true
+              and e.application.enabled = true
             order by lower(e.name)
             """)
     List<Environment> findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(
@@ -64,6 +65,13 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
 
     Optional<Environment> findByApplicationIdAndNameIgnoreCase(Long applicationId, String name);
 
+    @EntityGraph(attributePaths = "application")
+    @Query("""
+            select e
+            from Environment e
+            where e.enabled = true and e.application.enabled = true
+            order by lower(e.name)
+            """)
     List<Environment> findByEnabledTrueOrderByName();
 
     @EntityGraph(attributePaths = "application")
