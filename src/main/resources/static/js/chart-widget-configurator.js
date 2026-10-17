@@ -6,7 +6,7 @@
     const typeId = "dashboardWidgetType";
     const chartTypeId = "dashboardWidgetChartType";
     let syncing = false;
-    const sampleState = { collections: [] };
+    const sampleState = { collections: [], numericFields: [] };
 
     function parseConfig() {
         try {
@@ -82,7 +82,6 @@
               <div class="col-md-6"><label class="form-label" for="chartMapYAxis">Y-axis title</label><input class="form-control" id="chartMapYAxis" placeholder="Value"></div>
               <div class="col-md-6"><label class="form-label" for="chartMapMin">Y-axis minimum (optional)</label><input class="form-control" id="chartMapMin" type="number" step="any" placeholder="Auto"></div>
               <div class="col-md-6"><label class="form-label" for="chartMapMax">Y-axis maximum (optional)</label><input class="form-control" id="chartMapMax" type="number" step="any" placeholder="Auto"></div>\n              <div class="col-md-6"><label class="form-label" for="chartMapNumberFormat">Number format</label><select class="form-select" id="chartMapNumberFormat"><option value="auto">Automatic</option><option value="number">Thousands separators</option><option value="compact">Compact (K/M)</option><option value="percent">Percentage</option></select></div>
-              <div class="col-12"><label class="form-label" for="chartMapSeriesJson">Explicit series (optional JSON array)</label><textarea class="form-control font-monospace" id="chartMapSeriesJson" rows="3" placeholder='[{"label":"Healthy","valueField":"healthy","color":"#198754"},{"label":"Warning","valueField":"warning","color":"#ffc107"}]'></textarea><div class="form-text">Use this for separate numeric fields per series. Each item supports label, valueField and optional color. When configured, seriesField is not used.</div></div>
               <div class="col-12"><div class="small" id="chartMapValidation" role="status" aria-live="polite"></div></div>
             </div>
           </section>`;
@@ -95,6 +94,30 @@
         byId("chartMapLoadLatest").addEventListener("click", loadLatestSample);
         byId("chartMapRowPath").addEventListener("change", function () {
             populateFieldSelectors(parseConfig(), true);
+            renderSeriesRows(parseConfig().series || []);
+            syncToJson();
+        });
+        byId("chartMapAddSeries").addEventListener("click", function () {
+            const current = readSeriesRows();
+            const used = new Set(current.map(item => item.valueField));
+            const next = sampleState.numericFields.find(field => !used.has(field.path));
+            if (!next) {
+                chartMessage("All discovered numeric fields are already configured.", true);
+                return;
+            }
+            current.push({ label: humanize(next.path), valueField: next.path });
+            renderSeriesRows(current);
+            syncToJson();
+        });
+        byId("chartMapSeriesRows").addEventListener("change", syncToJson);
+        byId("chartMapSeriesRows").addEventListener("input", syncToJson);
+        byId("chartMapSeriesRows").addEventListener("click", function (event) {
+            const remove = event.target.closest(".chart-map-remove-series");
+            if (!remove) return;
+            event.target.closest("tr")?.remove();
+            if (!byId("chartMapSeriesRows").querySelector("[data-chart-series-row]")) {
+                byId("chartMapSeriesRows").innerHTML = '<tr><td colspan="4" class="text-muted small p-3">No series selected. Use Add field to configure one.</td></tr>';
+            }
             syncToJson();
         });
     }
@@ -137,6 +160,8 @@
             rowSelect.value = sampleState.collections.some(item => item.path === config.rowPath)
                 ? (config.rowPath || "") : (sampleState.collections.find(item => item.path) || sampleState.collections[0]).path;
             populateFieldSelectors(config, false);
+            renderSeriesRows(Array.isArray(config.series) ? config.series :
+                (config.valueField ? [{ label: config.title || humanize(config.valueField), valueField: config.valueField }] : []));
             chartMessage("Discovered " + sampleState.collections.length + " row collection(s). Choose fields below.", false);
             syncToJson();
         } catch (error) {
@@ -161,7 +186,7 @@
         collection.rows.slice(0, 100).forEach(row => visit(row, "", 0));
         const fields = Array.from(discovered.values()).sort((a, b) => a.path.localeCompare(b.path));
 const configCategory = preserve ? byId("chartMapCategory").value : (config.categoryField || config.labelField || "");
-function fill(id, values, selected, emptyLabel) {
+        function fill(id, values, selected, emptyLabel) {
             const select = byId(id);
             select.innerHTML = '<option value="">' + emptyLabel + '</option>' + values.map(field =>
                 '<option value="' + esc(field.path) + '"' + (field.path === selected ? ' selected' : '') + '>' +
@@ -173,10 +198,46 @@ function fill(id, values, selected, emptyLabel) {
             }
         }
         fill("chartMapCategory", fields, configCategory, "Select category field");
-        fill("chartMapValue", fields.filter(field => field.numeric), configValue, "Select numeric value field");
-        fill("chartMapSeries", fields, configSeries, "No grouping");
+        sampleState.numericFields = fields.filter(field => field.numeric);
+        byId("chartMapAddSeries").disabled = sampleState.numericFields.length === 0;
         if (!byId("chartMapCategory").value && fields.length) byId("chartMapCategory").value = fields[0].path;
-        if (!byId("chartMapValue").value && fields.some(field => field.numeric)) byId("chartMapValue").value = fields.find(field => field.numeric).path;
+    }
+
+    function humanize(value) {
+        return String(value || "").replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+            .replace(/[._-]+/g, " ").replace(/^./, c => c.toUpperCase());
+    }
+
+    function readSeriesRows() {
+        return Array.from(byId("chartMapSeriesRows").querySelectorAll("[data-chart-series-row]")).map(row => {
+            const valueField = row.querySelector(".chart-map-series-field").value;
+            const label = row.querySelector(".chart-map-series-label").value.trim() || humanize(valueField);
+            const color = row.querySelector(".chart-map-series-color").value;
+            return { label, valueField, color };
+        }).filter(item => item.valueField).map(item => {
+            if (!item.color) delete item.color;
+            return item;
+        });
+    }
+
+    function renderSeriesRows(series) {
+        const host = byId("chartMapSeriesRows");
+        if (!host) return;
+        const items = Array.isArray(series) ? series : [];
+        const fields = sampleState.numericFields || [];
+        host.innerHTML = items.map(item => {
+            const field = String(item.valueField || item.field || "");
+            const label = item.label || item.name || humanize(field);
+            const color = /^#[0-9a-f]{6}$/i.test(String(item.color || "")) ? item.color : "#0d6efd";
+            const options = fields.map(candidate => '<option value="' + esc(candidate.path) + '"' +
+                (candidate.path === field ? ' selected' : '') + '>' + esc(candidate.path) + '</option>').join("");
+            const missing = field && !fields.some(candidate => candidate.path === field)
+                ? '<option value="' + esc(field) + '" selected>' + esc(field + " (not in sample)") + '</option>' : "";
+            return '<tr data-chart-series-row><td><select class="form-select form-select-sm chart-map-series-field" aria-label="Numeric field"><option value="">Select numeric field</option>' + options + missing + '</select></td>' +
+                '<td><input class="form-control form-control-sm chart-map-series-label" maxlength="120" value="' + esc(label) + '" aria-label="Series label"></td>' +
+                '<td><input class="form-control form-control-sm chart-map-series-color" type="color" value="' + esc(color) + '" aria-label="Series colour"></td>' +
+                '<td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm chart-map-remove-series">Remove</button></td></tr>';
+        }).join("") || '<tr><td colspan="4" class="text-muted small p-3">No series selected. Use Add field to configure one.</td></tr>';
     }
 
     async function loadLatestSample() {
@@ -227,14 +288,17 @@ function fill(id, values, selected, emptyLabel) {
         if (max !== "" && !Number.isFinite(config.yAxisMax)) throw new Error("Y-axis maximum must be a valid number.");
         if (min !== "" && max !== "" && config.yAxisMin > config.yAxisMax) throw new Error("Y-axis minimum must not exceed its maximum.");
         config.numberFormat = byId("chartMapNumberFormat").value || "auto";
-        const seriesText = byId("chartMapSeriesJson").value.trim();
-        if (seriesText) {
-            const parsed = JSON.parse(seriesText);
-            if (!Array.isArray(parsed) || !parsed.every(item => item && typeof item.label === "string" && typeof item.valueField === "string")) {
-                throw new Error("Explicit series must be an array of objects with label and valueField.");
-            }
-            config.series = parsed;
-        } else delete config.series;
+        const series = readSeriesRows();
+        if (series.length) {
+            if (series.some(item => !item.label || !item.valueField)) throw new Error("Each chart series requires a numeric field and label.");
+            config.series = series;
+            delete config.valueField;
+            delete config.seriesField;
+        } else {
+            delete config.series;
+            delete config.valueField;
+            delete config.seriesField;
+        }
         return config;
     }
 
@@ -272,6 +336,8 @@ byId("chartMapNumberFormat").value = config.numberFormat || "auto";
             byId("chartMapRowPath").value = config.rowPath || "";
             populateFieldSelectors(config, false);
         }
+        renderSeriesRows(Array.isArray(config.series) ? config.series :
+            (config.valueField ? [{ label: config.title || humanize(config.valueField), valueField: config.valueField }] : []));
     }
 
     function updateVisibility() {
@@ -302,6 +368,7 @@ byId("chartMapNumberFormat").value = config.numberFormat || "auto";
             if (String(byId(typeId)?.value || "").toUpperCase() === "CHART") {
                 byId("chartMapSampleJson").value = "";
                 sampleState.collections = [];
+                sampleState.numericFields = [];
                 loadFromJson();
             }
         });
