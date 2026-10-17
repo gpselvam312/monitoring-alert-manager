@@ -2,7 +2,6 @@ package com.dxc.monitoring.controller;
 
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -134,6 +133,8 @@ public class DashboardConfigurationController
                         form.getFieldConfigJson() == null || form.getFieldConfigJson().isBlank()
                                 ? "{}" : form.getFieldConfigJson(),
                         new TypeReference<Map<String, Object>>() {});
+                if (iframeConfig == null)
+                    throw new IllegalArgumentException("Select an external application for the iFrame widget.");
                 Object selectedId = iframeConfig.get("externalApplicationId");
                 Long externalApplicationId = selectedId instanceof Number number
                         ? number.longValue()
