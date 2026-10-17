@@ -416,28 +416,9 @@
 
     function toChartNumber(value)
     {
-        if (typeof value === "number")
-        {
-            return Number.isFinite(value)
-                ? value
-                : 0;
-        }
-
-        if (
-            value === null ||
-            value === undefined ||
-            value === ""
-        )
-        {
-            return 0;
-        }
-
-        const number =
-            Number(value);
-
-        return Number.isFinite(number)
-            ? number
-            : 0;
+        if (value === null || value === undefined || String(value).trim() === "") return null;
+        const number = typeof value === "number" ? value : Number(String(value).replace(/,/g, "").trim());
+        return Number.isFinite(number) ? number : null;
     }
 
 
@@ -507,43 +488,20 @@
         });
 
 
-        const datasets =
-            seriesNames.map(function (series, index)
-            {
-                const color =
-                    palette[index % palette.length];
-
-
-                return {
-                    label: series,
-
-                    data: labels.map(function (label)
-                    {
-                        const key =
-                            series + "\u0000" + label;
-
-                        return values.has(key)
-                            ? values.get(key)
-                            : null;
-                    }),
-
-                    backgroundColor: color,
-
-                    borderColor: color,
-
-                    borderWidth: 2,
-
-                    borderRadius: 4,
-
-                    tension: 0.3,
-
-                    pointRadius: 3,
-
-                    pointHoverRadius: 5,
-
-                    fill: false
-                };
-            });
+        const datasets = seriesNames.map(function (series, index) {
+            const seriesPoint = data.find(point => point && String(point.series ?? "Value") === series);
+            const color = seriesPoint && seriesPoint.color ? seriesPoint.color : palette[index % palette.length];
+            return {
+                label: series,
+                data: labels.map(function (label) {
+                    const key = series + "\\u0000" + label;
+                    return values.has(key) ? values.get(key) : null;
+                }),
+                backgroundColor: color, borderColor: color, borderWidth: 2,
+                borderRadius: 4, tension: 0.3, pointRadius: 3,
+                pointHoverRadius: 5, pointBackgroundColor: color, fill: false
+            };
+        });
 
 
         return {
@@ -581,128 +539,56 @@
         });
 
 
-        const colors =
-            getThemeChartColors();
-
-
+        const colors = getThemeChartColors();
+        const dataColors = data.map(function (point, index) {
+            return point && point.color ? point.color : colors[index % colors.length];
+        });
         return {
             labels: labels,
-
-            datasets:
-            [
-                {
-                    label: "Value",
-
-                    data: values,
-
-                    backgroundColor:
-                        labels.map(function (_, index)
-                        {
-                            return colors[
-                                index % colors.length
-                            ];
-                        }),
-
-                    borderColor:
-                        getChartTheme().border,
-
-                    borderWidth: 1
-                }
-            ]
+            datasets: [{
+                label: "Value", data: values, backgroundColor: dataColors,
+                borderColor: getChartTheme().border, borderWidth: 1
+            }]
         };
     }
 
 
-    function createChartOptions(chartType)
+    function createChartOptions(chartType, config)
     {
-        const theme =
-            getChartTheme();
-
-
-        const options =
-        {
-            responsive: true,
-
-            maintainAspectRatio: false,
-
-            animation:
-            {
-                duration: 250
-            },
-
-            plugins:
-            {
-                legend:
-                {
-                    position: "bottom",
-
-                    labels:
-                    {
-                        color: theme.textPrimary,
-
-                        usePointStyle: true,
-
-                        padding: 16
-                    }
+        const theme = getChartTheme();
+        config = config || {};
+        const legendPosition = String(config.legendPosition || "bottom").toLowerCase();
+        const options = {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+            plugins: {
+                legend: {
+                    display: legendPosition !== "none",
+                    position: ["top", "bottom", "left", "right"].includes(legendPosition) ? legendPosition : "bottom",
+                    labels: { color: theme.textPrimary, usePointStyle: true, padding: 16 }
                 },
-
-                tooltip:
-                {
-                    enabled: true
-                }
+                tooltip: { enabled: true }
             }
         };
-
-
-        if (
-            chartType === "bar" ||
-            chartType === "line"
-        )
-        {
-            options.interaction =
-            {
-                mode: "index",
-                intersect: false
-            };
-
-
-            options.scales =
-            {
-                x:
-                {
-                    ticks:
-                    {
-                        color:
-                            theme.textSecondary
-                    },
-
-                    grid:
-                    {
-                        color:
-                            theme.border
-                    }
+        if (config.title) options.plugins.title = {
+            display: true, text: String(config.title), color: theme.textPrimary,
+            padding: { top: 4, bottom: 12 }
+        };
+        if (chartType === "bar" || chartType === "line") {
+            options.interaction = { mode: "index", intersect: false };
+            options.scales = {
+                x: {
+                    title: { display: !!config.xAxisTitle, text: config.xAxisTitle || "", color: theme.textSecondary },
+                    ticks: { color: theme.textSecondary }, grid: { color: theme.border }
                 },
-
-                y:
-                {
-                    beginAtZero: true,
-
-                    ticks:
-                    {
-                        color:
-                            theme.textSecondary
-                    },
-
-                    grid:
-                    {
-                        color:
-                            theme.border
-                    }
+                y: {
+                    beginAtZero: config.yAxisMin === undefined,
+                    min: config.yAxisMin === undefined ? undefined : Number(config.yAxisMin),
+                    max: config.yAxisMax === undefined ? undefined : Number(config.yAxisMax),
+                    title: { display: !!config.yAxisTitle, text: config.yAxisTitle || "", color: theme.textSecondary },
+                    ticks: { color: theme.textSecondary }, grid: { color: theme.border }
                 }
             };
         }
-
-
         return options;
     }
 
@@ -818,69 +704,14 @@
 	                    buildChartDatasets(data);
 	            }
 
-	            /*
-	             * Generate a new random palette for
-	             * every dashboard initialization.
-	             */
-	            const colors =
-	                generateRandomChartColors(
-	                    data.length
-	                );
+	            const config = parseWidgetFieldConfig(widget);
+            const chart = new Chart(canvas, {
+                type: chartType,
+                data: chartData,
+                options: createChartOptions(chartType, config)
+            });
 
-	            if (
-	                chartType === "bar" ||
-	                chartType === "pie" ||
-	                chartType === "doughnut"
-	            )
-	            {
-	                chartData.datasets.forEach(
-	                    function (dataset)
-	                    {
-	                        dataset.backgroundColor =
-	                            colors;
-
-	                        dataset.borderColor =
-	                            colors;
-	                    }
-	                );
-	            }
-	            else if (chartType === "line")
-	            {
-	                const lineColor =
-	                    colors[0];
-
-	                chartData.datasets.forEach(
-	                    function (dataset)
-	                    {
-	                        dataset.borderColor =
-	                            lineColor;
-
-	                        dataset.backgroundColor =
-	                            lineColor;
-
-	                        dataset.pointBackgroundColor =
-	                            lineColor;
-
-	                        dataset.pointBorderColor =
-	                            lineColor;
-	                    }
-	                );
-	            }
-
-	            const chart =
-	                new Chart(
-	                    canvas,
-	                    {
-	                        type: chartType,
-	                        data: chartData,
-	                        options:
-	                            createChartOptions(
-	                                chartType
-	                            )
-	                    }
-	                );
-
-	            dashboardCharts.set(
+            dashboardCharts.set(
 	                canvasId,
 	                chart
 	            );
@@ -1245,31 +1076,45 @@
 
     function getConfiguredChartData(result, widget)
     {
-        if (Array.isArray(result.data) && result.data.length > 0)
-        {
-            return result.data;
-        }
-
         const config = parseWidgetFieldConfig(widget);
         const categoryField = config.categoryField || config.labelField;
-        const valueField = config.valueField;
-        if (!categoryField || !valueField)
-        {
-            return [];
+        const explicitSeries = Array.isArray(config.series) ? config.series : [];
+        const rows = categoryField && (config.valueField || explicitSeries.length)
+            ? getConfiguredTableRows(result, config) : [];
+
+        if (rows.length && explicitSeries.length) {
+            const mapped = [];
+            rows.forEach(function (row) {
+                explicitSeries.forEach(function (series) {
+                    const numeric = toChartNumber(getJsonPath(row, series.valueField));
+                    if (numeric === null) return;
+                    mapped.push({ label: getJsonPath(row, categoryField), value: numeric, series: series.label, color: series.color });
+                });
+            });
+            return mapped.filter(point => point.label !== null && point.label !== undefined);
         }
 
-        return getConfiguredTableRows(result, config).map(function (row)
-        {
-            return {
-                label: getJsonPath(row, categoryField),
-                value: getJsonPath(row, valueField),
-                series: config.seriesField ? getJsonPath(row, config.seriesField) : undefined
-            };
-        }).filter(function (point)
-        {
-            return point.label !== null && point.label !== undefined
-                && point.value !== null && point.value !== undefined;
-        });
+        if (rows.length && categoryField && config.valueField) {
+            return rows.map(function (row) {
+                return {
+                    label: getJsonPath(row, categoryField),
+                    value: toChartNumber(getJsonPath(row, config.valueField)),
+                    series: config.seriesField ? getJsonPath(row, config.seriesField) : undefined
+                };
+            }).filter(function (point) {
+                return point.label !== null && point.label !== undefined && point.value !== null;
+            });
+        }
+
+        // Preserve support for previously pre-mapped result.data records.
+        if (Array.isArray(result.data)) {
+            return result.data.map(function (point) {
+                if (!point || point.label === null || point.label === undefined) return null;
+                const numeric = toChartNumber(point.value);
+                return numeric === null ? null : { label: point.label, value: numeric, series: point.series };
+            }).filter(Boolean);
+        }
+        return [];
     }
 
 
