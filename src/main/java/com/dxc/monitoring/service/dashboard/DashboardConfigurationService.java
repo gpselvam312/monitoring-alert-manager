@@ -309,6 +309,39 @@ public class DashboardConfigurationService
             throw new IllegalArgumentException("Widget field configuration must be a valid JSON object.");
         }
 
+        if ("IFRAME".equals(widget.getWidgetType()))
+        {
+            Object configuredUrl = parsedConfig.get("url");
+            String url = configuredUrl == null ? "" : String.valueOf(configuredUrl).trim();
+            try
+            {
+                java.net.URI uri = java.net.URI.create(url);
+                String scheme = uri.getScheme();
+                if (url.isBlank() || uri.getHost() == null || scheme == null
+                        || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+                        || uri.getUserInfo() != null)
+                {
+                    throw new IllegalArgumentException();
+                }
+            }
+            catch (RuntimeException exception)
+            {
+                throw new IllegalArgumentException(
+                        "iFrame widgets require an absolute HTTP or HTTPS URL without embedded credentials.");
+            }
+            Object height = parsedConfig.get("defaultHeight");
+            if (height != null && (!(height instanceof Number number)
+                    || number.intValue() < 250 || number.intValue() > 2000))
+            {
+                throw new IllegalArgumentException("iFrame default height must be between 250 and 2000 pixels.");
+            }
+            widget.setDataSourceType(null);
+            widget.setDataSourceId(null);
+            widget.setAutoRefresh(false);
+            widget.setRefreshInterval(null);
+            widget.setRefreshIntervalUnit(null);
+        }
+
         Object dateRange = parsedConfig.get("dateRange");
         if (dateRange instanceof Map<?, ?> dateRangeConfig
                 && Boolean.TRUE.equals(dateRangeConfig.get("enabled")))
