@@ -3774,6 +3774,11 @@
             initializeKafkaHealthWidgets();
 
 			showState("content");
+
+            // Now that the dashboard container is visible, measure each System Metrics grid
+            // at its real widget width. This corrects the initial estimate for Large/Medium
+            // widgets without changing the working Full-size layout.
+            synchronizeSystemMetricsPageSizes();
         }
         catch (error)
         {
