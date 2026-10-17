@@ -2173,6 +2173,9 @@
                             widget.fieldConfigJson || '{}';
 
                         const iframeConfig = readWidgetConfigJson();
+                        delete iframeConfig.url;
+                        document.getElementById('dashboardWidgetFieldConfigJson').value =
+                            JSON.stringify(iframeConfig, null, 2);
                         document.getElementById('dashboardWidgetIframeApplication').value =
                             iframeConfig.externalApplicationId == null ? '' : String(iframeConfig.externalApplicationId);
                         updateDashboardWidgetIframeApplicationUrl();
@@ -2283,10 +2286,9 @@
 
             if (widgetType.value === 'IFRAME') {
                 const applicationSelect = document.getElementById('dashboardWidgetIframeApplication');
-                const selectedOption = applicationSelect.options[applicationSelect.selectedIndex];
                 const parsed = readWidgetConfigJson();
+                delete parsed.url;
                 parsed.externalApplicationId = applicationSelect.value ? Number(applicationSelect.value) : null;
-                parsed.url = selectedOption && selectedOption.dataset.baseUrl ? selectedOption.dataset.baseUrl : '';
                 parsed.defaultHeight = Number(document.getElementById('dashboardWidgetIframeHeight').value || 520);
                 parsed.allowExpand = document.getElementById('dashboardWidgetIframeExpand').checked;
                 document.getElementById('dashboardWidgetFieldConfigJson').value = JSON.stringify(parsed, null, 2);
