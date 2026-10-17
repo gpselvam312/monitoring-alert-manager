@@ -38,6 +38,23 @@ public class ExternalApplicationService
     }
 
     @Transactional(readOnly = true)
+    public List<ExternalApplication> findEnabled()
+    {
+        return applicationRepository.findAllByOrderByApplicationNameAsc().stream()
+                .filter(ExternalApplication::isEnabled)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ExternalApplication findEnabledById(Long id)
+    {
+        if (id == null)
+            throw new IllegalArgumentException("Select an external application.");
+        return applicationRepository.findById(id).filter(ExternalApplication::isEnabled)
+                .orElseThrow(() -> new IllegalArgumentException("The selected external application is not available."));
+    }
+
+    @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<ExternalApplication> findPage(
             String search, org.springframework.data.domain.Pageable pageable)
     {
