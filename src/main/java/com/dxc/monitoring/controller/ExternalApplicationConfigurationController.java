@@ -110,7 +110,7 @@ public class ExternalApplicationConfigurationController
     private void populateModel(Model model, Long id, int page, int size, String search, String sort, String direction)
     {
         populateTableModel(model, page, size, search, sort, direction);
-        model.addAttribute("currentPage", "EXTERNAL_APPLICATIONS");
+        model.addAttribute("currentPage", "external-applications");
         if (!model.containsAttribute("externalApplicationForm"))
             model.addAttribute("externalApplicationForm", externalApplicationService.getForm(id));
     }
@@ -140,6 +140,6 @@ public class ExternalApplicationConfigurationController
         model.addAttribute("configuredAccounts", configuredAccounts);
         model.addAttribute("pageSize", pageSize);
         model.addAttribute("search", normalizedSearch);
-        model.addAttribute("currentPage", "EXTERNAL_APPLICATIONS");
+        model.addAttribute("currentPage", "external-applications");
     }
 }
