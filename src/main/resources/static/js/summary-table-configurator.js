@@ -990,7 +990,6 @@
         byId("systemMetricShowUptime").checked = view.showUptime !== false;
         byId("systemMetricShowDisk").checked = view.showDisk !== false;
         byId("systemMetricShowRamCapacity").checked = view.showRamCapacity !== false;
-        byId("systemMetricPageSize").value = ["6", "12", "24", "48"].includes(String(view.pageSize)) ? String(view.pageSize) : "12";
         const dynamicMetricsPresent = discoveredSystemMetricNames().length > 0 ||
             (state.fields || []).some(field => String(field).startsWith("metrics::")) ||
             (Array.isArray(view.metrics) && view.metrics.length > 0);
@@ -1067,7 +1066,6 @@
                 // renderer consumes these rows while retaining its existing machine health cards.
                 config.view = Object.assign({}, config.view || {}, {
                     showSummaryCards: byId("systemMetricShowSummaryCards").checked,
-                    pageSize: Number(byId("systemMetricPageSize").value) || 12,
                     metrics: columns.filter(column => String(column.field).startsWith("metrics::")).map((column, index) => ({
                         name: String(column.field).slice("metrics::".length),
                         enabled: column.visible !== false,
@@ -1367,7 +1365,7 @@
             "systemMetricDiskField", "systemMetricRamUsedField", "systemMetricRamTotalField",
             "systemMetricShowSummaryCards", "systemMetricShowCpu", "systemMetricShowRam",
             "systemMetricShowLoad", "systemMetricShowUptime", "systemMetricShowDisk",
-            "systemMetricShowRamCapacity", "systemMetricPageSize"].forEach(id => {
+            "systemMetricShowRamCapacity"].forEach(id => {
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         ["systemMetricCpuLabel", "systemMetricRamLabel", "systemMetricLoadLabel", "systemMetricUptimeLabel",
