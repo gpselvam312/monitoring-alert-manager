@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('External Applications', ~{::content})}">
+<body>
+<div th:fragment="content">
+    <div class="app-card mb-4">
+        <div class="app-card-header">
+            <h5 class="mb-1">External Applications</h5>
+            <p class="text-muted small mb-0">
+                Configure external pages that may be embedded by dashboard iFrame widgets, including their shared account metadata.
+            </p>
+        </div>
+        <div class="app-card-body">
+            <div class="alert alert-info" role="alert">
+                <strong>Authentication note:</strong> selecting an authentication type and storing a credential does not
+                automatically sign a browser session into the external site. OIDC, an authentication proxy, or a site-supported
+                integration must be configured separately. The external site must also permit framing.
+            </div>
+            <div class="alert alert-danger" role="alert" th:if="${externalApplicationError != null}"
+                 th:text="${externalApplicationError}"></div>
+
+            <form method="post" th:action="@{/administration/external-applications/save}"
+                  th:object="${externalApplicationForm}" autocomplete="off">
+                <input type="hidden" th:field="*{id}">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="applicationCode">Application code</label>
+                        <input class="form-control" id="applicationCode" th:field="*{applicationCode}"
+                               maxlength="50" required placeholder="GRAFANA">
+                        <div class="form-text">Unique identifier used for administration.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="applicationName">Display name</label>
+                        <input class="form-control" id="applicationName" th:field="*{applicationName}"
+                               maxlength="150" required placeholder="Grafana">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="authType">Authentication method</label>
+                        <select class="form-select" id="authType" th:field="*{authType}" required>
+                            <option value="NONE">None / already accessible</option>
+                            <option value="OIDC">OIDC / SSO (integration required)</option>
+                            <option value="AUTH_PROXY">Authentication proxy</option>
+                            <option value="BASIC">Basic authentication (integration required)</option>
+                            <option value="CUSTOM">Custom integration</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="baseUrl">Base URL</label>
+                        <input class="form-control" id="baseUrl" type="url" th:field="*{baseUrl}"
+                               maxlength="2048" required placeholder="https://grafana.example.com">
+                        <div class="form-text">Use an absolute HTTP(S) URL. Do not include usernames, passwords, tokens, or URL fragments.</div>
+                    </div>
+                    <div class="col-12"><hr><h6 class="mb-0">Shared external account</h6></div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="accountName">Account label</label>
+                        <input class="form-control" id="accountName" th:field="*{accountName}" maxlength="150">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="username">Username / client ID</label>
+                        <input class="form-control" id="username" th:field="*{username}" maxlength="255"
+                               autocomplete="off">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="secret">Secret (write-only)</label>
+                        <input class="form-control" id="secret" name="secret" type="password" value=""
+                               autocomplete="new-password" spellcheck="false">
+                        <div class="form-text">Leave blank to keep the existing encrypted secret.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="secretReference">External secret reference (optional)</label>
+                        <input class="form-control" id="secretReference" th:field="*{secretReference}" maxlength="1000"
+                               placeholder="e.g. vault://team/grafana/service-account">
+                        <div class="form-text">Use a reference to a secret manager instead of entering a secret here. A resolver/integration must be configured to use it.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" id="enabled" type="checkbox" th:field="*{enabled}">
+                            <label class="form-check-label" for="enabled">External application enabled</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" id="accountEnabled" type="checkbox" th:field="*{accountEnabled}">
+                            <label class="form-check-label" for="accountEnabled">Shared account enabled</label>
+                        </div>
+                    </div>
+                    <div class="col-12" th:if="${externalApplicationForm.id != null}">
+                        <div class="form-check">
+                            <input class="form-check-input" id="clearSecret" type="checkbox" th:field="*{clearSecret}">
+                            <label class="form-check-label" for="clearSecret">Clear the stored secret and secret reference</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-save me-1"></i>Save application
+                    </button>
+                    <a class="btn btn-outline-secondary" th:href="@{/administration/external-applications}">Clear form</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="mb-0">Configured applications</h5>
+        </div>
+        <div class="app-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                    <tr>
+                        <th>Application</th>
+                        <th>Base URL</th>
+                        <th>Authentication</th>
+                        <th>Shared account</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(externalApplications)}">
+                        <td colspan="6" class="text-center text-muted py-4">No external applications configured yet.</td>
+                    </tr>
+                    <tr th:each="app : ${externalApplications}">
+                        <td>
+                            <div class="fw-semibold" th:text="${app.applicationName}">Grafana</div>
+                            <div class="text-muted small" th:text="${app.applicationCode}">GRAFANA</div>
+                        </td>
+                        <td class="text-break" th:text="${app.baseUrl}">https://grafana.example.com</td>
+                        <td th:text="${app.authType}">OIDC</td>
+                        <td>
+                            <span th:if="${configuredAccounts[app.id]}" class="badge bg-success">Configured</span>
+                            <span th:unless="${configuredAccounts[app.id]}" class="badge bg-secondary">Not configured</span>
+                        </td>
+                        <td>
+                            <span th:if="${app.enabled}" class="badge bg-success">Enabled</span>
+                            <span th:unless="${app.enabled}" class="badge bg-secondary">Disabled</span>
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-sm btn-outline-primary"
+                               th:href="@{/administration/external-applications(id=${app.id})}">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </a>
+                            <form class="d-inline" method="post" th:action="@{/administration/external-applications/toggle}">
+                                <input type="hidden" name="id" th:value="${app.id}">
+                                <button class="btn btn-sm btn-outline-secondary" type="submit"
+                                        th:text="${app.enabled} ? 'Disable' : 'Enable'">Disable</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
