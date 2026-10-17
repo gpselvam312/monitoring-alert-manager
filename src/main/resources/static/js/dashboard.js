@@ -2996,7 +2996,7 @@
 
             const template = window.getComputedStyle(grid).gridTemplateColumns;
             const columns = template && template !== "none"
-                ? template.trim().split(/\\s+/).filter(Boolean).length
+                ? template.trim().split(/\s+/).filter(Boolean).length
                 : 0;
             if (!columns) return;
 
