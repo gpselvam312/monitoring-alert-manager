@@ -14,7 +14,7 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
 {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Set<String> RESPONSE_PARSER_TYPES = Set.of("AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX");
-    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "SUMMARY_TABLE", "CHART", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH");
+    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "SUMMARY_TABLE", "CHART", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH", "IFRAME");
     private static final Set<String> CHART_TYPES = Set.of("LINE", "BAR", "PIE", "DONUT");
     private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB");
 
@@ -114,6 +114,41 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
         {
             addFieldError(context, "fieldConfigJson", "Field configuration must be a JSON object.");
             return false;
+        }
+
+        if ("IFRAME".equals(form.getWidgetType()))
+        {
+            Object urlValue = config.get("url");
+            String url = urlValue == null ? "" : String.valueOf(urlValue).trim();
+            try
+            {
+                java.net.URI uri = java.net.URI.create(url);
+                String scheme = uri.getScheme();
+                if (url.isBlank() || uri.getHost() == null
+                        || scheme == null
+                        || !("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))
+                        || uri.getUserInfo() != null)
+                {
+                    throw new IllegalArgumentException("Invalid iframe URL.");
+                }
+            }
+            catch (RuntimeException exception)
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "iFrame widgets require an absolute HTTP or HTTPS URL without embedded credentials.");
+                return false;
+            }
+
+            Object heightValue = config.get("defaultHeight");
+            if (heightValue != null)
+            {
+                if (!(heightValue instanceof Number height) || height.intValue() < 250 || height.intValue() > 2000)
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "iFrame default height must be between 250 and 2000 pixels.");
+                    return false;
+                }
+            }
         }
 
         Object parserValue = config.get("responseParser");
