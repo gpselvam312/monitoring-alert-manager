@@ -1115,13 +1115,14 @@
         const config = parseWidgetFieldConfig(widget);
         const categoryField = config.categoryField || config.labelField;
         const explicitSeries = Array.isArray(config.series) ? config.series : [];
-        const rows = categoryField && (config.valueField || explicitSeries.length)
+        const enabledSeries = explicitSeries.filter(function (series) { return series && series.enabled !== false; });
+        const rows = categoryField && (config.valueField || enabledSeries.length)
             ? getConfiguredTableRows(result, config) : [];
 
-        if (rows.length && explicitSeries.length) {
+        if (rows.length && enabledSeries.length) {
             const mapped = [];
             rows.forEach(function (row) {
-                explicitSeries.forEach(function (series) {
+                enabledSeries.forEach(function (series) {
                     const numeric = toChartNumber(getJsonPath(row, series.valueField));
                     if (numeric === null) return;
                     mapped.push({ label: getJsonPath(row, categoryField), value: numeric, series: series.label, color: series.color });
