@@ -8,15 +8,15 @@
     <div class="page-header">
         <div>
             <h1 class="page-title">External Applications</h1>
-            <p class="page-subtitle">Configure external pages and their shared account metadata.</p>
+            <p class="page-subtitle">Configure external pages by internal application and environment.</p>
         </div>
     </div>
 
     <div class="app-card mb-4">
         <div class="app-card-header">
-            <h5 class="mb-1">Application configuration</h5>
+            <h5 class="mb-1">External instance configuration</h5>
             <p class="text-muted small mb-0">
-                Configure external pages that may be embedded by dashboard iFrame widgets, including their shared account metadata.
+                Register a separate Grafana, Consul, or other external instance for each application and environment.
             </p>
         </div>
         <div class="app-card-body">
@@ -33,17 +33,49 @@
                 <input type="hidden" th:field="*{id}">
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label" for="applicationCode">Application code</label>
+                        <label class="form-label" for="applicationCode">Instance code</label>
                         <input class="form-control" id="applicationCode" th:field="*{applicationCode}"
-                               maxlength="50" required placeholder="GRAFANA">
-                        <div class="form-text">Unique identifier used for administration.</div>
+                               maxlength="50" required placeholder="GRAFANA-RETAIL-SIT">
+                        <div class="form-text">Unique identifier for this specific external instance.</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label" for="applicationName">Display name</label>
                         <input class="form-control" id="applicationName" th:field="*{applicationName}"
-                               maxlength="150" required placeholder="Grafana">
+                               maxlength="150" required placeholder="Grafana - Retail - SIT">
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label" for="externalType">External product</label>
+                        <select class="form-select" id="externalType" th:field="*{externalType}" required>
+                            <option value="GRAFANA">Grafana</option>
+                            <option value="CONSUL">Consul</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="applicationId">Internal application</label>
+                        <select class="form-select" id="applicationId" th:field="*{applicationId}" required>
+                            <option value="">Select application</option>
+                            <option th:each="internalApp : ${internalApplications}"
+                                    th:value="${internalApp.id}" th:text="${internalApp.name}">Retail</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="environmentId">Environment</label>
+                        <select class="form-select" id="environmentId" th:field="*{environmentId}" required>
+                            <option value="">Select environment</option>
+                            <option th:each="env : ${environments}"
+                                    th:value="${env.id}" th:attr="data-application-id=${env.application.id}"
+                                    th:text="${env.name}">SIT</option>
+                        </select>
+                        <div class="form-text">Only environments belonging to the selected application are available.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="baseUrl">Base URL</label>
+                        <input class="form-control" id="baseUrl" type="url" th:field="*{baseUrl}"
+                               maxlength="2048" required placeholder="https://grafana.example.com">
+                        <div class="form-text">Use an absolute HTTP(S) URL. Do not include usernames, passwords, tokens, or URL fragments.</div>
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label" for="authType">Authentication method</label>
                         <select class="form-select" id="authType" th:field="*{authType}" required>
                             <option value="NONE">None / already accessible</option>
@@ -52,12 +84,6 @@
                             <option value="BASIC">Basic authentication (integration required)</option>
                             <option value="CUSTOM">Custom integration</option>
                         </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label" for="baseUrl">Base URL</label>
-                        <input class="form-control" id="baseUrl" type="url" th:field="*{baseUrl}"
-                               maxlength="2048" required placeholder="https://grafana.example.com">
-                        <div class="form-text">Use an absolute HTTP(S) URL. Do not include usernames, passwords, tokens, or URL fragments.</div>
                     </div>
                     <div class="col-12"><hr><h6 class="mb-0">Shared external account</h6></div>
                     <div class="col-md-4">
@@ -84,7 +110,7 @@
                     <div class="col-md-6">
                         <div class="form-check">
                             <input class="form-check-input" id="enabled" type="checkbox" th:field="*{enabled}">
-                            <label class="form-check-label" for="enabled">External application enabled</label>
+                            <label class="form-check-label" for="enabled">External instance enabled</label>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -102,7 +128,7 @@
                 </div>
                 <div class="d-flex gap-2 mt-4">
                     <button class="btn btn-primary" type="submit">
-                        <i class="bi bi-save me-1"></i>Save application
+                        <i class="bi bi-save me-1"></i>Save external instance
                     </button>
                     <a class="btn btn-outline-secondary" th:href="@{/administration/external-applications}">Clear form</a>
                 </div>
@@ -112,14 +138,43 @@
 
     <div class="app-card">
         <div class="app-card-header">
-            <h5 class="mb-1">Configured applications</h5>
-            <p class="text-muted small mb-0">Search, sort, and page through configured external applications.</p>
+            <h5 class="mb-1">Configured external instances</h5>
+            <p class="text-muted small mb-0">Filter by internal application, environment, and external product, or search across instance details.</p>
         </div>
-        <div class="app-card-body p-0" id="externalApplicationsTableWrapper">
+        <div class="app-card-body">
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="externalApplicationsApplicationFilter">Application</label>
+                    <select class="form-select form-select-sm" id="externalApplicationsApplicationFilter">
+                        <option value="">All applications</option>
+                        <option th:each="internalApp : ${internalApplications}"
+                                th:value="${internalApp.id}" th:text="${internalApp.name}"
+                                th:selected="${selectedApplicationId != null and selectedApplicationId == internalApp.id}">Retail</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="externalApplicationsEnvironmentFilter">Environment</label>
+                    <select class="form-select form-select-sm" id="externalApplicationsEnvironmentFilter">
+                        <option value="">All environments</option>
+                        <option th:each="env : ${environments}" th:value="${env.id}"
+                                th:attr="data-application-id=${env.application.id}"
+                                th:text="${env.name}" th:selected="${selectedEnvironmentId != null and selectedEnvironmentId == env.id}">SIT</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="externalApplicationsTypeFilter">External product</label>
+                    <select class="form-select form-select-sm" id="externalApplicationsTypeFilter">
+                        <option value="">All products</option>
+                        <option value="GRAFANA" th:selected="${selectedExternalType == 'GRAFANA'}">Grafana</option>
+                        <option value="CONSUL" th:selected="${selectedExternalType == 'CONSUL'}">Consul</option>
+                        <option value="OTHER" th:selected="${selectedExternalType == 'OTHER'}">Other</option>
+                    </select>
+                </div>
+            </div>
             <div th:replace="~{fragments/data-table :: controls(
                     'externalApplicationsSearch',
                     'externalApplicationsPageSize',
-                    'Search applications...',
+                    'Search instance, URL, application...',
                     ${pageSize},
                     ${search}
             )}"></div>
@@ -131,13 +186,9 @@
                             <i th:if="${search != null and !search.isBlank()}" class="bi bi-search"></i>
                             <i th:unless="${search != null and !search.isBlank()}" class="bi bi-window-stack"></i>
                         </div>
-                        <div th:if="${search != null and !search.isBlank()}">
-                            <h6>No external applications match your search</h6>
-                            <p>Try another search term or clear the search.</p>
-                        </div>
-                        <div th:unless="${search != null and !search.isBlank()}">
-                            <h6>No external applications configured</h6>
-                            <p>Configure an external application using the form above.</p>
+                        <div>
+                            <h6>No matching external instances</h6>
+                            <p>Change the filters or search term, or configure a new external instance above.</p>
                         </div>
                     </div>
 
@@ -148,9 +199,16 @@
                                 <th>
                                     <button type="button" class="table-sort" data-config="externalApplicationsTableConfig"
                                             data-sort="applicationName" onclick="DataTable.sort(this)">
-                                        Application <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                        Instance <i class="bi bi-caret-up-fill table-sort-icon"></i>
                                     </button>
                                 </th>
+                                <th>
+                                    <button type="button" class="table-sort" data-config="externalApplicationsTableConfig"
+                                            data-sort="externalType" onclick="DataTable.sort(this)">
+                                        Product <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>Application / environment</th>
                                 <th>
                                     <button type="button" class="table-sort" data-config="externalApplicationsTableConfig"
                                             data-sort="baseUrl" onclick="DataTable.sort(this)">
@@ -176,8 +234,13 @@
                             <tbody>
                             <tr th:each="app : ${externalApplications.content}">
                                 <td>
-                                    <div class="fw-semibold" th:text="${app.applicationName}">Grafana</div>
-                                    <div class="text-muted small" th:text="${app.applicationCode}">GRAFANA</div>
+                                    <div class="fw-semibold" th:text="${app.applicationName}">Grafana - Retail - SIT</div>
+                                    <div class="text-muted small" th:text="${app.applicationCode}">GRAFANA-RETAIL-SIT</div>
+                                </td>
+                                <td th:text="${app.externalType}">GRAFANA</td>
+                                <td>
+                                    <div th:text="${app.application != null ? app.application.name : 'Not assigned'}">Retail</div>
+                                    <div class="text-muted small" th:text="${app.environment != null ? app.environment.name : 'Environment not assigned'}">SIT</div>
                                 </td>
                                 <td class="text-break" th:text="${app.baseUrl}">https://grafana.example.com</td>
                                 <td th:text="${app.authType}">OIDC</td>
@@ -224,6 +287,55 @@
     </div>
 
     <script th:inline="javascript">
+        (function () {
+            const formApplication = document.getElementById('applicationId');
+            const formEnvironment = document.getElementById('environmentId');
+            const filterApplication = document.getElementById('externalApplicationsApplicationFilter');
+            const filterEnvironment = document.getElementById('externalApplicationsEnvironmentFilter');
+            const filterType = document.getElementById('externalApplicationsTypeFilter');
+
+            function filterEnvironmentOptions(applicationSelect, environmentSelect, resetInvalid) {
+                if (!applicationSelect || !environmentSelect) return;
+                const applicationId = applicationSelect.value;
+                Array.from(environmentSelect.options).forEach(function (option) {
+                    if (!option.value) {
+                        option.hidden = false;
+                        return;
+                    }
+                    const matches = !applicationId || option.dataset.applicationId === applicationId;
+                    option.hidden = !matches;
+                    if (!matches && option.selected && resetInvalid) {
+                        environmentSelect.value = '';
+                    }
+                });
+            }
+
+            filterEnvironmentOptions(formApplication, formEnvironment, true);
+            filterEnvironmentOptions(filterApplication, filterEnvironment, true);
+            if (formApplication) {
+                formApplication.addEventListener('change', function () {
+                    filterEnvironmentOptions(formApplication, formEnvironment, true);
+                });
+            }
+            if (filterApplication) {
+                filterApplication.addEventListener('change', function () {
+                    filterEnvironmentOptions(filterApplication, filterEnvironment, true);
+                    if (window.DataTable && window.externalApplicationsTableConfig) {
+                        DataTable.load(externalApplicationsTableConfig, 0, Number(document.getElementById('externalApplicationsPageSize')?.value || 5));
+                    }
+                });
+            }
+            [filterEnvironment, filterType].forEach(function (filter) {
+                if (filter) {
+                    filter.addEventListener('change', function () {
+                        if (window.DataTable && window.externalApplicationsTableConfig) {
+                            DataTable.load(externalApplicationsTableConfig, 0, Number(document.getElementById('externalApplicationsPageSize')?.value || 5));
+                        }
+                    });
+                }
+            });
+        })();
+
         window.externalApplicationsTableConfig = {
             endpoint: '/administration/external-applications/table',
             searchId: 'externalApplicationsSearch',
@@ -231,7 +343,12 @@
             pageSizeId: 'externalApplicationsPageSize',
             containerId: 'externalApplicationsTableContainer',
             sort: 'applicationName',
-            direction: 'asc'
+            direction: 'asc',
+            filterIds: {
+                applicationId: 'externalApplicationsApplicationFilter',
+                environmentId: 'externalApplicationsEnvironmentFilter',
+                externalType: 'externalApplicationsTypeFilter'
+            }
         };
     </script>
 </div>
