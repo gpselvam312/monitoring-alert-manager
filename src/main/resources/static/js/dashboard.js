@@ -1700,7 +1700,7 @@
         }).join("");
         const customSummaryMarkup = customSummary ? '<div class="server-health-summary server-health-summary-configured">' + customSummary + '</div>' : "";
 
-        return summary + customSummaryMarkup + filters + '<div class="server-health-grid">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
+        return summary + customSummaryMarkup + filters + '<div class="server-health-grid" data-widget-id="' + escapeHtml(widget.id) + '">' + (cards || '<div class="server-health-empty"><i class="bi bi-search" aria-hidden="true"></i><span>No servers match this status filter.</span></div>') + '</div>' + pager;
     }
     // Backward-compatible renderer for existing TABLE widgets configured with renderer: SERVER_HEALTH.
     function renderServerHealthCards(result, widget, config)
