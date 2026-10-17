@@ -64,17 +64,14 @@
               <div class="col-md-6"><label class="form-label" for="chartMapRowPath">Data rows path</label><select class="form-select" id="chartMapRowPath" disabled><option value="">Discover fields first</option></select><div class="form-text">Select the array containing chart records.</div></div>
               <div class="col-md-6"><label class="form-label" for="chartMapCategory">Category / label field</label><select class="form-select" id="chartMapCategory" disabled><option value="">Discover fields first</option></select></div>
               <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <label class="form-label mb-0">Chart series / fields</label>
-                  <button type="button" class="btn btn-outline-primary btn-sm" id="chartMapAddSeries" disabled>Add field</button>
-                </div>
+                <label class="form-label mb-2">Discovered fields and chart series</label>
                 <div class="table-responsive border rounded">
-                  <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th style="min-width:180px">Numeric field</th><th style="min-width:150px">Series label</th><th style="min-width:120px">Line colour</th><th class="text-end">Action</th></tr></thead>
+                  <table class="table table-sm table-striped align-middle mb-0">
+                    <thead><tr><th style="min-width:80px"><div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="chartMapEnableAll" aria-label="Enable or disable all chart fields"><label class="form-check-label" for="chartMapEnableAll">Enable</label></div></th><th style="min-width:180px">Source field</th><th style="min-width:180px">Series label</th><th style="min-width:120px">Line colour</th></tr></thead>
                     <tbody id="chartMapSeriesRows"><tr><td colspan="4" class="text-muted small p-3">Discover fields to configure chart series.</td></tr></tbody>
                   </table>
                 </div>
-                <div class="form-text">Select one or more numeric fields. Each selected row becomes a separate line or chart series.</div>
+                <div class="form-text">Every discovered numeric field appears here. Enable the fields to plot; change the display label or colour for each series. New fields are added automatically when discovered.</div>
               </div>
               <div class="col-md-6"><label class="form-label" for="chartMapTitle">Chart title</label><input class="form-control" id="chartMapTitle" placeholder="Monitoring metrics"></div>
               <div class="col-md-6"><label class="form-label" for="chartMapLegend">Legend position</label><select class="form-select" id="chartMapLegend"><option value="top">Top</option><option value="bottom">Bottom</option><option value="left">Left</option><option value="right">Right</option><option value="none">Hidden</option></select></div>
@@ -97,27 +94,12 @@
             renderSeriesRows(parseConfig().series || []);
             syncToJson();
         });
-        byId("chartMapAddSeries").addEventListener("click", function () {
-            const current = readSeriesRows();
-            const used = new Set(current.map(item => item.valueField));
-            const next = sampleState.numericFields.find(field => !used.has(field.path));
-            if (!next) {
-                chartMessage("All discovered numeric fields are already configured.", true);
-                return;
-            }
-            current.push({ label: humanize(next.path), valueField: next.path });
-            renderSeriesRows(current);
-            syncToJson();
-        });
         byId("chartMapSeriesRows").addEventListener("change", syncToJson);
         byId("chartMapSeriesRows").addEventListener("input", syncToJson);
-        byId("chartMapSeriesRows").addEventListener("click", function (event) {
-            const remove = event.target.closest(".chart-map-remove-series");
-            if (!remove) return;
-            event.target.closest("tr")?.remove();
-            if (!byId("chartMapSeriesRows").querySelector("[data-chart-series-row]")) {
-                byId("chartMapSeriesRows").innerHTML = '<tr><td colspan="4" class="text-muted small p-3">No series selected. Use Add field to configure one.</td></tr>';
-            }
+        byId("chartMapEnableAll").addEventListener("change", function () {
+            byId("chartMapSeriesRows").querySelectorAll(".chart-map-series-enabled").forEach(control => {
+                control.checked = byId("chartMapEnableAll").checked;
+            });
             syncToJson();
         });
     }
@@ -199,7 +181,6 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
         }
         fill("chartMapCategory", fields, configCategory, "Select category field");
         sampleState.numericFields = fields.filter(field => field.numeric);
-        byId("chartMapAddSeries").disabled = sampleState.numericFields.length === 0;
         if (!byId("chartMapCategory").value && fields.length) byId("chartMapCategory").value = fields[0].path;
     }
 
@@ -209,35 +190,51 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
     }
 
     function readSeriesRows() {
-        return Array.from(byId("chartMapSeriesRows").querySelectorAll("[data-chart-series-row]")).map(row => {
-            const valueField = row.querySelector(".chart-map-series-field").value;
-            const label = row.querySelector(".chart-map-series-label").value.trim() || humanize(valueField);
-            const color = row.querySelector(".chart-map-series-color").value;
-            return { label, valueField, color };
-        }).filter(item => item.valueField).map(item => {
-            if (!item.color) delete item.color;
-            return item;
-        });
+        return Array.from(byId("chartMapSeriesRows").querySelectorAll("[data-chart-series-row]"))
+            .filter(row => row.querySelector(".chart-map-series-enabled").checked)
+            .map(row => {
+                const valueField = row.getAttribute("data-field");
+                const label = row.querySelector(".chart-map-series-label").value.trim() || humanize(valueField);
+                const color = row.querySelector(".chart-map-series-color").value;
+                const item = { label, valueField };
+                if (color) item.color = color;
+                return item;
+            });
     }
 
     function renderSeriesRows(series) {
         const host = byId("chartMapSeriesRows");
         if (!host) return;
-        const items = Array.isArray(series) ? series : [];
+        const savedSeries = Array.isArray(series) ? series : [];
+        const savedByField = new Map(savedSeries.map(item => [String(item.valueField || item.field || ""), item]));
         const fields = sampleState.numericFields || [];
-        host.innerHTML = items.map(item => {
-            const field = String(item.valueField || item.field || "");
-            const label = item.label || item.name || humanize(field);
-            const color = /^#[0-9a-f]{6}$/i.test(String(item.color || "")) ? item.color : "#0d6efd";
-            const options = fields.map(candidate => '<option value="' + esc(candidate.path) + '"' +
-                (candidate.path === field ? ' selected' : '') + '>' + esc(candidate.path) + '</option>').join("");
-            const missing = field && !fields.some(candidate => candidate.path === field)
-                ? '<option value="' + esc(field) + '" selected>' + esc(field + " (not in sample)") + '</option>' : "";
-            return '<tr data-chart-series-row><td><select class="form-select form-select-sm chart-map-series-field" aria-label="Numeric field"><option value="">Select numeric field</option>' + options + missing + '</select></td>' +
-                '<td><input class="form-control form-control-sm chart-map-series-label" maxlength="120" value="' + esc(label) + '" aria-label="Series label"></td>' +
-                '<td><input class="form-control form-control-sm chart-map-series-color" type="color" value="' + esc(color) + '" aria-label="Series colour"></td>' +
-                '<td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm chart-map-remove-series">Remove</button></td></tr>';
-        }).join("") || '<tr><td colspan="4" class="text-muted small p-3">No series selected. Use Add field to configure one.</td></tr>';
+        const allFields = [
+            ...fields,
+            ...savedSeries.filter(item => {
+                const field = String(item.valueField || item.field || "");
+                return field && !fields.some(candidate => candidate.path === field);
+            }).map(item => ({ path: String(item.valueField || item.field), numeric: true, savedOnly: true }))
+        ];
+        host.innerHTML = allFields.map(fieldInfo => {
+            const field = String(fieldInfo.path);
+            const saved = savedByField.get(field);
+            const label = saved ? (saved.label || saved.name || humanize(field)) : humanize(field);
+            const color = /^#[0-9a-f]{6}$/i.test(String(saved?.color || "")) ? saved.color : "#0d6efd";
+            const enabled = true;
+            return '<tr data-chart-series-row data-field="' + esc(field) + '">' +
+                '<td><input class="form-check-input chart-map-series-enabled" type="checkbox" aria-label="Enable ' + esc(field) + '"' + (enabled ? ' checked' : '') + '></td>' +
+                '<td><code>' + esc(field) + (fieldInfo.savedOnly ? ' <span class="text-muted">(not in sample)</span>' : '') + '</code></td>' +
+                '<td><input class="form-control form-control-sm chart-map-series-label" maxlength="120" value="' + esc(label) + '" aria-label="Series label for ' + esc(field) + '"></td>' +
+                '<td><input class="form-control form-control-sm chart-map-series-color" type="color" value="' + esc(color) + '" aria-label="Line colour for ' + esc(field) + '"></td>' +
+                '</tr>';
+        }).join("") || '<tr><td colspan="4" class="text-muted small p-3">No numeric fields were discovered in this collection.</td></tr>';
+        const enableAll = byId("chartMapEnableAll");
+        if (enableAll) {
+            const controls = Array.from(host.querySelectorAll(".chart-map-series-enabled"));
+            enableAll.checked = controls.length > 0 && controls.every(control => control.checked);
+            enableAll.indeterminate = controls.some(control => control.checked) && !enableAll.checked;
+            enableAll.disabled = controls.length === 0;
+        }
     }
 
     async function loadLatestSample() {
@@ -289,16 +286,10 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
         if (min !== "" && max !== "" && config.yAxisMin > config.yAxisMax) throw new Error("Y-axis minimum must not exceed its maximum.");
         config.numberFormat = byId("chartMapNumberFormat").value || "auto";
         const series = readSeriesRows();
-        if (series.length) {
-            if (series.some(item => !item.label || !item.valueField)) throw new Error("Each chart series requires a numeric field and label.");
-            config.series = series;
-            delete config.valueField;
-            delete config.seriesField;
-        } else {
-            delete config.series;
-            delete config.valueField;
-            delete config.seriesField;
-        }
+        if (series.some(item => !item.label || !item.valueField)) throw new Error("Each enabled chart series requires a numeric field and label.");
+        config.series = series;
+        delete config.valueField;
+        delete config.seriesField;
         return config;
     }
 
@@ -369,6 +360,7 @@ byId("chartMapNumberFormat").value = config.numberFormat || "auto";
                 byId("chartMapSampleJson").value = "";
                 sampleState.collections = [];
                 sampleState.numericFields = [];
+                byId("chartMapSeriesRows").innerHTML = '<tr><td colspan="4" class="text-muted small p-3">Discover fields to configure chart series.</td></tr>';
                 loadFromJson();
             }
         });
