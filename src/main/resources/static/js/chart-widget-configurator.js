@@ -7,7 +7,7 @@
     const chartTypeId = "dashboardWidgetChartType";
     let syncing = false;
     let sampleDiscoveryTimer = null;
-    const sampleState = { collections: [], numericFields: [] };
+    const sampleState = { collections: [], fields: [], numericFields: [] };
 
     function parseConfig() {
         try {
@@ -66,6 +66,16 @@
           <div class="row g-3">
               <div class="col-md-6"><label class="form-label" for="chartMapRowPath">Data rows path</label><select class="form-select" id="chartMapRowPath" disabled><option value="">Discover fields first</option></select><div class="form-text">Select the array containing chart records.</div></div>
               <div class="col-md-6"><label class="form-label" for="chartMapCategory">Category / label field</label><select class="form-select" id="chartMapCategory" disabled><option value="">Discover fields first</option></select></div>
+              <div class="col-12 d-none" id="chartMapPieOptions">
+                <div class="border rounded p-3">
+                  <h6 class="mb-3">Pie / Donut aggregation</h6>
+                  <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label" for="chartMapPieValueField">Value field</label><select class="form-select" id="chartMapPieValueField" disabled><option value="">Discover fields first</option></select><div class="form-text">Used by Sum, Average, Min, Max and Count Distinct.</div></div>
+                    <div class="col-md-4"><label class="form-label" for="chartMapPieAggregation">Aggregation</label><select class="form-select" id="chartMapPieAggregation"><option value="sum">Sum</option><option value="average">Average</option><option value="min">Minimum</option><option value="max">Maximum</option><option value="count">Count records</option><option value="countDistinct">Count distinct values</option></select></div>
+                    <div class="col-md-4"><label class="form-label" for="chartMapPieColorScheme">Slice colours</label><select class="form-select" id="chartMapPieColorScheme"><option value="categorical">Distinct colours per category</option><option value="single">Single colour</option></select></div>
+                  </div>
+                </div>
+              </div>
               <div class="col-12">
                 <label class="form-label mb-2">Discovered fields and chart series</label>
                 <div class="table-responsive border rounded">
@@ -191,10 +201,16 @@
         }
         collection.rows.slice(0, 100).forEach(row => visit(row, "", 0));
         const fields = Array.from(discovered.values()).sort((a, b) => a.path.localeCompare(b.path));
-const configCategory = preserve ? byId("chartMapCategory").value : (config.categoryField || config.labelField || "");
+        const configCategory = preserve ? byId("chartMapCategory").value : (config.categoryField || config.labelField || "");
+        const savedSeries = Array.isArray(config.series) ? config.series : [];
+        const selectedPieValue = preserve ? byId("chartMapPieValueField").value :
+            (config.pieValueField || config.valueField ||
+                ((savedSeries.find(series => series && series.enabled !== false) || {}).valueField) ||
+                ((fields.find(field => field.numeric) || fields[0] || {}).path) || "");
+
         function fill(id, values, selected, emptyLabel) {
             const select = byId(id);
-            select.innerHTML = '<option value="">' + emptyLabel + '</option>' + values.map(field =>
+            select.innerHTML = '<option value="">'+ emptyLabel + '</option>' + values.map(field =>
                 '<option value="' + esc(field.path) + '"' + (field.path === selected ? ' selected' : '') + '>' +
                 esc(field.path + (field.numeric ? " (number)" : "")) + '</option>').join("");
             select.disabled = values.length === 0;
@@ -204,6 +220,8 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
             }
         }
         fill("chartMapCategory", fields, configCategory, "Select category field");
+        fill("chartMapPieValueField", fields, selectedPieValue, "Select value field");
+        sampleState.fields = fields;
         sampleState.numericFields = fields.filter(field => field.numeric);
         if (!byId("chartMapCategory").value && fields.length) byId("chartMapCategory").value = fields[0].path;
     }
@@ -360,6 +378,11 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
         if (max !== "" && !Number.isFinite(config.yAxisMax)) throw new Error("Y-axis maximum must be a valid number.");
         if (min !== "" && max !== "" && config.yAxisMin > config.yAxisMax) throw new Error("Y-axis minimum must not exceed its maximum.");
         config.numberFormat = byId("chartMapNumberFormat").value || "auto";
+        const pieValueField = byId("chartMapPieValueField").value;
+        if (pieValueField) config.pieValueField = pieValueField;
+        else if (sampleState.collections.length) delete config.pieValueField;
+        config.pieAggregation = byId("chartMapPieAggregation").value || "sum";
+        config.pieColorScheme = byId("chartMapPieColorScheme").value || "categorical";
         const series = readSeriesRows();
         if (series.some(item => !item.label || !item.valueField)) throw new Error("Each enabled chart series requires a numeric field and label.");
         config.series = series;
@@ -398,6 +421,8 @@ const configCategory = preserve ? byId("chartMapCategory").value : (config.categ
             if (control) control.value = config[key] ?? (id === "chartMapLegend" ? "bottom" : "");
         });
 byId("chartMapNumberFormat").value = config.numberFormat || "auto";
+        byId("chartMapPieAggregation").value = config.pieAggregation || "sum";
+        byId("chartMapPieColorScheme").value = config.pieColorScheme || "categorical";
         if (sampleState.collections.length) {
             byId("chartMapRowPath").value = config.rowPath || "";
             populateFieldSelectors(config, false);
@@ -412,6 +437,10 @@ byId("chartMapNumberFormat").value = config.numberFormat || "auto";
         if (panel) panel.classList.toggle("d-none", !isChart);
         const group = byId("dashboardWidgetChartTypeGroup");
         if (group) group.classList.toggle("d-none", !isChart);
+        const chartType = String(byId(chartTypeId)?.value || "").toUpperCase();
+        const isPie = chartType === "PIE" || chartType === "DONUT" || chartType === "DOUGHNUT";
+        const pieOptions = byId("chartMapPieOptions");
+        if (pieOptions) pieOptions.classList.toggle("d-none", !isPie);
         const genericMapping = byId("widgetTypeMappingOptions");
         if (genericMapping && isChart) genericMapping.hidden = true;
     }
@@ -423,7 +452,10 @@ byId("chartMapNumberFormat").value = config.numberFormat || "auto";
         loadFromJson();
         updateVisibility();
         byId(typeId)?.addEventListener("change", updateVisibility);
-        byId(chartTypeId)?.addEventListener("change", syncToJson);
+        byId(chartTypeId)?.addEventListener("change", function () {
+            updateVisibility();
+            syncToJson();
+        });
         byId("dashboardWidgetModal")?.addEventListener("shown.bs.modal", function () {
             loadFromJson();
             updateVisibility();
