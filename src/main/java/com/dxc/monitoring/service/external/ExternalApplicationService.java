@@ -38,6 +38,13 @@ public class ExternalApplicationService
     }
 
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<ExternalApplication> findPage(
+            String search, org.springframework.data.domain.Pageable pageable)
+    {
+        return applicationRepository.search(search == null ? "" : search.trim(), pageable);
+    }
+
+    @Transactional(readOnly = true)
     public ExternalApplicationForm getForm(Long id)
     {
         ExternalApplicationForm form = new ExternalApplicationForm();
