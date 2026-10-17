@@ -2045,6 +2045,16 @@
         syncDashboardWidgetChartFields(true);
         syncDashboardWidgetIframeFields(false);
         syncDashboardWidgetRefreshFields(false);
+        if (document.getElementById('dashboardWidgetType').value === 'IFRAME') {
+            const initialIframeConfig = readWidgetConfigJson();
+            document.getElementById('dashboardWidgetIframeUrl').value =
+                typeof initialIframeConfig.url === 'string' ? initialIframeConfig.url : '';
+            document.getElementById('dashboardWidgetIframeHeight').value =
+                Number.isInteger(initialIframeConfig.defaultHeight) ? initialIframeConfig.defaultHeight : 520;
+            document.getElementById('dashboardWidgetIframeExpand').checked =
+                initialIframeConfig.allowExpand !== false;
+            syncDashboardWidgetIframeFields(false);
+        }
 
         window.DashboardConfig = {
 
