@@ -311,24 +311,8 @@ public class DashboardConfigurationService
 
         if ("IFRAME".equals(widget.getWidgetType()))
         {
-            Object configuredUrl = parsedConfig.get("url");
-            String url = configuredUrl == null ? "" : String.valueOf(configuredUrl).trim();
-            try
-            {
-                java.net.URI uri = java.net.URI.create(url);
-                String scheme = uri.getScheme();
-                if (url.isBlank() || uri.getHost() == null || scheme == null
-                        || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
-                        || uri.getUserInfo() != null)
-                {
-                    throw new IllegalArgumentException();
-                }
-            }
-            catch (RuntimeException exception)
-            {
-                throw new IllegalArgumentException(
-                        "iFrame widgets require an absolute HTTP or HTTPS URL without embedded credentials.");
-            }
+            // The iframe URL is resolved from the selected external-application registry entry.
+            // Do not validate a URL in widget JSON; it intentionally contains only the registry ID.
             Object height = parsedConfig.get("defaultHeight");
             if (height != null && (!(height instanceof Number number)
                     || number.intValue() < 250 || number.intValue() > 2000))
