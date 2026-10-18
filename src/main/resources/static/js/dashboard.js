@@ -2513,8 +2513,9 @@
                 : "";
 
 
-        const refreshButton = isIframeWidget ? "" :
-            '<button type="button"' +
+        const refreshButton = isIframeWidget
+            ? '<button type="button" class="btn btn-sm btn-link dashboard-iframe-refresh" data-widget-id="' + escapeHtml(widget.id) + '" title="Reload embedded page" aria-label="Reload embedded page"><i class="bi bi-arrow-clockwise"></i></button>'
+            : '<button type="button"' +
                     ' class="btn btn-sm btn-link dashboard-widget-refresh"' +
                     ' data-widget-id="' + escapeHtml(widget.id) + '"' +
                     ' title="Refresh widget" aria-label="Refresh widget">' +
@@ -3982,6 +3983,28 @@
     });
     contentElement.addEventListener("click", function (event)
     {
+        const iframeRefreshButton = event.target.closest(".dashboard-iframe-refresh");
+        if (iframeRefreshButton)
+        {
+            const column = iframeRefreshButton.closest(".dashboard-widget-column");
+            const iframe = column && column.querySelector(".dashboard-iframe");
+            if (iframe)
+            {
+                iframeRefreshButton.disabled = true;
+                const icon = iframeRefreshButton.querySelector("i");
+                if (icon) icon.classList.add("fa-spin");
+                iframe.addEventListener("load", function ()
+                {
+                    iframeRefreshButton.disabled = false;
+                    if (icon) icon.classList.remove("fa-spin");
+                }, { once: true });
+                // Explicit refresh reloads the external page; normal dashboard renders
+                // leave the iframe mounted so its interactive state is preserved.
+                iframe.src = iframe.src;
+            }
+            return;
+        }
+
         const expandButton = event.target.closest(".dashboard-iframe-expand");
         const collapseButton = event.target.closest(".dashboard-iframe-collapse");
         if (expandButton || collapseButton)
