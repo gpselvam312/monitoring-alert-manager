@@ -221,6 +221,7 @@ public class DashboardService
         {
             definition.setFieldConfigJson(iframeFieldConfigJson(widget));
             definition.setExternalApplicationUrl(resolveExternalApplicationUrl(widget));
+            definition.setExternalApplicationStatus(resolveExternalApplicationStatus(widget));
         }
         else
         {
@@ -302,6 +303,33 @@ public class DashboardService
         {
             // An invalid or unavailable registry reference must not break the whole dashboard.
             return null;
+        }
+    }
+
+    private String resolveExternalApplicationStatus(DashboardWidget widget)
+    {
+        if (widget == null || widget.getFieldConfigJson() == null || widget.getFieldConfigJson().isBlank())
+        {
+            return "NOT_CONFIGURED";
+        }
+        try
+        {
+            Map<String, Object> config = objectMapper.readValue(widget.getFieldConfigJson(),
+                    new TypeReference<Map<String, Object>>() {});
+            Object configuredId = config.get("externalApplicationId");
+            Long applicationId = configuredId instanceof Number number ? number.longValue()
+                    : configuredId == null ? null : Long.valueOf(String.valueOf(configuredId));
+            if (applicationId == null)
+            {
+                return "NOT_CONFIGURED";
+            }
+            return externalApplicationRepository.findById(applicationId)
+                    .map(application -> application.isEnabled() ? "AVAILABLE" : "DISABLED")
+                    .orElse("NOT_FOUND");
+        }
+        catch (Exception exception)
+        {
+            return "NOT_CONFIGURED";
         }
     }
 
