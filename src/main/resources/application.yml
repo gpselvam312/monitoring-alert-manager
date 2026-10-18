@@ -45,3 +45,7 @@ monitoring:
     script:
       # Trusted directories remain environment-specific; approved hashes are stored per Monitoring Job.
       allowed-directories: ${MONITORING_SCRIPT_ALLOWED_DIRECTORIES:${user.dir}/scripts}
+
+  # The key must be provided by the runtime environment and must not be stored in source control.
+  external-applications:
+    encryption-key: ${MONITORING_EXTERNAL_APP_ENCRYPTION_KEY:}

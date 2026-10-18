@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('External Applications', ~{::content})}">
+<body>
+<div th:fragment="content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">External Applications</h1>
+            <p class="page-subtitle">Configure external pages by internal application and environment.</p>
+        </div>
+    </div>
+
+    <div class="app-card mb-4">
+        <div class="app-card-header">
+            <h5 class="mb-1">External Application Configuration</h5>
+            <p class="text-muted small mb-0">
+                Register a separate Grafana, Consul, or other external instance for each application and environment.
+            </p>
+        </div>
+        <div class="app-card-body">
+            <div class="app-message app-message-info mb-3" role="note">
+                <div class="app-message-icon"><i class="bi bi-info-circle-fill"></i></div>
+                <div class="app-message-content">
+                    <div class="app-message-title">Authentication note</div>
+                    <div class="app-message-text">Selecting an authentication type and storing a credential does not automatically sign a browser session into the external site. OIDC, an authentication proxy, or a site-supported integration must be configured separately. The external site must also permit framing.</div>
+                </div>
+            </div>
+            <div class="app-message app-message-error mb-3" role="alert" aria-live="assertive"
+                 th:if="${externalApplicationError != null}">
+                <div class="app-message-icon"><i class="bi bi-x-circle-fill"></i></div>
+                <div class="app-message-content">
+                    <div class="app-message-title">Unable to save external application</div>
+                    <div class="app-message-text" th:text="${externalApplicationError}"></div>
+                </div>
+            </div>
+
+            <form method="post" th:action="@{/administration/external-applications/save}"
+                  th:object="${externalApplicationForm}" autocomplete="off"
+                  th:attr="data-app-confirm=${externalApplicationForm.id != null ? 'update' : 'save'},
+                           data-app-action-title=${externalApplicationForm.id != null ? 'Update External Application' : 'Save External Application'},
+                           data-app-action-message=${externalApplicationForm.id != null ? 'Save changes to this external application?' : 'Save this external application configuration?'},
+                           data-app-action-description='The configuration will be used by dashboard iframe widgets.',
+                           data-app-confirm-text=${externalApplicationForm.id != null ? 'Update' : 'Save'}">
+                <input type="hidden" th:field="*{id}">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="applicationCode">Instance code</label>
+                        <input class="form-control" id="applicationCode" th:field="*{applicationCode}"
+                               maxlength="50" required placeholder="GRAFANA-RETAIL-SIT">
+                        <div class="form-text">Unique identifier for this specific external instance.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="applicationName">Display name</label>
+                        <input class="form-control" id="applicationName" th:field="*{applicationName}"
+                               maxlength="150" required placeholder="Grafana - Retail - SIT">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="externalType">External product</label>
+                        <select class="form-select" id="externalType" th:field="*{externalType}" required>
+                            <option value="">Select external product</option>
+                            <option th:each="type : ${externalApplicationTypes}"
+                                    th:value="${type.code}" th:text="${type.displayName}">Grafana</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="applicationId">Internal application</label>
+                        <select class="form-select" id="applicationId" th:field="*{applicationId}" required>
+                            <option value="">Select application</option>
+                            <option th:each="internalApp : ${internalApplications}"
+                                    th:value="${internalApp.id}" th:text="${internalApp.name}">Retail</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="environmentId">Environment</label>
+                        <select class="form-select" id="environmentId" th:field="*{environmentId}" required>
+                            <option value="">Select environment</option>
+                            <option th:each="env : ${environments}"
+                                    th:value="${env.id}" th:attr="data-application-id=${env.application.id}"
+                                    th:text="${env.name}">SIT</option>
+                        </select>
+                        <div class="form-text">Only environments belonging to the selected application are available.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="baseUrl">Base URL</label>
+                        <input class="form-control" id="baseUrl" type="url" th:field="*{baseUrl}"
+                               maxlength="2048" required placeholder="https://grafana.example.com">
+                        <div class="form-text">Use an absolute HTTP(S) URL. Do not include usernames, passwords, tokens, or URL fragments.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="authType">Authentication method</label>
+                        <select class="form-select" id="authType" th:field="*{authType}" required>
+                            <option value="NONE">None / already accessible</option>
+                            <option value="OIDC">OIDC / SSO (integration required)</option>
+                            <option value="AUTH_PROXY">Authentication proxy</option>
+                            <option value="BASIC">Basic authentication (integration required)</option>
+                            <option value="CUSTOM">Custom integration</option>
+                        </select>
+                    </div>
+                    <div class="col-12"><hr><h6 class="mb-0">Shared external account</h6></div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="accountName">Account label</label>
+                        <input class="form-control" id="accountName" th:field="*{accountName}" maxlength="150">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="username">Username / client ID</label>
+                        <input class="form-control" id="username" th:field="*{username}" maxlength="255"
+                               autocomplete="off">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="secret">Secret (write-only)</label>
+                        <input class="form-control" id="secret" name="secret" type="password" value=""
+                               autocomplete="new-password" spellcheck="false">
+                        <div class="form-text">Leave blank to keep the existing encrypted secret.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="secretReference">External secret reference (optional)</label>
+                        <input class="form-control" id="secretReference" th:field="*{secretReference}" maxlength="1000"
+                               placeholder="e.g. vault://team/grafana/service-account">
+                        <div class="form-text">Use a reference to a secret manager instead of entering a secret here. A resolver/integration must be configured to use it.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" id="enabled" type="checkbox" th:field="*{enabled}">
+                            <label class="form-check-label" for="enabled">External instance enabled</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" id="accountEnabled" type="checkbox" th:field="*{accountEnabled}">
+                            <label class="form-check-label" for="accountEnabled">Shared account enabled</label>
+                        </div>
+                    </div>
+                    <div class="col-12" th:if="${externalApplicationForm.id != null}">
+                        <div class="form-check">
+                            <input class="form-check-input" id="clearSecret" type="checkbox" th:field="*{clearSecret}">
+                            <label class="form-check-label" for="clearSecret">Clear the stored secret and secret reference</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a class="btn btn-outline-secondary" th:href="@{/administration/external-applications}">Clear form</a>
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-save me-1"></i>
+                        <span th:text="${externalApplicationForm.id != null ? 'Update External Application' : 'Save External Application'}">Save External Application</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card-header">
+            <h5 class="mb-1">Configured External Applications</h5>
+            <p class="text-muted small mb-0">Search across instance code, product, application, environment, URL and authentication settings.</p>
+        </div>
+        <div class="app-card-body">
+            <div th:replace="~{fragments/data-table :: controls(
+                    'externalApplicationsSearch',
+                    'externalApplicationsPageSize',
+                    'Search instance, URL, application...',
+                    ${pageSize},
+                    ${search}
+            )}"></div>
+
+            <div id="externalApplicationsTableContainer">
+                <div th:fragment="externalApplicationsTable">
+                    <div th:if="${externalApplications.totalElements == 0}" class="empty-state">
+                        <div class="empty-state-icon">
+                            <i th:if="${search != null and !search.isBlank()}" class="bi bi-search"></i>
+                            <i th:unless="${search != null and !search.isBlank()}" class="bi bi-window-stack"></i>
+                        </div>
+                        <div>
+                            <h6>No matching external instances</h6>
+                            <p>Change the filters or search term, or configure a new external instance above.</p>
+                        </div>
+                    </div>
+
+                    <div th:if="${externalApplications.totalElements > 0}" class="table-responsive">
+                        <table class="table app-table align-middle mb-0">
+                            <thead>
+                            <tr>
+                                <th>
+                                    <button type="button" class="table-sort" data-config="externalApplicationsTableConfig"
+                                            data-sort="applicationName" onclick="DataTable.sort(this)">
+                                        Instance <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button type="button" class="table-sort" data-config="externalApplicationsTableConfig"
+                                            data-sort="externalType" onclick="DataTable.sort(this)">
+                                        Product <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>Application / environment</th>
+                                <th>
+                                    <button type="button" class="table-sort" data-config="externalApplicationsTableConfig"
+                                            data-sort="baseUrl" onclick="DataTable.sort(this)">
+                                        Base URL <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button type="button" class="table-sort" data-config="externalApplicationsTableConfig"
+                                            data-sort="authType" onclick="DataTable.sort(this)">
+                                        Authentication <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>Shared account</th>
+                                <th>
+                                    <button type="button" class="table-sort" data-config="externalApplicationsTableConfig"
+                                            data-sort="enabled" onclick="DataTable.sort(this)">
+                                        Status <i class="bi bi-caret-up-fill table-sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="app : ${externalApplications.content}">
+                                <td>
+                                    <div class="fw-semibold" th:text="${app.applicationName}">Grafana - Retail - SIT</div>
+                                    <div class="text-muted small" th:text="${app.applicationCode}">GRAFANA-RETAIL-SIT</div>
+                                </td>
+                                <td th:text="${externalTypeLabels[app.externalType] != null ? externalTypeLabels[app.externalType] : app.externalType}">Grafana</td>
+                                <td>
+                                    <div th:text="${app.application != null ? app.application.name : 'Not assigned'}">Retail</div>
+                                    <div class="text-muted small" th:text="${app.environment != null ? app.environment.name : 'Environment not assigned'}">SIT</div>
+                                </td>
+                                <td class="text-break" th:text="${app.baseUrl}">https://grafana.example.com</td>
+                                <td th:text="${app.authType}">OIDC</td>
+                                <td>
+                                    <span th:if="${configuredAccounts[app.id]}" class="status-badge status-success">Configured</span>
+                                    <span th:unless="${configuredAccounts[app.id]}" class="status-badge status-disabled">Not configured</span>
+                                </td>
+                                <td>
+                                    <span th:if="${app.enabled}" class="status-badge status-success">Enabled</span>
+                                    <span th:unless="${app.enabled}" class="status-badge status-disabled">Disabled</span>
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       th:href="@{/administration/external-applications(id=${app.id})}"
+                                       title="Edit" aria-label="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form class="d-inline" method="post" th:action="@{/administration/external-applications/toggle}"
+                                          th:data-app-confirm="${app.enabled ? 'disable' : 'enable'}"
+                                          th:data-app-action-title="${app.enabled ? 'Disable External Application' : 'Enable External Application'}"
+                                          th:data-app-action-message="${app.enabled ? 'Disable this external application?' : 'Enable this external application?'}"
+                                          th:data-app-confirm-text="${app.enabled ? 'Disable' : 'Enable'}">
+                                        <input type="hidden" name="id" th:value="${app.id}">
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit"
+                                                th:title="${app.enabled ? 'Disable' : 'Enable'}"
+                                                th:attr="aria-label=${app.enabled ? 'Disable' : 'Enable'}">
+                                            <i th:class="${app.enabled ? 'bi bi-pause-circle' : 'bi bi-play-circle'}"></i>
+                                        </button>
+                                    </form>
+                                    <form class="d-inline" method="post" th:action="@{/administration/external-applications/delete}"
+                                          data-app-confirm="delete"
+                                          data-app-action-title="Delete External Application"
+                                          data-app-action-message="Delete this external application configuration?"
+                                          data-app-action-description="The shared account will also be deleted. Any dashboard widget using this instance will show as unavailable until reconfigured."
+                                          data-app-confirm-text="Delete">
+                                        <input type="hidden" name="id" th:value="${app.id}">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit" title="Delete" aria-label="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div th:replace="~{fragments/data-table :: pagination(
+                            ${externalApplications},
+                            ${pageSize},
+                            'externalApplicationsTableConfig'
+                    )}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            const formApplication = document.getElementById('applicationId');
+            const formEnvironment = document.getElementById('environmentId');
+
+            function filterEnvironmentOptions(applicationSelect, environmentSelect, resetInvalid) {
+                if (!applicationSelect || !environmentSelect) return;
+                const applicationId = applicationSelect.value;
+                Array.from(environmentSelect.options).forEach(function (option) {
+                    if (!option.value) {
+                        option.hidden = false;
+                        return;
+                    }
+                    const matches = !applicationId || option.dataset.applicationId === applicationId;
+                    option.hidden = !matches;
+                    if (!matches && option.selected && resetInvalid) {
+                        environmentSelect.value = '';
+                    }
+                });
+            }
+
+            filterEnvironmentOptions(formApplication, formEnvironment, true);
+            if (formApplication) {
+                formApplication.addEventListener('change', function () {
+                    filterEnvironmentOptions(formApplication, formEnvironment, true);
+                });
+            }
+        })();
+
+        window.externalApplicationsTableConfig = {
+            endpoint: '/administration/external-applications/table',
+            searchId: 'externalApplicationsSearch',
+            clearSearchId: 'clear-externalApplicationsSearch',
+            pageSizeId: 'externalApplicationsPageSize',
+            containerId: 'externalApplicationsTableContainer',
+            sort: 'applicationName',
+            direction: 'asc',
+        };
+    </script>
+</div>
+</body>
+</html>

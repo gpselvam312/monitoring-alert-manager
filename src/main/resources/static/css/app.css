@@ -4845,3 +4845,85 @@ textarea.form-control {
     flex: 0 0 auto;
     text-align: right;
 }
+
+/* Interactive external dashboard / iFrame widgets */
+.dashboard-iframe-wrapper {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 0.4rem;
+    background: var(--card-bg);
+}
+.dashboard-iframe {
+    display: block;
+    width: 100%;
+    min-height: 250px;
+    border: 0;
+    background: #fff;
+}
+.dashboard-iframe-expand[hidden] {
+    display: none !important;
+}
+body.dashboard-iframe-expanded {
+    overflow: hidden !important;
+}
+body.dashboard-iframe-expanded .app-sidebar,
+body.dashboard-iframe-expanded .dashboard-scope-filter,
+body.dashboard-iframe-expanded .dashboard-tab-toolbar,
+body.dashboard-iframe-expanded #dashboardDateRange {
+    display: none !important;
+}
+body.dashboard-iframe-expanded .dashboard-iframe-expanded-column {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2500 !important;
+    display: block !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+body.dashboard-iframe-expanded .dashboard-iframe-expanded-column > [class*="col-"] {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    padding: 0 !important;
+}
+body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-widget {
+    width: 100%;
+    height: 100% !important;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+}
+body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-widget-header {
+    min-height: 3.5rem;
+}
+body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-widget-body,
+body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-widget-main,
+body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-iframe-wrapper {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+}
+body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-iframe {
+    flex: 1 1 auto;
+    height: 100% !important;
+    min-height: 0;
+}
+@media (max-width: 767.98px) {
+    .dashboard-iframe {
+        min-height: 320px;
+    }
+}
+
+
+.dashboard-iframe-refreshing {
+    animation: dashboard-iframe-refresh-spin .8s linear infinite;
+}
+@keyframes dashboard-iframe-refresh-spin {
+    to { transform: rotate(360deg); }
+}

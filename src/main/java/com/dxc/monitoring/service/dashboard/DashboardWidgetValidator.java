@@ -14,7 +14,7 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
 {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Set<String> RESPONSE_PARSER_TYPES = Set.of("AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX");
-    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "SUMMARY_TABLE", "CHART", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH");
+    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "SUMMARY_TABLE", "CHART", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH", "IFRAME");
     private static final Set<String> CHART_TYPES = Set.of("LINE", "BAR", "PIE", "DONUT");
     private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB");
 
@@ -114,6 +114,40 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
         {
             addFieldError(context, "fieldConfigJson", "Field configuration must be a JSON object.");
             return false;
+        }
+
+        if ("IFRAME".equals(form.getWidgetType()))
+        {
+            Object applicationIdValue = config.get("externalApplicationId");
+            long externalApplicationId = -1;
+            try
+            {
+                if (applicationIdValue instanceof Number number)
+                    externalApplicationId = number.longValue();
+                else if (applicationIdValue != null)
+                    externalApplicationId = Long.parseLong(String.valueOf(applicationIdValue));
+            }
+            catch (NumberFormatException exception)
+            {
+                externalApplicationId = -1;
+            }
+            if (externalApplicationId <= 0)
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "Select an external application for the iFrame widget.");
+                return false;
+            }
+
+            Object heightValue = config.get("defaultHeight");
+            if (heightValue != null)
+            {
+                if (!(heightValue instanceof Number height) || height.intValue() < 250 || height.intValue() > 2000)
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "iFrame default height must be between 250 and 2000 pixels.");
+                    return false;
+                }
+            }
         }
 
         Object parserValue = config.get("responseParser");

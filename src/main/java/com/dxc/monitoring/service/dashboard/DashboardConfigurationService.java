@@ -309,6 +309,23 @@ public class DashboardConfigurationService
             throw new IllegalArgumentException("Widget field configuration must be a valid JSON object.");
         }
 
+        if ("IFRAME".equals(widget.getWidgetType()))
+        {
+            // The iframe URL is resolved from the selected external-application registry entry.
+            // Do not validate a URL in widget JSON; it intentionally contains only the registry ID.
+            Object height = parsedConfig.get("defaultHeight");
+            if (height != null && (!(height instanceof Number number)
+                    || number.intValue() < 250 || number.intValue() > 2000))
+            {
+                throw new IllegalArgumentException("iFrame default height must be between 250 and 2000 pixels.");
+            }
+            widget.setDataSourceType(null);
+            widget.setDataSourceId(null);
+            widget.setAutoRefresh(false);
+            widget.setRefreshInterval(null);
+            widget.setRefreshIntervalUnit(null);
+        }
+
         Object dateRange = parsedConfig.get("dateRange");
         if (dateRange instanceof Map<?, ?> dateRangeConfig
                 && Boolean.TRUE.equals(dateRangeConfig.get("enabled")))

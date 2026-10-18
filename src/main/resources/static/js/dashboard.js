@@ -333,6 +333,9 @@
         case "ELASTICSEARCH":
             return "bi-database-check";
 
+        case "IFRAME":
+            return "bi-window";
+
 
 	        case "TEXT":
 	            return "bi-card-text";
@@ -2473,6 +2476,7 @@
 
 		const isStat =
 		    widgetType === "STAT";
+        const isIframeWidget = widgetType === "IFRAME";
 
 
         const isSystemMetrics = widgetType === "SYSTEM_METRICS";
@@ -2509,13 +2513,19 @@
                 : "";
 
 
-        const refreshButton =
-            '<button type="button"' +
+        const refreshButton = isIframeWidget
+            ? '<button type="button" class="btn btn-sm btn-link dashboard-iframe-refresh" data-widget-id="' + escapeHtml(widget.id) + '" title="Reload embedded page" aria-label="Reload embedded page"><i class="bi bi-arrow-clockwise"></i></button>'
+            : '<button type="button"' +
                     ' class="btn btn-sm btn-link dashboard-widget-refresh"' +
                     ' data-widget-id="' + escapeHtml(widget.id) + '"' +
                     ' title="Refresh widget" aria-label="Refresh widget">' +
                 '<i class="bi bi-arrow-clockwise"></i>' +
             '</button>';
+
+        const iframeConfig = isIframeWidget ? parseWidgetFieldConfig(widget) : {};
+        const iframeExpandButton = isIframeWidget && iframeConfig.allowExpand !== false
+            ? '<button type="button" class="btn btn-sm btn-link dashboard-iframe-expand" title="Expand embedded page" aria-label="Expand embedded page"><i class="bi bi-arrows-fullscreen"></i></button>'
+            : "";
 
         const runNowEnabled =
             widget.runNowEnabled === true;
@@ -2558,6 +2568,26 @@
 		{
 		    widgetContentHtml = renderTextWidget(result, widget);
 		}
+        else if (isIframeWidget)
+        {
+            const externalApplicationStatus = String(widget.externalApplicationStatus || "").toUpperCase();
+            const rawUrl = typeof widget.externalApplicationUrl === "string" ? widget.externalApplicationUrl.trim() : "";
+            let safeUrl = "";
+            try {
+                const parsedUrl = new URL(rawUrl);
+                if ((parsedUrl.protocol === "https:" || parsedUrl.protocol === "http:") && parsedUrl.host !== "" && parsedUrl.username === "" && parsedUrl.password === "") safeUrl = parsedUrl.href;
+            } catch (error) { safeUrl = ""; }
+            const iframeHeight = Number.isInteger(iframeConfig.defaultHeight) && iframeConfig.defaultHeight >= 250 && iframeConfig.defaultHeight <= 2000 ? iframeConfig.defaultHeight : 520;
+            if (externalApplicationStatus === "DISABLED") {
+                widgetContentHtml = '<div class="app-message app-message-warning" role="status"><div class="app-message-icon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></div><div class="app-message-content"><div class="app-message-title">External application disabled</div><div class="app-message-text">This external application is disabled. Enable it in External Application Configuration to restore this dashboard widget.</div></div></div>';
+            } else if (externalApplicationStatus === "NOT_FOUND") {
+                widgetContentHtml = '<div class="app-message app-message-error" role="alert"><div class="app-message-icon"><i class="bi bi-x-circle" aria-hidden="true"></i></div><div class="app-message-content"><div class="app-message-title">External application not found</div><div class="app-message-text">The configured external application no longer exists. Select an available instance in Dashboard Configuration.</div></div></div>';
+            } else if (externalApplicationStatus === "NOT_CONFIGURED" || !safeUrl) {
+                widgetContentHtml = '<div class="app-message app-message-warning" role="status"><div class="app-message-icon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></div><div class="app-message-content"><div class="app-message-title">External application unavailable</div><div class="app-message-text">The selected external application is unavailable or not configured. Check External Application Configuration.</div></div></div>';
+            } else {
+                widgetContentHtml = '<div class="dashboard-iframe-wrapper"><iframe class="dashboard-iframe" src="' + escapeHtml(safeUrl) + '" title="' + escapeHtml(widget.name || "Embedded dashboard") + '" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; clipboard-read; clipboard-write" style="height:' + iframeHeight + 'px"></iframe></div>';
+            }
+        }
 
         /*
          * TABLE
@@ -2657,10 +2687,7 @@
 
         return (
 
-            '<div class="' +
-                getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) +
-            '">' +
-
+            '<div class="dashboard-widget-column ' + getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) + (isIframeWidget ? ' dashboard-iframe-column' : '') + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
 
 
@@ -2712,27 +2739,14 @@
                             headerUpdatedHtml +
 
 
-                            '<span class="dashboard-status ' +
-                                statusClass +
-                            '">' +
-
-                                '<i class="bi ' +
-                                    statusIcon +
-                                '"></i>' +
-
-                                '<span>' +
-                                    escapeHtml(
-                                        statusLabel
-                                    ) +
-                                '</span>' +
-
-                            '</span>' +
-
-
+                            (isIframeWidget ? "" :
+                                '<span class="dashboard-status ' + statusClass + '">' +
+                                    '<i class="bi ' + statusIcon + '"></i>' +
+                                    '<span>' + escapeHtml(statusLabel) + '</span>' +
+                                '</span>') +
                             refreshButton +
-
-
-                            detailsButton +
+                            iframeExpandButton +
+                            (isIframeWidget ? "" : detailsButton) +
 
 
                         '</div>' +
@@ -2753,7 +2767,6 @@
 
 
                 '</div>' +
-
             '</div>'
         );
     }
@@ -3977,6 +3990,49 @@
     });
     contentElement.addEventListener("click", function (event)
     {
+        const iframeRefreshButton = event.target.closest(".dashboard-iframe-refresh");
+        if (iframeRefreshButton)
+        {
+            // Refresh the dashboard data first so disabled/deleted registry entries are
+            // detected before the browser attempts to load the external page again.
+            loadDashboard(activeTabId);
+            return;
+        }
+
+        const expandButton = event.target.closest(".dashboard-iframe-expand");
+        const collapseButton = event.target.closest(".dashboard-iframe-collapse");
+        if (expandButton || collapseButton)
+        {
+            const column = (expandButton || collapseButton).closest(".dashboard-widget-column");
+            if (!column) return;
+            if (expandButton)
+            {
+                document.querySelectorAll(".dashboard-iframe-expanded-column").forEach(function (existing) { existing.classList.remove("dashboard-iframe-expanded-column"); });
+                column.classList.add("dashboard-iframe-expanded-column");
+                document.body.classList.add("dashboard-iframe-expanded");
+                const actions = column.querySelector(".dashboard-widget-actions");
+                if (actions && !actions.querySelector(".dashboard-iframe-collapse"))
+                {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "btn btn-sm btn-link dashboard-iframe-collapse";
+                    button.title = "Collapse embedded page";
+                    button.setAttribute("aria-label", "Collapse embedded page");
+                    button.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+                    actions.appendChild(button);
+                }
+                expandButton.hidden = true;
+            }
+            else
+            {
+                column.classList.remove("dashboard-iframe-expanded-column");
+                document.body.classList.remove("dashboard-iframe-expanded");
+                const expand = column.querySelector(".dashboard-iframe-expand");
+                if (expand) expand.hidden = false;
+                collapseButton.remove();
+            }
+            return;
+        }
         const summaryCard = event.target.closest(".server-health-summary-filter");
         if (summaryCard)
         {
@@ -4000,6 +4056,18 @@
         serverHealthState.set(String(button.dataset.widgetId), state);
         // Pagination is client-side; do not reload dashboard data from the server.
         renderTabs(activeTabId);
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key !== "Escape" || !document.body.classList.contains("dashboard-iframe-expanded")) return;
+        const column = document.querySelector(".dashboard-iframe-expanded-column");
+        if (!column) return;
+        column.classList.remove("dashboard-iframe-expanded-column");
+        document.body.classList.remove("dashboard-iframe-expanded");
+        const expand = column.querySelector(".dashboard-iframe-expand");
+        if (expand) expand.hidden = false;
+        const collapse = column.querySelector(".dashboard-iframe-collapse");
+        if (collapse) collapse.remove();
     });
 
     /* Initial load. */

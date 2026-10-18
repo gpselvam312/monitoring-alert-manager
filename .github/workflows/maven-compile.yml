@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feature/monitoring-execution-scheduling
+      - feature/iframe-widget-configuration
   pull_request:
     branches:
       - feature/monitoring-execution-scheduling
+      - feature/iframe-widget-configuration
 
 jobs:
   compile:

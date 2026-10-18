@@ -761,7 +761,7 @@
                                 <td>
 
                                     <span class="table-secondary-text"
-                                          th:text="${widget.widgetType == 'SUMMARY_TABLE' ? 'Summary Table' : widget.widgetType}">
+                                          th:text="${widget.widgetType == 'SUMMARY_TABLE' ? 'Summary Table' : (widget.widgetType == 'IFRAME' ? 'iFrame / External Dashboard' : widget.widgetType)}">
                                         STATUS
                                     </span>
 
@@ -1487,6 +1487,7 @@
 							    <option value="TEXT">Text / Info</option>
 							    <option value="SYSTEM_METRICS">System Metrics</option>
 							    <option value="ELASTICSEARCH">Elasticsearch</option>
+							    <option value="IFRAME">iFrame / External Dashboard</option>
 							
 							</select>
 							
@@ -1794,6 +1795,40 @@
                                 </div>
                             </div>
 
+                            <div class="col-12 d-none" id="dashboardWidgetIframeConfig">
+                                <div class="border rounded p-3">
+                                    <h6 class="mb-2">Embedded page</h6>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label for="dashboardWidgetIframeApplication" class="form-label">External application <span class="text-danger">*</span></label>
+                                            <select class="form-select" id="dashboardWidgetIframeApplication">
+                                                <option value="">Select an enabled external application</option>
+                                                <option th:each="externalApp : ${externalApplications}"
+                                                        th:value="${externalApp.id}"
+                                                        th:text="${(externalApplicationTypeLabels[externalApp.externalType] != null ? externalApplicationTypeLabels[externalApp.externalType] : externalApp.externalType) + ' — ' + externalApp.applicationName + ' (' + externalApp.application.name + ' / ' + externalApp.environment.name + ')'}"
+                                                        th:attr="data-base-url=${externalApp.baseUrl},data-auth-type=${externalApp.authType}"></option>
+                                            </select>
+                                            <div class="form-text">Configure the embeddable page URL under Administration → External Applications. The external site must permit iframe embedding and allow the current user to access it.</div>
+                                            <div class="small text-muted mt-2 d-none" id="dashboardWidgetIframeApplicationUrl"></div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="dashboardWidgetIframeHeight" class="form-label">Default height (pixels)</label>
+                                            <input type="number" class="form-control" id="dashboardWidgetIframeHeight" min="250" max="2000" step="50" value="520">
+                                            <div class="form-text">Controls the embedded page height in pixels (250–2000). Increase this value for a taller view.</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-text">Widget width is controlled by the widget's <strong>Size</strong> setting above. Choose Large or Full for more horizontal space; use Default height here for vertical space. Expand on the dashboard for a full-viewport view.</div>
+                                        </div>
+                                        <div class="col-md-8 d-flex align-items-end">
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" id="dashboardWidgetIframeExpand" checked>
+                                                <label class="form-check-label" for="dashboardWidgetIframeExpand">Allow expand / collapse</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="col-12">
                                 <details id="dashboardWidgetAdvancedConfig">
                                     <summary class="form-label mb-2">Advanced JSON configuration</summary>
@@ -1920,15 +1955,21 @@
         }
 
         function syncDashboardWidgetDataSourceFields(clearSelection) {
-            const sourceType = document.getElementById('dashboardWidgetDataSourceType').value;
+            const sourceSelect = document.getElementById('dashboardWidgetDataSourceType');
+            const sourceType = sourceSelect.value;
+            const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
             const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
-            const useJob = sourceType === 'MONITORING_JOB';
+            const useJob = sourceType === 'MONITORING_JOB' && !isIframe;
 
-            if (clearSelection || !useJob) {
+            if (isIframe) {
+                sourceSelect.value = '';
+                jobSelect.value = '';
+            } else if (clearSelection || !useJob) {
                 jobSelect.value = '';
             }
 
+            sourceSelect.disabled = isIframe;
             jobGroup.classList.toggle('d-none', !useJob);
             jobSelect.disabled = !useJob;
             jobSelect.required = useJob;
@@ -1948,8 +1989,50 @@
             }
         }
 
+        function syncDashboardWidgetIframeFields(clearDisabledValues) {
+            const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
+            const group = document.getElementById('dashboardWidgetIframeConfig');
+            const application = document.getElementById('dashboardWidgetIframeApplication');
+            const height = document.getElementById('dashboardWidgetIframeHeight');
+            group.classList.toggle('d-none', !isIframe);
+            application.required = isIframe;
+            height.required = isIframe;
+            if (!isIframe && clearDisabledValues) {
+                application.value = '';
+                document.getElementById('dashboardWidgetIframeApplicationUrl').textContent = '';
+                document.getElementById('dashboardWidgetIframeApplicationUrl').classList.add('d-none');
+                height.value = '520';
+                document.getElementById('dashboardWidgetIframeExpand').checked = true;
+            }
+        }
+
+        function updateDashboardWidgetIframeApplicationUrl() {
+            const select = document.getElementById('dashboardWidgetIframeApplication');
+            const option = select.options[select.selectedIndex];
+            const display = document.getElementById('dashboardWidgetIframeApplicationUrl');
+            const url = option && option.dataset.baseUrl ? option.dataset.baseUrl : '';
+            display.textContent = url;
+            display.classList.toggle('d-none', !url);
+        }
+
+        document.getElementById('dashboardWidgetIframeApplication')
+            .addEventListener('change', updateDashboardWidgetIframeApplicationUrl);
+
+        function readWidgetConfigJson() {
+            try {
+                const value = JSON.parse(document.getElementById('dashboardWidgetFieldConfigJson').value || '{}');
+                return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
         function syncDashboardWidgetRefreshFields(clearDisabledValues) {
-            const enabled = document.getElementById('dashboardWidgetAutoRefresh').checked;
+            const refreshCheckbox = document.getElementById('dashboardWidgetAutoRefresh');
+            const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
+            if (isIframe) refreshCheckbox.checked = false;
+            refreshCheckbox.disabled = isIframe;
+            const enabled = refreshCheckbox.checked && !isIframe;
             const interval = document.getElementById('dashboardWidgetRefreshInterval');
             const unit = document.getElementById('dashboardWidgetRefreshIntervalUnit');
 
@@ -1972,6 +2055,9 @@
         document.getElementById('dashboardWidgetType')
             .addEventListener('change', function () {
                 syncDashboardWidgetChartFields(true);
+                syncDashboardWidgetIframeFields(true);
+                syncDashboardWidgetDataSourceFields(true);
+                syncDashboardWidgetRefreshFields(true);
             });
 
         document.getElementById('dashboardWidgetAutoRefresh')
@@ -1981,7 +2067,19 @@
 
         syncDashboardWidgetDataSourceFields(false);
         syncDashboardWidgetChartFields(true);
+        syncDashboardWidgetIframeFields(false);
         syncDashboardWidgetRefreshFields(false);
+        if (document.getElementById('dashboardWidgetType').value === 'IFRAME') {
+            const initialIframeConfig = readWidgetConfigJson();
+            document.getElementById('dashboardWidgetIframeApplication').value =
+                initialIframeConfig.externalApplicationId == null ? '' : String(initialIframeConfig.externalApplicationId);
+            updateDashboardWidgetIframeApplicationUrl();
+            document.getElementById('dashboardWidgetIframeHeight').value =
+                Number.isInteger(initialIframeConfig.defaultHeight) ? initialIframeConfig.defaultHeight : 520;
+            document.getElementById('dashboardWidgetIframeExpand').checked =
+                initialIframeConfig.allowExpand !== false;
+            syncDashboardWidgetIframeFields(false);
+        }
 
         window.DashboardConfig = {
 
@@ -2077,6 +2175,19 @@
 
                         document.getElementById('dashboardWidgetFieldConfigJson').value =
                             widget.fieldConfigJson || '{}';
+
+                        const iframeConfig = readWidgetConfigJson();
+                        delete iframeConfig.url;
+                        document.getElementById('dashboardWidgetFieldConfigJson').value =
+                            JSON.stringify(iframeConfig, null, 2);
+                        document.getElementById('dashboardWidgetIframeApplication').value =
+                            iframeConfig.externalApplicationId == null ? '' : String(iframeConfig.externalApplicationId);
+                        updateDashboardWidgetIframeApplicationUrl();
+                        document.getElementById('dashboardWidgetIframeHeight').value =
+                            Number.isInteger(iframeConfig.defaultHeight) ? iframeConfig.defaultHeight : 520;
+                        document.getElementById('dashboardWidgetIframeExpand').checked =
+                            iframeConfig.allowExpand !== false;
+                        syncDashboardWidgetIframeFields(false);
 
                         document.getElementById('dashboardWidgetRefreshInterval').value =
                             widget.refreshInterval ?? '';
@@ -2174,7 +2285,18 @@
 
             syncDashboardWidgetDataSourceFields(false);
             syncDashboardWidgetChartFields(true);
+            syncDashboardWidgetIframeFields(false);
             syncDashboardWidgetRefreshFields(false);
+
+            if (widgetType.value === 'IFRAME') {
+                const applicationSelect = document.getElementById('dashboardWidgetIframeApplication');
+                const parsed = readWidgetConfigJson();
+                delete parsed.url;
+                parsed.externalApplicationId = applicationSelect.value ? Number(applicationSelect.value) : null;
+                parsed.defaultHeight = Number(document.getElementById('dashboardWidgetIframeHeight').value || 520);
+                parsed.allowExpand = document.getElementById('dashboardWidgetIframeExpand').checked;
+                document.getElementById('dashboardWidgetFieldConfigJson').value = JSON.stringify(parsed, null, 2);
+            }
 
             interval.required = autoRefresh;
             unit.required = autoRefresh;
@@ -2206,6 +2328,7 @@
 
             syncDashboardWidgetDataSourceFields(false);
             syncDashboardWidgetChartFields(true);
+            syncDashboardWidgetIframeFields(true);
             syncDashboardWidgetRefreshFields(false);
 
             document
