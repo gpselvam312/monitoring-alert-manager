@@ -118,24 +118,23 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
 
         if ("IFRAME".equals(form.getWidgetType()))
         {
-            Object urlValue = config.get("url");
-            String url = urlValue == null ? "" : String.valueOf(urlValue).trim();
+            Object applicationIdValue = config.get("externalApplicationId");
+            long externalApplicationId = -1;
             try
             {
-                java.net.URI uri = java.net.URI.create(url);
-                String scheme = uri.getScheme();
-                if (url.isBlank() || uri.getHost() == null
-                        || scheme == null
-                        || !("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))
-                        || uri.getUserInfo() != null)
-                {
-                    throw new IllegalArgumentException("Invalid iframe URL.");
-                }
+                if (applicationIdValue instanceof Number number)
+                    externalApplicationId = number.longValue();
+                else if (applicationIdValue != null)
+                    externalApplicationId = Long.parseLong(String.valueOf(applicationIdValue));
             }
-            catch (RuntimeException exception)
+            catch (NumberFormatException exception)
+            {
+                externalApplicationId = -1;
+            }
+            if (externalApplicationId <= 0)
             {
                 addFieldError(context, "fieldConfigJson",
-                        "iFrame widgets require an absolute HTTP or HTTPS URL without embedded credentials.");
+                        "Select an external application for the iFrame widget.");
                 return false;
             }
 
