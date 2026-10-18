@@ -335,6 +335,8 @@ public class DashboardConfigurationController
         model.addAttribute("widgets", widgets);
         model.addAttribute("monitoringJobs", dashboardConfigurationService.findDashboardMonitoringJobs());
         model.addAttribute("externalApplications", externalApplicationService.findEnabled());
+        model.addAttribute("externalApplicationTypeLabels", externalApplicationService.findEnabledTypes().stream()
+                .collect(java.util.stream.Collectors.toMap(type -> type.getCode(), type -> type.getDisplayName())));
         model.addAttribute("tabSearch", tabSearch);
         model.addAttribute("widgetSearch", widgetSearch);
         model.addAttribute("widgetPage", widgetPage);
