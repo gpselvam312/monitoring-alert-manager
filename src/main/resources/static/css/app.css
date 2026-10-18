@@ -4919,3 +4919,11 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
         min-height: 320px;
     }
 }
+
+
+.dashboard-iframe-refreshing {
+    animation: dashboard-iframe-refresh-spin .8s linear infinite;
+}
+@keyframes dashboard-iframe-refresh-spin {
+    to { transform: rotate(360deg); }
+}
