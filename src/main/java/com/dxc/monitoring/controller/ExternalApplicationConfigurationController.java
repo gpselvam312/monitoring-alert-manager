@@ -20,6 +20,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.dxc.monitoring.entity.ExternalApplication;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.repository.ExternalApplicationTypeRepository;
 import com.dxc.monitoring.service.external.ExternalApplicationForm;
 import com.dxc.monitoring.service.external.ExternalApplicationService;
 
@@ -40,13 +41,16 @@ public class ExternalApplicationConfigurationController
     private final ExternalApplicationService externalApplicationService;
     private final ApplicationRepository applicationRepository;
     private final EnvironmentRepository environmentRepository;
+    private final ExternalApplicationTypeRepository externalApplicationTypeRepository;
 
     public ExternalApplicationConfigurationController(ExternalApplicationService externalApplicationService,
-            ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository)
+            ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
+            ExternalApplicationTypeRepository externalApplicationTypeRepository)
     {
         this.externalApplicationService = externalApplicationService;
         this.applicationRepository = applicationRepository;
         this.environmentRepository = environmentRepository;
+        this.externalApplicationTypeRepository = externalApplicationTypeRepository;
     }
 
     @GetMapping
@@ -116,6 +120,21 @@ public class ExternalApplicationConfigurationController
         }
     }
 
+    @PostMapping("/delete")
+    public String delete(@RequestParam Long id, RedirectAttributes redirectAttributes)
+    {
+        try
+        {
+            externalApplicationService.delete(id);
+            redirectAttributes.addFlashAttribute("successMessage", "External application deleted successfully.");
+        }
+        catch (IllegalArgumentException exception)
+        {
+            redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
+        }
+        return "redirect:/administration/external-applications";
+    }
+
     @PostMapping("/toggle")
     public String toggle(@RequestParam Long id, RedirectAttributes redirectAttributes)
     {
@@ -164,6 +183,9 @@ public class ExternalApplicationConfigurationController
         model.addAttribute("selectedApplicationId", applicationId);
         model.addAttribute("selectedEnvironmentId", environmentId);
         model.addAttribute("selectedExternalType", externalType == null ? "" : externalType);
+        model.addAttribute("externalApplicationTypes", externalApplicationService.findEnabledTypes());
+        model.addAttribute("externalTypeLabels", externalApplicationTypeRepository.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(type -> type.getCode(), type -> type.getDisplayName())));
         model.addAttribute("internalApplications", applicationRepository.findByEnabledTrueOrderByNameAsc());
         model.addAttribute("environments", environmentRepository.findByEnabledTrueOrderByName());
         model.addAttribute("currentPage", "external-applications");
