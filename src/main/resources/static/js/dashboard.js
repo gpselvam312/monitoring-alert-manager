@@ -2570,16 +2570,23 @@
 		}
         else if (isIframeWidget)
         {
+            const externalApplicationStatus = String(widget.externalApplicationStatus || "").toUpperCase();
             const rawUrl = typeof widget.externalApplicationUrl === "string" ? widget.externalApplicationUrl.trim() : "";
             let safeUrl = "";
             try {
-                const parsedUrl = new URL(rawUrl, window.location.origin);
-                if ((parsedUrl.protocol === "https:" || parsedUrl.protocol === "http:") && parsedUrl.username === "" && parsedUrl.password === "") safeUrl = parsedUrl.href;
+                const parsedUrl = new URL(rawUrl);
+                if ((parsedUrl.protocol === "https:" || parsedUrl.protocol === "http:") && parsedUrl.host !== "" && parsedUrl.username === "" && parsedUrl.password === "") safeUrl = parsedUrl.href;
             } catch (error) { safeUrl = ""; }
             const iframeHeight = Number.isInteger(iframeConfig.defaultHeight) && iframeConfig.defaultHeight >= 250 && iframeConfig.defaultHeight <= 2000 ? iframeConfig.defaultHeight : 520;
-            widgetContentHtml = safeUrl
-                ? '<div class="dashboard-iframe-wrapper"><iframe class="dashboard-iframe" src="' + escapeHtml(safeUrl) + '" title="' + escapeHtml(widget.name || "Embedded dashboard") + '" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; clipboard-read; clipboard-write" style="height:' + iframeHeight + 'px"></iframe></div>'
-                : '<div class="alert alert-warning mb-0">The selected external application is unavailable or disabled. Check External Applications configuration.</div>';
+            if (externalApplicationStatus === "DISABLED") {
+                widgetContentHtml = '<div class="app-message app-message-warning" role="status"><div class="app-message-icon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></div><div class="app-message-content"><div class="app-message-title">External application disabled</div><div class="app-message-text">This external application is disabled. Enable it in External Application Configuration to restore this dashboard widget.</div></div></div>';
+            } else if (externalApplicationStatus === "NOT_FOUND") {
+                widgetContentHtml = '<div class="app-message app-message-error" role="alert"><div class="app-message-icon"><i class="bi bi-x-circle" aria-hidden="true"></i></div><div class="app-message-content"><div class="app-message-title">External application not found</div><div class="app-message-text">The configured external application no longer exists. Select an available instance in Dashboard Configuration.</div></div></div>';
+            } else if (externalApplicationStatus === "NOT_CONFIGURED" || !safeUrl) {
+                widgetContentHtml = '<div class="app-message app-message-warning" role="status"><div class="app-message-icon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></div><div class="app-message-content"><div class="app-message-title">External application unavailable</div><div class="app-message-text">The selected external application is unavailable or not configured. Check External Application Configuration.</div></div></div>';
+            } else {
+                widgetContentHtml = '<div class="dashboard-iframe-wrapper"><iframe class="dashboard-iframe" src="' + escapeHtml(safeUrl) + '" title="' + escapeHtml(widget.name || "Embedded dashboard") + '" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; clipboard-read; clipboard-write" style="height:' + iframeHeight + 'px"></iframe></div>';
+            }
         }
 
         /*
@@ -3986,22 +3993,9 @@
         const iframeRefreshButton = event.target.closest(".dashboard-iframe-refresh");
         if (iframeRefreshButton)
         {
-            const column = iframeRefreshButton.closest(".dashboard-widget-column");
-            const iframe = column && column.querySelector(".dashboard-iframe");
-            if (iframe)
-            {
-                iframeRefreshButton.disabled = true;
-                const icon = iframeRefreshButton.querySelector("i");
-                if (icon) icon.classList.add("dashboard-iframe-refreshing");
-                iframe.addEventListener("load", function ()
-                {
-                    iframeRefreshButton.disabled = false;
-                    if (icon) icon.classList.remove("dashboard-iframe-refreshing");
-                }, { once: true });
-                // Explicit refresh reloads the external page; normal dashboard renders
-                // leave the iframe mounted so its interactive state is preserved.
-                iframe.src = iframe.src;
-            }
+            // Refresh the dashboard data first so disabled/deleted registry entries are
+            // detected before the browser attempts to load the external page again.
+            loadDashboard(activeTabId);
             return;
         }
 
