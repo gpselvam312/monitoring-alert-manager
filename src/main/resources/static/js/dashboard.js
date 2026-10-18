@@ -3992,11 +3992,11 @@
             {
                 iframeRefreshButton.disabled = true;
                 const icon = iframeRefreshButton.querySelector("i");
-                if (icon) icon.classList.add("fa-spin");
+                if (icon) icon.classList.add("dashboard-iframe-refreshing");
                 iframe.addEventListener("load", function ()
                 {
                     iframeRefreshButton.disabled = false;
-                    if (icon) icon.classList.remove("fa-spin");
+                    if (icon) icon.classList.remove("dashboard-iframe-refreshing");
                 }, { once: true });
                 // Explicit refresh reloads the external page; normal dashboard renders
                 // leave the iframe mounted so its interactive state is preserved.
