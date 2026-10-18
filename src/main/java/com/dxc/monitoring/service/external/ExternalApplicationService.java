@@ -3,7 +3,6 @@ package com.dxc.monitoring.service.external;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,34 +13,44 @@ import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.ExternalApplication;
 import com.dxc.monitoring.entity.ExternalApplicationAccount;
+import com.dxc.monitoring.entity.ExternalApplicationType;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.ExternalApplicationAccountRepository;
 import com.dxc.monitoring.repository.ExternalApplicationRepository;
+import com.dxc.monitoring.repository.ExternalApplicationTypeRepository;
 
 @Service
 public class ExternalApplicationService
 {
     private static final Set<String> AUTH_TYPES = Set.of("NONE", "OIDC", "AUTH_PROXY", "BASIC", "CUSTOM");
-    private static final Set<String> EXTERNAL_TYPES = Set.of("GRAFANA", "CONSUL", "OTHER");
 
     private final ExternalApplicationRepository applicationRepository;
     private final ExternalApplicationAccountRepository accountRepository;
     private final ExternalSecretEncryptionService encryptionService;
     private final ApplicationRepository internalApplicationRepository;
     private final EnvironmentRepository environmentRepository;
+    private final ExternalApplicationTypeRepository externalApplicationTypeRepository;
 
     public ExternalApplicationService(ExternalApplicationRepository applicationRepository,
             ExternalApplicationAccountRepository accountRepository,
             ExternalSecretEncryptionService encryptionService,
             ApplicationRepository internalApplicationRepository,
-            EnvironmentRepository environmentRepository)
+            EnvironmentRepository environmentRepository,
+            ExternalApplicationTypeRepository externalApplicationTypeRepository)
     {
         this.applicationRepository = applicationRepository;
         this.accountRepository = accountRepository;
         this.encryptionService = encryptionService;
         this.internalApplicationRepository = internalApplicationRepository;
         this.environmentRepository = environmentRepository;
+        this.externalApplicationTypeRepository = externalApplicationTypeRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExternalApplicationType> findEnabledTypes()
+    {
+        return externalApplicationTypeRepository.findByEnabledTrueOrderBySortOrderAscDisplayNameAsc();
     }
 
     @Transactional(readOnly = true)
@@ -73,7 +82,7 @@ public class ExternalApplicationService
     {
         String normalizedType = externalType == null || externalType.isBlank()
                 ? null : externalType.trim().toUpperCase(Locale.ROOT);
-        if (normalizedType != null && !EXTERNAL_TYPES.contains(normalizedType))
+        if (normalizedType != null && externalApplicationTypeRepository.findByCodeIgnoreCaseAndEnabledTrue(normalizedType).isEmpty())
             normalizedType = null;
         return applicationRepository.search(search == null ? "" : search.trim(),
                 applicationId, environmentId, normalizedType, pageable);
@@ -114,8 +123,8 @@ public class ExternalApplicationService
         String code = required(form.getApplicationCode(), "Application code").toUpperCase(Locale.ROOT);
         String name = required(form.getApplicationName(), "Display name");
         String externalType = required(form.getExternalType(), "External application type").toUpperCase(Locale.ROOT);
-        if (!EXTERNAL_TYPES.contains(externalType))
-            throw new IllegalArgumentException("Select a supported external application type.");
+        if (externalApplicationTypeRepository.findByCodeIgnoreCaseAndEnabledTrue(externalType).isEmpty())
+            throw new IllegalArgumentException("Select an enabled external product type.");
 
         if (form.getApplicationId() == null)
             throw new IllegalArgumentException("Select an internal application.");
@@ -192,6 +201,15 @@ public class ExternalApplicationService
             }
             accountRepository.save(account);
         }
+    }
+
+    @Transactional
+    public void delete(Long id)
+    {
+        ExternalApplication app = applicationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("External application was not found."));
+        // The shared account is removed by the database's ON DELETE CASCADE foreign key.
+        applicationRepository.delete(app);
     }
 
     @Transactional
