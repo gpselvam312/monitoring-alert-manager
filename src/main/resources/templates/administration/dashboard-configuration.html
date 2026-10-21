@@ -2445,6 +2445,17 @@
             unit.required = autoRefresh;
             chartType.required = widgetType.value === 'CHART';
 
+            // Native browser validation cannot focus a required control inside a
+            // hidden configuration panel (for example, fields belonging to another
+            // widget type). Such controls must not block saving the current widget.
+            const hiddenRequiredControls = Array.from(this.querySelectorAll(':required'))
+                .filter(function (control) {
+                    return !!control.closest('.d-none, [hidden]');
+                });
+            hiddenRequiredControls.forEach(function (control) {
+                control.required = false;
+            });
+
             if (!this.checkValidity()) {
                 event.preventDefault();
                 event.stopPropagation();
