@@ -447,8 +447,7 @@
                         if (typeof form.requestSubmit === "function") {
                             form.requestSubmit();
                         } else {
-                            // Legacy fallback: serialize form-specific data before native submission.
-                            form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+                            // Legacy fallback for browsers without requestSubmit support.
                             FormSubmitLoader.show(form);
                             form.submit();
                         }
