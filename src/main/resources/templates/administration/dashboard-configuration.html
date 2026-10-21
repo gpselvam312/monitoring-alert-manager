@@ -2061,6 +2061,15 @@
             });
         }
 
+        function syncDashboardWidgetMappingFields() {
+            const widgetType = document.getElementById('dashboardWidgetType').value;
+            const mappingGroup = document.getElementById('summaryTableConfigurator');
+            // TEXT widgets use the dedicated Text / Info presentation editor. Keep the
+            // parser/mapping configuration in stored JSON for backwards compatibility,
+            // but don't expose unrelated table, chart, or System Metrics controls here.
+            mappingGroup.classList.toggle('d-none', widgetType === 'TEXT');
+        }
+
         function syncDashboardWidgetTextFields(clearDisabledValues) {
             const isText = document.getElementById('dashboardWidgetType').value === 'TEXT';
             const group = document.getElementById('dashboardWidgetTextConfig');
@@ -2173,6 +2182,7 @@
             .addEventListener('change', function () {
                 syncDashboardWidgetChartFields(true);
                 syncDashboardWidgetIframeFields(true);
+                syncDashboardWidgetMappingFields();
                 syncDashboardWidgetTextFields(true);
                 syncDashboardWidgetDataSourceFields(true);
                 syncDashboardWidgetRefreshFields(true);
@@ -2186,6 +2196,7 @@
         syncDashboardWidgetDataSourceFields(false);
         syncDashboardWidgetChartFields(true);
         syncDashboardWidgetIframeFields(false);
+        syncDashboardWidgetMappingFields();
         syncDashboardWidgetTextFields(false);
         syncDashboardWidgetRefreshFields(false);
         if (document.getElementById('dashboardWidgetType').value === 'IFRAME') {
@@ -2261,6 +2272,7 @@
 
                         document.getElementById('dashboardWidgetType').value =
                             widget.widgetType ?? '';
+                        syncDashboardWidgetMappingFields();
 
                         document.getElementById('dashboardWidgetSize').value =
                             widget.size ?? 'MEDIUM';
