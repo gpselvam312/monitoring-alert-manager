@@ -1844,10 +1844,10 @@
                                             <label class="form-label" for="dashboardWidgetTextAssociatedWidget">Place header before widget</label>
                                             <select class="form-select" id="dashboardWidgetTextAssociatedWidget">
                                                 <option value="">No associated widget (standalone header)</option>
-                                                <option th:each="targetWidget : ${widgets.content}"
+                                                <option th:each="targetWidget : ${allWidgetsForSelectedTab}"
                                                         th:if="${targetWidget.enabled}"
                                                         th:value="${targetWidget.id}"
-                                                        th:attr="data-tab-id=${targetWidget.tabId}"
+                                                        th:attr="data-tab-id=${targetWidget.tab.id}"
                                                         th:text="${targetWidget.name + ' (' + targetWidget.widgetType + ')'}">Target widget</option>
                                             </select>
                                             <div class="form-text">Choose an enabled widget on the same dashboard tab. The header will render immediately before it. If the target is later removed or disabled, the header remains visible on its own.</div>
