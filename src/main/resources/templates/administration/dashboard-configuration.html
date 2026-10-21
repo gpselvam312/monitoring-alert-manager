@@ -1829,6 +1829,45 @@
                                 </div>
                             </div>
 
+                            <div class="col-12 d-none" id="dashboardWidgetTextConfig">
+                                <div class="border rounded p-3">
+                                    <h6 class="mb-3">Text / Info presentation</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label" for="dashboardWidgetTextDisplayMode">Display mode</label>
+                                            <select class="form-select" id="dashboardWidgetTextDisplayMode">
+                                                <option value="INFORMATION">Information</option>
+                                                <option value="SECTION_HEADER">Section Header</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label" for="dashboardWidgetTextTitle">Title</label>
+                                            <input class="form-control" id="dashboardWidgetTextTitle" maxlength="150"
+                                                   placeholder="Optional title">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label" for="dashboardWidgetTextSubtitle">Subtitle</label>
+                                            <input class="form-control" id="dashboardWidgetTextSubtitle" maxlength="500"
+                                                   placeholder="Optional supporting text">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label" for="dashboardWidgetTextContent">Content</label>
+                                            <textarea class="form-control" id="dashboardWidgetTextContent" rows="4" maxlength="5000"
+                                                      placeholder="Enter information or instructions. Use {{field.path}} to insert a value from the monitoring result."></textarea>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="dashboardWidgetTextBorder" checked>
+                                                <label class="form-check-label" for="dashboardWidgetTextBorder">Show border</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-text">Information mode can be used for static instructions without a monitoring job. Section Header creates a heading-style widget. Existing textFields and textTemplate configurations remain supported.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="col-12">
                                 <details id="dashboardWidgetAdvancedConfig">
                                     <summary class="form-label mb-2">Advanced JSON configuration</summary>
