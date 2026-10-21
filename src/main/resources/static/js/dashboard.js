@@ -1108,7 +1108,7 @@
 
         function renderTemplate(template)
         {
-            return template.replace(/\\{\\{\\s*([^}]+?)\\s*\\}\\}/g, function (_, path)
+            return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, function (_, path)
             {
                 const value = getJsonPath(payload, path.trim());
                 if (value === null || value === undefined) return "";
