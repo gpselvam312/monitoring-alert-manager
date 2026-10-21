@@ -2134,6 +2134,19 @@
             }
         }
 
+        // Keep guided Text / Info values in the posted JSON as the user edits them.
+        // The app-wide save-confirmation handler may submit the form without dispatching
+        // this form's submit handler, so serialization must not depend on Save's click event.
+        function syncDashboardWidgetTextConfigJson() {
+            if (document.getElementById('dashboardWidgetType').value !== 'TEXT') {
+                return;
+            }
+            const config = readWidgetConfigJson();
+            saveDashboardWidgetTextFields(config);
+            document.getElementById('dashboardWidgetFieldConfigJson').value =
+                JSON.stringify(config, null, 2);
+        }
+
         function syncDashboardWidgetIframeFields(clearDisabledValues) {
             const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
             const group = document.getElementById('dashboardWidgetIframeConfig');
@@ -2386,6 +2399,15 @@
             .addEventListener('change', function () {
                 filterDashboardWidgetJobs(true);
                 syncDashboardWidgetTextAssociation();
+            });
+
+        ['dashboardWidgetTextTitle', 'dashboardWidgetTextSubtitle', 'dashboardWidgetTextContent']
+            .forEach(function (id) {
+                document.getElementById(id).addEventListener('input', syncDashboardWidgetTextConfigJson);
+            });
+        ['dashboardWidgetTextDisplayMode', 'dashboardWidgetTextBorder', 'dashboardWidgetTextAssociatedWidget']
+            .forEach(function (id) {
+                document.getElementById(id).addEventListener('change', syncDashboardWidgetTextConfigJson);
             });
 
         document.getElementById('dashboardWidgetTextDisplayMode')
