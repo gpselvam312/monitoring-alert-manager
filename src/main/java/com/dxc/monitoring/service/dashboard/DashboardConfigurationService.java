@@ -309,8 +309,9 @@ public class DashboardConfigurationService
             throw new IllegalArgumentException("Widget field configuration must be a valid JSON object.");
         }
 
+        String textDisplayMode = String.valueOf(parsedConfig.getOrDefault("displayMode", "INFORMATION"));
         if ("TEXT".equals(widget.getWidgetType())
-                && "SECTION_HEADER".equalsIgnoreCase(String.valueOf(parsedConfig.getOrDefault("displayMode", "INFORMATION")))
+                && ("SECTION_HEADER".equalsIgnoreCase(textDisplayMode) || "HEADER".equalsIgnoreCase(textDisplayMode))
                 && parsedConfig.get("associatedWidgetId") != null
                 && !String.valueOf(parsedConfig.get("associatedWidgetId")).isBlank())
         {
