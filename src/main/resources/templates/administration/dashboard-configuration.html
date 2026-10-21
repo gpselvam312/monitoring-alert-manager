@@ -1840,6 +1840,18 @@
                                                 <option value="SECTION_HEADER">Section Header</option>
                                             </select>
                                         </div>
+                                        <div class="col-12 d-none" id="dashboardWidgetTextAssociationGroup">
+                                            <label class="form-label" for="dashboardWidgetTextAssociatedWidget">Place header before widget</label>
+                                            <select class="form-select" id="dashboardWidgetTextAssociatedWidget">
+                                                <option value="">No associated widget (standalone header)</option>
+                                                <option th:each="targetWidget : ${widgets.content}"
+                                                        th:if="${targetWidget.enabled}"
+                                                        th:value="${targetWidget.id}"
+                                                        th:attr="data-tab-id=${targetWidget.tabId}"
+                                                        th:text="${targetWidget.name + ' (' + targetWidget.widgetType + ')'}">Target widget</option>
+                                            </select>
+                                            <div class="form-text">Choose an enabled widget on the same dashboard tab. The header will render immediately before it. If the target is later removed or disabled, the header remains visible on its own.</div>
+                                        </div>
                                         <div class="col-md-8">
                                             <label class="form-label" for="dashboardWidgetTextTitle">Title</label>
                                             <input class="form-control" id="dashboardWidgetTextTitle" maxlength="150"
@@ -2028,6 +2040,27 @@
             }
         }
 
+        function syncDashboardWidgetTextAssociation() {
+            const mode = document.getElementById('dashboardWidgetTextDisplayMode').value;
+            const group = document.getElementById('dashboardWidgetTextAssociationGroup');
+            const target = document.getElementById('dashboardWidgetTextAssociatedWidget');
+            const tabId = document.getElementById('dashboardWidgetTab').value;
+            const currentWidgetId = document.getElementById('dashboardWidgetId').value;
+            group.classList.toggle('d-none', mode !== 'SECTION_HEADER');
+            Array.from(target.options).forEach(function (option) {
+                if (!option.value) {
+                    option.hidden = false;
+                    option.disabled = false;
+                    return;
+                }
+                const sameTab = option.getAttribute('data-tab-id') === tabId;
+                const notSelf = option.value !== currentWidgetId;
+                option.hidden = !sameTab || !notSelf;
+                option.disabled = !sameTab || !notSelf;
+                if (option.selected && (!sameTab || !notSelf)) target.value = '';
+            });
+        }
+
         function syncDashboardWidgetTextFields(clearDisabledValues) {
             const isText = document.getElementById('dashboardWidgetType').value === 'TEXT';
             const group = document.getElementById('dashboardWidgetTextConfig');
@@ -2038,7 +2071,9 @@
                 document.getElementById('dashboardWidgetTextSubtitle').value = '';
                 document.getElementById('dashboardWidgetTextContent').value = '';
                 document.getElementById('dashboardWidgetTextBorder').checked = true;
+                document.getElementById('dashboardWidgetTextAssociatedWidget').value = '';
             }
+            syncDashboardWidgetTextAssociation();
         }
 
         function loadDashboardWidgetTextFields(config) {
@@ -2052,6 +2087,9 @@
             document.getElementById('dashboardWidgetTextContent').value =
                 typeof config.content === 'string' ? config.content : (typeof config.text === 'string' ? config.text : '');
             document.getElementById('dashboardWidgetTextBorder').checked = config.border !== false;
+            document.getElementById('dashboardWidgetTextAssociatedWidget').value =
+                config.associatedWidgetId === null || config.associatedWidgetId === undefined ? '' : String(config.associatedWidgetId);
+            syncDashboardWidgetTextAssociation();
         }
 
         function saveDashboardWidgetTextFields(config) {
@@ -2060,6 +2098,12 @@
             config.subtitle = document.getElementById('dashboardWidgetTextSubtitle').value.trim();
             config.content = document.getElementById('dashboardWidgetTextContent').value;
             config.border = document.getElementById('dashboardWidgetTextBorder').checked;
+            const associatedWidgetId = document.getElementById('dashboardWidgetTextAssociatedWidget').value;
+            if (config.displayMode === 'SECTION_HEADER' && associatedWidgetId) {
+                config.associatedWidgetId = associatedWidgetId;
+            } else {
+                delete config.associatedWidgetId;
+            }
         }
 
         function syncDashboardWidgetIframeFields(clearDisabledValues) {
@@ -2310,7 +2354,11 @@
         document.getElementById('dashboardWidgetTab')
             .addEventListener('change', function () {
                 filterDashboardWidgetJobs(true);
+                syncDashboardWidgetTextAssociation();
             });
+
+        document.getElementById('dashboardWidgetTextDisplayMode')
+            .addEventListener('change', syncDashboardWidgetTextAssociation);
 
         document.getElementById('dashboardWidgetModal')
             .addEventListener('show.bs.modal', function () {
