@@ -1099,7 +1099,7 @@
         const payload = result && result.payload && typeof result.payload === "object" ? result.payload : {};
         const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
         const displayMode = String(config.displayMode || "INFORMATION").trim().toUpperCase();
-        const hasBorder = config.border !== false;
+        const hasBorder = config.border === true || (config.border !== false && Boolean(config.displayMode || config.content || config.text || config.title || config.subtitle));
         const contentClass = "dashboard-text-content" + (hasBorder ? " dashboard-text-bordered" : "");
         const title = typeof config.title === "string" ? config.title.trim() : "";
         const subtitle = typeof config.subtitle === "string" ? config.subtitle.trim() : "";
