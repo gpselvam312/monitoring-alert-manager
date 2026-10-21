@@ -2064,10 +2064,28 @@
         function syncDashboardWidgetMappingFields() {
             const widgetType = document.getElementById('dashboardWidgetType').value;
             const mappingGroup = document.getElementById('summaryTableConfigurator');
+            const hideMapping = widgetType === 'TEXT';
+
             // TEXT widgets use the dedicated Text / Info presentation editor. Keep the
             // parser/mapping configuration in stored JSON for backwards compatibility,
             // but don't expose unrelated table, chart, or System Metrics controls here.
-            mappingGroup.classList.toggle('d-none', widgetType === 'TEXT');
+            mappingGroup.classList.toggle('d-none', hideMapping);
+
+            // Browsers validate required controls before dispatching the submit event.
+            // Therefore, changing required attributes only inside the submit handler is
+            // too late: an invalid control in this hidden panel prevents that handler
+            // from running ("An invalid form control is not focusable").
+            Array.from(mappingGroup.querySelectorAll('input, select, textarea, button')).forEach(function (control) {
+                if (hideMapping) {
+                    if (!control.hasAttribute('data-required-before-mapping-hide')) {
+                        control.setAttribute('data-required-before-mapping-hide', control.required ? 'true' : 'false');
+                    }
+                    control.required = false;
+                } else if (control.hasAttribute('data-required-before-mapping-hide')) {
+                    control.required = control.getAttribute('data-required-before-mapping-hide') === 'true';
+                    control.removeAttribute('data-required-before-mapping-hide');
+                }
+            });
         }
 
         function syncDashboardWidgetTextFields(clearDisabledValues) {
