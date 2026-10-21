@@ -13,7 +13,8 @@ The `TEXT` widget supports the existing result-backed `textFields` and `textTemp
 - `displayMode`: `INFORMATION` or `SECTION_HEADER`
 - `title` and `subtitle`: optional presentation text
 - `content`: text displayed beneath the title; newlines are preserved
-- `border`: `true` (default) or `false`
+- `border`: `true` (default for configured presentation) or `false`
+- `associatedWidgetId`: optional target widget ID for a section header; the header is rendered immediately before that widget
 
 Example static information widget (no monitoring job is required):
 
@@ -34,11 +35,12 @@ Example heading-style widget:
   "displayMode": "SECTION_HEADER",
   "title": "API Health",
   "subtitle": "Current environment checks",
-  "border": true
+  "border": true,
+  "associatedWidgetId": "42"
 }
 ```
 
-Dynamic placeholders such as `{{data.serviceName}}` can be used in `content` when the widget has a monitoring-job data source. Static content works without a data source. The header-style widget is currently a visual heading widget; automatic grouping/anchoring to other widgets is not yet implemented.
+Dynamic placeholders such as `{{data.serviceName}}` can be used in `content` when the widget has a monitoring-job data source. Static content works without a data source. In the guided editor, select an enabled widget on the same dashboard tab to associate it with the section header. The header is moved directly before that widget and spans the dashboard width. If the target is later disabled or deleted, the header remains visible as a standalone section heading. Existing `textFields` and `textTemplate` configurations remain supported for compatibility.
 
 ## 2. Choosing a widget
 
