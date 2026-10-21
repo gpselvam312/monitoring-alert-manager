@@ -4957,3 +4957,16 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .dashboard-text-section-header .dashboard-text-subtitle:last-child {
     margin-bottom: 0;
 }
+
+/* Section headers act as full-width layout separators rather than ordinary cards. */
+.dashboard-text-section-header-column .dashboard-widget {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+.dashboard-text-section-header-column .dashboard-widget-body {
+    padding: 0;
+}
+.dashboard-text-section-header-column .dashboard-text-content {
+    min-height: 0;
+}
