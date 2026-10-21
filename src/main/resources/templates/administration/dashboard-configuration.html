@@ -2028,6 +2028,40 @@
             }
         }
 
+        function syncDashboardWidgetTextFields(clearDisabledValues) {
+            const isText = document.getElementById('dashboardWidgetType').value === 'TEXT';
+            const group = document.getElementById('dashboardWidgetTextConfig');
+            group.classList.toggle('d-none', !isText);
+            if (!isText && clearDisabledValues) {
+                document.getElementById('dashboardWidgetTextDisplayMode').value = 'INFORMATION';
+                document.getElementById('dashboardWidgetTextTitle').value = '';
+                document.getElementById('dashboardWidgetTextSubtitle').value = '';
+                document.getElementById('dashboardWidgetTextContent').value = '';
+                document.getElementById('dashboardWidgetTextBorder').checked = true;
+            }
+        }
+
+        function loadDashboardWidgetTextFields(config) {
+            const displayMode = String(config.displayMode || 'INFORMATION').toUpperCase();
+            document.getElementById('dashboardWidgetTextDisplayMode').value =
+                displayMode === 'SECTION_HEADER' || displayMode === 'HEADER' ? 'SECTION_HEADER' : 'INFORMATION';
+            document.getElementById('dashboardWidgetTextTitle').value =
+                typeof config.title === 'string' ? config.title : '';
+            document.getElementById('dashboardWidgetTextSubtitle').value =
+                typeof config.subtitle === 'string' ? config.subtitle : '';
+            document.getElementById('dashboardWidgetTextContent').value =
+                typeof config.content === 'string' ? config.content : (typeof config.text === 'string' ? config.text : '');
+            document.getElementById('dashboardWidgetTextBorder').checked = config.border !== false;
+        }
+
+        function saveDashboardWidgetTextFields(config) {
+            config.displayMode = document.getElementById('dashboardWidgetTextDisplayMode').value;
+            config.title = document.getElementById('dashboardWidgetTextTitle').value.trim();
+            config.subtitle = document.getElementById('dashboardWidgetTextSubtitle').value.trim();
+            config.content = document.getElementById('dashboardWidgetTextContent').value;
+            config.border = document.getElementById('dashboardWidgetTextBorder').checked;
+        }
+
         function syncDashboardWidgetIframeFields(clearDisabledValues) {
             const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
             const group = document.getElementById('dashboardWidgetIframeConfig');
@@ -2095,6 +2129,7 @@
             .addEventListener('change', function () {
                 syncDashboardWidgetChartFields(true);
                 syncDashboardWidgetIframeFields(true);
+                syncDashboardWidgetTextFields(true);
                 syncDashboardWidgetDataSourceFields(true);
                 syncDashboardWidgetRefreshFields(true);
             });
@@ -2107,6 +2142,7 @@
         syncDashboardWidgetDataSourceFields(false);
         syncDashboardWidgetChartFields(true);
         syncDashboardWidgetIframeFields(false);
+        syncDashboardWidgetTextFields(false);
         syncDashboardWidgetRefreshFields(false);
         if (document.getElementById('dashboardWidgetType').value === 'IFRAME') {
             const initialIframeConfig = readWidgetConfigJson();
@@ -2216,6 +2252,8 @@
                             widget.fieldConfigJson || '{}';
 
                         const iframeConfig = readWidgetConfigJson();
+                        loadDashboardWidgetTextFields(iframeConfig);
+                        syncDashboardWidgetTextFields(false);
                         delete iframeConfig.url;
                         document.getElementById('dashboardWidgetFieldConfigJson').value =
                             JSON.stringify(iframeConfig, null, 2);
@@ -2327,6 +2365,12 @@
             syncDashboardWidgetIframeFields(false);
             syncDashboardWidgetRefreshFields(false);
 
+            if (widgetType.value === 'TEXT') {
+                const parsedTextConfig = readWidgetConfigJson();
+                saveDashboardWidgetTextFields(parsedTextConfig);
+                document.getElementById('dashboardWidgetFieldConfigJson').value = JSON.stringify(parsedTextConfig, null, 2);
+            }
+
             if (widgetType.value === 'IFRAME') {
                 const applicationSelect = document.getElementById('dashboardWidgetIframeApplication');
                 const parsed = readWidgetConfigJson();
@@ -2368,6 +2412,7 @@
             syncDashboardWidgetDataSourceFields(false);
             syncDashboardWidgetChartFields(true);
             syncDashboardWidgetIframeFields(true);
+            syncDashboardWidgetTextFields(true);
             syncDashboardWidgetRefreshFields(false);
 
             document
