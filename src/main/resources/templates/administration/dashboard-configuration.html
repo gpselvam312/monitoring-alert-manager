@@ -2420,6 +2420,22 @@
             });
 
 
+        const dashboardWidgetForm = document.getElementById('dashboardWidgetForm');
+
+        // Save the guided Text / Info fields before any global confirmation handler
+        // intercepts the Save button. Some confirmation flows submit the form directly,
+        // which bypasses the normal submit event handler.
+        dashboardWidgetForm.addEventListener('click', function (event) {
+            const submitButton = event.target.closest('button[type="submit"]');
+            if (!submitButton || document.getElementById('dashboardWidgetType').value !== 'TEXT') {
+                return;
+            }
+            const textConfig = readWidgetConfigJson();
+            saveDashboardWidgetTextFields(textConfig);
+            document.getElementById('dashboardWidgetFieldConfigJson').value =
+                JSON.stringify(textConfig, null, 2);
+        }, true);
+
         document
         .getElementById('dashboardWidgetForm')
         .addEventListener('submit', function (event) {
