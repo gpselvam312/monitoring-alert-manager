@@ -6,6 +6,40 @@ The dashboard supports several widget types with a shared outer layout and speci
 
 The objective is to maintain a consistent, theme-aware dashboard without removing layouts that are useful for particular monitoring scenarios.
 
+## Text / Info widget configuration
+
+The `TEXT` widget supports the existing result-backed `textFields` and `textTemplate` configuration, plus guided presentation settings:
+
+- `displayMode`: `INFORMATION` or `SECTION_HEADER`
+- `title` and `subtitle`: optional presentation text
+- `content`: text displayed beneath the title; newlines are preserved
+- `border`: `true` (default) or `false`
+
+Example static information widget (no monitoring job is required):
+
+```json
+{
+  "displayMode": "INFORMATION",
+  "title": "Deployment notes",
+  "subtitle": "Before starting a deployment",
+  "content": "Confirm the change window.\nNotify the support team.",
+  "border": false
+}
+```
+
+Example heading-style widget:
+
+```json
+{
+  "displayMode": "SECTION_HEADER",
+  "title": "API Health",
+  "subtitle": "Current environment checks",
+  "border": true
+}
+```
+
+Dynamic placeholders such as `{{data.serviceName}}` can be used in `content` when the widget has a monitoring-job data source. Static content works without a data source. The header-style widget is currently a visual heading widget; automatic grouping/anchoring to other widgets is not yet implemented.
+
 ## 2. Choosing a widget
 
 | Type | Intended use |
