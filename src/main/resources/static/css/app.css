@@ -4927,3 +4927,33 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 @keyframes dashboard-iframe-refresh-spin {
     to { transform: rotate(360deg); }
 }
+
+
+/* Text/Info widget presentation */
+.dashboard-text-content {
+    min-width: 0;
+    padding: 0.25rem 0;
+    overflow-wrap: anywhere;
+}
+.dashboard-text-content.dashboard-text-bordered {
+    padding: 1rem;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 0.5rem;
+}
+.dashboard-text-heading {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-primary, inherit);
+}
+.dashboard-text-subtitle {
+    margin: 0 0 0.75rem;
+    color: var(--text-secondary, #6c757d);
+}
+.dashboard-text-section-header .dashboard-text-heading {
+    margin-bottom: 0.25rem;
+}
+.dashboard-text-section-header .dashboard-text-subtitle:last-child {
+    margin-bottom: 0;
+}
