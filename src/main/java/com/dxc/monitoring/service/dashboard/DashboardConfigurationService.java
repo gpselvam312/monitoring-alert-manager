@@ -309,6 +309,56 @@ public class DashboardConfigurationService
             throw new IllegalArgumentException("Widget field configuration must be a valid JSON object.");
         }
 
+        if ("TEXT".equals(widget.getWidgetType())
+                && "SECTION_HEADER".equalsIgnoreCase(String.valueOf(parsedConfig.getOrDefault("displayMode", "INFORMATION")))
+                && parsedConfig.get("associatedWidgetId") != null
+                && !String.valueOf(parsedConfig.get("associatedWidgetId")).isBlank())
+        {
+            Long targetId;
+            try
+            {
+                targetId = Long.valueOf(String.valueOf(parsedConfig.get("associatedWidgetId")));
+            }
+            catch (NumberFormatException exception)
+            {
+                throw new IllegalArgumentException("Select a valid widget for the section header.");
+            }
+
+            if (widget.getId() != null && widget.getId().equals(targetId))
+            {
+                throw new IllegalArgumentException("A section header cannot be associated with itself.");
+            }
+
+            DashboardWidget target = dashboardWidgetRepository.findById(targetId)
+                    .orElseThrow(() -> new IllegalArgumentException("The selected section-header target no longer exists."));
+            if (target.getTab() == null || !target.getTab().getId().equals(widget.getTab().getId()))
+            {
+                throw new IllegalArgumentException("The section-header target must belong to the same dashboard tab.");
+            }
+            if (!Boolean.TRUE.equals(target.getEnabled()))
+            {
+                throw new IllegalArgumentException("Select an enabled widget for the section header.");
+            }
+
+            Map<String, Object> targetConfig;
+            try
+            {
+                targetConfig = objectMapper.readValue(target.getFieldConfigJson() == null
+                        || target.getFieldConfigJson().isBlank() ? "{}" : target.getFieldConfigJson(),
+                        new TypeReference<Map<String, Object>>() {});
+            }
+            catch (Exception exception)
+            {
+                targetConfig = Map.of();
+            }
+            String targetMode = String.valueOf(targetConfig.getOrDefault("displayMode", "INFORMATION"));
+            if ("TEXT".equals(target.getWidgetType())
+                    && ("SECTION_HEADER".equalsIgnoreCase(targetMode) || "HEADER".equalsIgnoreCase(targetMode)))
+            {
+                throw new IllegalArgumentException("A section header cannot target another section header.");
+            }
+        }
+
         if ("IFRAME".equals(widget.getWidgetType()))
         {
             // The iframe URL is resolved from the selected external-application registry entry.
