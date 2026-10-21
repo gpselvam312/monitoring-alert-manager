@@ -440,8 +440,18 @@
                     cancelText: "Cancel",
                     showConfirm: true,
                     onConfirm: function () {
-                        FormSubmitLoader.show(form);
-                        form.submit();
+                        // Re-submit through the normal submit-event lifecycle so form-specific
+                        // serializers and validators run before the browser builds the request.
+                        // The bypass flag prevents this confirmed submission from reopening the dialog.
+                        form.dataset.confirmationBypassed = "true";
+                        if (typeof form.requestSubmit === "function") {
+                            form.requestSubmit();
+                        } else {
+                            // Legacy fallback: serialize form-specific data before native submission.
+                            form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+                            FormSubmitLoader.show(form);
+                            form.submit();
+                        }
                     }
                 }));
             });
