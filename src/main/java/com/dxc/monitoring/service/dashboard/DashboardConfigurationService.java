@@ -352,6 +352,10 @@ public class DashboardConfigurationService
             {
                 targetConfig = Map.of();
             }
+            if (targetConfig == null)
+            {
+                targetConfig = Map.of();
+            }
             String targetMode = String.valueOf(targetConfig.getOrDefault("displayMode", "INFORMATION"));
             if ("TEXT".equals(target.getWidgetType())
                     && ("SECTION_HEADER".equalsIgnoreCase(targetMode) || "HEADER".equalsIgnoreCase(targetMode)))
