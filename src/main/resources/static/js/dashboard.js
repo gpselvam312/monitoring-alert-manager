@@ -1096,19 +1096,50 @@
     function renderTextWidget(result, widget)
     {
         const config = parseWidgetFieldConfig(widget);
-        const payload = result.payload || {};
+        const payload = result && result.payload && typeof result.payload === "object" ? result.payload : {};
         const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+        const displayMode = String(config.displayMode || "INFORMATION").trim().toUpperCase();
+        const hasBorder = config.border !== false;
+        const contentClass = "dashboard-text-content" + (hasBorder ? " dashboard-text-bordered" : "");
+        const title = typeof config.title === "string" ? config.title.trim() : "";
+        const subtitle = typeof config.subtitle === "string" ? config.subtitle.trim() : "";
+        const configuredText = typeof config.content === "string" ? config.content :
+            (typeof config.text === "string" ? config.text : "");
 
-        if (typeof config.textTemplate === "string" && config.textTemplate.trim())
+        function renderTemplate(template)
         {
-            const rendered = config.textTemplate.replace(/\{\{\s*([^}]+?)\s*\}\}/g, function (_, path)
+            return template.replace(/\\{\\{\\s*([^}]+?)\\s*\\}\\}/g, function (_, path)
             {
                 const value = getJsonPath(payload, path.trim());
                 if (value === null || value === undefined) return "";
                 return typeof value === "object" ? JSON.stringify(value) : String(value);
             });
-            return '<div class="dashboard-text-content">' +
-                '<div class="dashboard-text-message">' + escapeHtml(rendered).replace(/\n/g, "<br>") +
+        }
+
+        if (displayMode === "SECTION_HEADER" || displayMode === "HEADER")
+        {
+            const heading = title || widget.name || "";
+            return '<section class="' + contentClass + ' dashboard-text-section-header">' +
+                (heading ? '<h3 class="dashboard-text-heading">' + escapeHtml(heading) + '</h3>' : '') +
+                (subtitle ? '<p class="dashboard-text-subtitle">' + escapeHtml(subtitle) + '</p>' : '') +
+                (configuredText ? '<div class="dashboard-text-message">' + escapeHtml(renderTemplate(configuredText)).replace(/\\n/g, "<br>") + '</div>' : '') +
+                '</section>';
+        }
+
+        if (configuredText.trim())
+        {
+            return '<div class="' + contentClass + '">' +
+                (title ? '<h3 class="dashboard-text-heading">' + escapeHtml(title) + '</h3>' : '') +
+                (subtitle ? '<p class="dashboard-text-subtitle">' + escapeHtml(subtitle) + '</p>' : '') +
+                '<div class="dashboard-text-message">' + escapeHtml(renderTemplate(configuredText)).replace(/\\n/g, "<br>") + '</div>' +
+                '</div>';
+        }
+
+        if (typeof config.textTemplate === "string" && config.textTemplate.trim())
+        {
+            const rendered = renderTemplate(config.textTemplate);
+            return '<div class="' + contentClass + '">' +
+                '<div class="dashboard-text-message">' + escapeHtml(rendered).replace(/\\n/g, "<br>") +
                 '</div></div>';
         }
 
@@ -1127,17 +1158,16 @@
                     '</span></div>';
             }).join("");
 
-            return '<div class="dashboard-text-content dashboard-status-metrics">' + fieldsHtml + '</div>';
+            return '<div class="' + contentClass + ' dashboard-status-metrics">' + fieldsHtml + '</div>';
         }
 
-        const message = result.message || "";
-        return '<div class="dashboard-text-content">' +
+        const message = result && result.message ? result.message : "";
+        return '<div class="' + contentClass + '">' +
             (message
                 ? '<div class="dashboard-text-message">' + escapeHtml(message) + '</div>'
                 : '<div class="dashboard-text-empty">No text available.</div>') +
             '</div>';
     }
-
 
     function getConfiguredChartData(result, widget)
     {
