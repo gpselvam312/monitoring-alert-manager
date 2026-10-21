@@ -253,9 +253,6 @@ public class DashboardConfigurationController
 
         model.addAttribute("selectedTab", selectedTab);
         model.addAttribute("widgets", widgets);
-        model.addAttribute("allWidgetsForSectionHeaders", dashboardTabs.stream()
-                .flatMap(tab -> dashboardConfigurationService.findWidgetsByTabId(tab.getId()).stream())
-                .toList());
         model.addAttribute("widgetSearch", search);
         model.addAttribute("pageSize", pageSize);
 
