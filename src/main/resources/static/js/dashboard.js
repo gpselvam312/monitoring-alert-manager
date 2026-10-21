@@ -1119,7 +1119,7 @@
 
         if (isSectionHeader)
         {
-            const heading = title || widget.name || "";
+            const heading = title;
             const targetId = config.associatedWidgetId === null || config.associatedWidgetId === undefined
                 ? "" : String(config.associatedWidgetId).trim();
             return '<section class="' + contentClass + ' dashboard-text-section-header" data-associated-widget-id="' + escapeHtml(targetId) + '">' +
