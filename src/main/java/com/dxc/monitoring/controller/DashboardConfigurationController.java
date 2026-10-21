@@ -253,6 +253,8 @@ public class DashboardConfigurationController
 
         model.addAttribute("selectedTab", selectedTab);
         model.addAttribute("widgets", widgets);
+        model.addAttribute("allWidgetsForSelectedTab", selectedTab == null
+                ? List.of() : dashboardConfigurationService.findWidgetsByTabId(selectedTab.getId()));
         model.addAttribute("widgetSearch", search);
         model.addAttribute("pageSize", pageSize);
 
