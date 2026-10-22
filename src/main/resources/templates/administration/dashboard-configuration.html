@@ -2086,7 +2086,9 @@
             config.subtitle = document.getElementById('dashboardWidgetTextSubtitle').value;
             config.content = document.getElementById('dashboardWidgetTextContent').value;
             config.border = document.getElementById('dashboardWidgetTextBorder').checked;
-            const associatedValue = document.getElementById('dashboardWidgetTextAssociatedWidget').value;
+            const associatedSelect = document.getElementById('dashboardWidgetTextAssociatedWidget');
+            const associatedValue = associatedSelect.value
+                || (associatedSelect.dataset.optionsLoaded !== 'true' ? associatedSelect.dataset.savedValue : '');
             config.associatedWidgetId = associatedValue ? Number(associatedValue) : null;
             writeWidgetConfigJson(config);
         }
@@ -2099,8 +2101,9 @@
             document.getElementById('dashboardWidgetTextSubtitle').value = typeof config.subtitle === 'string' ? config.subtitle : '';
             document.getElementById('dashboardWidgetTextContent').value = typeof config.content === 'string' ? config.content : '';
             document.getElementById('dashboardWidgetTextBorder').checked = config.border !== false;
-            document.getElementById('dashboardWidgetTextAssociatedWidget').value =
-                config.associatedWidgetId == null ? '' : String(config.associatedWidgetId);
+            const associatedSelect = document.getElementById('dashboardWidgetTextAssociatedWidget');
+            associatedSelect.dataset.savedValue = config.associatedWidgetId == null ? '' : String(config.associatedWidgetId);
+            associatedSelect.value = associatedSelect.dataset.savedValue;
             syncDashboardWidgetTextFields(false);
             syncDashboardWidgetDataSourceFields(false);
             syncDashboardWidgetRefreshFields(false);
@@ -2111,8 +2114,10 @@
             const select = document.getElementById('dashboardWidgetTextAssociatedWidget');
             const currentWidgetId = document.getElementById('dashboardWidgetId').value;
             const previousValue = select.value;
+            select.dataset.optionsLoaded = 'false';
             select.innerHTML = '<option value="">Select a widget in this dashboard tab</option>';
             if (!tabId) {
+                select.dataset.optionsLoaded = 'true';
                 syncDashboardWidgetTextFields(false);
                 return Promise.resolve();
             }
@@ -2134,11 +2139,13 @@
                     if (wanted && Array.from(select.options).some(function (option) { return option.value === String(wanted); })) {
                         select.value = String(wanted);
                     }
+                    select.dataset.optionsLoaded = 'true';
                     delete select.dataset.savedValue;
                     syncDashboardWidgetTextFields(false);
                 })
                 .catch(function (error) {
                     console.error(error);
+                    select.dataset.optionsLoaded = 'false';
                     select.innerHTML = '<option value="">Unable to load widgets for this tab</option>';
                     syncDashboardWidgetTextFields(false);
                 });
