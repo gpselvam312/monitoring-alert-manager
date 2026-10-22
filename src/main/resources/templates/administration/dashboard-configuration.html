@@ -2129,7 +2129,7 @@
                 .then(function (widgets) {
                     (Array.isArray(widgets) ? widgets : []).forEach(function (widget) {
                         if (String(widget.id) === String(currentWidgetId)) return;
-                        if (widget.enabled === false) return;
+                        if (widget.enabled === false || widget.isSectionHeader === true) return;
                         const option = document.createElement('option');
                         option.value = String(widget.id);
                         option.textContent = widget.name + ' (' + widget.widgetType + ')';
