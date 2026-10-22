@@ -294,6 +294,19 @@ public class DashboardConfigurationController
         return dashboardConfigurationService.getWidgetForm(id);
     }
 
+    @GetMapping("/widgets/for-tab/{tabId}")
+    @ResponseBody
+    public List<Map<String, Object>> getWidgetsForAssociation(@PathVariable Long tabId)
+    {
+        return dashboardConfigurationService.findWidgetsByTabId(tabId).stream()
+                .map(widget -> Map.<String, Object>of(
+                        "id", widget.getId(),
+                        "name", widget.getName(),
+                        "widgetType", widget.getWidgetType(),
+                        "enabled", Boolean.TRUE.equals(widget.getEnabled())))
+                .toList();
+    }
+
     private void populateDashboardConfigurationModel(Model model, Long tabId, String tabSearch, String widgetSearch,
             int tabPage, int tabSize, int widgetPage, int widgetSize)
     {
