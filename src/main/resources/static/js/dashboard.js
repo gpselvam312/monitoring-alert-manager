@@ -1116,7 +1116,7 @@
         if (typeof config.content === "string" && config.content.trim())
         {
             return '<div class="dashboard-text-content"><div class="dashboard-text-message">' +
-                escapeHtml(config.content).replace(/\\n/g, "<br>") +
+                escapeHtml(config.content).replace(/\n/g, "<br>") +
                 '</div></div>';
         }
 
