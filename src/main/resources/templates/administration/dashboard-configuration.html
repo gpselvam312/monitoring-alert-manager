@@ -2102,6 +2102,8 @@
             document.getElementById('dashboardWidgetTextAssociatedWidget').value =
                 config.associatedWidgetId == null ? '' : String(config.associatedWidgetId);
             syncDashboardWidgetTextFields(false);
+            syncDashboardWidgetDataSourceFields(false);
+            syncDashboardWidgetRefreshFields(false);
         }
 
         function loadDashboardWidgetTextAssociationOptions() {
@@ -2122,7 +2124,7 @@
                 .then(function (widgets) {
                     (Array.isArray(widgets) ? widgets : []).forEach(function (widget) {
                         if (String(widget.id) === String(currentWidgetId)) return;
-                        if (String(widget.widgetType || '').toUpperCase() === 'IFRAME' && widget.enabled === false) return;
+                        if (widget.enabled === false) return;
                         const option = document.createElement('option');
                         option.value = String(widget.id);
                         option.textContent = widget.name + ' (' + widget.widgetType + ')';
@@ -2213,6 +2215,8 @@
         document.getElementById('dashboardWidgetTextDisplayMode')
             .addEventListener('change', function () {
                 syncDashboardWidgetTextFields(false);
+                syncDashboardWidgetDataSourceFields(false);
+                syncDashboardWidgetRefreshFields(false);
                 syncDashboardWidgetTextConfigToJson();
             });
 
