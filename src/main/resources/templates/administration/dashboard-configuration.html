@@ -1147,6 +1147,7 @@
                 <form th:action="@{/administration/dashboard/widgets/save}"
 				      method="post"
 				      id="dashboardWidgetForm"
+                      novalidate
 				      th:object="${dashboardWidgetForm}"
                       data-app-confirm="save"
                       data-app-action-title="Save Dashboard Widget"
@@ -2502,9 +2503,24 @@
             unit.required = autoRefresh;
             chartType.required = widgetType.value === 'CHART';
 
-            if (!this.checkValidity()) {
+            // Native browser validation runs before the submit event and cannot focus
+            // invalid controls inside collapsed/hidden widget configuration panels.
+            // Validate only active, visible controls so fields belonging to other widget
+            // types cannot prevent Text / Info from being saved.
+            const invalidControl = Array.from(this.elements).find(function (control) {
+                if (!(control instanceof HTMLElement) || control.disabled || !control.willValidate) {
+                    return false;
+                }
+                if (control.closest('.d-none') || control.getClientRects().length === 0) {
+                    return false;
+                }
+                return !control.checkValidity();
+            });
+
+            if (invalidControl) {
                 event.preventDefault();
                 event.stopPropagation();
+                invalidControl.reportValidity();
             }
 
             this.classList.add('was-validated');
