@@ -2104,7 +2104,7 @@
             const associatedSelect = document.getElementById('dashboardWidgetTextAssociatedWidget');
             associatedSelect.dataset.savedValue = config.associatedWidgetId == null ? '' : String(config.associatedWidgetId);
             associatedSelect.value = associatedSelect.dataset.savedValue;
-            syncDashboardWidgetTextFields(false);
+            syncDashboardWidgetTextFields();
             syncDashboardWidgetDataSourceFields(false);
             syncDashboardWidgetRefreshFields(false);
         }
@@ -2118,7 +2118,7 @@
             select.innerHTML = '<option value="">Select a widget in this dashboard tab</option>';
             if (!tabId) {
                 select.dataset.optionsLoaded = 'true';
-                syncDashboardWidgetTextFields(false);
+                syncDashboardWidgetTextFields();
                 return Promise.resolve();
             }
             return fetch('/administration/dashboard/widgets/for-tab/' + encodeURIComponent(tabId))
@@ -2141,23 +2141,22 @@
                     }
                     select.dataset.optionsLoaded = 'true';
                     delete select.dataset.savedValue;
-                    syncDashboardWidgetTextFields(false);
+                    syncDashboardWidgetTextFields();
                 })
                 .catch(function (error) {
                     console.error(error);
                     select.dataset.optionsLoaded = 'false';
                     select.innerHTML = '<option value="">Unable to load widgets for this tab</option>';
-                    syncDashboardWidgetTextFields(false);
+                    syncDashboardWidgetTextFields();
                 });
         }
 
-        function syncDashboardWidgetTextFields(clearDisabledValues) {
+        function syncDashboardWidgetTextFields() {
             const isText = document.getElementById('dashboardWidgetType').value === 'TEXT';
             const mode = document.getElementById('dashboardWidgetTextDisplayMode').value;
             const isSectionHeader = isText && mode === 'SECTION_HEADER';
             const configGroup = document.getElementById('dashboardWidgetTextConfig');
             const title = document.getElementById('dashboardWidgetTextTitle');
-            const subtitleGroup = document.getElementById('dashboardWidgetTextSubtitleGroup');
             const contentGroup = document.getElementById('dashboardWidgetTextContentGroup');
             const associatedGroup = document.getElementById('dashboardWidgetTextAssociatedGroup');
             const associated = document.getElementById('dashboardWidgetTextAssociatedWidget');
@@ -2167,7 +2166,6 @@
                 && document.getElementById('dashboardWidgetJobSourceId').value !== '';
 
             configGroup.classList.toggle('d-none', !isText);
-            subtitleGroup.classList.toggle('d-none', false);
             contentGroup.classList.toggle('d-none', isSectionHeader);
             associatedGroup.classList.toggle('d-none', !isSectionHeader);
             associated.disabled = !isSectionHeader;
@@ -2181,9 +2179,6 @@
                 document.getElementById('dashboardWidgetAutoRefresh').checked = false;
                 document.getElementById('dashboardWidgetRefreshInterval').value = '';
                 document.getElementById('dashboardWidgetRefreshIntervalUnit').value = '';
-            }
-            if (!isText && clearDisabledValues) {
-                // Preserve Text/Info JSON for edits if the widget type is switched temporarily.
             }
         }
 
@@ -2210,12 +2205,12 @@
         document.getElementById('dashboardWidgetDataSourceType')
             .addEventListener('change', function () {
                 syncDashboardWidgetDataSourceFields(true);
-                syncDashboardWidgetTextFields(false);
+                syncDashboardWidgetTextFields();
             });
 
         document.getElementById('dashboardWidgetJobSourceId')
             .addEventListener('change', function () {
-                syncDashboardWidgetTextFields(false);
+                syncDashboardWidgetTextFields();
             });
 
         document.getElementById('dashboardWidgetType')
@@ -2224,12 +2219,12 @@
                 syncDashboardWidgetIframeFields(true);
                 syncDashboardWidgetDataSourceFields(true);
                 syncDashboardWidgetRefreshFields(true);
-                syncDashboardWidgetTextFields(false);
+                syncDashboardWidgetTextFields();
             });
 
         document.getElementById('dashboardWidgetTextDisplayMode')
             .addEventListener('change', function () {
-                syncDashboardWidgetTextFields(false);
+                syncDashboardWidgetTextFields();
                 syncDashboardWidgetDataSourceFields(false);
                 syncDashboardWidgetRefreshFields(false);
                 syncDashboardWidgetTextConfigToJson();
@@ -2542,7 +2537,7 @@
             document.getElementById('dashboardWidgetTextSubtitle').value = '';
             document.getElementById('dashboardWidgetTextContent').value = '';
             document.getElementById('dashboardWidgetTextBorder').checked = false;
-            syncDashboardWidgetTextFields(false);
+            syncDashboardWidgetTextFields();
 
             document
                 .getElementById('dashboardWidgetModalTitle')
