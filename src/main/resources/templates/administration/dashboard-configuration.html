@@ -2098,7 +2098,7 @@
             document.getElementById('dashboardWidgetTextTitle').value = typeof config.title === 'string' ? config.title : '';
             document.getElementById('dashboardWidgetTextSubtitle').value = typeof config.subtitle === 'string' ? config.subtitle : '';
             document.getElementById('dashboardWidgetTextContent').value = typeof config.content === 'string' ? config.content : '';
-            document.getElementById('dashboardWidgetTextBorder').checked = config.border === true;
+            document.getElementById('dashboardWidgetTextBorder').checked = config.border !== false;
             document.getElementById('dashboardWidgetTextAssociatedWidget').value =
                 config.associatedWidgetId == null ? '' : String(config.associatedWidgetId);
             syncDashboardWidgetTextFields(false);
