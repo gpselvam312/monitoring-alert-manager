@@ -2163,6 +2163,8 @@
             const associated = document.getElementById('dashboardWidgetTextAssociatedWidget');
             const mapping = document.getElementById('summaryTableConfigurator');
             const advanced = document.getElementById('dashboardWidgetAdvancedConfig');
+            const hasTextJob = document.getElementById('dashboardWidgetDataSourceType').value === 'MONITORING_JOB'
+                && document.getElementById('dashboardWidgetJobSourceId').value !== '';
 
             configGroup.classList.toggle('d-none', !isText);
             subtitleGroup.classList.toggle('d-none', false);
@@ -2171,7 +2173,7 @@
             associated.disabled = !isSectionHeader;
             associated.required = isSectionHeader;
             title.required = isSectionHeader;
-            if (mapping) mapping.classList.toggle('d-none', isSectionHeader);
+            if (mapping) mapping.classList.toggle('d-none', isSectionHeader || (isText && !hasTextJob));
             if (advanced) advanced.classList.toggle('d-none', isText);
             if (isSectionHeader) {
                 document.getElementById('dashboardWidgetDataSourceType').value = '';
@@ -2208,6 +2210,12 @@
         document.getElementById('dashboardWidgetDataSourceType')
             .addEventListener('change', function () {
                 syncDashboardWidgetDataSourceFields(true);
+                syncDashboardWidgetTextFields(false);
+            });
+
+        document.getElementById('dashboardWidgetJobSourceId')
+            .addEventListener('change', function () {
+                syncDashboardWidgetTextFields(false);
             });
 
         document.getElementById('dashboardWidgetType')
