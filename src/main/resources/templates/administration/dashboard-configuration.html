@@ -1857,7 +1857,7 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label for="dashboardWidgetIframeHeight" class="form-label">Default height (pixels)</label>
-                                            <input type="number" class="form-control" id="dashboardWidgetIframeHeight" min="250" max="2000" step="50" value="520">
+                                            <input type="number" class="form-control" id="dashboardWidgetIframeHeight" min="250" max="2000" step="50" value="500">
                                             <div class="form-text">Controls the embedded page height in pixels (250–2000). Increase this value for a taller view.</div>
                                         </div>
                                         <div class="col-12">
@@ -2044,13 +2044,16 @@
             const application = document.getElementById('dashboardWidgetIframeApplication');
             const height = document.getElementById('dashboardWidgetIframeHeight');
             group.classList.toggle('d-none', !isIframe);
+            application.disabled = !isIframe;
+            height.disabled = !isIframe;
+            document.getElementById('dashboardWidgetIframeExpand').disabled = !isIframe;
             application.required = isIframe;
             height.required = isIframe;
             if (!isIframe && clearDisabledValues) {
                 application.value = '';
                 document.getElementById('dashboardWidgetIframeApplicationUrl').textContent = '';
                 document.getElementById('dashboardWidgetIframeApplicationUrl').classList.add('d-none');
-                height.value = '520';
+                height.value = '500';
                 document.getElementById('dashboardWidgetIframeExpand').checked = true;
             }
         }
@@ -2259,7 +2262,7 @@
                 initialIframeConfig.externalApplicationId == null ? '' : String(initialIframeConfig.externalApplicationId);
             updateDashboardWidgetIframeApplicationUrl();
             document.getElementById('dashboardWidgetIframeHeight').value =
-                Number.isInteger(initialIframeConfig.defaultHeight) ? initialIframeConfig.defaultHeight : 520;
+                Number.isInteger(initialIframeConfig.defaultHeight) ? initialIframeConfig.defaultHeight : 500;
             document.getElementById('dashboardWidgetIframeExpand').checked =
                 initialIframeConfig.allowExpand !== false;
             syncDashboardWidgetIframeFields(false);
@@ -2374,7 +2377,7 @@
                             iframeConfig.externalApplicationId == null ? '' : String(iframeConfig.externalApplicationId);
                         updateDashboardWidgetIframeApplicationUrl();
                         document.getElementById('dashboardWidgetIframeHeight').value =
-                            Number.isInteger(iframeConfig.defaultHeight) ? iframeConfig.defaultHeight : 520;
+                            Number.isInteger(iframeConfig.defaultHeight) ? iframeConfig.defaultHeight : 500;
                         document.getElementById('dashboardWidgetIframeExpand').checked =
                             iframeConfig.allowExpand !== false;
                         syncDashboardWidgetIframeFields(false);
@@ -2494,7 +2497,7 @@
                 const parsed = readWidgetConfigJson();
                 delete parsed.url;
                 parsed.externalApplicationId = applicationSelect.value ? Number(applicationSelect.value) : null;
-                parsed.defaultHeight = Number(document.getElementById('dashboardWidgetIframeHeight').value || 520);
+                parsed.defaultHeight = Number(document.getElementById('dashboardWidgetIframeHeight').value || 500);
                 parsed.allowExpand = document.getElementById('dashboardWidgetIframeExpand').checked;
                 document.getElementById('dashboardWidgetFieldConfigJson').value = JSON.stringify(parsed, null, 2);
             }
