@@ -2202,8 +2202,8 @@
             ? configuredValue
             : (result.value !== null && result.value !== undefined ? result.value : "");
         const configuredStatus = config.statusField ? getJsonPath(payload, config.statusField) : undefined;
-        const statusValue = configuredStatus !== undefined && configuredStatus !== null && configuredStatus !== ""
-            ? configuredStatus
+        const statusValue = config.statusField
+            ? (configuredStatus !== undefined && configuredStatus !== null && configuredStatus !== "" ? configuredStatus : "")
             : (result.status !== undefined && result.status !== null && result.status !== ""
                 ? result.status
                 : (result.healthStatus !== undefined && result.healthStatus !== null ? result.healthStatus : ""));
