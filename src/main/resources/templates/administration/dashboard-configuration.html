@@ -2241,6 +2241,7 @@
         syncDashboardWidgetChartFields(true);
         syncDashboardWidgetIframeFields(false);
         syncDashboardWidgetRefreshFields(false);
+        loadDashboardWidgetTextConfigFromJson();
         if (document.getElementById('dashboardWidgetType').value === 'IFRAME') {
             const initialIframeConfig = readWidgetConfigJson();
             document.getElementById('dashboardWidgetIframeApplication').value =
