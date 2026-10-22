@@ -1872,7 +1872,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-12">
+                            <div class="col-12" id="dashboardWidgetAdvancedConfigGroup">
                                 <details id="dashboardWidgetAdvancedConfig">
                                     <summary class="form-label mb-2">Advanced JSON configuration</summary>
                                     <textarea class="form-control font-monospace mt-2" rows="5"
@@ -2162,7 +2162,7 @@
             const associatedGroup = document.getElementById('dashboardWidgetTextAssociatedGroup');
             const associated = document.getElementById('dashboardWidgetTextAssociatedWidget');
             const mapping = document.getElementById('summaryTableConfigurator');
-            const advanced = document.getElementById('dashboardWidgetAdvancedConfig');
+            const advanced = document.getElementById('dashboardWidgetAdvancedConfigGroup');
             const hasTextJob = document.getElementById('dashboardWidgetDataSourceType').value === 'MONITORING_JOB'
                 && document.getElementById('dashboardWidgetJobSourceId').value !== '';
 
