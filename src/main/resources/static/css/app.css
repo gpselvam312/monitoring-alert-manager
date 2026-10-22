@@ -3692,6 +3692,56 @@ textarea.form-control {
     font-size: 0.85rem;
 }
 
+.dashboard-text-widget-no-border {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.dashboard-text-widget-no-border:hover {
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.dashboard-text-widget-no-border .dashboard-widget-header {
+    padding-left: 0;
+    padding-right: 0;
+    border-bottom: 0;
+}
+
+.dashboard-text-widget-no-border .dashboard-widget-body {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.dashboard-section-header {
+    width: 100%;
+    padding: 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.dashboard-section-header-bordered {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.65rem;
+    background: var(--card-bg);
+}
+
+.dashboard-section-header-title {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.dashboard-section-header-subtitle {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
 .dashboard-tab-toolbar {
     display: flex;
     align-items: center;

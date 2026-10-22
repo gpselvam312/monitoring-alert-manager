@@ -1093,11 +1093,33 @@
         return [];
     }
 
+    function renderSectionHeaderWidget(widget, config)
+    {
+        const title = typeof config.title === "string" ? config.title.trim() : "";
+        const subtitle = typeof config.subtitle === "string" ? config.subtitle.trim() : "";
+        const associatedWidgetId = config.associatedWidgetId == null ? "" : String(config.associatedWidgetId);
+        const borderClass = config.border === true ? " dashboard-section-header-bordered" : "";
+        const sizeClass = getWidgetSizeClass(widget.size);
+        return '<div class="dashboard-widget-column ' + sizeClass + ' dashboard-section-header-column" data-widget-id="' +
+            escapeHtml(widget.id) + '" data-associated-widget-id="' + escapeHtml(associatedWidgetId) + '">' +
+            '<section class="dashboard-section-header' + borderClass + '" aria-label="' + escapeHtml(title || "Section") + '">' +
+            '<h2 class="dashboard-section-header-title">' + escapeHtml(title || widget.name || "Section") + '</h2>' +
+            (subtitle ? '<p class="dashboard-section-header-subtitle">' + escapeHtml(subtitle) + '</p>' : "") +
+            '</section></div>';
+    }
+
     function renderTextWidget(result, widget)
     {
         const config = parseWidgetFieldConfig(widget);
         const payload = result.payload || {};
         const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+
+        if (typeof config.content === "string" && config.content.trim())
+        {
+            return '<div class="dashboard-text-content"><div class="dashboard-text-message">' +
+                escapeHtml(config.content).replace(/\n/g, "<br>") +
+                '</div></div>';
+        }
 
         if (typeof config.textTemplate === "string" && config.textTemplate.trim())
         {
@@ -2388,11 +2410,19 @@
 
         const fieldConfig = parseWidgetFieldConfig(widget);
         const isSummaryTable = widgetType === "SUMMARY_TABLE" || (widgetType === "TABLE" && String(fieldConfig.renderer || "").toUpperCase() === "SUMMARY_TABLE");
+        const isTextWidget = widgetType === "TEXT";
+        const textDisplayMode = String(fieldConfig.displayMode || "INFORMATION").toUpperCase();
+        if (isTextWidget && textDisplayMode === "SECTION_HEADER")
+        {
+            return renderSectionHeaderWidget(widget, fieldConfig);
+        }
         const summaryHeader = fieldConfig.header && typeof fieldConfig.header === "object" ? fieldConfig.header : {};
         const hideWidgetHeader = isSummaryTable && summaryHeader.enabled === false;
-        const widgetTitle = isSummaryTable && summaryHeader.title ? summaryHeader.title : (widget.name || "Widget");
-        const widgetDescription = isSummaryTable && Object.prototype.hasOwnProperty.call(summaryHeader, "description")
-            ? summaryHeader.description : widget.description;
+        const widgetTitle = isTextWidget && typeof fieldConfig.title === "string" && fieldConfig.title.trim()
+            ? fieldConfig.title : (isSummaryTable && summaryHeader.title ? summaryHeader.title : (widget.name || "Widget"));
+        const widgetDescription = isTextWidget && Object.prototype.hasOwnProperty.call(fieldConfig, "subtitle")
+            ? fieldConfig.subtitle : (isSummaryTable && Object.prototype.hasOwnProperty.call(summaryHeader, "description")
+                ? summaryHeader.description : widget.description);
 
         let valueHtml = "";
 
@@ -2688,7 +2718,8 @@
         return (
 
             '<div class="dashboard-widget-column ' + getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) + (isIframeWidget ? ' dashboard-iframe-column' : '') + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
-                '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') + '">' +
+                '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') +
+                    (isTextWidget && fieldConfig.border === false ? ' dashboard-text-widget-no-border' : '') + '">' +
 
 
                     '<div class="dashboard-widget-header">' +
@@ -2778,6 +2809,59 @@
      * ------------------------------------------------------------
      */
 
+    function orderDashboardWidgets(widgetResponses)
+    {
+        // Dashboard tabs contain response envelopes: { widget, result }. Resolve the
+        // actual widget definition before inspecting type, configuration, or IDs.
+        const allResponses = (Array.isArray(widgetResponses) ? widgetResponses : [])
+            .filter(function (response) { return response && response.widget; })
+            .map(function (response, index) {
+                return { response: response, widget: response.widget, originalIndex: index };
+            })
+            .sort(function (left, right) {
+                const leftOrder = Number.isFinite(Number(left.widget.sortOrder)) ? Number(left.widget.sortOrder) : Number.MAX_SAFE_INTEGER;
+                const rightOrder = Number.isFinite(Number(right.widget.sortOrder)) ? Number(right.widget.sortOrder) : Number.MAX_SAFE_INTEGER;
+                return leftOrder - rightOrder || left.originalIndex - right.originalIndex;
+            });
+
+        const isSectionHeader = function (item) {
+            if (String(item.widget.widgetType || "").toUpperCase() !== "TEXT") return false;
+            const config = parseWidgetFieldConfig(item.widget);
+            item.config = config;
+            return String(config.displayMode || "INFORMATION").toUpperCase() === "SECTION_HEADER";
+        };
+        const headers = allResponses.filter(isSectionHeader);
+        const regularWidgets = allResponses.filter(function (item) { return !headers.includes(item); });
+        const headersByTargetId = new Map();
+
+        headers.forEach(function (header) {
+            const targetId = header.config.associatedWidgetId;
+            if (targetId === null || targetId === undefined || String(targetId).trim() === "") return;
+            const key = String(targetId);
+            if (!headersByTargetId.has(key)) headersByTargetId.set(key, []);
+            headersByTargetId.get(key).push(header);
+        });
+
+        const ordered = [];
+        const placedHeaderIds = new Set();
+        regularWidgets.forEach(function (item) {
+            const matchingHeaders = headersByTargetId.get(String(item.widget.id)) || [];
+            matchingHeaders.forEach(function (header) {
+                const headerId = String(header.widget.id);
+                if (placedHeaderIds.has(headerId)) return;
+                ordered.push(header.response);
+                placedHeaderIds.add(headerId);
+            });
+            ordered.push(item.response);
+        });
+
+        // Keep headers without a valid target visible, in their configured sort order.
+        headers.forEach(function (header) {
+            if (!placedHeaderIds.has(String(header.widget.id))) ordered.push(header.response);
+        });
+        return ordered;
+    }
+
     function renderTabs(preferredTabId)
     {
         /*
@@ -2864,10 +2948,11 @@
                         : [];
 
 
+                const orderedWidgets = orderDashboardWidgets(widgets);
                 const widgetsHtml =
-                    widgets.length
+                    orderedWidgets.length
 
-                        ? widgets.map(
+                        ? orderedWidgets.map(
                             renderWidget
                         ).join("")
 

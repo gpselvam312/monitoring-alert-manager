@@ -294,6 +294,40 @@ public class DashboardConfigurationController
         return dashboardConfigurationService.getWidgetForm(id);
     }
 
+    @GetMapping("/widgets/for-tab/{tabId}")
+    @ResponseBody
+    public List<Map<String, Object>> getWidgetsForAssociation(@PathVariable Long tabId)
+    {
+        return dashboardConfigurationService.findWidgetsByTabId(tabId).stream()
+                .map(widget -> Map.<String, Object>of(
+                        "id", widget.getId(),
+                        "name", widget.getName(),
+                        "widgetType", widget.getWidgetType(),
+                        "enabled", Boolean.TRUE.equals(widget.getEnabled()),
+                        "isSectionHeader", isSectionHeaderWidget(widget)))
+                .toList();
+    }
+
+    private boolean isSectionHeaderWidget(DashboardWidget widget)
+    {
+        if (!"TEXT".equalsIgnoreCase(widget.getWidgetType()))
+        {
+            return false;
+        }
+        try
+        {
+            Map<String, Object> config = objectMapper.readValue(
+                    widget.getFieldConfigJson() == null || widget.getFieldConfigJson().isBlank()
+                            ? "{}" : widget.getFieldConfigJson(),
+                    new TypeReference<Map<String, Object>>() {});
+            return "SECTION_HEADER".equalsIgnoreCase(String.valueOf(config.get("displayMode")));
+        }
+        catch (Exception ignored)
+        {
+            return false;
+        }
+    }
+
     private void populateDashboardConfigurationModel(Model model, Long tabId, String tabSearch, String widgetSearch,
             int tabPage, int tabSize, int widgetPage, int widgetSize)
     {

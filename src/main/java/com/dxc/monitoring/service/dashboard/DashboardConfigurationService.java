@@ -251,6 +251,99 @@ public class DashboardConfigurationService
             widget.setDetailsEnabled(false);
         }
 
+        Map<String, Object> earlyConfig = null;
+        if ("TEXT".equalsIgnoreCase(widget.getWidgetType()))
+        {
+            try
+            {
+                earlyConfig = objectMapper.readValue(
+                        widget.getFieldConfigJson() == null || widget.getFieldConfigJson().isBlank()
+                                ? "{}" : widget.getFieldConfigJson(),
+                        new TypeReference<Map<String, Object>>() {});
+            }
+            catch (Exception ignored)
+            {
+                // The normal JSON validation below reports malformed configuration.
+            }
+        }
+
+        boolean sectionHeader = earlyConfig != null
+                && "SECTION_HEADER".equalsIgnoreCase(String.valueOf(earlyConfig.get("displayMode")));
+        if (sectionHeader)
+        {
+            widget.setDataSourceType(null);
+            widget.setDataSourceId(null);
+            widget.setAutoRefresh(false);
+            widget.setRefreshInterval(null);
+            widget.setRefreshIntervalUnit(null);
+
+            Object rawTitle = earlyConfig.get("title");
+            if (rawTitle == null || String.valueOf(rawTitle).isBlank())
+            {
+                throw new IllegalArgumentException("Section Header title is required.");
+            }
+
+            Object rawAssociatedId = earlyConfig.get("associatedWidgetId");
+            Long associatedWidgetId = null;
+            try
+            {
+                if (rawAssociatedId instanceof Number number)
+                {
+                    associatedWidgetId = number.longValue();
+                }
+                else if (rawAssociatedId != null && !String.valueOf(rawAssociatedId).isBlank())
+                {
+                    associatedWidgetId = Long.valueOf(String.valueOf(rawAssociatedId));
+                }
+            }
+            catch (NumberFormatException ignored)
+            {
+                // Report the same user-facing validation as a missing association.
+            }
+
+            if (associatedWidgetId == null)
+            {
+                throw new IllegalArgumentException("Select a widget for this Section Header.");
+            }
+            if (widget.getId() != null && widget.getId().equals(associatedWidgetId))
+            {
+                throw new IllegalArgumentException("A Section Header cannot be associated with itself.");
+            }
+
+            DashboardWidget target = dashboardWidgetRepository.findById(associatedWidgetId)
+                    .orElseThrow(() -> new IllegalArgumentException("The selected Section Header target no longer exists."));
+            if (target.getTab() == null || !target.getTab().getId().equals(widget.getTab().getId()))
+            {
+                throw new IllegalArgumentException("The Section Header target must belong to the same dashboard tab.");
+            }
+            if (!Boolean.TRUE.equals(target.getEnabled()))
+            {
+                throw new IllegalArgumentException("The selected Section Header target must be enabled.");
+            }
+            if ("TEXT".equalsIgnoreCase(target.getWidgetType()))
+            {
+                try
+                {
+                    Map<String, Object> targetConfig = objectMapper.readValue(
+                            target.getFieldConfigJson() == null || target.getFieldConfigJson().isBlank()
+                                    ? "{}" : target.getFieldConfigJson(),
+                            new TypeReference<Map<String, Object>>() {});
+                    if ("SECTION_HEADER".equalsIgnoreCase(String.valueOf(targetConfig.get("displayMode"))))
+                    {
+                        throw new IllegalArgumentException("A Section Header cannot target another Section Header.");
+                    }
+                }
+                catch (IllegalArgumentException exception)
+                {
+                    throw exception;
+                }
+                catch (Exception ignored)
+                {
+                    // An invalid target configuration is handled by the target widget's normal validation.
+                }
+            }
+        }
+
         String dataSourceType = widget.getDataSourceType();
         Long dataSourceId = widget.getDataSourceId();
 

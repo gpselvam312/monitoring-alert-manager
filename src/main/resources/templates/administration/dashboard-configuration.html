@@ -1147,6 +1147,7 @@
                 <form th:action="@{/administration/dashboard/widgets/save}"
 				      method="post"
 				      id="dashboardWidgetForm"
+                      novalidate
 				      th:object="${dashboardWidgetForm}"
                       data-app-confirm="save"
                       data-app-action-title="Save Dashboard Widget"
@@ -1427,7 +1428,7 @@
 
 </div>
 
-<div class="col-md-6">
+<div class="col-md-6" id="dashboardWidgetDataSourceTypeGroup">
                                 <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
                                 <select class="form-select"
                                         id="dashboardWidgetDataSourceType"
@@ -1497,6 +1498,49 @@
 							    Widget type is required.
 							</div>
 
+                            </div>
+
+
+                            <div class="col-12 d-none" id="dashboardWidgetTextConfig">
+                                <div class="border rounded p-3">
+                                    <h6 class="mb-1">Text / Info settings</h6>
+                                    <p class="text-muted small mb-3">Use Information for text content or Section Header to introduce another widget.</p>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="dashboardWidgetTextDisplayMode" class="form-label">Display mode</label>
+                                            <select class="form-select" id="dashboardWidgetTextDisplayMode">
+                                                <option value="INFORMATION">Information</option>
+                                                <option value="SECTION_HEADER">Section Header</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label for="dashboardWidgetTextTitle" class="form-label">Title</label>
+                                            <input type="text" class="form-control" id="dashboardWidgetTextTitle" maxlength="150" placeholder="Heading or title">
+                                        </div>
+                                        <div class="col-12" id="dashboardWidgetTextSubtitleGroup">
+                                            <label for="dashboardWidgetTextSubtitle" class="form-label">Subtitle (optional)</label>
+                                            <input type="text" class="form-control" id="dashboardWidgetTextSubtitle" maxlength="250" placeholder="Additional context">
+                                        </div>
+                                        <div class="col-12" id="dashboardWidgetTextContentGroup">
+                                            <label for="dashboardWidgetTextContent" class="form-label">Text content</label>
+                                            <textarea class="form-control" id="dashboardWidgetTextContent" rows="4" maxlength="4000" placeholder="Enter informational text. Leave blank to use the configured response fields or template."></textarea>
+                                            <div class="form-text">Static text is supported without a Monitoring Job. If left blank, the existing dynamic text field/template mapping can be used.</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check mt-2">
+                                                <input class="form-check-input" type="checkbox" id="dashboardWidgetTextBorder">
+                                                <label class="form-check-label" for="dashboardWidgetTextBorder">Show border</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 d-none" id="dashboardWidgetTextAssociatedGroup">
+                                            <label for="dashboardWidgetTextAssociatedWidget" class="form-label">Widget introduced by this header <span class="text-danger">*</span></label>
+                                            <select class="form-select" id="dashboardWidgetTextAssociatedWidget" disabled>
+                                                <option value="">Select a widget in this dashboard tab</option>
+                                            </select>
+                                            <div class="form-text">The header is automatically rendered immediately before the selected widget.</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
 <div class="col-md-4" id="dashboardWidgetChartTypeGroup">
@@ -1813,7 +1857,7 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label for="dashboardWidgetIframeHeight" class="form-label">Default height (pixels)</label>
-                                            <input type="number" class="form-control" id="dashboardWidgetIframeHeight" min="250" max="2000" step="50" value="520">
+                                            <input type="number" class="form-control" id="dashboardWidgetIframeHeight" min="250" max="2000" step="50" value="500">
                                             <div class="form-text">Controls the embedded page height in pixels (250–2000). Increase this value for a taller view.</div>
                                         </div>
                                         <div class="col-12">
@@ -1829,7 +1873,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-12">
+                            <div class="col-12" id="dashboardWidgetAdvancedConfigGroup">
                                 <details id="dashboardWidgetAdvancedConfig">
                                     <summary class="form-label mb-2">Advanced JSON configuration</summary>
                                     <textarea class="form-control font-monospace mt-2" rows="5"
@@ -1957,19 +2001,24 @@
         function syncDashboardWidgetDataSourceFields(clearSelection) {
             const sourceSelect = document.getElementById('dashboardWidgetDataSourceType');
             const sourceType = sourceSelect.value;
-            const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
+            const widgetType = document.getElementById('dashboardWidgetType').value;
+            const isIframe = widgetType === 'IFRAME';
+            const isSectionHeader = widgetType === 'TEXT'
+                && document.getElementById('dashboardWidgetTextDisplayMode').value === 'SECTION_HEADER';
+            const sourceGroup = document.getElementById('dashboardWidgetDataSourceTypeGroup');
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
             const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
-            const useJob = sourceType === 'MONITORING_JOB' && !isIframe;
+            const useJob = sourceType === 'MONITORING_JOB' && !isIframe && !isSectionHeader;
 
-            if (isIframe) {
+            if (isIframe || isSectionHeader) {
                 sourceSelect.value = '';
                 jobSelect.value = '';
             } else if (clearSelection || !useJob) {
                 jobSelect.value = '';
             }
 
-            sourceSelect.disabled = isIframe;
+            sourceSelect.disabled = isIframe || isSectionHeader;
+            sourceGroup.classList.toggle('d-none', isSectionHeader);
             jobGroup.classList.toggle('d-none', !useJob);
             jobSelect.disabled = !useJob;
             jobSelect.required = useJob;
@@ -1995,13 +2044,16 @@
             const application = document.getElementById('dashboardWidgetIframeApplication');
             const height = document.getElementById('dashboardWidgetIframeHeight');
             group.classList.toggle('d-none', !isIframe);
+            application.disabled = !isIframe;
+            height.disabled = !isIframe;
+            document.getElementById('dashboardWidgetIframeExpand').disabled = !isIframe;
             application.required = isIframe;
             height.required = isIframe;
             if (!isIframe && clearDisabledValues) {
                 application.value = '';
                 document.getElementById('dashboardWidgetIframeApplicationUrl').textContent = '';
                 document.getElementById('dashboardWidgetIframeApplicationUrl').classList.add('d-none');
-                height.value = '520';
+                height.value = '500';
                 document.getElementById('dashboardWidgetIframeExpand').checked = true;
             }
         }
@@ -2024,6 +2076,123 @@
                 return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
             } catch (error) {
                 return {};
+            }
+        }
+
+        function writeWidgetConfigJson(config) {
+            document.getElementById('dashboardWidgetFieldConfigJson').value = JSON.stringify(config, null, 2);
+        }
+
+        function syncDashboardWidgetTextConfigToJson() {
+            const config = readWidgetConfigJson();
+            config.displayMode = document.getElementById('dashboardWidgetTextDisplayMode').value || 'INFORMATION';
+            config.title = document.getElementById('dashboardWidgetTextTitle').value;
+            config.subtitle = document.getElementById('dashboardWidgetTextSubtitle').value;
+            config.content = document.getElementById('dashboardWidgetTextContent').value;
+            config.border = document.getElementById('dashboardWidgetTextBorder').checked;
+            const associatedSelect = document.getElementById('dashboardWidgetTextAssociatedWidget');
+            const associatedValue = associatedSelect.value
+                || (associatedSelect.dataset.optionsLoaded !== 'true' ? associatedSelect.dataset.savedValue : '');
+            config.associatedWidgetId = associatedValue ? Number(associatedValue) : null;
+            writeWidgetConfigJson(config);
+        }
+
+        function loadDashboardWidgetTextConfigFromJson() {
+            const config = readWidgetConfigJson();
+            document.getElementById('dashboardWidgetTextDisplayMode').value =
+                String(config.displayMode || 'INFORMATION').toUpperCase() === 'SECTION_HEADER' ? 'SECTION_HEADER' : 'INFORMATION';
+            document.getElementById('dashboardWidgetTextTitle').value = typeof config.title === 'string' ? config.title : '';
+            document.getElementById('dashboardWidgetTextSubtitle').value = typeof config.subtitle === 'string' ? config.subtitle : '';
+            document.getElementById('dashboardWidgetTextContent').value = typeof config.content === 'string' ? config.content : '';
+            document.getElementById('dashboardWidgetTextBorder').checked = config.border !== false;
+            const associatedSelect = document.getElementById('dashboardWidgetTextAssociatedWidget');
+            associatedSelect.dataset.savedValue = config.associatedWidgetId == null ? '' : String(config.associatedWidgetId);
+            associatedSelect.value = associatedSelect.dataset.savedValue;
+            syncDashboardWidgetTextFields();
+            syncDashboardWidgetDataSourceFields(false);
+            syncDashboardWidgetRefreshFields(false);
+        }
+
+        function loadDashboardWidgetTextAssociationOptions() {
+            const tabId = document.getElementById('dashboardWidgetTab').value;
+            const select = document.getElementById('dashboardWidgetTextAssociatedWidget');
+            const currentWidgetId = document.getElementById('dashboardWidgetId').value;
+            const previousValue = select.value;
+            const requestId = Number(select.dataset.loadRequestId || 0) + 1;
+            select.dataset.loadRequestId = String(requestId);
+            select.dataset.optionsLoaded = 'false';
+            select.innerHTML = '<option value="">Select a widget in this dashboard tab</option>';
+            if (!tabId) {
+                select.dataset.optionsLoaded = 'true';
+                syncDashboardWidgetTextFields();
+                return Promise.resolve();
+            }
+            return fetch('/administration/dashboard/widgets/for-tab/' + encodeURIComponent(tabId))
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Unable to load widgets for Section Header association.');
+                    return response.json();
+                })
+                .then(function (widgets) {
+                    // Several modal/edit events can request this list concurrently. Ignore
+                    // stale responses so each completed request cannot append duplicate options.
+                    if (select.dataset.loadRequestId !== String(requestId)) return;
+                    const seenWidgetIds = new Set();
+                    (Array.isArray(widgets) ? widgets : []).forEach(function (widget) {
+                        const widgetId = widget && widget.id != null ? String(widget.id) : '';
+                        if (!widgetId || seenWidgetIds.has(widgetId)) return;
+                        seenWidgetIds.add(widgetId);
+                        if (widgetId === String(currentWidgetId)) return;
+                        if (widget.enabled === false || widget.isSectionHeader === true) return;
+                        const option = document.createElement('option');
+                        option.value = widgetId;
+                        option.textContent = widget.name + ' (' + widget.widgetType + ')';
+                        select.appendChild(option);
+                    });
+                    const wanted = select.dataset.savedValue || previousValue;
+                    if (wanted && Array.from(select.options).some(function (option) { return option.value === String(wanted); })) {
+                        select.value = String(wanted);
+                    }
+                    select.dataset.optionsLoaded = 'true';
+                    delete select.dataset.savedValue;
+                    syncDashboardWidgetTextFields();
+                })
+                .catch(function (error) {
+                    if (select.dataset.loadRequestId !== String(requestId)) return;
+                    console.error(error);
+                    select.dataset.optionsLoaded = 'false';
+                    select.innerHTML = '<option value="">Unable to load widgets for this tab</option>';
+                    syncDashboardWidgetTextFields();
+                });
+        }
+
+        function syncDashboardWidgetTextFields() {
+            const isText = document.getElementById('dashboardWidgetType').value === 'TEXT';
+            const mode = document.getElementById('dashboardWidgetTextDisplayMode').value;
+            const isSectionHeader = isText && mode === 'SECTION_HEADER';
+            const configGroup = document.getElementById('dashboardWidgetTextConfig');
+            const title = document.getElementById('dashboardWidgetTextTitle');
+            const contentGroup = document.getElementById('dashboardWidgetTextContentGroup');
+            const associatedGroup = document.getElementById('dashboardWidgetTextAssociatedGroup');
+            const associated = document.getElementById('dashboardWidgetTextAssociatedWidget');
+            const mapping = document.getElementById('summaryTableConfigurator');
+            const advanced = document.getElementById('dashboardWidgetAdvancedConfigGroup');
+            const hasTextJob = document.getElementById('dashboardWidgetDataSourceType').value === 'MONITORING_JOB'
+                && document.getElementById('dashboardWidgetJobSourceId').value !== '';
+
+            configGroup.classList.toggle('d-none', !isText);
+            contentGroup.classList.toggle('d-none', isSectionHeader);
+            associatedGroup.classList.toggle('d-none', !isSectionHeader);
+            associated.disabled = !isSectionHeader;
+            associated.required = isSectionHeader;
+            title.required = isSectionHeader;
+            if (mapping) mapping.classList.toggle('d-none', isSectionHeader || (isText && !hasTextJob));
+            if (advanced) advanced.classList.toggle('d-none', isText);
+            if (isSectionHeader) {
+                document.getElementById('dashboardWidgetDataSourceType').value = '';
+                document.getElementById('dashboardWidgetJobSourceId').value = '';
+                document.getElementById('dashboardWidgetAutoRefresh').checked = false;
+                document.getElementById('dashboardWidgetRefreshInterval').value = '';
+                document.getElementById('dashboardWidgetRefreshIntervalUnit').value = '';
             }
         }
 
@@ -2050,6 +2219,12 @@
         document.getElementById('dashboardWidgetDataSourceType')
             .addEventListener('change', function () {
                 syncDashboardWidgetDataSourceFields(true);
+                syncDashboardWidgetTextFields();
+            });
+
+        document.getElementById('dashboardWidgetJobSourceId')
+            .addEventListener('change', function () {
+                syncDashboardWidgetTextFields();
             });
 
         document.getElementById('dashboardWidgetType')
@@ -2058,6 +2233,27 @@
                 syncDashboardWidgetIframeFields(true);
                 syncDashboardWidgetDataSourceFields(true);
                 syncDashboardWidgetRefreshFields(true);
+                syncDashboardWidgetTextFields();
+            });
+
+        document.getElementById('dashboardWidgetTextDisplayMode')
+            .addEventListener('change', function () {
+                syncDashboardWidgetTextFields();
+                syncDashboardWidgetDataSourceFields(false);
+                syncDashboardWidgetRefreshFields(false);
+                syncDashboardWidgetTextConfigToJson();
+            });
+
+        ['dashboardWidgetTextTitle', 'dashboardWidgetTextSubtitle', 'dashboardWidgetTextContent',
+         'dashboardWidgetTextBorder', 'dashboardWidgetTextAssociatedWidget'].forEach(function (id) {
+            const control = document.getElementById(id);
+            control.addEventListener('input', syncDashboardWidgetTextConfigToJson);
+            control.addEventListener('change', syncDashboardWidgetTextConfigToJson);
+        });
+
+        document.getElementById('dashboardWidgetTab')
+            .addEventListener('change', function () {
+                loadDashboardWidgetTextAssociationOptions();
             });
 
         document.getElementById('dashboardWidgetAutoRefresh')
@@ -2069,13 +2265,14 @@
         syncDashboardWidgetChartFields(true);
         syncDashboardWidgetIframeFields(false);
         syncDashboardWidgetRefreshFields(false);
+        loadDashboardWidgetTextConfigFromJson();
         if (document.getElementById('dashboardWidgetType').value === 'IFRAME') {
             const initialIframeConfig = readWidgetConfigJson();
             document.getElementById('dashboardWidgetIframeApplication').value =
                 initialIframeConfig.externalApplicationId == null ? '' : String(initialIframeConfig.externalApplicationId);
             updateDashboardWidgetIframeApplicationUrl();
             document.getElementById('dashboardWidgetIframeHeight').value =
-                Number.isInteger(initialIframeConfig.defaultHeight) ? initialIframeConfig.defaultHeight : 520;
+                Number.isInteger(initialIframeConfig.defaultHeight) ? initialIframeConfig.defaultHeight : 500;
             document.getElementById('dashboardWidgetIframeExpand').checked =
                 initialIframeConfig.allowExpand !== false;
             syncDashboardWidgetIframeFields(false);
@@ -2176,6 +2373,12 @@
                         document.getElementById('dashboardWidgetFieldConfigJson').value =
                             widget.fieldConfigJson || '{}';
 
+                        const savedTextConfig = readWidgetConfigJson();
+                        document.getElementById('dashboardWidgetTextAssociatedWidget').dataset.savedValue =
+                            savedTextConfig.associatedWidgetId == null ? '' : String(savedTextConfig.associatedWidgetId);
+                        loadDashboardWidgetTextConfigFromJson();
+                        loadDashboardWidgetTextAssociationOptions();
+
                         const iframeConfig = readWidgetConfigJson();
                         delete iframeConfig.url;
                         document.getElementById('dashboardWidgetFieldConfigJson').value =
@@ -2184,7 +2387,7 @@
                             iframeConfig.externalApplicationId == null ? '' : String(iframeConfig.externalApplicationId);
                         updateDashboardWidgetIframeApplicationUrl();
                         document.getElementById('dashboardWidgetIframeHeight').value =
-                            Number.isInteger(iframeConfig.defaultHeight) ? iframeConfig.defaultHeight : 520;
+                            Number.isInteger(iframeConfig.defaultHeight) ? iframeConfig.defaultHeight : 500;
                         document.getElementById('dashboardWidgetIframeExpand').checked =
                             iframeConfig.allowExpand !== false;
                         syncDashboardWidgetIframeFields(false);
@@ -2243,6 +2446,8 @@
                 if (!widgetId && currentTabFilter && currentTabFilter.value) {
                     widgetTab.value = currentTabFilter.value;
                 }
+                loadDashboardWidgetTextConfigFromJson();
+                loadDashboardWidgetTextAssociationOptions();
                 filterDashboardWidgetJobs(Boolean(!widgetId));
             });
 
@@ -2264,9 +2469,18 @@
             });
 
 
-        document
-        .getElementById('dashboardWidgetForm')
-        .addEventListener('submit', function (event) {
+        const dashboardWidgetForm = document.getElementById('dashboardWidgetForm');
+        dashboardWidgetForm.addEventListener('formdata', function (event) {
+            if (document.getElementById('dashboardWidgetType').value === 'TEXT') {
+                syncDashboardWidgetTextConfigToJson();
+                event.formData.set('fieldConfigJson', document.getElementById('dashboardWidgetFieldConfigJson').value);
+            }
+        });
+
+        dashboardWidgetForm.addEventListener('submit', function (event) {
+            if (document.getElementById('dashboardWidgetType').value === 'TEXT') {
+                syncDashboardWidgetTextConfigToJson();
+            }
 
             const autoRefresh =
                 document.getElementById('dashboardWidgetAutoRefresh').checked;
@@ -2293,7 +2507,7 @@
                 const parsed = readWidgetConfigJson();
                 delete parsed.url;
                 parsed.externalApplicationId = applicationSelect.value ? Number(applicationSelect.value) : null;
-                parsed.defaultHeight = Number(document.getElementById('dashboardWidgetIframeHeight').value || 520);
+                parsed.defaultHeight = Number(document.getElementById('dashboardWidgetIframeHeight').value || 500);
                 parsed.allowExpand = document.getElementById('dashboardWidgetIframeExpand').checked;
                 document.getElementById('dashboardWidgetFieldConfigJson').value = JSON.stringify(parsed, null, 2);
             }
@@ -2302,9 +2516,24 @@
             unit.required = autoRefresh;
             chartType.required = widgetType.value === 'CHART';
 
-            if (!this.checkValidity()) {
+            // Native browser validation runs before the submit event and cannot focus
+            // invalid controls inside collapsed/hidden widget configuration panels.
+            // Validate only active, visible controls so fields belonging to other widget
+            // types cannot prevent Text / Info from being saved.
+            const invalidControl = Array.from(this.elements).find(function (control) {
+                if (!(control instanceof HTMLElement) || control.disabled || !control.willValidate) {
+                    return false;
+                }
+                if (control.closest('.d-none') || control.getClientRects().length === 0) {
+                    return false;
+                }
+                return !control.checkValidity();
+            });
+
+            if (invalidControl) {
                 event.preventDefault();
                 event.stopPropagation();
+                invalidControl.reportValidity();
             }
 
             this.classList.add('was-validated');
@@ -2330,6 +2559,14 @@
             syncDashboardWidgetChartFields(true);
             syncDashboardWidgetIframeFields(true);
             syncDashboardWidgetRefreshFields(false);
+            document.getElementById('dashboardWidgetId').value = '';
+            document.getElementById('dashboardWidgetTextAssociatedWidget').dataset.savedValue = '';
+            document.getElementById('dashboardWidgetTextDisplayMode').value = 'INFORMATION';
+            document.getElementById('dashboardWidgetTextTitle').value = '';
+            document.getElementById('dashboardWidgetTextSubtitle').value = '';
+            document.getElementById('dashboardWidgetTextContent').value = '';
+            document.getElementById('dashboardWidgetTextBorder').checked = true;
+            syncDashboardWidgetTextFields();
 
             document
                 .getElementById('dashboardWidgetModalTitle')
