@@ -3714,11 +3714,6 @@ textarea.form-control {
     padding-right: 0;
 }
 
-.dashboard-section-header-column {
-    flex: 0 0 100%;
-    max-width: 100%;
-}
-
 .dashboard-section-header {
     width: 100%;
     padding: 0.5rem 0;
