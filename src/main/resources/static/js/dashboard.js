@@ -2718,7 +2718,7 @@
 
             '<div class="dashboard-widget-column ' + getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) + (isIframeWidget ? ' dashboard-iframe-column' : '') + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') +
-                    (isTextWidget && fieldConfig.border !== true ? ' dashboard-text-widget-no-border' : '') + '">' +
+                    (isTextWidget && fieldConfig.border === false ? ' dashboard-text-widget-no-border' : '') + '">' +
 
 
                     '<div class="dashboard-widget-header">' +
