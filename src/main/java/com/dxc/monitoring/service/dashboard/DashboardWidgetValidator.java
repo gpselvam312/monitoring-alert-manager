@@ -150,6 +150,45 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
             }
         }
 
+        if ("STAT".equals(form.getWidgetType()) || "STATUS".equals(form.getWidgetType()))
+        {
+            for (String fieldName : List.of("valueField", "statusField"))
+            {
+                Object fieldValue = config.get(fieldName);
+                if (fieldValue != null && !(fieldValue instanceof String))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            fieldName + " must be a string field path.");
+                    return false;
+                }
+            }
+
+            Object visibleFieldsValue = config.get("visibleFields");
+            if (visibleFieldsValue != null)
+            {
+                if (!(visibleFieldsValue instanceof List<?> visibleFields)
+                        || visibleFields.stream().anyMatch(field -> !(field instanceof String)))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "visibleFields must be an array of field-path strings.");
+                    return false;
+                }
+            }
+
+            Object labelsValue = config.get("labels");
+            if (labelsValue != null)
+            {
+                if (!(labelsValue instanceof Map<?, ?> labels)
+                        || labels.entrySet().stream().anyMatch(entry ->
+                                !(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "labels must be an object containing string labels.");
+                    return false;
+                }
+            }
+        }
+
         Object parserValue = config.get("responseParser");
         if (parserValue == null)
         {
