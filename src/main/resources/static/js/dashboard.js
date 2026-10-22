@@ -2196,17 +2196,30 @@
     function renderStatusWidget(result, widget)
     {
         const config = parseWidgetFieldConfig(widget);
-        const configuredValue = config.valueField
-            ? getJsonPath(result.payload || {}, config.valueField)
-            : undefined;
+        const payload = result.payload && typeof result.payload === "object" ? result.payload : {};
+        const configuredValue = config.valueField ? getJsonPath(payload, config.valueField) : undefined;
         const value = configuredValue !== undefined && configuredValue !== null
             ? configuredValue
             : (result.value !== null && result.value !== undefined ? result.value : "");
+        const configuredStatus = config.statusField ? getJsonPath(payload, config.statusField) : undefined;
+        const statusValue = configuredStatus !== undefined && configuredStatus !== null && configuredStatus !== ""
+            ? configuredStatus
+            : (result.status !== undefined && result.status !== null && result.status !== ""
+                ? result.status
+                : (result.healthStatus !== undefined && result.healthStatus !== null ? result.healthStatus : ""));
+        const statusText = statusValue === "" ? "Unknown" : getStatusLabel(statusValue);
+        const statusHtml = '<div class="dashboard-status-indicator ' + escapeHtml(getStatusClass(statusValue)) + '">' +
+            '<i class="bi ' + escapeHtml(getStatusIcon(statusValue)) + '" aria-hidden="true"></i>' +
+            '<span>' + escapeHtml(statusText) + '</span></div>';
+        const displayValue = value !== null && typeof value === "object"
+            ? JSON.stringify(value)
+            : value;
         const message = result.message || "";
-        const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+        const labels = config.labels && typeof config.labels === "object" && !Array.isArray(config.labels)
+            ? config.labels : {};
 
         let metricsHtml = "";
-        if (result.metrics && typeof result.metrics === "object")
+        if (result.metrics && typeof result.metrics === "object" && !Array.isArray(result.metrics))
         {
             let metricEntries = Object.entries(result.metrics);
             if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
@@ -2222,11 +2235,13 @@
                 metricsHtml = '<div class="dashboard-status-metrics">' +
                     metricEntries.map(function (entry)
                     {
+                        const metricValue = entry[1] !== null && typeof entry[1] === "object"
+                            ? JSON.stringify(entry[1]) : entry[1];
                         return '<div class="dashboard-status-metric">' +
                             '<span class="dashboard-status-metric-label">' +
                                 escapeHtml(labels[entry[0]] || entry[0]) +
                             '</span><span class="dashboard-status-metric-value">' +
-                                escapeHtml(entry[1]) +
+                                escapeHtml(metricValue) +
                             '</span></div>';
                     }).join("") +
                     '</div>';
@@ -2234,7 +2249,8 @@
         }
 
         return '<div class="dashboard-status-content">' +
-            (value !== "" ? '<div class="dashboard-status-value">' + escapeHtml(value) + '</div>' : "") +
+            statusHtml +
+            (displayValue !== "" ? '<div class="dashboard-status-value">' + escapeHtml(displayValue) + '</div>' : "") +
             (message ? '<div class="dashboard-status-message">' + escapeHtml(message) + '</div>' : "") +
             metricsHtml +
             '</div>';
