@@ -2208,7 +2208,7 @@
                 ? result.status
                 : (result.healthStatus !== undefined && result.healthStatus !== null ? result.healthStatus : ""));
         const statusText = statusValue === "" ? "Unknown" : getStatusLabel(statusValue);
-        const statusHtml = '<div class="dashboard-status-indicator ' + escapeHtml(getStatusClass(statusValue)) + '">' +
+        const statusHtml = '<div class="dashboard-status ' + escapeHtml(getStatusClass(statusValue)) + '">' +
             '<i class="bi ' + escapeHtml(getStatusIcon(statusValue)) + '" aria-hidden="true"></i>' +
             '<span>' + escapeHtml(statusText) + '</span></div>';
         const displayValue = value !== null && typeof value === "object"
