@@ -1522,7 +1522,7 @@
                                         </div>
                                         <div class="col-12" id="dashboardWidgetTextContentGroup">
                                             <label for="dashboardWidgetTextContent" class="form-label">Text content</label>
-                                            <textarea class="form-control" id="dashboardWidgetTextContent" rows="4" maxlength="5000" placeholder="Enter informational text. Leave blank to use the configured response fields or template."></textarea>
+                                            <textarea class="form-control" id="dashboardWidgetTextContent" rows="4" maxlength="4000" placeholder="Enter informational text. Leave blank to use the configured response fields or template."></textarea>
                                             <div class="form-text">Static text is supported without a Monitoring Job. If left blank, the existing dynamic text field/template mapping can be used.</div>
                                         </div>
                                         <div class="col-md-4">
@@ -2536,7 +2536,7 @@
             document.getElementById('dashboardWidgetTextTitle').value = '';
             document.getElementById('dashboardWidgetTextSubtitle').value = '';
             document.getElementById('dashboardWidgetTextContent').value = '';
-            document.getElementById('dashboardWidgetTextBorder').checked = false;
+            document.getElementById('dashboardWidgetTextBorder').checked = true;
             syncDashboardWidgetTextFields();
 
             document
