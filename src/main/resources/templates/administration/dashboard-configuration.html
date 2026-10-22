@@ -2118,6 +2118,8 @@
             const select = document.getElementById('dashboardWidgetTextAssociatedWidget');
             const currentWidgetId = document.getElementById('dashboardWidgetId').value;
             const previousValue = select.value;
+            const requestId = Number(select.dataset.loadRequestId || 0) + 1;
+            select.dataset.loadRequestId = String(requestId);
             select.dataset.optionsLoaded = 'false';
             select.innerHTML = '<option value="">Select a widget in this dashboard tab</option>';
             if (!tabId) {
@@ -2131,15 +2133,22 @@
                     return response.json();
                 })
                 .then(function (widgets) {
+                    // Several modal/edit events can request this list concurrently. Ignore
+                    // stale responses so each completed request cannot append duplicate options.
+                    if (select.dataset.loadRequestId !== String(requestId)) return;
+                    const seenWidgetIds = new Set();
                     (Array.isArray(widgets) ? widgets : []).forEach(function (widget) {
-                        if (String(widget.id) === String(currentWidgetId)) return;
+                        const widgetId = widget && widget.id != null ? String(widget.id) : '';
+                        if (!widgetId || seenWidgetIds.has(widgetId)) return;
+                        seenWidgetIds.add(widgetId);
+                        if (widgetId === String(currentWidgetId)) return;
                         if (widget.enabled === false || widget.isSectionHeader === true) return;
                         const option = document.createElement('option');
-                        option.value = String(widget.id);
+                        option.value = widgetId;
                         option.textContent = widget.name + ' (' + widget.widgetType + ')';
                         select.appendChild(option);
                     });
-                    const wanted = document.getElementById('dashboardWidgetTextAssociatedWidget').dataset.savedValue || previousValue;
+                    const wanted = select.dataset.savedValue || previousValue;
                     if (wanted && Array.from(select.options).some(function (option) { return option.value === String(wanted); })) {
                         select.value = String(wanted);
                     }
@@ -2148,6 +2157,7 @@
                     syncDashboardWidgetTextFields();
                 })
                 .catch(function (error) {
+                    if (select.dataset.loadRequestId !== String(requestId)) return;
                     console.error(error);
                     select.dataset.optionsLoaded = 'false';
                     select.innerHTML = '<option value="">Unable to load widgets for this tab</option>';
