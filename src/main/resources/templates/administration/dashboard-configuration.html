@@ -1427,7 +1427,7 @@
 
 </div>
 
-<div class="col-md-6">
+<div class="col-md-6" id="dashboardWidgetDataSourceTypeGroup">
                                 <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
                                 <select class="form-select"
                                         id="dashboardWidgetDataSourceType"
@@ -2000,19 +2000,24 @@
         function syncDashboardWidgetDataSourceFields(clearSelection) {
             const sourceSelect = document.getElementById('dashboardWidgetDataSourceType');
             const sourceType = sourceSelect.value;
-            const isIframe = document.getElementById('dashboardWidgetType').value === 'IFRAME';
+            const widgetType = document.getElementById('dashboardWidgetType').value;
+            const isIframe = widgetType === 'IFRAME';
+            const isSectionHeader = widgetType === 'TEXT'
+                && document.getElementById('dashboardWidgetTextDisplayMode').value === 'SECTION_HEADER';
+            const sourceGroup = document.getElementById('dashboardWidgetDataSourceTypeGroup');
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
             const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
-            const useJob = sourceType === 'MONITORING_JOB' && !isIframe;
+            const useJob = sourceType === 'MONITORING_JOB' && !isIframe && !isSectionHeader;
 
-            if (isIframe) {
+            if (isIframe || isSectionHeader) {
                 sourceSelect.value = '';
                 jobSelect.value = '';
             } else if (clearSelection || !useJob) {
                 jobSelect.value = '';
             }
 
-            sourceSelect.disabled = isIframe;
+            sourceSelect.disabled = isIframe || isSectionHeader;
+            sourceGroup.classList.toggle('d-none', isSectionHeader);
             jobGroup.classList.toggle('d-none', !useJob);
             jobSelect.disabled = !useJob;
             jobSelect.required = useJob;
