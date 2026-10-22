@@ -2417,13 +2417,13 @@
         document.getElementById('dashboardWidgetModal')
             .addEventListener('show.bs.modal', function () {
                 const widgetId = document.getElementById('dashboardWidgetId').value;
-                loadDashboardWidgetTextConfigFromJson();
-                loadDashboardWidgetTextAssociationOptions();
                 const widgetTab = document.getElementById('dashboardWidgetTab');
                 const currentTabFilter = document.getElementById('dashboardWidgetTabFilter');
                 if (!widgetId && currentTabFilter && currentTabFilter.value) {
                     widgetTab.value = currentTabFilter.value;
                 }
+                loadDashboardWidgetTextConfigFromJson();
+                loadDashboardWidgetTextAssociationOptions();
                 filterDashboardWidgetJobs(Boolean(!widgetId));
             });
 
