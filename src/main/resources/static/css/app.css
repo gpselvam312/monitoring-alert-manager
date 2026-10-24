@@ -3645,8 +3645,9 @@ textarea.form-control {
 
 .dashboard-stat-content .dashboard-stat-metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 0.75rem;
+    /* Two columns keeps four secondary metrics readable in two rows. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
     width: 100%;
     padding-top: 0.7rem;
     border-top: 1px solid var(--border-color);
@@ -3654,6 +3655,9 @@ textarea.form-control {
 
 .dashboard-stat-content .dashboard-stat-metric {
     min-width: 0;
+    padding: 0.35rem 0.45rem;
+    border-radius: 0.35rem;
+    background: var(--surface-secondary, transparent);
 }
 
 .dashboard-stat-content .dashboard-stat-metric-label {
@@ -3666,8 +3670,31 @@ textarea.form-control {
 .dashboard-stat-content .dashboard-stat-metric-value {
     display: block;
     color: var(--text-primary);
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+/* Distinct semantic accents make the secondary values easier to scan. */
+.dashboard-stat-content .dashboard-stat-metric:nth-child(4n + 1) .dashboard-stat-metric-value {
+    color: var(--info);
+}
+
+.dashboard-stat-content .dashboard-stat-metric:nth-child(4n + 2) .dashboard-stat-metric-value {
+    color: var(--success);
+}
+
+.dashboard-stat-content .dashboard-stat-metric:nth-child(4n + 3) .dashboard-stat-metric-value {
+    color: var(--danger);
+}
+
+.dashboard-stat-content .dashboard-stat-metric:nth-child(4n) .dashboard-stat-metric-value {
+    color: var(--warning);
+}
+
+@media (max-width: 420px) {
+    .dashboard-stat-content .dashboard-stat-metrics {
+        grid-template-columns: 1fr;
+    }
 }
 
 
