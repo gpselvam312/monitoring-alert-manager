@@ -5041,9 +5041,9 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.15rem;
-    min-height: 250px;
-    padding: 0.85rem 1rem 1rem;
+    gap: 0.1rem;
+    min-height: 270px;
+    padding: 0.55rem 0.65rem 0.75rem;
     overflow: hidden;
     color: var(--text-primary);
     text-align: center;
@@ -5052,7 +5052,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .dashboard-speedometer::before {
     position: absolute;
     z-index: -1;
-    inset: 12% 8% 8%;
+    inset: 10% 5% 5%;
     content: "";
     border-radius: 50%;
     background: radial-gradient(ellipse at 50% 75%, color-mix(in srgb, var(--gauge-value-color, var(--accent-color, #0d6efd)) 10%, transparent), transparent 68%);
@@ -5061,7 +5061,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 }
 .dashboard-speedometer-topline {
     display: flex;
-    width: min(100%, 300px);
+    width: min(100%, 360px);
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
@@ -5102,7 +5102,8 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 }
 .dashboard-speedometer-dial {
     display: block;
-    width: min(100%, 300px);
+    width: min(100%, 360px);
+    max-height: 205px;
     height: auto;
     overflow: visible;
 }
@@ -5159,8 +5160,8 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     font-weight: 600;
 }
 .dashboard-speedometer-reading {
-    margin-top: -0.45rem;
-    font-size: clamp(1.9rem, 3vw, 2.5rem);
+    margin-top: -0.8rem;
+    font-size: clamp(2.05rem, 3.5vw, 2.65rem);
     line-height: 1.05;
     font-weight: 750;
     letter-spacing: -0.04em;
@@ -5182,8 +5183,8 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    margin-top: 0.55rem;
-    padding: 0.22rem 0.7rem;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0.65rem;
     border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
     border-radius: 999px;
     font-size: 0.72rem;
@@ -5209,7 +5210,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent);
 }
 .dashboard-speedometer-range {
-    margin-top: 0.3rem;
+    margin-top: 0.2rem;
     color: var(--text-muted, var(--text-secondary));
     font-size: 0.68rem;
     font-variant-numeric: tabular-nums;
