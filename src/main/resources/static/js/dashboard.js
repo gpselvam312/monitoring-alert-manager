@@ -314,7 +314,10 @@
 	        String(widget.widgetType || "").toUpperCase()
 	    )
 	    {
-	        case "STAT":
+	        case "SPEEDOMETER":
+            return "bi-speedometer2";
+
+        case "STAT":
 	            return "bi-speedometer2";
 
 	        case "TABLE":
@@ -2457,7 +2460,11 @@
         result = result || {};
         const config = parseWidgetFieldConfig(widget);
         const payload = getWidgetPayload(result);
-        const rawValue = getWidgetFieldValue(result, payload, config.valueField);
+        let rawValue = getWidgetFieldValue(result, payload, config.valueField);
+        if ((rawValue === undefined || rawValue === null) && config.valueField)
+        {
+            rawValue = getJsonPath(result, config.valueField);
+        }
         const value = rawValue === undefined || rawValue === null || rawValue === ""
             ? NaN : Number(typeof rawValue === "string" ? rawValue.replace(/,/g, "").trim() : rawValue);
         const minimum = Number.isFinite(Number(config.minimum)) ? Number(config.minimum) : 0;
