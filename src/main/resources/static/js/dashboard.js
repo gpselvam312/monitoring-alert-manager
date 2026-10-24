@@ -1387,15 +1387,23 @@
         };
 
         const configuredColumns = columns.length ? columns : [];
-        const hostColumn = configuredColumns.find(function (column) {
-            return /^(hostname|hostName|host|server|machine|name)$/i.test(String(column.field));
-        });
-        const statusColumn = configuredColumns.find(function (column) {
-            return /^(status|healthStatus|health_status)$/i.test(String(column.field));
-        }) || configuredColumns.find(function (column) {
-            return String(column.format || "").toLowerCase() === "status"
-                || /^(collection_status|collectionStatus)$/i.test(String(column.field));
-        });
+        const configuredHostField = config.fields && typeof config.fields === "object"
+            ? String(config.fields.hostname || "") : "";
+        const configuredStatusField = String(config.statusField ||
+            (config.fields && typeof config.fields === "object" ? config.fields.status || "" : ""));
+        const hostColumn = (configuredHostField
+            ? configuredColumns.find(function (column) { return String(column.field) === configuredHostField; })
+            : null) || configuredColumns.find(function (column) {
+                return /^(hostname|hostName|host|server|machine|name)$/i.test(String(column.field));
+            });
+        const statusColumn = (configuredStatusField
+            ? configuredColumns.find(function (column) { return String(column.field) === configuredStatusField; })
+            : null) || configuredColumns.find(function (column) {
+                return /^(status|healthStatus|health_status)$/i.test(String(column.field));
+            }) || configuredColumns.find(function (column) {
+                return String(column.format || "").toLowerCase() === "status"
+                    || /^(collection_status|collectionStatus)$/i.test(String(column.field));
+            });
 
         const legacyPick = function (row, keys)
         {
@@ -1428,31 +1436,20 @@
             return text;
         };
 
-        const inferLegacyStatus = function (row)
+        // Health thresholds belong to the collector. Never infer health from metric values.
+        const configuredStatusValue = function (row)
         {
-            const explicit = legacyPick(row, ["status", "healthStatus", "health_status"]);
-            if (explicit !== null) return normalizeStatus(explicit);
-            const cpu = number(legacyPick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
-            const ram = number(legacyPick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
-            const load = number(legacyPick(row, ["load_1m", "load1m", "load_average_1m"]));
-            const cores = Math.max(1, number(legacyPick(row, ["cpu_cores", "cpuCores"])) || 1);
-            const disk = number(legacyPick(row, ["u01_used_percent", "u01_percent", "disk_u01_used_percent"]));
-            const levels = [];
-            if (cpu !== null) levels.push(cpu >= 85 ? 2 : cpu >= 70 ? 1 : 0);
-            if (ram !== null) levels.push(ram >= 90 ? 2 : ram >= 75 ? 1 : 0);
-            if (load !== null) levels.push(load / cores >= 1 ? 2 : load / cores >= 0.70 ? 1 : 0);
-            if (disk !== null) levels.push(disk >= 95 ? 2 : disk >= 85 ? 1 : 0);
-            if (!levels.length) return "UNKNOWN";
-            const worst = Math.max.apply(null, levels);
-            return worst === 2 ? "CRITICAL" : worst === 1 ? "WARNING" : "HEALTHY";
+            if (configuredStatusField) return valueOf(row, configuredStatusField);
+            return legacyPick(row, ["status", "healthStatus", "health_status"]);
         };
 
         const items = rows.map(function (row)
         {
-            const explicitStatus = legacyPick(row, ["status", "healthStatus", "health_status"]);
-            const status = explicitStatus !== null
+            const explicitStatus = configuredStatusValue(row);
+            const status = explicitStatus !== null && explicitStatus !== undefined && explicitStatus !== ""
                 ? normalizeStatus(explicitStatus)
-                : (statusColumn ? normalizeStatus(valueOf(row, statusColumn.field)) : inferLegacyStatus(row));
+                : (configuredStatusField ? "UNKNOWN"
+                    : (statusColumn ? normalizeStatus(valueOf(row, statusColumn.field)) : "UNKNOWN"));
             let pressure = 0;
             configuredColumns.forEach(function (column)
             {
