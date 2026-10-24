@@ -232,7 +232,7 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
                 Object colorValue = config.get(colorField);
                 if (colorValue != null
                         && (!(colorValue instanceof String color)
-                                || !color.matches("#[0-9a-fA-F]{6}")))
+                                || (!color.isBlank() && !color.matches("#[0-9a-fA-F]{6}"))))
                 {
                     addFieldError(context, "fieldConfigJson",
                             "Speedometer " + colorField + " must be a six-digit hexadecimal color such as #198754.");
