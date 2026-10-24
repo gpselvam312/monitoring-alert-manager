@@ -761,7 +761,7 @@
                                 <td>
 
                                     <span class="table-secondary-text"
-                                          th:text="${widget.widgetType == 'SUMMARY_TABLE' ? 'Summary Table' : (widget.widgetType == 'IFRAME' ? 'iFrame / External Dashboard' : widget.widgetType)}">
+                                          th:text="${widget.widgetType == 'SUMMARY_TABLE' ? 'Summary Table' : (widget.widgetType == 'IFRAME' ? 'iFrame / External Dashboard' : (widget.widgetType == 'SPEEDOMETER' ? 'Speedometer / Gauge' : widget.widgetType))}">
                                         STATUS
                                     </span>
 
@@ -1498,6 +1498,7 @@
 							
 							    <option value="">Select widget type</option>
 							    <option value="STAT">Stat</option>
+							    <option value="SPEEDOMETER">Speedometer / Gauge</option>
 							    <option value="STATUS">Status</option>
 							    <option value="TABLE">Table</option>
 							    <option value="SUMMARY_TABLE">Summary Table</option>
@@ -1884,6 +1885,44 @@
                                 </div>
                             </div>
 
+                            <div class="col-12 d-none" id="dashboardWidgetSpeedometerConfig">
+                                <div class="border rounded p-3">
+                                    <h6 class="mb-1">Speedometer / Gauge settings</h6>
+                                    <p class="text-muted small mb-3">Choose a numeric field from a sample response, then configure the dial range and alert thresholds.</p>
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label for="dashboardWidgetSpeedometerSample" class="form-label">Sample response (optional)</label>
+                                            <textarea class="form-control font-monospace" id="dashboardWidgetSpeedometerSample" rows="3" placeholder='Paste a JSON response to discover numeric fields'></textarea>
+                                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="dashboardWidgetSpeedometerDiscover">Discover numeric fields</button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="dashboardWidgetSpeedometerLoadSample">Load latest saved output</button>
+                                                <span class="small text-muted align-self-center" id="dashboardWidgetSpeedometerMessage" role="status" aria-live="polite"></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="dashboardWidgetSpeedometerFieldSelect" class="form-label">Discovered numeric field</label>
+                                            <select class="form-select" id="dashboardWidgetSpeedometerFieldSelect"><option value="">Discover fields or enter a path below</option></select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="dashboardWidgetSpeedometerValueField" class="form-label">Value field path <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="dashboardWidgetSpeedometerValueField" maxlength="250" placeholder="e.g. metrics.cpuUsage">
+                                            <div class="form-text">Use dot notation for nested JSON fields.</div>
+                                        </div>
+                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerMinimum" class="form-label">Minimum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMinimum" step="any" value="0"></div>
+                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerMaximum" class="form-label">Maximum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMaximum" step="any" value="100"></div>
+                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerUnit" class="form-label">Unit</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerUnit" maxlength="20" placeholder="%"></div>
+                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerDecimals" class="form-label">Decimal places</label><select class="form-select" id="dashboardWidgetSpeedometerDecimals"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerLabel" class="form-label">Value label (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerLabel" maxlength="100" placeholder="CPU Utilization"></div>
+                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerDirection" class="form-label">Threshold direction</label><select class="form-select" id="dashboardWidgetSpeedometerDirection"><option value="HIGH">Higher values are worse</option><option value="LOW">Lower values are worse</option></select></div>
+                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerWarning" class="form-label">Warning threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerWarning" step="any" value="70"></div>
+                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerCritical" class="form-label">Critical threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerCritical" step="any" value="90"></div>
+                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerNormalColor" class="form-label">Normal color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerNormalColor" maxlength="7" placeholder="#198754"><div class="form-text">Hex color, e.g. #198754.</div></div>
+                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerWarningColor" class="form-label">Warning color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerWarningColor" maxlength="7" placeholder="#ffc107"></div>
+                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerCriticalColor" class="form-label">Critical color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerCriticalColor" maxlength="7" placeholder="#dc3545"></div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="col-12" id="dashboardWidgetAdvancedConfigGroup">
                                 <details id="dashboardWidgetAdvancedConfig">
                                     <summary class="form-label mb-2">Advanced JSON configuration</summary>
@@ -1892,7 +1931,7 @@
                                               maxlength="10000"
                                               placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
                                     <div class="form-text">
-                                        Advanced JSON is available for options not exposed by the guided editor. TABLE widgets support rowPath, columns, visibleFields, labels, formats, sorting, search and pagination; charts use rowPath, categoryField, valueField and optional seriesField; STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields and labels. Summary Table supports details columns, search, sorting, pagination, grouping, row status, thresholds, summary cards and total-row configuration. Kafka health continues to use its dedicated TABLE renderer configuration. For date-filtered API jobs, use "dateRange":{"enabled":true} and {{startDate}}/{{endDate}} placeholders in the API URL or request body. Leave as {} to infer fields automatically.
+                                        Advanced JSON is available for options not exposed by the guided editor. TABLE widgets support rowPath, columns, visibleFields, labels, formats, sorting, search and pagination; charts use rowPath, categoryField, valueField and optional seriesField; STAT/STATUS use valueField and visibleFields; SPEEDOMETER uses valueField, minimum/maximum, thresholds, unit and optional colors; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields and labels. Summary Table supports details columns, search, sorting, pagination, grouping, row status, thresholds, summary cards and total-row configuration. Kafka health continues to use its dedicated TABLE renderer configuration. For date-filtered API jobs, use "dateRange":{"enabled":true} and {{startDate}}/{{endDate}} placeholders in the API URL or request body. Leave as {} to infer fields automatically.
                                     </div>
                                     <div class="invalid-feedback">Enter a valid JSON object.</div>
                                 </details>
@@ -1934,6 +1973,7 @@
 
     <script th:src="@{/js/summary-table-configurator.js}"></script>
     <script th:src="@{/js/chart-widget-configurator.js}"></script>
+    <script th:src="@{/js/speedometer-widget-configurator.js}"></script>
 
     <script th:inline="javascript">
 
@@ -2177,7 +2217,9 @@
         }
 
         function syncDashboardWidgetTextFields() {
-            const isText = document.getElementById('dashboardWidgetType').value === 'TEXT';
+            const widgetType = document.getElementById('dashboardWidgetType').value;
+            const isText = widgetType === 'TEXT';
+            const isSpeedometer = widgetType === 'SPEEDOMETER';
             const mode = document.getElementById('dashboardWidgetTextDisplayMode').value;
             const isSectionHeader = isText && mode === 'SECTION_HEADER';
             const configGroup = document.getElementById('dashboardWidgetTextConfig');
@@ -2196,8 +2238,11 @@
             associated.disabled = !isSectionHeader;
             associated.required = isSectionHeader;
             title.required = isSectionHeader;
-            if (mapping) mapping.classList.toggle('d-none', isSectionHeader || (isText && !hasTextJob));
-            if (advanced) advanced.classList.toggle('d-none', isText);
+            // Speedometer has its own sample/field discovery panel. The shared mapping
+            // editor also contains the generic sample response and preview, so keep it
+            // hidden for this widget only.
+            if (mapping) mapping.classList.toggle('d-none', isSpeedometer || isSectionHeader || (isText && !hasTextJob));
+            if (advanced) advanced.classList.toggle('d-none', isText || isSpeedometer);
             if (isSectionHeader) {
                 document.getElementById('dashboardWidgetDataSourceType').value = '';
                 document.getElementById('dashboardWidgetJobSourceId').value = '';
@@ -2463,6 +2508,9 @@
                 }
                 loadDashboardWidgetTextConfigFromJson();
                 loadDashboardWidgetTextAssociationOptions();
+                // Widget type can be assigned programmatically when editing, so refresh
+                // type-specific panels on modal open as well as on dropdown changes.
+                syncDashboardWidgetTextFields();
                 filterDashboardWidgetJobs(Boolean(!widgetId));
             });
 

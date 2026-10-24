@@ -5032,3 +5032,251 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 @keyframes dashboard-iframe-refresh-spin {
     to { transform: rotate(360deg); }
 }
+
+
+/* Speedometer / Gauge widget */
+.dashboard-speedometer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.05rem;
+    min-height: 290px;
+    padding: 0.7rem 0.75rem 0.85rem;
+    overflow: hidden;
+    color: var(--text-primary);
+    text-align: center;
+    isolation: isolate;
+}
+.dashboard-speedometer::before {
+    position: absolute;
+    z-index: -1;
+    inset: 8% 2% 2%;
+    content: "";
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 75%, color-mix(in srgb, var(--gauge-value-color, var(--accent-color, #0d6efd)) 10%, transparent), transparent 68%);
+    opacity: 0.7;
+    pointer-events: none;
+}
+.dashboard-speedometer-topline {
+    display: flex;
+    width: min(100%, 390px);
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: -0.25rem;
+}
+.dashboard-speedometer-topline-range {
+    flex: 0 0 auto;
+    color: var(--text-muted, var(--text-secondary));
+    font-size: 0.68rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.dashboard-speedometer-eyebrow {
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.dashboard-speedometer-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+.dashboard-speedometer-live span,
+.dashboard-speedometer-state-dot {
+    display: inline-block;
+    width: 0.42rem;
+    height: 0.42rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: currentColor;
+}
+.dashboard-speedometer-live span {
+    color: var(--success, #198754);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success, #198754) 40%, transparent);
+    animation: dashboard-speedometer-live-pulse 2s ease-out infinite;
+}
+.dashboard-speedometer-dial {
+    display: block;
+    width: min(100%, 390px);
+    max-height: 250px;
+    height: auto;
+    overflow: visible;
+}
+.dashboard-speedometer-track,
+.dashboard-speedometer-zone,
+.dashboard-speedometer-progress {
+    fill: none;
+    stroke-width: 7.5;
+    stroke-linecap: round;
+}
+.dashboard-speedometer-track {
+    stroke: var(--border-color);
+    opacity: 0.75;
+}
+.dashboard-speedometer-zone {
+    opacity: 0.11;
+}
+.dashboard-speedometer-progress {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    filter: drop-shadow(0 0 2px currentColor);
+    animation: dashboard-speedometer-arc-draw 1.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.dashboard-speedometer-tick {
+    stroke: var(--text-muted, var(--text-secondary));
+    stroke-width: 1;
+    opacity: 0.45;
+}
+.dashboard-speedometer-tick-major {
+    stroke-width: 1.6;
+    opacity: 0.8;
+}
+.dashboard-speedometer-needle-shadow {
+    stroke: color-mix(in srgb, var(--gauge-value-color, #0d6efd) 24%, transparent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transform-box: view-box;
+    transform-origin: 100px 100px;
+    animation: dashboard-speedometer-needle-sweep 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.dashboard-speedometer-needle {
+    stroke: var(--text-primary);
+    stroke-width: 2.8;
+    stroke-linecap: round;
+    transform-box: view-box;
+    transform-origin: 100px 100px;
+    filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--text-primary) 30%, transparent));
+    animation: dashboard-speedometer-needle-sweep 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.dashboard-speedometer-hub-ring {
+    fill: var(--card-bg);
+    stroke: var(--gauge-value-color, var(--text-primary));
+    stroke-width: 2;
+    opacity: 0.95;
+}
+.dashboard-speedometer-hub {
+    fill: var(--text-primary);
+}
+.dashboard-speedometer-scale {
+    fill: var(--text-secondary);
+    font-size: 8px;
+    font-weight: 600;
+}
+.dashboard-speedometer-reading {
+    margin-top: -0.8rem;
+    font-size: clamp(2.25rem, 4vw, 2.9rem);
+    line-height: 1.05;
+    font-weight: 750;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    animation: dashboard-speedometer-value-arrive 0.55s ease-out both;
+}
+.dashboard-speedometer-unit {
+    margin-left: 0.3rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+.dashboard-speedometer-label {
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+.dashboard-speedometer-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+    padding: 0.22rem 0.75rem;
+    border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    animation: dashboard-speedometer-value-arrive 0.65s 0.08s ease-out both;
+}
+.dashboard-speedometer-state-normal {
+    color: var(--success, #198754);
+    background: color-mix(in srgb, var(--success, #198754) 10%, transparent);
+}
+.dashboard-speedometer-state-warning {
+    color: var(--warning-text, #9a6700);
+    background: color-mix(in srgb, var(--warning, #ffc107) 14%, transparent);
+}
+.dashboard-speedometer-state-critical {
+    color: var(--danger, #dc3545);
+    background: color-mix(in srgb, var(--danger, #dc3545) 10%, transparent);
+}
+.dashboard-speedometer-state-dot {
+    width: 0.38rem;
+    height: 0.38rem;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent);
+}
+.dashboard-speedometer-range {
+    margin-top: 0.2rem;
+    color: var(--text-muted, var(--text-secondary));
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+}
+.dashboard-speedometer-empty {
+    min-height: 190px;
+    gap: 0.4rem;
+}
+.dashboard-speedometer-empty-icon {
+    color: var(--text-secondary);
+    font-size: 1.7rem;
+}
+.dashboard-speedometer-empty-title {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.dashboard-speedometer-empty-message {
+    max-width: 28rem;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+}
+@keyframes dashboard-speedometer-needle-sweep {
+    from { transform: rotate(180deg); }
+    to { transform: rotate(var(--gauge-angle, 270deg)); }
+}
+@keyframes dashboard-speedometer-arc-draw {
+    to { stroke-dashoffset: var(--gauge-progress, 50); }
+}
+@keyframes dashboard-speedometer-value-arrive {
+    from { opacity: 0; transform: translateY(5px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes dashboard-speedometer-live-pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success, #198754) 40%, transparent); }
+    70% { box-shadow: 0 0 0 5px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-speedometer-progress,
+    .dashboard-speedometer-needle,
+    .dashboard-speedometer-needle-shadow,
+    .dashboard-speedometer-reading,
+    .dashboard-speedometer-state,
+    .dashboard-speedometer-live span {
+        animation: none !important;
+    }
+    .dashboard-speedometer-progress {
+        stroke-dashoffset: var(--gauge-progress, 50);
+    }
+    .dashboard-speedometer-needle,
+    .dashboard-speedometer-needle-shadow {
+        transform: rotate(var(--gauge-angle, 270deg));
+    }
+}

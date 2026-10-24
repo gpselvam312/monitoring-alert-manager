@@ -14,7 +14,7 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
 {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Set<String> RESPONSE_PARSER_TYPES = Set.of("AUTO", "JSON", "PLAIN_TEXT", "DELIMITED", "KEY_VALUE", "REGEX");
-    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "TABLE", "SUMMARY_TABLE", "CHART", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH", "IFRAME");
+    private static final Set<String> WIDGET_TYPES = Set.of("STAT", "STATUS", "SPEEDOMETER", "TABLE", "SUMMARY_TABLE", "CHART", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH", "IFRAME");
     private static final Set<String> CHART_TYPES = Set.of("LINE", "BAR", "PIE", "DONUT");
     private static final Set<String> DATA_SOURCE_TYPES = Set.of("MONITORING_JOB");
 
@@ -96,6 +96,12 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
         String json = form.getFieldConfigJson();
         if (isBlank(json))
         {
+            if ("SPEEDOMETER".equals(form.getWidgetType()))
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "Speedometer configuration must include a numeric valueField path.");
+                return false;
+            }
             return true;
         }
 
@@ -147,6 +153,97 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
                             "iFrame default height must be between 250 and 2000 pixels.");
                     return false;
                 }
+            }
+        }
+
+        if ("SPEEDOMETER".equals(form.getWidgetType()))
+        {
+            Object valueField = config.get("valueField");
+            if (!(valueField instanceof String fieldPath) || fieldPath.isBlank())
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "Speedometer valueField must be a non-empty numeric field path.");
+                return false;
+            }
+
+            double minimum = 0;
+            double maximum = 100;
+            double warning = Double.NaN;
+            double critical = Double.NaN;
+            try
+            {
+                Object minValue = config.get("minimum");
+                Object maxValue = config.get("maximum");
+                minimum = minValue == null ? 0 : Double.parseDouble(String.valueOf(minValue));
+                maximum = maxValue == null ? 100 : Double.parseDouble(String.valueOf(maxValue));
+                Object warningValue = config.get("warningThreshold");
+                Object criticalValue = config.get("criticalThreshold");
+                warning = warningValue == null ? Double.NaN : Double.parseDouble(String.valueOf(warningValue));
+                critical = criticalValue == null ? Double.NaN : Double.parseDouble(String.valueOf(criticalValue));
+            }
+            catch (NumberFormatException exception)
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "Speedometer range and thresholds must be numeric.");
+                return false;
+            }
+            if (!Double.isFinite(minimum) || !Double.isFinite(maximum) || maximum <= minimum)
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "Speedometer maximum must be greater than minimum, and both must be finite numbers.");
+                return false;
+            }
+            if ((config.containsKey("warningThreshold") && !Double.isFinite(warning))
+                    || (config.containsKey("criticalThreshold") && !Double.isFinite(critical)))
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "Speedometer warning and critical thresholds must be finite numbers.");
+                return false;
+            }
+            Object directionValue = config.get("thresholdDirection");
+            if (directionValue != null && !Set.of("HIGH", "LOW").contains(String.valueOf(directionValue)))
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "Speedometer thresholdDirection must be HIGH or LOW.");
+                return false;
+            }
+            if (Double.isFinite(warning) && Double.isFinite(critical))
+            {
+                boolean high = !"LOW".equals(String.valueOf(directionValue));
+                if ((high && warning > critical) || (!high && warning < critical))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "Speedometer warning threshold must be less severe than critical threshold.");
+                    return false;
+                }
+            }
+            Object decimalsValue = config.get("decimalPlaces");
+            if (decimalsValue != null
+                    && (!(decimalsValue instanceof Number decimals)
+                            || decimals.intValue() < 0 || decimals.intValue() > 4
+                            || decimals.doubleValue() != decimals.intValue()))
+            {
+                addFieldError(context, "fieldConfigJson",
+                        "Speedometer decimalPlaces must be an integer between 0 and 4.");
+                return false;
+            }
+            for (String colorField : List.of("normalColor", "warningColor", "criticalColor"))
+            {
+                Object colorValue = config.get(colorField);
+                if (colorValue != null
+                        && (!(colorValue instanceof String color)
+                                || (!color.isBlank() && !color.matches("#[0-9a-fA-F]{6}"))))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "Speedometer " + colorField + " must be a six-digit hexadecimal color such as #198754.");
+                    return false;
+                }
+            }
+            Object unitValue = config.get("unit");
+            if (unitValue != null && !(unitValue instanceof String))
+            {
+                addFieldError(context, "fieldConfigJson", "Speedometer unit must be a string.");
+                return false;
             }
         }
 

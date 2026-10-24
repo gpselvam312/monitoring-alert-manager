@@ -314,7 +314,10 @@
 	        String(widget.widgetType || "").toUpperCase()
 	    )
 	    {
-	        case "STAT":
+	        case "SPEEDOMETER":
+            return "bi-speedometer2";
+
+        case "STAT":
 	            return "bi-speedometer2";
 
 	        case "TABLE":
@@ -2452,6 +2455,135 @@
      * ------------------------------------------------------------
      */
 
+    function renderSpeedometerWidget(result, widget)
+    {
+        result = result || {};
+        const config = parseWidgetFieldConfig(widget);
+        const payload = getWidgetPayload(result);
+        let rawValue = getWidgetFieldValue(result, payload, config.valueField);
+        if ((rawValue === undefined || rawValue === null) && config.valueField)
+        {
+            rawValue = getJsonPath(result, config.valueField);
+        }
+        const value = rawValue === undefined || rawValue === null || rawValue === ""
+            ? NaN : Number(typeof rawValue === "string" ? rawValue.replace(/,/g, "").trim() : rawValue);
+        const minimum = Number.isFinite(Number(config.minimum)) ? Number(config.minimum) : 0;
+        const maximum = Number.isFinite(Number(config.maximum)) ? Number(config.maximum) : 100;
+        const decimals = Number.isInteger(Number(config.decimalPlaces)) && Number(config.decimalPlaces) >= 0 && Number(config.decimalPlaces) <= 4
+            ? Number(config.decimalPlaces) : 0;
+        const unit = typeof config.unit === "string" ? config.unit : "";
+        const label = typeof config.valueLabel === "string" && config.valueLabel.trim() ? config.valueLabel.trim() : "";
+        if (!Number.isFinite(value) || maximum <= minimum)
+        {
+            const invalidRange = maximum <= minimum;
+            return '<div class="dashboard-speedometer dashboard-speedometer-empty" role="status">' +
+                '<div class="dashboard-speedometer-empty-icon"><i class="bi bi-speedometer2" aria-hidden="true"></i></div>' +
+                '<div class="dashboard-speedometer-empty-title">' + (invalidRange ? 'Invalid gauge range' : 'Value unavailable') + '</div>' +
+                '<div class="dashboard-speedometer-empty-message">' +
+                (invalidRange ? 'Configure a maximum greater than the minimum.' : 'The configured field "' + escapeHtml(config.valueField || 'valueField') + '" is missing or is not numeric.') +
+                '</div></div>';
+        }
+
+        const clamped = Math.max(minimum, Math.min(maximum, value));
+        const ratio = (clamped - minimum) / (maximum - minimum);
+        const angle = 180 + ratio * 180;
+        const warning = Number.isFinite(Number(config.warningThreshold)) ? Number(config.warningThreshold) : minimum + (maximum - minimum) * 0.7;
+        const critical = Number.isFinite(Number(config.criticalThreshold)) ? Number(config.criticalThreshold) : minimum + (maximum - minimum) * 0.9;
+        const direction = String(config.thresholdDirection || "HIGH").toUpperCase();
+        const state = direction === "LOW"
+            ? (value <= critical ? "critical" : value <= warning ? "warning" : "normal")
+            : (value >= critical ? "critical" : value >= warning ? "warning" : "normal");
+
+        function configuredColor(key, fallback) {
+            const candidate = config[key];
+            return typeof candidate === "string" && /^#[0-9a-fA-F]{6}$/.test(candidate.trim())
+                ? candidate.trim() : fallback;
+        }
+        const colors = {
+            normal: configuredColor("normalColor", "var(--success, #198754)"),
+            warning: configuredColor("warningColor", "var(--warning, #ffc107)"),
+            critical: configuredColor("criticalColor", "var(--danger, #dc3545)")
+        };
+        const color = colors[state];
+        const displayValue = value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        const outOfRange = value < minimum || value > maximum;
+        const rangeLabel = minimum.toLocaleString() + ' – ' + maximum.toLocaleString();
+
+        function point(degrees, radius) {
+            const radians = degrees * Math.PI / 180;
+            return { x: 100 + radius * Math.cos(radians), y: 100 + radius * Math.sin(radians) };
+        }
+        function arcBetween(startRatio, endRatio, radius) {
+            if (endRatio - startRatio < 0.001) return "";
+            const startPoint = point(180 + startRatio * 180, radius);
+            const endPoint = point(180 + endRatio * 180, radius);
+            return 'M ' + startPoint.x + ' ' + startPoint.y + ' A ' + radius + ' ' + radius + ' 0 0 1 ' + endPoint.x + ' ' + endPoint.y;
+        }
+        function ratioForThreshold(threshold) {
+            return Math.max(0, Math.min(1, (threshold - minimum) / (maximum - minimum)));
+        }
+
+        let warningRatio = ratioForThreshold(warning);
+        let criticalRatio = ratioForThreshold(critical);
+        // Keep the colored bands in ascending dial order even for legacy configs
+        // that may have threshold values saved in the opposite order.
+        if ((direction === "LOW" && criticalRatio > warningRatio)
+            || (direction !== "LOW" && warningRatio > criticalRatio)) {
+            const temporary = warningRatio;
+            warningRatio = criticalRatio;
+            criticalRatio = temporary;
+        }
+
+        const zones = direction === "LOW"
+            ? [
+                { start: 0, end: criticalRatio, color: colors.critical },
+                { start: criticalRatio, end: warningRatio, color: colors.warning },
+                { start: warningRatio, end: 1, color: colors.normal }
+            ]
+            : [
+                { start: 0, end: warningRatio, color: colors.normal },
+                { start: warningRatio, end: criticalRatio, color: colors.warning },
+                { start: criticalRatio, end: 1, color: colors.critical }
+            ];
+        const zoneArcs = zones.map(zone => {
+            const path = arcBetween(zone.start, zone.end, 82);
+            return path ? '<path class="dashboard-speedometer-zone" d="' + path + '" style="stroke:' + zone.color + '" />' : "";
+        }).join("");
+        const progressArc = '<path class="dashboard-speedometer-progress" pathLength="100" d="' + arcBetween(0, 1, 82) +
+            '" style="stroke:' + color + ';--gauge-progress:' + (100 - ratio * 100) + '" />';
+        const ticks = Array.from({ length: 21 }, (_, index) => {
+            const degrees = 180 + index * 9;
+            const outer = point(degrees, index % 2 === 0 ? 98 : 94);
+            const inner = point(degrees, 88);
+            return '<line class="dashboard-speedometer-tick' + (index % 2 === 0 ? ' dashboard-speedometer-tick-major' : '') +
+                '" x1="' + outer.x + '" y1="' + outer.y + '" x2="' + inner.x + '" y2="' + inner.y + '" />';
+        }).join("");
+        const needleEnd = point(0, 68);
+        const safeName = label || widget.name || "Gauge";
+
+        return '<div class="dashboard-speedometer" style="--gauge-value-color:' + color + '" role="img" aria-label="' + escapeHtml(safeName) + ': ' +
+            escapeHtml(displayValue + (unit ? ' ' + unit : '')) + ', ' + escapeHtml(state) + '">' +
+            '<div class="dashboard-speedometer-topline"><span class="dashboard-speedometer-eyebrow">' +
+                escapeHtml(label || "Live reading") + '</span><span class="dashboard-speedometer-topline-range">' + escapeHtml(rangeLabel) + '</span></div>' +
+            '<svg class="dashboard-speedometer-dial" viewBox="0 0 200 124" aria-hidden="true">' +
+                '<path class="dashboard-speedometer-track" d="' + arcBetween(0, 1, 82) + '" />' +
+                zoneArcs + progressArc + ticks +
+                '<line class="dashboard-speedometer-needle-shadow" x1="100" y1="100" x2="' + needleEnd.x + '" y2="' + needleEnd.y + '" style="--gauge-angle:' + angle + 'deg" />' +
+                '<line class="dashboard-speedometer-needle" x1="100" y1="100" x2="' + needleEnd.x + '" y2="' + needleEnd.y + '" style="--gauge-angle:' + angle + 'deg" />' +
+                '<circle class="dashboard-speedometer-hub-ring" cx="100" cy="100" r="8" />' +
+                '<circle class="dashboard-speedometer-hub" cx="100" cy="100" r="4.5" />' +
+                '<text class="dashboard-speedometer-scale" x="22" y="112" text-anchor="middle">' + escapeHtml(String(minimum)) + '</text>' +
+                '<text class="dashboard-speedometer-scale" x="178" y="112" text-anchor="middle">' + escapeHtml(String(maximum)) + '</text>' +
+            '</svg>' +
+            '<div class="dashboard-speedometer-reading" style="--gauge-value-color:' + color + ';color:' + color + '">' +
+                escapeHtml(displayValue) + '<span class="dashboard-speedometer-unit">' + escapeHtml(unit) + '</span></div>' +
+            '<div class="dashboard-speedometer-state dashboard-speedometer-state-' + state + '">' +
+                '<span class="dashboard-speedometer-state-dot"></span>' + state.charAt(0).toUpperCase() + state.slice(1) +
+                (outOfRange ? ' · outside range' : '') + '</div>' +
+            '</div>';
+    }
+
+
     function renderWidget(widgetResponse)
     {
         const widget =
@@ -2677,7 +2809,11 @@
          * KPI
          */
 
-		if (isStat)
+		if (widgetType === "SPEEDOMETER")
+        {
+            widgetContentHtml = renderSpeedometerWidget(result, widget);
+        }
+        else if (isStat)
 		{
 		    widgetContentHtml =
 		        renderStatWidget(result, widget);
