@@ -187,6 +187,20 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
                     return false;
                 }
             }
+
+            if ("STATUS".equals(form.getWidgetType()))
+            {
+                Object messageColorValue = config.get("messageColor");
+                if (messageColorValue != null
+                        && (!(messageColorValue instanceof String messageColor)
+                                || !Set.of("default", "blue", "green", "red", "amber", "purple", "teal", "gray")
+                                        .contains(messageColor)))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "Select a supported Status execution message font color.");
+                    return false;
+                }
+            }
         }
 
         Object parserValue = config.get("responseParser");
