@@ -761,7 +761,7 @@
                                 <td>
 
                                     <span class="table-secondary-text"
-                                          th:text="${widget.widgetType == 'SUMMARY_TABLE' ? 'Summary Table' : (widget.widgetType == 'IFRAME' ? 'iFrame / External Dashboard' : widget.widgetType)}">
+                                          th:text="${widget.widgetType == 'SUMMARY_TABLE' ? 'Summary Table' : (widget.widgetType == 'IFRAME' ? 'iFrame / External Dashboard' : (widget.widgetType == 'SPEEDOMETER' ? 'Speedometer / Gauge' : widget.widgetType))}">
                                         STATUS
                                     </span>
 
@@ -1931,7 +1931,7 @@
                                               maxlength="10000"
                                               placeholder='{"rowPath":"data.hosts","visibleFields":["HOST","CPU_IDLE"],"labels":{"CPU_IDLE":"CPU Idle"},"order":["HOST","CPU_IDLE"]}'></textarea>
                                     <div class="form-text">
-                                        Advanced JSON is available for options not exposed by the guided editor. TABLE widgets support rowPath, columns, visibleFields, labels, formats, sorting, search and pagination; charts use rowPath, categoryField, valueField and optional seriesField; STAT/STATUS use valueField and visibleFields; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields and labels. Summary Table supports details columns, search, sorting, pagination, grouping, row status, thresholds, summary cards and total-row configuration. Kafka health continues to use its dedicated TABLE renderer configuration. For date-filtered API jobs, use "dateRange":{"enabled":true} and {{startDate}}/{{endDate}} placeholders in the API URL or request body. Leave as {} to infer fields automatically.
+                                        Advanced JSON is available for options not exposed by the guided editor. TABLE widgets support rowPath, columns, visibleFields, labels, formats, sorting, search and pagination; charts use rowPath, categoryField, valueField and optional seriesField; STAT/STATUS use valueField and visibleFields; SPEEDOMETER uses valueField, minimum/maximum, thresholds, unit and optional colors; TEXT uses textFields or textTemplate; SYSTEM_METRICS uses rowPath, fields and labels. Summary Table supports details columns, search, sorting, pagination, grouping, row status, thresholds, summary cards and total-row configuration. Kafka health continues to use its dedicated TABLE renderer configuration. For date-filtered API jobs, use "dateRange":{"enabled":true} and {{startDate}}/{{endDate}} placeholders in the API URL or request body. Leave as {} to infer fields automatically.
                                     </div>
                                     <div class="invalid-feedback">Enter a valid JSON object.</div>
                                 </details>
