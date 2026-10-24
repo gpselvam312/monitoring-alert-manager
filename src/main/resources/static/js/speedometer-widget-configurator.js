@@ -175,6 +175,17 @@
         });
         [ids.minimum, ids.maximum, ids.unit, ids.decimals, ids.label, ids.direction, ids.warning, ids.critical, ids.normalColor, ids.warningColor, ids.criticalColor]
             .forEach(id => $(id)?.addEventListener("change", syncToJson));
+        $(ids.direction)?.addEventListener("change", function () {
+            const warning = Number($(ids.warning).value);
+            const critical = Number($(ids.critical).value);
+            if (Number.isFinite(warning) && Number.isFinite(critical)
+                    && ((this.value === "HIGH" && warning > critical)
+                        || (this.value === "LOW" && warning < critical))) {
+                $(ids.warning).value = critical;
+                $(ids.critical).value = warning;
+            }
+            syncToJson();
+        });
         $("dashboardWidgetSpeedometerDiscover")?.addEventListener("click", discover);
         $("dashboardWidgetSpeedometerLoadSample")?.addEventListener("click", loadLatestSample);
         $("dashboardWidgetModal")?.addEventListener("shown.bs.modal", loadFromJson);
