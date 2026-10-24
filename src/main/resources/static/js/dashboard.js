@@ -2264,9 +2264,22 @@
                 ? payload.data : payload;
         const labels = config.labels && typeof config.labels === "object" && !Array.isArray(config.labels)
             ? config.labels : {};
-        const visibleFields = Array.isArray(config.visibleFields)
-            ? config.visibleFields.map(String).filter(Boolean) : [];
-        const primaryField = String(config.valueField || visibleFields[0] || "");
+        const configuredColumns = Array.isArray(config.columns) ? config.columns.filter(function (column)
+        {
+            return column && typeof column === "object" && column.field;
+        }) : [];
+        // When a column mapping exists, its visibility flags are the source of truth.
+        // visibleFields may be stale in older saved configurations.
+        const configuredVisibleFields = configuredColumns.length
+            ? configuredColumns.filter(function (column) { return column.visible !== false; })
+                .map(function (column) { return String(column.field); })
+            : (Array.isArray(config.visibleFields) ? config.visibleFields.map(String).filter(Boolean) : []);
+        const primaryField = String(config.valueField || configuredVisibleFields[0] || "");
+        const visibleFields = Array.from(new Set(configuredVisibleFields.filter(Boolean)));
+        if (primaryField && configuredVisibleFields.includes(primaryField) && !visibleFields.includes(primaryField))
+        {
+            visibleFields.unshift(primaryField);
+        }
         const getFieldValue = function (field)
         {
             let fieldValue = getJsonPath(payloadData, field);
@@ -2287,35 +2300,54 @@
                     .replace(/^./, function (character) { return character.toUpperCase(); });
             }).join(" / ");
         };
-        const formatFieldValue = function (fieldValue)
+        const getColumn = function (field)
+        {
+            return configuredColumns.find(function (column) { return String(column.field) === field; }) || {};
+        };
+        const getLabel = function (field)
+        {
+            const column = getColumn(field);
+            return labels[field] || column.label || humanizeField(field);
+        };
+        const formatFieldValue = function (field, fieldValue)
         {
             if (fieldValue === null || fieldValue === undefined) return "N/A";
+            const column = getColumn(field);
+            const format = column.format || (config.formats && config.formats[field]) || "";
+            if (format === "percentage" || format === "percent")
+            {
+                const number = Number(fieldValue);
+                return Number.isFinite(number) ? number + "%" : String(fieldValue);
+            }
             return typeof fieldValue === "object" ? JSON.stringify(fieldValue) : String(fieldValue);
         };
+        const primaryIsVisible = !configuredColumns.length || visibleFields.includes(primaryField);
         const primaryValue = primaryField ? getFieldValue(primaryField) :
             (result && result.value !== undefined && result.value !== null ? result.value : "");
-        const primaryLabel = primaryField
-            ? (labels[primaryField] || humanizeField(primaryField)) : "";
-        const primaryHtml = primaryField
+        const primaryLabel = primaryField ? getLabel(primaryField) : "";
+        const primaryHtml = primaryField && primaryIsVisible
             ? '<div class="dashboard-stat-primary">' +
                 '<div class="dashboard-stat-primary-label">' + escapeHtml(primaryLabel) + '</div>' +
-                '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue(primaryValue)) + '</div>' +
+                '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue(primaryField, primaryValue)) + '</div>' +
               '</div>'
-            : (primaryValue !== "" ? '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue(primaryValue)) + '</div>' : "");
+            : (!primaryField && primaryValue !== "" ? '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue("", primaryValue)) + '</div>' : "");
 
-        // Only render fields explicitly selected in the widget mapping. Keep the primary
-        // metric in the prominent area above, and render any additional selected fields
-        // as labelled metrics. Execution messages belong to job history, not Stat values.
-        const additionalFields = visibleFields.filter(function (field) { return field !== primaryField; });
+        // Render every configured visible field, using the selected value field as the
+        // prominent metric and the remaining visible fields as labelled secondary metrics.
+        // Execution messages belong to job history, not Stat values.
+        const additionalFields = visibleFields.filter(function (field)
+        {
+            return field !== primaryField || !primaryIsVisible;
+        });
         const metricsHtml = additionalFields.length
             ? '<div class="dashboard-stat-metrics">' + additionalFields.map(function (field)
                 {
                     return '<div class="dashboard-stat-metric">' +
                         '<span class="dashboard-stat-metric-label">' +
-                            escapeHtml(labels[field] || humanizeField(field)) +
+                            escapeHtml(getLabel(field)) +
                         '</span>' +
                         '<span class="dashboard-stat-metric-value">' +
-                            escapeHtml(formatFieldValue(getFieldValue(field))) +
+                            escapeHtml(formatFieldValue(field, getFieldValue(field))) +
                         '</span>' +
                     '</div>';
                 }).join("") + '</div>'
