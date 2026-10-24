@@ -80,7 +80,7 @@
             }
             if (typeof value === "string") {
                 const trimmed = value.trim();
-                if (path && trimmed && /^[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:e[-+]?\\d+)?$/i.test(trimmed)) found.set(path, path);
+                if (path && trimmed && /^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i.test(trimmed)) found.set(path, path);
                 return;
             }
             if (typeof value !== "object" || seen.has(value)) return;
