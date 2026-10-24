@@ -988,6 +988,7 @@
                 config.renderer = "STAT";
                 config.valueField = byId("widgetSingleValueField").value;
                 const columns = readFieldEditor();
+                config.columns = columns;
                 const visibleColumns = columns.filter(column => column.visible);
                 config.visibleFields = Array.from(new Set([
                     config.valueField,
@@ -1116,7 +1117,7 @@
         const type = currentWidgetType();
         const isSummary = type === "SUMMARY_TABLE";
         const isTable = type === "TABLE" || isSummary;
-        const isFieldMapping = isTable || type === "SYSTEM_METRICS";
+        const isFieldMapping = isTable || ["STAT", "SYSTEM_METRICS"].includes(type);
         const rowPathTypes = ["TABLE", "SUMMARY_TABLE", "CHART", "SYSTEM_METRICS"];
         byId("summaryTableConfigurator").hidden = !type;
         byId("dashboardWidgetAdvancedConfig").open = false;
