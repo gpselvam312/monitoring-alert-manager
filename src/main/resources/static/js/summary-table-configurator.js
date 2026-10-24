@@ -975,6 +975,10 @@
                 ? config.visibleFields[0] || "" : "");
         setFieldOptions("widgetSingleValueField", fields, configuredPrimaryField, "Select value field");
         setFieldOptions("widgetStatusField", fields, config.statusField, "No status field");
+        const messageColor = config.messageColor || "default";
+        byId("widgetStatusMessageColor").value =
+            ["default", "blue", "green", "red", "amber", "purple", "teal", "gray"].includes(messageColor)
+                ? messageColor : "default";
         setFieldOptions("widgetMetricStatusField", fields,
             config.statusField || (config.fields && !Array.isArray(config.fields) ? config.fields.status : ""),
             "Auto-detect status field");
@@ -1025,6 +1029,7 @@
                 config.valueField = byId("widgetSingleValueField").value ||
                     config.valueField || legacyVisibleFields[0] || "";
                 config.statusField = byId("widgetStatusField").value || config.statusField || "";
+                config.messageColor = byId("widgetStatusMessageColor").value || "default";
                 config.visibleFields = [config.valueField, config.statusField].filter(Boolean);
                 if (!config.valueField) delete config.valueField;
                 if (!config.statusField) delete config.statusField;
