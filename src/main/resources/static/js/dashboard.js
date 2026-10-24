@@ -2255,75 +2255,94 @@
 
 
     function renderStatWidget(result, widget)
-	{
-	    const config = parseWidgetFieldConfig(widget);
-	    const configuredValue = config.valueField
-	        ? getJsonPath(result.payload || {}, config.valueField)
-	        : undefined;
-	    const value = configuredValue !== undefined && configuredValue !== null
-	        ? configuredValue
-	        : (result.value !== null && result.value !== undefined ? result.value : "");
+    {
+        const config = parseWidgetFieldConfig(widget);
+        const payload = parseJsonPayload(result && result.payload) ||
+            parseJsonPayload(result && result.data) || {};
+        const payloadData = payload && typeof payload === "object" &&
+            !Array.isArray(payload) && Object.prototype.hasOwnProperty.call(payload, "data")
+                ? payload.data : payload;
 
-	    const message =
-	        result.message || "";
+        // Normalized monitoring responses use an envelope:
+        // { schemaVersion, status, message, data: { ...monitoring fields... } }.
+        // Resolve configured fields against both the envelope and its data object
+        // so the Stat widget works with both normalized and legacy result shapes.
+        let configuredValue;
+        if (config.valueField)
+        {
+            configuredValue = getJsonPath(payload, config.valueField);
+            if (configuredValue === undefined || configuredValue === null)
+            {
+                configuredValue = getJsonPath(payloadData, config.valueField);
+            }
+            if ((configuredValue === undefined || configuredValue === null) &&
+                result && result.metrics && Object.prototype.hasOwnProperty.call(result.metrics, config.valueField))
+            {
+                configuredValue = result.metrics[config.valueField];
+            }
+        }
 
-	    let metricsHtml = "";
+        const value = configuredValue !== undefined && configuredValue !== null
+            ? configuredValue
+            : (result && result.value !== null && result.value !== undefined ? result.value : "");
+        const message = result && result.message ? result.message : "";
+        let metricsHtml = "";
 
-	    if (
-	        result.metrics &&
-	        typeof result.metrics === "object"
-	    )
-	    {
-	        let metricEntries =
-	            Object.entries(result.metrics);
+        if (result && result.metrics && typeof result.metrics === "object")
+        {
+            let metricEntries = Object.entries(result.metrics);
 
-	        if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
-	        {
-	            metricEntries = metricEntries.filter(function (entry)
-	            {
-	                return config.visibleFields.includes(entry[0]);
-	            });
-	        }
+            if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
+            {
+                metricEntries = metricEntries.filter(function (entry)
+                {
+                    return config.visibleFields.includes(entry[0]);
+                });
+            }
 
-	        if (metricEntries.length > 0)
-	        {
-	            metricsHtml =
-	                '<div class="dashboard-stat-metrics">' +
-	                    metricEntries.map(
-	                        function (entry)
-	                        {
-	                            return (
-	                                '<div class="dashboard-stat-metric">' +
-	                                    '<span class="dashboard-stat-metric-label">' +
-	                                        escapeHtml((config.labels && config.labels[entry[0]]) || entry[0]) +
-	                                    '</span>' +
-	                                    '<span class="dashboard-stat-metric-value">' +
-	                                        escapeHtml(entry[1]) +
-	                                    '</span>' +
-	                                '</div>'
-	                            );
-	                        }
-	                    ).join("") +
-	                '</div>';
-	        }
-	    }
+            // The configured primary value is already rendered prominently above.
+            // Do not repeat it as an unformatted "field + value" metric below.
+            if (config.valueField)
+            {
+                metricEntries = metricEntries.filter(function (entry)
+                {
+                    return entry[0] !== config.valueField;
+                });
+            }
 
-	    return (
-	        '<div class="dashboard-stat-content">' +
-	            '<div class="dashboard-stat-value">' +
-	                escapeHtml(value) +
-	            '</div>' +
-	            (
-	                message
-	                    ? '<div class="dashboard-stat-message">' +
-	                        escapeHtml(message) +
-	                      '</div>'
-	                    : ""
-	            ) +
-	            metricsHtml +
-	        '</div>'
-	    );
-	}
+            if (metricEntries.length > 0)
+            {
+                metricsHtml =
+                    '<div class="dashboard-stat-metrics">' +
+                        metricEntries.map(function (entry)
+                        {
+                            return (
+                                '<div class="dashboard-stat-metric">' +
+                                    '<span class="dashboard-stat-metric-label">' +
+                                        escapeHtml((config.labels && config.labels[entry[0]]) || entry[0]) +
+                                    '</span>' +
+                                    '<span class="dashboard-stat-metric-value">' +
+                                        escapeHtml(entry[1]) +
+                                    '</span>' +
+                                '</div>'
+                            );
+                        }).join("") +
+                    '</div>';
+            }
+        }
+
+        return (
+            '<div class="dashboard-stat-content">' +
+                '<div class="dashboard-stat-value">' +
+                    escapeHtml(value) +
+                '</div>' +
+                (message
+                    ? '<div class="dashboard-stat-message">' + escapeHtml(message) + '</div>'
+                    : "") +
+                metricsHtml +
+            '</div>'
+        );
+    }
 
 
     function renderElasticsearchWidget(result, widget, config)
