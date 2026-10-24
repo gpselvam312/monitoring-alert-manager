@@ -949,7 +949,13 @@
         setFieldOptions("widgetCategoryField", fields, config.categoryField, "Select category field");
         setFieldOptions("widgetValueField", fields, config.valueField, "Select value field");
         setFieldOptions("widgetSeriesField", fields, config.seriesField, "No series field");
-        setFieldOptions("widgetSingleValueField", fields, config.valueField, "Select value field");
+        // Older Stat/Status mappings may have visibleFields but no valueField
+        // because the generic chart submit handler previously removed valueField.
+        // Restore the primary selection from the saved visibility list when reopening.
+        const configuredPrimaryField = config.valueField ||
+            (["STAT", "STATUS"].includes(type) && Array.isArray(config.visibleFields)
+                ? config.visibleFields[0] || "" : "");
+        setFieldOptions("widgetSingleValueField", fields, configuredPrimaryField, "Select value field");
         setFieldOptions("widgetStatusField", fields, config.statusField, "No status field");
         setFieldOptions("widgetMetricStatusField", fields,
             config.statusField || (config.fields && !Array.isArray(config.fields) ? config.fields.status : ""),
@@ -1527,6 +1533,34 @@
                 lastWidgetType = type.value;
             });
         }
+
+        // Persist the Stat/Status primary field at submit time as well as on editor
+        // changes. This also repairs older saved mappings that only contain visibleFields.
+        const widgetForm = byId("dashboardWidgetFieldConfigJson").closest("form");
+        if (widgetForm) {
+            widgetForm.addEventListener("submit", function () {
+                const type = currentWidgetType();
+                if (!["STAT", "STATUS"].includes(type)) return;
+
+                const config = getConfig();
+                const selectedValueField = byId("widgetSingleValueField").value ||
+                    config.valueField ||
+                    (Array.isArray(config.visibleFields) ? config.visibleFields[0] || "" : "");
+                config.renderer = type;
+                if (selectedValueField) config.valueField = selectedValueField;
+                else delete config.valueField;
+
+                if (type === "STAT") {
+                    config.visibleFields = selectedValueField ? [selectedValueField] : [];
+                } else {
+                    config.statusField = byId("widgetStatusField").value || config.statusField || "";
+                    config.visibleFields = [selectedValueField, config.statusField].filter(Boolean);
+                }
+                config.responseParser = currentParserConfig();
+                byId("dashboardWidgetFieldConfigJson").value = JSON.stringify(config);
+            });
+        }
+
         showForSelectedType();
     });
 })();
