@@ -2549,7 +2549,6 @@
             const path = arcBetween(zone.start, zone.end, 72);
             return path ? '<path class="dashboard-speedometer-zone" d="' + path + '" style="stroke:' + zone.color + '" />' : "";
         }).join("");
-        const progressPath = arcBetween(0, ratio, 72);
         const progressArc = '<path class="dashboard-speedometer-progress" pathLength="100" d="' + arcBetween(0, 1, 72) +
             '" style="stroke:' + color + ';--gauge-progress:' + (100 - ratio * 100) + '" />';
         const ticks = Array.from({ length: 21 }, (_, index) => {
@@ -2562,10 +2561,10 @@
         const needleEnd = point(0, 57);
         const safeName = label || widget.name || "Gauge";
 
-        return '<div class="dashboard-speedometer" role="img" aria-label="' + escapeHtml(safeName) + ': ' +
+        return '<div class="dashboard-speedometer" style="--gauge-value-color:' + color + '" role="img" aria-label="' + escapeHtml(safeName) + ': ' +
             escapeHtml(displayValue + (unit ? ' ' + unit : '')) + ', ' + escapeHtml(state) + '">' +
             '<div class="dashboard-speedometer-topline"><span class="dashboard-speedometer-eyebrow">' +
-                escapeHtml(label || "Live reading") + '</span><span class="dashboard-speedometer-live"><span></span> LIVE</span></div>' +
+                escapeHtml(label || "Live reading") + '</span><span class="dashboard-speedometer-live"><span></span> MONITOR</span></div>' +
             '<svg class="dashboard-speedometer-dial" viewBox="0 0 200 116" aria-hidden="true">' +
                 '<path class="dashboard-speedometer-track" d="' + arcBetween(0, 1, 72) + '" />' +
                 zoneArcs + progressArc + ticks +
