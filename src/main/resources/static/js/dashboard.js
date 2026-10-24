@@ -2262,88 +2262,67 @@
         const payloadData = payload && typeof payload === "object" &&
             !Array.isArray(payload) && Object.prototype.hasOwnProperty.call(payload, "data")
                 ? payload.data : payload;
-
-        // Normalized monitoring responses use an envelope:
-        // { schemaVersion, status, message, data: { ...monitoring fields... } }.
-        // Resolve configured fields against both the envelope and its data object
-        // so the Stat widget works with both normalized and legacy result shapes.
-        let configuredValue;
-        if (config.valueField)
+        const labels = config.labels && typeof config.labels === "object" && !Array.isArray(config.labels)
+            ? config.labels : {};
+        const visibleFields = Array.isArray(config.visibleFields)
+            ? config.visibleFields.map(String).filter(Boolean) : [];
+        const primaryField = String(config.valueField || visibleFields[0] || "");
+        const getFieldValue = function (field)
         {
-            configuredValue = getJsonPath(payload, config.valueField);
-            if (configuredValue === undefined || configuredValue === null)
+            let fieldValue = getJsonPath(payloadData, field);
+            if (fieldValue === undefined || fieldValue === null) fieldValue = getJsonPath(payload, field);
+            if ((fieldValue === undefined || fieldValue === null) && result && result.metrics &&
+                Object.prototype.hasOwnProperty.call(result.metrics, field))
             {
-                configuredValue = getJsonPath(payloadData, config.valueField);
+                fieldValue = result.metrics[field];
             }
-            if ((configuredValue === undefined || configuredValue === null) &&
-                result && result.metrics && Object.prototype.hasOwnProperty.call(result.metrics, config.valueField))
-            {
-                configuredValue = result.metrics[config.valueField];
-            }
-        }
-
-        const value = configuredValue !== undefined && configuredValue !== null
-            ? configuredValue
-            : (result && result.value !== null && result.value !== undefined ? result.value : "");
-        const message = result && result.message ? result.message : "";
-        let metricsHtml = "";
-
-        if (result && result.metrics && typeof result.metrics === "object")
+            return fieldValue;
+        };
+        const humanizeField = function (field)
         {
-            let metricEntries = Object.entries(result.metrics);
-
-            if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
+            return String(field || "").split(".").map(function (part)
             {
-                metricEntries = metricEntries.filter(function (entry)
+                return part.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                    .replace(/[_-]+/g, " ")
+                    .replace(/^./, function (character) { return character.toUpperCase(); });
+            }).join(" / ");
+        };
+        const formatFieldValue = function (fieldValue)
+        {
+            if (fieldValue === null || fieldValue === undefined) return "N/A";
+            return typeof fieldValue === "object" ? JSON.stringify(fieldValue) : String(fieldValue);
+        };
+        const primaryValue = primaryField ? getFieldValue(primaryField) :
+            (result && result.value !== undefined && result.value !== null ? result.value : "");
+        const primaryLabel = primaryField
+            ? (labels[primaryField] || humanizeField(primaryField)) : "";
+        const primaryHtml = primaryField
+            ? '<div class="dashboard-stat-primary">' +
+                '<div class="dashboard-stat-primary-label">' + escapeHtml(primaryLabel) + '</div>' +
+                '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue(primaryValue)) + '</div>' +
+              '</div>'
+            : (primaryValue !== "" ? '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue(primaryValue)) + '</div>' : "");
+
+        // Only render fields explicitly selected in the widget mapping. Keep the primary
+        // metric in the prominent area above, and render any additional selected fields
+        // as labelled metrics. Execution messages belong to job history, not Stat values.
+        const additionalFields = visibleFields.filter(function (field) { return field !== primaryField; });
+        const metricsHtml = additionalFields.length
+            ? '<div class="dashboard-stat-metrics">' + additionalFields.map(function (field)
                 {
-                    return config.visibleFields.includes(entry[0]);
-                });
-            }
-
-            // The configured primary value is already rendered prominently above.
-            // Do not repeat it as an unformatted "field + value" metric below.
-            if (config.valueField)
-            {
-                metricEntries = metricEntries.filter(function (entry)
-                {
-                    return entry[0] !== config.valueField;
-                });
-            }
-
-            if (metricEntries.length > 0)
-            {
-                metricsHtml =
-                    '<div class="dashboard-stat-metrics">' +
-                        metricEntries.map(function (entry)
-                        {
-                            return (
-                                '<div class="dashboard-stat-metric">' +
-                                    '<span class="dashboard-stat-metric-label">' +
-                                        escapeHtml((config.labels && config.labels[entry[0]]) || entry[0]) +
-                                    '</span>' +
-                                    '<span class="dashboard-stat-metric-value">' +
-                                        escapeHtml(entry[1]) +
-                                    '</span>' +
-                                '</div>'
-                            );
-                        }).join("") +
+                    return '<div class="dashboard-stat-metric">' +
+                        '<span class="dashboard-stat-metric-label">' +
+                            escapeHtml(labels[field] || humanizeField(field)) +
+                        '</span>' +
+                        '<span class="dashboard-stat-metric-value">' +
+                            escapeHtml(formatFieldValue(getFieldValue(field))) +
+                        '</span>' +
                     '</div>';
-            }
-        }
+                }).join("") + '</div>'
+            : "";
 
-        return (
-            '<div class="dashboard-stat-content">' +
-                '<div class="dashboard-stat-value">' +
-                    escapeHtml(value) +
-                '</div>' +
-                (message
-                    ? '<div class="dashboard-stat-message">' + escapeHtml(message) + '</div>'
-                    : "") +
-                metricsHtml +
-            '</div>'
-        );
+        return '<div class="dashboard-stat-content">' + primaryHtml + metricsHtml + '</div>';
     }
-
 
     function renderElasticsearchWidget(result, widget, config)
     {
