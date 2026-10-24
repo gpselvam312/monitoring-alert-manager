@@ -3102,6 +3102,7 @@ textarea.form-control {
 
 .dashboard-tab-pane.active {
     display: block;
+    padding-top: 6px;
 }
 
 .dashboard-widget {
