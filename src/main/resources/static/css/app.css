@@ -5023,3 +5023,64 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 @keyframes dashboard-iframe-refresh-spin {
     to { transform: rotate(360deg); }
 }
+
+
+/* Small dashboard widgets: keep the widget name first and give it its own line.
+   Description follows the name; execution time/status are placed below the title
+   instead of squeezing the title out of the narrow header. */
+.dashboard-widget-size-small .dashboard-widget-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: .45rem .6rem;
+    padding: .65rem .8rem;
+}
+.dashboard-widget-size-small .dashboard-widget-title-group {
+    flex: 1 1 100%;
+    width: 100%;
+    align-items: flex-start;
+    gap: .55rem;
+}
+.dashboard-widget-size-small .dashboard-widget-icon {
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: .5rem;
+}
+.dashboard-widget-size-small .dashboard-widget-title-line {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .15rem;
+    width: 0;
+}
+.dashboard-widget-size-small .dashboard-widget-title {
+    display: block;
+    max-width: 100%;
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    line-height: 1.25;
+}
+.dashboard-widget-size-small .dashboard-widget-description {
+    display: block;
+    flex: 0 1 auto;
+    max-width: 100%;
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+}
+.dashboard-widget-size-small .dashboard-widget-actions {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: .3rem .45rem;
+}
+.dashboard-widget-size-small .dashboard-widget-actions .dashboard-widget-updated,
+.dashboard-widget-size-small .dashboard-widget-actions .dashboard-widget-last-updated {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
