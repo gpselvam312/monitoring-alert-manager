@@ -2309,6 +2309,13 @@
             const column = getColumn(field);
             return labels[field] || column.label || humanizeField(field);
         };
+        const getColorClass = function (field)
+        {
+            const column = getColumn(field);
+            const color = String(column.color || "default").toLowerCase();
+            return ["blue", "green", "red", "amber", "purple", "teal", "gray"].includes(color)
+                ? " dashboard-stat-color-" + color : "";
+        };
         const formatFieldValue = function (field, fieldValue)
         {
             if (fieldValue === null || fieldValue === undefined) return "N/A";
@@ -2328,7 +2335,7 @@
         const primaryHtml = primaryField && primaryIsVisible
             ? '<div class="dashboard-stat-primary">' +
                 '<div class="dashboard-stat-primary-label">' + escapeHtml(primaryLabel) + '</div>' +
-                '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue(primaryField, primaryValue)) + '</div>' +
+                '<div class="dashboard-stat-value' + getColorClass(primaryField) + '">' + escapeHtml(formatFieldValue(primaryField, primaryValue)) + '</div>' +
               '</div>'
             : (!primaryField && primaryValue !== "" ? '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue("", primaryValue)) + '</div>' : "");
 
@@ -2346,7 +2353,7 @@
                         '<span class="dashboard-stat-metric-label">' +
                             escapeHtml(getLabel(field)) +
                         '</span>' +
-                        '<span class="dashboard-stat-metric-value">' +
+                        '<span class="dashboard-stat-metric-value' + getColorClass(field) + '">' +
                             escapeHtml(formatFieldValue(field, getFieldValue(field))) +
                         '</span>' +
                     '</div>';
