@@ -155,9 +155,9 @@
         config.thresholdDirection = $(ids.direction)?.value || "HIGH";
         config.warningThreshold = Number($(ids.warning)?.value);
         config.criticalThreshold = Number($(ids.critical)?.value);
-        config.normalColor = ($(ids.normalColor)?.value || "").trim();
-        config.warningColor = ($(ids.warningColor)?.value || "").trim();
-        config.criticalColor = ($(ids.criticalColor)?.value || "").trim();
+        config.normalColor = ($(ids.normalColor)?.value || "").trim() || null;
+        config.warningColor = ($(ids.warningColor)?.value || "").trim() || null;
+        config.criticalColor = ($(ids.criticalColor)?.value || "").trim() || null;
         $(ids.json).value = JSON.stringify(config, null, 2);
     }
 
