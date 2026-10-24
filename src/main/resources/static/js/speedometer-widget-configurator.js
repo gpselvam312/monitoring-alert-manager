@@ -18,6 +18,9 @@
         direction: "dashboardWidgetSpeedometerDirection",
         warning: "dashboardWidgetSpeedometerWarning",
         critical: "dashboardWidgetSpeedometerCritical",
+        normalColor: "dashboardWidgetSpeedometerNormalColor",
+        warningColor: "dashboardWidgetSpeedometerWarningColor",
+        criticalColor: "dashboardWidgetSpeedometerCriticalColor",
         message: "dashboardWidgetSpeedometerMessage"
     };
 
@@ -53,6 +56,9 @@
         setValue(ids.direction, config.thresholdDirection, "HIGH");
         setValue(ids.warning, config.warningThreshold, 70);
         setValue(ids.critical, config.criticalThreshold, 90);
+        setValue(ids.normalColor, config.normalColor, "");
+        setValue(ids.warningColor, config.warningColor, "");
+        setValue(ids.criticalColor, config.criticalColor, "");
         const selected = $(ids.select);
         if (selected) selected.value = config.valueField || "";
         updateVisibility();
@@ -149,6 +155,9 @@
         config.thresholdDirection = $(ids.direction)?.value || "HIGH";
         config.warningThreshold = Number($(ids.warning)?.value);
         config.criticalThreshold = Number($(ids.critical)?.value);
+        config.normalColor = ($(ids.normalColor)?.value || "").trim();
+        config.warningColor = ($(ids.warningColor)?.value || "").trim();
+        config.criticalColor = ($(ids.criticalColor)?.value || "").trim();
         $(ids.json).value = JSON.stringify(config, null, 2);
     }
 
@@ -164,7 +173,7 @@
             if ($(ids.select).value !== this.value) $(ids.select).value = "";
             syncToJson();
         });
-        [ids.minimum, ids.maximum, ids.unit, ids.decimals, ids.label, ids.direction, ids.warning, ids.critical]
+        [ids.minimum, ids.maximum, ids.unit, ids.decimals, ids.label, ids.direction, ids.warning, ids.critical, ids.normalColor, ids.warningColor, ids.criticalColor]
             .forEach(id => $(id)?.addEventListener("change", syncToJson));
         $("dashboardWidgetSpeedometerDiscover")?.addEventListener("click", discover);
         $("dashboardWidgetSpeedometerLoadSample")?.addEventListener("click", loadLatestSample);
