@@ -548,6 +548,8 @@
                 visible: saved ? saved.visible !== false : true,
                 format: saved && saved.format !== undefined ? String(saved.format).toLowerCase()
                     : (currentWidgetType() === "SYSTEM_METRICS" ? (systemMetricDefaultFormat(field, collection ? collection.rows : []) || "") : ""),
+                color: saved && ["default", "blue", "green", "red", "amber", "purple", "teal", "gray"].includes(String(saved.color || "").toLowerCase())
+                    ? String(saved.color).toLowerCase() : "default",
                 aggregation: saved && saved.aggregation ? String(saved.aggregation).toLowerCase() : "none",
                 summaryCard: false,
                 sortable: saved ? saved.sortable !== false : true,
@@ -576,6 +578,9 @@
             item.groupSummary = groupedSummaryFields.has(item.field);
         });
         const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
+        const statWidget = currentWidgetType() === "STAT";
+        const colors = [["default", "Default (theme)"], ["blue", "Blue"], ["green", "Green"], ["red", "Red"],
+            ["amber", "Amber"], ["purple", "Purple"], ["teal", "Teal"], ["gray", "Gray"]];
         const formats = systemMetrics
             ? [["", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration"], ["status", "Status"]]
             : [["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
@@ -583,7 +588,8 @@
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ?
             '<div class="table-responsive border rounded"><table class="table table-sm table-striped align-middle mb-0 summary-config-mapping-table">' +
-            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all fields"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th>' +
+            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all fields"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th>' +
+            (statWidget ? '<th>Value colour</th>' : '') + '<th>Format</th>' +
             (systemMetrics ? '' : '<th>Aggregate</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-groupable-all" type="checkbox" aria-label="Allow grouping by all columns"><label class="form-check-label">Groupable</label></div></th>') +
             '</tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
@@ -592,6 +598,9 @@
                 '<td><input class="form-check-input summary-config-visible" type="checkbox" aria-label="Show ' + escapeHtml(item.field) + '"' + (item.visible ? ' checked' : '') + '></td>' +
                 '<td><code>' + escapeHtml(displaySourceField(item.field)) + '</code></td>' +
                 '<td><input class="form-control form-control-sm summary-config-label" type="text" maxlength="120" value="' + escapeHtml(item.label) + '" aria-label="Label for ' + escapeHtml(item.field) + '"></td>' +
+                (statWidget ? '<td><select class="form-select form-select-sm summary-config-color" aria-label="Value colour for ' + escapeHtml(item.field) + '">' +
+                    colors.map(option => '<option value="' + option[0] + '"' + (item.color === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
+                    '</select></td>' : '') +
                 '<td><select class="form-select form-select-sm summary-config-format" aria-label="Format for ' + escapeHtml(item.field) + '">' +
                 formats.map(option => '<option value="' + option[0] + '"' + (item.format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
@@ -631,6 +640,7 @@
             sortable: row.getAttribute("data-sortable") !== "false",
             searchable: row.getAttribute("data-searchable") !== "false",
             format: row.querySelector(".summary-config-format").value,
+            color: row.querySelector(".summary-config-color") ? row.querySelector(".summary-config-color").value : "default",
             aggregation: systemMetrics ? "none" : row.querySelector(".summary-config-aggregation").value,
         }));
     }
