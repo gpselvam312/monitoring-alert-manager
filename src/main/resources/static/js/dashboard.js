@@ -2546,27 +2546,27 @@
                 { start: criticalRatio, end: 1, color: colors.critical }
             ];
         const zoneArcs = zones.map(zone => {
-            const path = arcBetween(zone.start, zone.end, 72);
+            const path = arcBetween(zone.start, zone.end, 82);
             return path ? '<path class="dashboard-speedometer-zone" d="' + path + '" style="stroke:' + zone.color + '" />' : "";
         }).join("");
-        const progressArc = '<path class="dashboard-speedometer-progress" pathLength="100" d="' + arcBetween(0, 1, 72) +
+        const progressArc = '<path class="dashboard-speedometer-progress" pathLength="100" d="' + arcBetween(0, 1, 82) +
             '" style="stroke:' + color + ';--gauge-progress:' + (100 - ratio * 100) + '" />';
         const ticks = Array.from({ length: 21 }, (_, index) => {
             const degrees = 180 + index * 9;
-            const outer = point(degrees, index % 2 === 0 ? 88 : 84);
-            const inner = point(degrees, 78);
+            const outer = point(degrees, index % 2 === 0 ? 98 : 94);
+            const inner = point(degrees, 88);
             return '<line class="dashboard-speedometer-tick' + (index % 2 === 0 ? ' dashboard-speedometer-tick-major' : '') +
                 '" x1="' + outer.x + '" y1="' + outer.y + '" x2="' + inner.x + '" y2="' + inner.y + '" />';
         }).join("");
-        const needleEnd = point(0, 57);
+        const needleEnd = point(0, 68);
         const safeName = label || widget.name || "Gauge";
 
         return '<div class="dashboard-speedometer" style="--gauge-value-color:' + color + '" role="img" aria-label="' + escapeHtml(safeName) + ': ' +
             escapeHtml(displayValue + (unit ? ' ' + unit : '')) + ', ' + escapeHtml(state) + '">' +
             '<div class="dashboard-speedometer-topline"><span class="dashboard-speedometer-eyebrow">' +
                 escapeHtml(label || "Live reading") + '</span><span class="dashboard-speedometer-live"><span></span> MONITOR</span></div>' +
-            '<svg class="dashboard-speedometer-dial" viewBox="0 0 200 116" aria-hidden="true">' +
-                '<path class="dashboard-speedometer-track" d="' + arcBetween(0, 1, 72) + '" />' +
+            '<svg class="dashboard-speedometer-dial" viewBox="0 0 200 124" aria-hidden="true">' +
+                '<path class="dashboard-speedometer-track" d="' + arcBetween(0, 1, 82) + '" />' +
                 zoneArcs + progressArc + ticks +
                 '<line class="dashboard-speedometer-needle" x1="100" y1="100" x2="' + needleEnd.x + '" y2="' + needleEnd.y +
                     '" style="--gauge-angle:' + angle + 'deg" />' +
