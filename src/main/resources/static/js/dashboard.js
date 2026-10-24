@@ -2495,7 +2495,16 @@
         const state = direction === "LOW"
             ? (value <= critical ? "critical" : value <= warning ? "warning" : "normal")
             : (value >= critical ? "critical" : value >= warning ? "warning" : "normal");
-        const colors = { normal: "var(--success, #198754)", warning: "var(--warning, #ffc107)", critical: "var(--danger, #dc3545)" };
+        function configuredColor(key, fallback) {
+            const candidate = config[key];
+            return typeof candidate === "string" && /^#[0-9a-fA-F]{6}$/.test(candidate.trim())
+                ? candidate.trim() : fallback;
+        }
+        const colors = {
+            normal: configuredColor("normalColor", "var(--success, #198754)"),
+            warning: configuredColor("warningColor", "var(--warning, #ffc107)"),
+            critical: configuredColor("criticalColor", "var(--danger, #dc3545)")
+        };
         const color = colors[state];
         const displayValue = value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
         const outOfRange = value < minimum || value > maximum;
