@@ -2217,7 +2217,9 @@
         }
 
         function syncDashboardWidgetTextFields() {
-            const isText = document.getElementById('dashboardWidgetType').value === 'TEXT';
+            const widgetType = document.getElementById('dashboardWidgetType').value;
+            const isText = widgetType === 'TEXT';
+            const isSpeedometer = widgetType === 'SPEEDOMETER';
             const mode = document.getElementById('dashboardWidgetTextDisplayMode').value;
             const isSectionHeader = isText && mode === 'SECTION_HEADER';
             const configGroup = document.getElementById('dashboardWidgetTextConfig');
@@ -2236,8 +2238,11 @@
             associated.disabled = !isSectionHeader;
             associated.required = isSectionHeader;
             title.required = isSectionHeader;
-            if (mapping) mapping.classList.toggle('d-none', isSectionHeader || (isText && !hasTextJob));
-            if (advanced) advanced.classList.toggle('d-none', isText);
+            // Speedometer has its own sample/field discovery panel. The shared mapping
+            // editor also contains the generic sample response and preview, so keep it
+            // hidden for this widget only.
+            if (mapping) mapping.classList.toggle('d-none', isSpeedometer || isSectionHeader || (isText && !hasTextJob));
+            if (advanced) advanced.classList.toggle('d-none', isText || isSpeedometer);
             if (isSectionHeader) {
                 document.getElementById('dashboardWidgetDataSourceType').value = '';
                 document.getElementById('dashboardWidgetJobSourceId').value = '';
