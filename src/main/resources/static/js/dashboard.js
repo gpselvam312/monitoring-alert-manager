@@ -2579,7 +2579,8 @@
                 escapeHtml(displayValue) + '<span class="dashboard-speedometer-unit">' + escapeHtml(unit) + '</span></div>' +
             '<div class="dashboard-speedometer-state dashboard-speedometer-state-' + state + '">' +
                 '<span class="dashboard-speedometer-state-dot"></span>' + state.charAt(0).toUpperCase() + state.slice(1) +
-                (outOfRange ? ' · outside range' : '') + '</div>';
+                (outOfRange ? ' · outside range' : '') + '</div>' +
+            '</div>';
     }
 
 
