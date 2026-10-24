@@ -2247,6 +2247,10 @@
             '<span>' + escapeHtml(statusText) + '</span></div>';
         const displayValue = formatWidgetValue(value);
         const message = result.message || "";
+        const messageColor = ["blue", "green", "red", "amber", "purple", "teal", "gray"].includes(config.messageColor)
+            ? config.messageColor : "default";
+        const messageColorClass = messageColor === "default"
+            ? "" : " dashboard-status-message-color-" + messageColor;
         const labels = config.labels && typeof config.labels === "object" && !Array.isArray(config.labels)
             ? config.labels : {};
 
@@ -2287,7 +2291,7 @@
         return '<div class="dashboard-status-content">' +
             statusHtml +
             (displayValue !== "" ? '<div class="dashboard-status-value">' + escapeHtml(displayValue) + '</div>' : "") +
-            (message ? '<div class="dashboard-status-message">' + escapeHtml(message) + '</div>' : "") +
+            (message ? '<div class="dashboard-status-message' + messageColorClass + '">' + escapeHtml(message) + '</div>' : "") +
             metricsHtml +
             '</div>';
     }
