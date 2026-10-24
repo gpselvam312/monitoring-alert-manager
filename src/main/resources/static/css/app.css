@@ -5041,9 +5041,9 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.1rem;
-    min-height: 270px;
-    padding: 0.55rem 0.65rem 0.75rem;
+    gap: 0.05rem;
+    min-height: 305px;
+    padding: 0.5rem 0.55rem 0.7rem;
     overflow: hidden;
     color: var(--text-primary);
     text-align: center;
@@ -5103,7 +5103,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .dashboard-speedometer-dial {
     display: block;
     width: min(100%, 360px);
-    max-height: 205px;
+    max-height: 235px;
     height: auto;
     overflow: visible;
 }
@@ -5111,7 +5111,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .dashboard-speedometer-zone,
 .dashboard-speedometer-progress {
     fill: none;
-    stroke-width: 11;
+    stroke-width: 8;
     stroke-linecap: round;
 }
 .dashboard-speedometer-track {
@@ -5119,7 +5119,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     opacity: 0.75;
 }
 .dashboard-speedometer-zone {
-    opacity: 0.24;
+    opacity: 0.16;
 }
 .dashboard-speedometer-progress {
     stroke-dasharray: 100;
@@ -5138,7 +5138,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 }
 .dashboard-speedometer-needle {
     stroke: var(--text-primary);
-    stroke-width: 2.5;
+    stroke-width: 2.8;
     stroke-linecap: round;
     transform-box: view-box;
     transform-origin: 100px 100px;
@@ -5160,7 +5160,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     font-weight: 600;
 }
 .dashboard-speedometer-reading {
-    margin-top: -0.8rem;
+    margin-top: -0.95rem;
     font-size: clamp(2.05rem, 3.5vw, 2.65rem);
     line-height: 1.05;
     font-weight: 750;
