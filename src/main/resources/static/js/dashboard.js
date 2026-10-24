@@ -1052,6 +1052,42 @@
         catch (ignore) { return value; }
     }
 
+    /*
+     * Widget renderers consume the same execution-result envelope. Normalize the
+     * payload here so object and JSON-string responses behave consistently.
+     */
+    function getWidgetPayload(result)
+    {
+        const source = result || {};
+        const payload = parseJsonPayload(source.payload);
+        if (payload !== undefined && payload !== null) return payload;
+        const data = parseJsonPayload(source.data);
+        return data !== undefined && data !== null ? data : {};
+    }
+
+    function getWidgetFieldValue(result, payload, field)
+    {
+        if (!field) return undefined;
+        let value = getJsonPath(payload, field);
+        if ((value === undefined || value === null) && isObjectRow(payload) &&
+            payload.data !== undefined && payload.data !== null)
+        {
+            value = getJsonPath(payload.data, field);
+        }
+        const metrics = result && result.metrics;
+        if ((value === undefined || value === null) && isObjectRow(metrics) &&
+            Object.prototype.hasOwnProperty.call(metrics, field))
+        {
+            value = metrics[field];
+        }
+        return value;
+    }
+
+    function formatWidgetValue(value)
+    {
+        return value !== null && typeof value === "object" ? JSON.stringify(value) : value;
+    }
+
     function getConfiguredTableRows(result, config)
     {
         result = result || {};
@@ -2192,13 +2228,14 @@
 
     function renderStatusWidget(result, widget)
     {
+        result = result || {};
         const config = parseWidgetFieldConfig(widget);
-        const payload = result.payload && typeof result.payload === "object" ? result.payload : {};
-        const configuredValue = config.valueField ? getJsonPath(payload, config.valueField) : undefined;
+        const payload = getWidgetPayload(result);
+        const configuredValue = getWidgetFieldValue(result, payload, config.valueField);
         const value = configuredValue !== undefined && configuredValue !== null
             ? configuredValue
             : (result.value !== null && result.value !== undefined ? result.value : "");
-        const configuredStatus = config.statusField ? getJsonPath(payload, config.statusField) : undefined;
+        const configuredStatus = getWidgetFieldValue(result, payload, config.statusField);
         const statusValue = config.statusField
             ? (configuredStatus !== undefined && configuredStatus !== null && configuredStatus !== "" ? configuredStatus : "")
             : (result.status !== undefined && result.status !== null && result.status !== ""
@@ -2208,32 +2245,34 @@
         const statusHtml = '<div class="dashboard-status ' + escapeHtml(getStatusClass(statusValue)) + '">' +
             '<i class="bi ' + escapeHtml(getStatusIcon(statusValue)) + '" aria-hidden="true"></i>' +
             '<span>' + escapeHtml(statusText) + '</span></div>';
-        const displayValue = value !== null && typeof value === "object"
-            ? JSON.stringify(value)
-            : value;
+        const displayValue = formatWidgetValue(value);
         const message = result.message || "";
         const labels = config.labels && typeof config.labels === "object" && !Array.isArray(config.labels)
             ? config.labels : {};
 
         let metricsHtml = "";
-        if (result.metrics && typeof result.metrics === "object" && !Array.isArray(result.metrics))
+        const metricSource = isObjectRow(result.metrics) ? result.metrics :
+            (isObjectRow(payload) && isObjectRow(payload.metrics) ? payload.metrics : {});
+        if (Object.keys(metricSource).length)
         {
-            let metricEntries = Object.entries(result.metrics);
-            if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
+            const configuredColumns = Array.isArray(config.columns)
+                ? config.columns.filter(function (column) { return column && column.field; }) : [];
+            const visibleFields = configuredColumns.length
+                ? configuredColumns.filter(function (column) { return column.visible !== false; })
+                    .map(function (column) { return String(column.field); })
+                : (Array.isArray(config.visibleFields) ? config.visibleFields.map(String) : []);
+            let metricEntries = Object.entries(metricSource).filter(function (entry)
             {
-                metricEntries = metricEntries.filter(function (entry)
-                {
-                    return config.visibleFields.includes(entry[0]);
-                });
-            }
+                return entry[0] !== config.valueField && entry[0] !== config.statusField &&
+                    (!visibleFields.length || visibleFields.includes(entry[0]));
+            });
 
             if (metricEntries.length > 0)
             {
                 metricsHtml = '<div class="dashboard-status-metrics">' +
                     metricEntries.map(function (entry)
                     {
-                        const metricValue = entry[1] !== null && typeof entry[1] === "object"
-                            ? JSON.stringify(entry[1]) : entry[1];
+                        const metricValue = formatWidgetValue(entry[1]);
                         return '<div class="dashboard-status-metric">' +
                             '<span class="dashboard-status-metric-label">' +
                                 escapeHtml(labels[entry[0]] || entry[0]) +
@@ -2257,8 +2296,8 @@
     function renderStatWidget(result, widget)
     {
         const config = parseWidgetFieldConfig(widget);
-        const payload = parseJsonPayload(result && result.payload) ||
-            parseJsonPayload(result && result.data) || {};
+        result = result || {};
+        const payload = getWidgetPayload(result);
         const payloadData = payload && typeof payload === "object" &&
             !Array.isArray(payload) && Object.prototype.hasOwnProperty.call(payload, "data")
                 ? payload.data : payload;
@@ -2282,14 +2321,10 @@
         }
         const getFieldValue = function (field)
         {
-            let fieldValue = getJsonPath(payloadData, field);
-            if (fieldValue === undefined || fieldValue === null) fieldValue = getJsonPath(payload, field);
-            if ((fieldValue === undefined || fieldValue === null) && result && result.metrics &&
-                Object.prototype.hasOwnProperty.call(result.metrics, field))
-            {
-                fieldValue = result.metrics[field];
-            }
-            return fieldValue;
+            const fieldValue = getWidgetFieldValue(result, payloadData, field);
+            return fieldValue === undefined || fieldValue === null
+                ? getWidgetFieldValue(result, payload, field)
+                : fieldValue;
         };
         const humanizeField = function (field)
         {
@@ -2328,7 +2363,9 @@
             }
             return typeof fieldValue === "object" ? JSON.stringify(fieldValue) : String(fieldValue);
         };
-        const primaryIsVisible = !configuredColumns.length || visibleFields.includes(primaryField);
+        const primaryIsVisible = !configuredColumns.length
+            ? (!visibleFields.length || visibleFields.includes(primaryField))
+            : visibleFields.includes(primaryField);
         const primaryValue = primaryField ? getFieldValue(primaryField) :
             (result && result.value !== undefined && result.value !== null ? result.value : "");
         const primaryLabel = primaryField ? getLabel(primaryField) : "";
@@ -2344,7 +2381,7 @@
         // Execution messages belong to job history, not Stat values.
         const additionalFields = visibleFields.filter(function (field)
         {
-            return field !== primaryField || !primaryIsVisible;
+            return field !== primaryField;
         });
         const metricsHtml = additionalFields.length
             ? '<div class="dashboard-stat-metrics">' + additionalFields.map(function (field)
