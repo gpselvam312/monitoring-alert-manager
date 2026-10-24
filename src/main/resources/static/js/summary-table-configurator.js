@@ -631,18 +631,27 @@
     }
 
     function readFieldEditor() {
-        const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
-        return Array.from(byId("summaryTableFieldEditor").querySelectorAll("tr[data-field]")).map(row => ({
-            field: row.getAttribute("data-field"),
-            label: row.querySelector(".summary-config-label").value.trim() || humanize(row.getAttribute("data-field")),
-            visible: row.querySelector(".summary-config-visible").checked,
-            groupable: systemMetrics ? false : row.querySelector(".summary-config-groupable").checked,
-            sortable: row.getAttribute("data-sortable") !== "false",
-            searchable: row.getAttribute("data-searchable") !== "false",
-            format: row.querySelector(".summary-config-format").value,
-            color: row.querySelector(".summary-config-color") ? row.querySelector(".summary-config-color").value : "default",
-            aggregation: systemMetrics ? "none" : row.querySelector(".summary-config-aggregation").value,
-        }));
+        const type = currentWidgetType();
+        const systemMetrics = type === "SYSTEM_METRICS";
+        const statWidget = type === "STAT";
+        return Array.from(byId("summaryTableFieldEditor").querySelectorAll("tr[data-field]")).map(row => {
+            const field = row.getAttribute("data-field");
+            const column = {
+                field,
+                label: row.querySelector(".summary-config-label").value.trim() || humanize(field),
+                visible: row.querySelector(".summary-config-visible").checked,
+                groupable: systemMetrics ? false : row.querySelector(".summary-config-groupable").checked,
+                sortable: row.getAttribute("data-sortable") !== "false",
+                searchable: row.getAttribute("data-searchable") !== "false",
+                format: row.querySelector(".summary-config-format").value,
+                aggregation: systemMetrics ? "none" : row.querySelector(".summary-config-aggregation").value,
+            };
+            if (statWidget) {
+                column.color = row.querySelector(".summary-config-color")
+                    ? row.querySelector(".summary-config-color").value : "default";
+            }
+            return column;
+        });
     }
 
 
