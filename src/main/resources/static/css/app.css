@@ -3645,8 +3645,8 @@ textarea.form-control {
 
 .dashboard-stat-content .dashboard-stat-metrics {
     display: grid;
-    /* Two columns keeps four secondary metrics readable in two rows. */
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Fit as many metric columns as the widget can comfortably support. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
     gap: 0.75rem 1rem;
     width: 100%;
     padding-top: 0.7rem;
@@ -3663,14 +3663,14 @@ textarea.form-control {
 .dashboard-stat-content .dashboard-stat-metric-label {
     display: block;
     color: var(--text-secondary);
-    font-size: 0.7rem;
-    margin-bottom: 0.2rem;
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
 }
 
 .dashboard-stat-content .dashboard-stat-metric-value {
     display: block;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     font-weight: 700;
 }
 
@@ -3712,7 +3712,7 @@ textarea.form-control {
 
 @media (max-width: 420px) {
     .dashboard-stat-content .dashboard-stat-metrics {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
     }
 }
 
