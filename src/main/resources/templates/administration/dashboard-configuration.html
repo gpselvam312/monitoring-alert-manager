@@ -2508,6 +2508,9 @@
                 }
                 loadDashboardWidgetTextConfigFromJson();
                 loadDashboardWidgetTextAssociationOptions();
+                // Widget type can be assigned programmatically when editing, so refresh
+                // type-specific panels on modal open as well as on dropdown changes.
+                syncDashboardWidgetTextFields();
                 filterDashboardWidgetJobs(Boolean(!widgetId));
             });
 
