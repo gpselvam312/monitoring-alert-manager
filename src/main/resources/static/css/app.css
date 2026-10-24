@@ -3674,21 +3674,40 @@ textarea.form-control {
     font-weight: 700;
 }
 
-/* Distinct semantic accents make the secondary values easier to scan. */
-.dashboard-stat-content .dashboard-stat-metric:nth-child(4n + 1) .dashboard-stat-metric-value {
+/* Default follows the active theme; explicit colors are chosen per field in widget configuration. */
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-blue,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-blue {
     color: var(--info);
 }
 
-.dashboard-stat-content .dashboard-stat-metric:nth-child(4n + 2) .dashboard-stat-metric-value {
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-green,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-green {
     color: var(--success);
 }
 
-.dashboard-stat-content .dashboard-stat-metric:nth-child(4n + 3) .dashboard-stat-metric-value {
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-red,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-red {
     color: var(--danger);
 }
 
-.dashboard-stat-content .dashboard-stat-metric:nth-child(4n) .dashboard-stat-metric-value {
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-amber,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-amber {
     color: var(--warning);
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-purple,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-purple {
+    color: #8b5cf6;
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-teal,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-teal {
+    color: #0d9488;
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-gray,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-gray {
+    color: var(--text-secondary);
 }
 
 @media (max-width: 420px) {
