@@ -2561,8 +2561,10 @@
 
         const isSystemMetrics = widgetType === "SYSTEM_METRICS";
         const isElasticsearch = widgetType === "ELASTICSEARCH";
+        const showUpdated = fieldConfig.showUpdated !== false;
+        const showStatus = fieldConfig.showStatus !== false;
         let headerUpdatedHtml = "";
-        if (updated)
+        if (showUpdated && updated)
         {
             const timestampLabel = (isSystemMetrics || isElasticsearch) ? "Last collection: " : "Updated: ";
             headerUpdatedHtml = '<span class="dashboard-widget-updated dashboard-widget-collected" title="' +
@@ -2820,7 +2822,7 @@
                             headerUpdatedHtml +
 
 
-                            (isIframeWidget ? "" :
+                            (isIframeWidget || !showStatus ? "" :
                                 '<span class="dashboard-status ' + statusClass + '">' +
                                     '<i class="bi ' + statusIcon + '"></i>' +
                                     '<span>' + escapeHtml(statusLabel) + '</span>' +
