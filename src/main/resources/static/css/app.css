@@ -3592,13 +3592,13 @@ textarea.form-control {
     font-size: 0.82rem;
 }
 
-.dashboard-status-message-color-blue { color: var(--theme-primary); }
-.dashboard-status-message-color-green { color: var(--success); }
-.dashboard-status-message-color-red { color: var(--danger); }
-.dashboard-status-message-color-amber { color: var(--warning); }
-.dashboard-status-message-color-purple { color: #8b5cf6; }
-.dashboard-status-message-color-teal { color: #0d9488; }
-.dashboard-status-message-color-gray { color: var(--text-secondary); }
+.dashboard-status-value-color-blue { color: var(--theme-primary); }
+.dashboard-status-value-color-green { color: var(--success); }
+.dashboard-status-value-color-red { color: var(--danger); }
+.dashboard-status-value-color-amber { color: var(--warning); }
+.dashboard-status-value-color-purple { color: #8b5cf6; }
+.dashboard-status-value-color-teal { color: #0d9488; }
+.dashboard-status-value-color-gray { color: var(--text-secondary); }
 
 .dashboard-status-metrics {
     display: flex;
