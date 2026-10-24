@@ -1367,6 +1367,23 @@
                                         </div>
                                     </div>
 
+                                    <div class="col-12 mt-2">
+                                        <label class="form-label mb-1">Widget Header</label>
+                                        <div class="d-flex flex-wrap gap-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox"
+                                                       id="dashboardWidgetShowUpdated" checked>
+                                                <label class="form-check-label" for="dashboardWidgetShowUpdated">Show last updated date/time</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox"
+                                                       id="dashboardWidgetShowStatus" checked>
+                                                <label class="form-check-label" for="dashboardWidgetShowStatus">Show job execution status</label>
+                                            </div>
+                                        </div>
+                                        <div class="form-text">Hide either item to keep the header compact, especially for Small widgets.</div>
+                                    </div>
+
                             <div class="col-md-2">
                                 <div class="form-check mt-2 text-nowrap">
                                     <input class="form-check-input" type="checkbox"
@@ -2347,6 +2364,10 @@
                             widget.fieldConfigJson || '{}';
 
                         const savedTextConfig = readWidgetConfigJson();
+                        document.getElementById('dashboardWidgetShowUpdated').checked =
+                            savedTextConfig.showUpdated !== false;
+                        document.getElementById('dashboardWidgetShowStatus').checked =
+                            savedTextConfig.showStatus !== false;
                         document.getElementById('dashboardWidgetTextAssociatedWidget').dataset.savedValue =
                             savedTextConfig.associatedWidgetId == null ? '' : String(savedTextConfig.associatedWidgetId);
                         loadDashboardWidgetTextConfigFromJson();
@@ -2446,8 +2467,24 @@
         dashboardWidgetForm.addEventListener('formdata', function (event) {
             if (document.getElementById('dashboardWidgetType').value === 'TEXT') {
                 syncDashboardWidgetTextConfigToJson();
-                event.formData.set('fieldConfigJson', document.getElementById('dashboardWidgetFieldConfigJson').value);
             }
+
+            let config = {};
+            try {
+                const raw = document.getElementById('dashboardWidgetFieldConfigJson').value;
+                const parsed = JSON.parse(raw || '{}');
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    config = parsed;
+                }
+            } catch (exception) {
+                // Preserve invalid advanced JSON so server-side validation can report it.
+                event.formData.set('fieldConfigJson', document.getElementById('dashboardWidgetFieldConfigJson').value);
+                return;
+            }
+
+            config.showUpdated = document.getElementById('dashboardWidgetShowUpdated').checked;
+            config.showStatus = document.getElementById('dashboardWidgetShowStatus').checked;
+            event.formData.set('fieldConfigJson', JSON.stringify(config));
         });
 
         dashboardWidgetForm.addEventListener('submit', function (event) {
