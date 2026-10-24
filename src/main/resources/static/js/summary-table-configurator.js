@@ -984,11 +984,21 @@
                 config.valueField = byId("widgetValueField").value;
                 config.seriesField = byId("widgetSeriesField").value;
                 break;
-            case "STAT":
+            case "STAT": {
                 config.renderer = "STAT";
                 config.valueField = byId("widgetSingleValueField").value;
-                config.visibleFields = config.valueField ? [config.valueField] : [];
+                const columns = readFieldEditor();
+                const visibleColumns = columns.filter(column => column.visible);
+                config.visibleFields = Array.from(new Set([
+                    config.valueField,
+                    ...visibleColumns.map(column => column.field)
+                ].filter(Boolean)));
+                config.labels = Object.assign({}, config.labels || {},
+                    Object.fromEntries(columns.map(column => [column.field, column.label || humanize(column.field)])));
+                config.formats = Object.assign({}, config.formats || {},
+                    Object.fromEntries(columns.filter(column => column.format).map(column => [column.field, column.format])));
                 break;
+            }
             case "STATUS":
                 config.renderer = "STATUS";
                 config.valueField = byId("widgetSingleValueField").value;
