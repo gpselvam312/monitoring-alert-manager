@@ -227,6 +227,18 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
                         "Speedometer decimalPlaces must be an integer between 0 and 4.");
                 return false;
             }
+            for (String colorField : List.of("normalColor", "warningColor", "criticalColor"))
+            {
+                Object colorValue = config.get(colorField);
+                if (colorValue != null
+                        && (!(colorValue instanceof String color)
+                                || !color.matches("#[0-9a-fA-F]{6}")))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "Speedometer " + colorField + " must be a six-digit hexadecimal color such as #198754.");
+                    return false;
+                }
+            }
             Object unitValue = config.get("unit");
             if (unitValue != null && !(unitValue instanceof String))
             {
