@@ -2564,12 +2564,12 @@
         return '<div class="dashboard-speedometer" style="--gauge-value-color:' + color + '" role="img" aria-label="' + escapeHtml(safeName) + ': ' +
             escapeHtml(displayValue + (unit ? ' ' + unit : '')) + ', ' + escapeHtml(state) + '">' +
             '<div class="dashboard-speedometer-topline"><span class="dashboard-speedometer-eyebrow">' +
-                escapeHtml(label || "Live reading") + '</span><span class="dashboard-speedometer-live"><span></span> MONITOR</span></div>' +
+                escapeHtml(label || "Live reading") + '</span><span class="dashboard-speedometer-topline-range">' + escapeHtml(rangeLabel) + '</span></div>' +
             '<svg class="dashboard-speedometer-dial" viewBox="0 0 200 124" aria-hidden="true">' +
                 '<path class="dashboard-speedometer-track" d="' + arcBetween(0, 1, 82) + '" />' +
                 zoneArcs + progressArc + ticks +
-                '<line class="dashboard-speedometer-needle" x1="100" y1="100" x2="' + needleEnd.x + '" y2="' + needleEnd.y +
-                    '" style="--gauge-angle:' + angle + 'deg" />' +
+                '<line class="dashboard-speedometer-needle-shadow" x1="100" y1="100" x2="' + needleEnd.x + '" y2="' + needleEnd.y + '" style="--gauge-angle:' + angle + 'deg" />' +
+                '<line class="dashboard-speedometer-needle" x1="100" y1="100" x2="' + needleEnd.x + '" y2="' + needleEnd.y + '" style="--gauge-angle:' + angle + 'deg" />' +
                 '<circle class="dashboard-speedometer-hub-ring" cx="100" cy="100" r="8" />' +
                 '<circle class="dashboard-speedometer-hub" cx="100" cy="100" r="4.5" />' +
                 '<text class="dashboard-speedometer-scale" x="22" y="112" text-anchor="middle">' + escapeHtml(String(minimum)) + '</text>' +
@@ -2580,7 +2580,7 @@
             '<div class="dashboard-speedometer-state dashboard-speedometer-state-' + state + '">' +
                 '<span class="dashboard-speedometer-state-dot"></span>' + state.charAt(0).toUpperCase() + state.slice(1) +
                 (outOfRange ? ' · outside range' : '') + '</div>' +
-            '<div class="dashboard-speedometer-range">' + escapeHtml(rangeLabel) + '</div>' +
+            '
         '</div>';
     }
 
