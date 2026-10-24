@@ -190,14 +190,22 @@ public class DashboardWidgetValidator implements ConstraintValidator<ValidDashbo
 
             if ("STATUS".equals(form.getWidgetType()))
             {
-                Object messageColorValue = config.get("messageColor");
-                if (messageColorValue != null
-                        && (!(messageColorValue instanceof String messageColor)
+                Object valueColorValue = config.containsKey("valueColor")
+                        ? config.get("valueColor") : config.get("messageColor");
+                if (valueColorValue != null
+                        && (!(valueColorValue instanceof String valueColor)
                                 || !Set.of("default", "blue", "green", "red", "amber", "purple", "teal", "gray")
-                                        .contains(messageColor)))
+                                        .contains(valueColor)))
                 {
                     addFieldError(context, "fieldConfigJson",
-                            "Select a supported Status execution message font color.");
+                            "Select a supported Status value font color.");
+                    return false;
+                }
+                Object showMessageValue = config.get("showMessage");
+                if (showMessageValue != null && !(showMessageValue instanceof Boolean))
+                {
+                    addFieldError(context, "fieldConfigJson",
+                            "showMessage must be true or false.");
                     return false;
                 }
             }
