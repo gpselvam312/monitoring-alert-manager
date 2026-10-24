@@ -959,9 +959,8 @@
         setFieldOptions("widgetCategoryField", fields, config.categoryField, "Select category field");
         setFieldOptions("widgetValueField", fields, config.valueField, "Select value field");
         setFieldOptions("widgetSeriesField", fields, config.seriesField, "No series field");
-        // Older Stat/Status mappings may have visibleFields but no valueField
-        // because the generic chart submit handler previously removed valueField.
-        // Restore the primary selection from the saved visibility list when reopening.
+        // Keep older saved mappings editable when their primary field was stored
+        // only in visibleFields rather than valueField.
         const configuredPrimaryField = config.valueField ||
             (["STAT", "STATUS"].includes(type) && Array.isArray(config.visibleFields)
                 ? config.visibleFields[0] || "" : "");
@@ -996,26 +995,32 @@
                 break;
             case "STAT": {
                 config.renderer = "STAT";
-                config.valueField = byId("widgetSingleValueField").value;
+                const legacyVisibleFields = Array.isArray(config.visibleFields) ? config.visibleFields : [];
+                config.valueField = byId("widgetSingleValueField").value ||
+                    config.valueField || legacyVisibleFields[0] || "";
                 const columns = readFieldEditor();
                 config.columns = columns;
-                const visibleColumns = columns.filter(column => column.visible);
-                config.visibleFields = Array.from(new Set([
-                    config.valueField,
-                    ...visibleColumns.map(column => column.field)
-                ].filter(Boolean)));
+                config.visibleFields = Array.from(new Set(
+                    columns.filter(column => column.visible).map(column => column.field).filter(Boolean)
+                ));
                 config.labels = Object.assign({}, config.labels || {},
                     Object.fromEntries(columns.map(column => [column.field, column.label || humanize(column.field)])));
                 config.formats = Object.assign({}, config.formats || {},
                     Object.fromEntries(columns.filter(column => column.format).map(column => [column.field, column.format])));
+                if (!config.valueField) delete config.valueField;
                 break;
             }
-            case "STATUS":
+            case "STATUS": {
                 config.renderer = "STATUS";
-                config.valueField = byId("widgetSingleValueField").value;
-                config.statusField = byId("widgetStatusField").value;
+                const legacyVisibleFields = Array.isArray(config.visibleFields) ? config.visibleFields : [];
+                config.valueField = byId("widgetSingleValueField").value ||
+                    config.valueField || legacyVisibleFields[0] || "";
+                config.statusField = byId("widgetStatusField").value || config.statusField || "";
                 config.visibleFields = [config.valueField, config.statusField].filter(Boolean);
+                if (!config.valueField) delete config.valueField;
+                if (!config.statusField) delete config.statusField;
                 break;
+            }
             case "TEXT":
                 config.renderer = "TEXT";
                 config.textFields = selectedValues("widgetTextFields");
@@ -1555,30 +1560,16 @@
             });
         }
 
-        // Persist the Stat/Status primary field at submit time as well as on editor
-        // changes. This also repairs older saved mappings that only contain visibleFields.
+        // Run the same type-mapping path used by the guided editor immediately
+        // before submit, so the saved configuration has one source of truth.
         const widgetForm = byId("dashboardWidgetFieldConfigJson").closest("form");
         if (widgetForm) {
             widgetForm.addEventListener("submit", function () {
                 const type = currentWidgetType();
                 if (!["STAT", "STATUS"].includes(type)) return;
-
                 const config = getConfig();
-                const selectedValueField = byId("widgetSingleValueField").value ||
-                    config.valueField ||
-                    (Array.isArray(config.visibleFields) ? config.visibleFields[0] || "" : "");
-                config.renderer = type;
-                if (selectedValueField) config.valueField = selectedValueField;
-                else delete config.valueField;
-
-                if (type === "STAT") {
-                    config.visibleFields = selectedValueField ? [selectedValueField] : [];
-                } else {
-                    config.statusField = byId("widgetStatusField").value || config.statusField || "";
-                    config.visibleFields = [selectedValueField, config.statusField].filter(Boolean);
-                }
-                config.responseParser = currentParserConfig();
-                byId("dashboardWidgetFieldConfigJson").value = JSON.stringify(config);
+                syncTypeMappingToConfig(config, type);
+                setConfig(config);
             });
         }
 
