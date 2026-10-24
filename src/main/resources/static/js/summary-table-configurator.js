@@ -548,6 +548,8 @@
                 visible: saved ? saved.visible !== false : true,
                 format: saved && saved.format !== undefined ? String(saved.format).toLowerCase()
                     : (currentWidgetType() === "SYSTEM_METRICS" ? (systemMetricDefaultFormat(field, collection ? collection.rows : []) || "") : ""),
+                color: saved && ["default", "blue", "green", "red", "amber", "purple", "teal", "gray"].includes(String(saved.color || "").toLowerCase())
+                    ? String(saved.color).toLowerCase() : "default",
                 aggregation: saved && saved.aggregation ? String(saved.aggregation).toLowerCase() : "none",
                 summaryCard: false,
                 sortable: saved ? saved.sortable !== false : true,
@@ -576,6 +578,9 @@
             item.groupSummary = groupedSummaryFields.has(item.field);
         });
         const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
+        const statWidget = currentWidgetType() === "STAT";
+        const colors = [["default", "Default (theme)"], ["blue", "Blue"], ["green", "Green"], ["red", "Red"],
+            ["amber", "Amber"], ["purple", "Purple"], ["teal", "Teal"], ["gray", "Gray"]];
         const formats = systemMetrics
             ? [["", "Automatic"], ["meter", "Health meter"], ["number", "Numeric value"], ["text", "Text"], ["duration", "Duration"], ["status", "Status"]]
             : [["", "Default"], ["number", "Number"], ["percentage", "Percentage"], ["toggle", "Toggle"],
@@ -583,7 +588,8 @@
         const aggregations = [["none", "None"], ["count", "Count"], ["sum", "Sum"], ["avg", "Average"], ["max", "Maximum"], ["min", "Minimum"]];
         byId("summaryTableFieldEditor").innerHTML = fields.length ?
             '<div class="table-responsive border rounded"><table class="table table-sm table-striped align-middle mb-0 summary-config-mapping-table">' +
-            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all fields"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th><th>Format</th>' +
+            '<thead><tr><th>Order</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-visible-all" type="checkbox" aria-label="Show or hide all fields"><label class="form-check-label">Show</label></div></th><th>Source field</th><th>Display label</th>' +
+            (statWidget ? '<th>Value colour</th>' : '') + '<th>Format</th>' +
             (systemMetrics ? '' : '<th>Aggregate</th><th><div class="form-check mb-0"><input class="form-check-input summary-config-groupable-all" type="checkbox" aria-label="Allow grouping by all columns"><label class="form-check-label">Groupable</label></div></th>') +
             '</tr></thead><tbody>' +
             fields.map((item, index) => '<tr data-field="' + escapeHtml(item.field) + '" data-sortable="' + item.sortable + '" data-searchable="' + item.searchable + '">' +
@@ -592,6 +598,9 @@
                 '<td><input class="form-check-input summary-config-visible" type="checkbox" aria-label="Show ' + escapeHtml(item.field) + '"' + (item.visible ? ' checked' : '') + '></td>' +
                 '<td><code>' + escapeHtml(displaySourceField(item.field)) + '</code></td>' +
                 '<td><input class="form-control form-control-sm summary-config-label" type="text" maxlength="120" value="' + escapeHtml(item.label) + '" aria-label="Label for ' + escapeHtml(item.field) + '"></td>' +
+                (statWidget ? '<td><select class="form-select form-select-sm summary-config-color" aria-label="Value colour for ' + escapeHtml(item.field) + '">' +
+                    colors.map(option => '<option value="' + option[0] + '"' + (item.color === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
+                    '</select></td>' : '') +
                 '<td><select class="form-select form-select-sm summary-config-format" aria-label="Format for ' + escapeHtml(item.field) + '">' +
                 formats.map(option => '<option value="' + option[0] + '"' + (item.format === option[0] ? ' selected' : '') + '>' + option[1] + '</option>').join("") +
                 '</select></td>' +
@@ -622,17 +631,27 @@
     }
 
     function readFieldEditor() {
-        const systemMetrics = currentWidgetType() === "SYSTEM_METRICS";
-        return Array.from(byId("summaryTableFieldEditor").querySelectorAll("tr[data-field]")).map(row => ({
-            field: row.getAttribute("data-field"),
-            label: row.querySelector(".summary-config-label").value.trim() || humanize(row.getAttribute("data-field")),
-            visible: row.querySelector(".summary-config-visible").checked,
-            groupable: systemMetrics ? false : row.querySelector(".summary-config-groupable").checked,
-            sortable: row.getAttribute("data-sortable") !== "false",
-            searchable: row.getAttribute("data-searchable") !== "false",
-            format: row.querySelector(".summary-config-format").value,
-            aggregation: systemMetrics ? "none" : row.querySelector(".summary-config-aggregation").value,
-        }));
+        const type = currentWidgetType();
+        const systemMetrics = type === "SYSTEM_METRICS";
+        const statWidget = type === "STAT";
+        return Array.from(byId("summaryTableFieldEditor").querySelectorAll("tr[data-field]")).map(row => {
+            const field = row.getAttribute("data-field");
+            const column = {
+                field,
+                label: row.querySelector(".summary-config-label").value.trim() || humanize(field),
+                visible: row.querySelector(".summary-config-visible").checked,
+                groupable: systemMetrics ? false : row.querySelector(".summary-config-groupable").checked,
+                sortable: row.getAttribute("data-sortable") !== "false",
+                searchable: row.getAttribute("data-searchable") !== "false",
+                format: row.querySelector(".summary-config-format").value,
+                aggregation: systemMetrics ? "none" : row.querySelector(".summary-config-aggregation").value,
+            };
+            if (statWidget) {
+                column.color = row.querySelector(".summary-config-color")
+                    ? row.querySelector(".summary-config-color").value : "default";
+            }
+            return column;
+        });
     }
 
 
@@ -669,11 +688,24 @@
 
     function discoverSystemMetricFields(rows) {
         const fields = [], metricNames = [];
+        const addField = field => {
+            if (field && !fields.includes(field)) fields.push(field);
+        };
+        const visitObject = (value, prefix, depth) => {
+            if (!value || typeof value !== "object" || Array.isArray(value) || depth > 6) return;
+            Object.keys(value).forEach(key => {
+                // Metrics use their own name/value mapping and must not appear as a JSON object field.
+                if (!prefix && key === "metrics") return;
+                const field = prefix ? prefix + "." + key : key;
+                addField(field);
+                if (value[key] && typeof value[key] === "object" && !Array.isArray(value[key])) {
+                    visitObject(value[key], field, depth + 1);
+                }
+            });
+        };
         (rows || []).forEach(row => {
             if (!row || typeof row !== "object") return;
-            Object.keys(row).filter(key => key !== "metrics").forEach(key => {
-                if (!fields.includes(key)) fields.push(key);
-            });
+            visitObject(row, "", 0);
             const metrics = row.metrics;
             if (Array.isArray(metrics)) metrics.forEach(metric => {
                 const name = metric && (metric.name !== undefined && String(metric.name).trim()
@@ -913,25 +945,13 @@
     }
 
 
-    function discoveredSystemMetricNames() {
-        const names = [];
-        (state.rows || []).forEach(row => {
-            const metrics = row && row.metrics;
-            if (Array.isArray(metrics)) metrics.forEach(metric => {
-                const name = metric && (metric.name !== undefined ? metric.name : metric.key);
-                if (name !== null && name !== undefined && String(name).trim()) names.push(String(name).trim());
-            });
-            else if (metrics && typeof metrics === "object") Object.keys(metrics).forEach(name => names.push(name));
-        });
-        return Array.from(new Set(names));
-    }
 
     function renderTypeMappingOptions() {
         const type = currentWidgetType();
         const config = getConfig();
         const mapping = byId("widgetTypeMappingOptions");
         if (!mapping) return;
-        const hasDedicatedMapping = ["CHART", "STAT", "STATUS", "TEXT", "ELASTICSEARCH"].includes(type);
+        const hasDedicatedMapping = ["CHART", "STAT", "STATUS", "TEXT", "SYSTEM_METRICS", "ELASTICSEARCH"].includes(type);
         mapping.hidden = !hasDedicatedMapping;
         byId("widgetTypeMappingTitle").textContent = ({
             CHART: "Chart field mapping",
@@ -948,74 +968,28 @@
         setFieldOptions("widgetCategoryField", fields, config.categoryField, "Select category field");
         setFieldOptions("widgetValueField", fields, config.valueField, "Select value field");
         setFieldOptions("widgetSeriesField", fields, config.seriesField, "No series field");
-        setFieldOptions("widgetSingleValueField", fields, config.valueField, "Select value field");
+        // Keep older saved mappings editable when their primary field was stored
+        // only in visibleFields rather than valueField.
+        const configuredPrimaryField = config.valueField ||
+            (["STAT", "STATUS"].includes(type) && Array.isArray(config.visibleFields)
+                ? config.visibleFields[0] || "" : "");
+        setFieldOptions("widgetSingleValueField", fields, configuredPrimaryField, "Select value field");
         setFieldOptions("widgetStatusField", fields, config.statusField, "No status field");
+        const valueColor = config.valueColor || config.messageColor || "default";
+        byId("widgetStatusMessageColor").value =
+            ["default", "blue", "green", "red", "amber", "purple", "teal", "gray"].includes(valueColor)
+                ? valueColor : "default";
+        byId("widgetStatusShowMessage").checked = config.showMessage === true;
         setFieldOptions("widgetMetricStatusField", fields,
             config.statusField || (config.fields && !Array.isArray(config.fields) ? config.fields.status : ""),
             "Auto-detect status field");
-        const metricFields = config.fields && typeof config.fields === "object" && !Array.isArray(config.fields) ? config.fields : {};
-        const metricFieldDefaults = {
-            hostname: "hostname", cpu: "cpuPercent", ram: "memoryPercent",
-            load1m: "loadAverage", load5m: "load5m", load15m: "load15m",
-            cpuCores: "cpuCores", uptimeSeconds: "uptimeSeconds", uptimeHours: "uptimeHours",
-            diskUsedPercent: "diskU01Percent", ramUsedMb: "ramUsedMb", ramTotalMb: "ramTotalMb"
-        };
-        const metricFieldControls = {
-            hostname: "systemMetricHostnameField", cpu: "systemMetricCpuField", ram: "systemMetricRamField",
-            load1m: "systemMetricLoad1Field", load5m: "systemMetricLoad5Field", load15m: "systemMetricLoad15Field",
-            cpuCores: "systemMetricCoresField", uptimeSeconds: "systemMetricUptimeSecondsField",
-            uptimeHours: "systemMetricUptimeHoursField", diskUsedPercent: "systemMetricDiskField",
-            ramUsedMb: "systemMetricRamUsedField", ramTotalMb: "systemMetricRamTotalField"
-        };
-        Object.keys(metricFieldControls).forEach(key => {
-            setFieldOptions(metricFieldControls[key], fields, metricFields[key] || metricFieldDefaults[key], "Auto-detect field");
-        });
-        const metricLabels = config.labels && typeof config.labels === "object" ? config.labels : {};
-        const labelControls = {
-            cpu: ["systemMetricCpuLabel", "CPU"], ram: ["systemMetricRamLabel", "RAM"],
-            load1m: ["systemMetricLoadLabel", "Load (1m / 5m / 15m)"],
-            uptimeSeconds: ["systemMetricUptimeLabel", "Uptime"],
-            diskUsedPercent: ["systemMetricDiskLabel", "/u01 Used"],
-            ramCapacity: ["systemMetricRamCapacityLabel", "RAM"]
-        };
-        Object.keys(labelControls).forEach(key => {
-            const [id, fallback] = labelControls[key];
-            byId(id).value = metricLabels[key] === undefined ? fallback : metricLabels[key];
-        });
+        const metricFields = config.fields && typeof config.fields === "object" && !Array.isArray(config.fields)
+            ? config.fields : {};
+        // Only machine identity and health status need semantic selectors. All metric fields,
+        // labels, formats, visibility and order use the shared discovered-field mapping table.
+        setFieldOptions("systemMetricHostnameField", fields, metricFields.hostname || "", "Select hostname field");
         const view = config.view && typeof config.view === "object" ? config.view : {};
         byId("systemMetricShowSummaryCards").checked = view.showSummaryCards !== false;
-        byId("systemMetricShowCpu").checked = view.showCpu !== false;
-        byId("systemMetricShowRam").checked = view.showRam !== false;
-        byId("systemMetricShowLoad").checked = view.showLoad !== false;
-        byId("systemMetricShowUptime").checked = view.showUptime !== false;
-        byId("systemMetricShowDisk").checked = view.showDisk !== false;
-        byId("systemMetricShowRamCapacity").checked = view.showRamCapacity !== false;
-        const dynamicMetricsPresent = discoveredSystemMetricNames().length > 0 ||
-            (state.fields || []).some(field => String(field).startsWith("metrics::")) ||
-            (Array.isArray(view.metrics) && view.metrics.length > 0);
-        ["systemMetricCpuField", "systemMetricRamField", "systemMetricLoad1Field", "systemMetricLoad5Field", "systemMetricLoad15Field",
-            "systemMetricCoresField", "systemMetricUptimeSecondsField", "systemMetricUptimeHoursField", "systemMetricDiskField",
-            "systemMetricRamUsedField", "systemMetricRamTotalField"].forEach(id => {
-            const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
-        });
-        ["systemMetricShowCpu", "systemMetricShowRam", "systemMetricShowLoad", "systemMetricShowUptime", "systemMetricShowDisk",
-            "systemMetricShowRamCapacity"].forEach(id => {
-            const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
-        });
-        ["systemMetricCpuLabel", "systemMetricRamLabel", "systemMetricLoadLabel", "systemMetricUptimeLabel",
-            "systemMetricDiskLabel", "systemMetricRamCapacityLabel"].forEach(id => {
-            const element = byId(id); if (element && element.closest(".col-md-4")) element.closest(".col-md-4").hidden = dynamicMetricsPresent;
-        });
-        const mappingHeading = Array.from(mapping.querySelectorAll("h6")).find(element =>
-            ["Machine field mapping", "Legacy flat-field mapping"].includes(element.textContent.trim()));
-        if (mappingHeading) {
-            mappingHeading.textContent = "Legacy flat-field mapping";
-            if (mappingHeading.closest(".col-12")) mappingHeading.closest(".col-12").hidden = dynamicMetricsPresent;
-        }
-        const metricStatusGroup = byId("widgetMetricStatusField") && byId("widgetMetricStatusField").closest(".col-md-6");
-        if (metricStatusGroup) metricStatusGroup.hidden = dynamicMetricsPresent;
-        const labelsHeading = Array.from(mapping.querySelectorAll("h6")).find(element => element.textContent.trim() === "Legacy flat-field metric labels");
-        if (labelsHeading && labelsHeading.parentElement) labelsHeading.parentElement.hidden = dynamicMetricsPresent;
         setFieldOptions("widgetTextFields", fields, config.textFields, "");
         byId("widgetTextTemplate").value = config.textTemplate || "";
     }
@@ -1033,17 +1007,37 @@
                 config.valueField = byId("widgetValueField").value;
                 config.seriesField = byId("widgetSeriesField").value;
                 break;
-            case "STAT":
+            case "STAT": {
                 config.renderer = "STAT";
-                config.valueField = byId("widgetSingleValueField").value;
-                config.visibleFields = config.valueField ? [config.valueField] : [];
+                const legacyVisibleFields = Array.isArray(config.visibleFields) ? config.visibleFields : [];
+                config.valueField = byId("widgetSingleValueField").value ||
+                    config.valueField || legacyVisibleFields[0] || "";
+                const columns = readFieldEditor();
+                config.columns = columns;
+                config.visibleFields = Array.from(new Set(
+                    columns.filter(column => column.visible).map(column => column.field).filter(Boolean)
+                ));
+                config.labels = Object.assign({}, config.labels || {},
+                    Object.fromEntries(columns.map(column => [column.field, column.label || humanize(column.field)])));
+                config.formats = Object.assign({}, config.formats || {},
+                    Object.fromEntries(columns.filter(column => column.format).map(column => [column.field, column.format])));
+                if (!config.valueField) delete config.valueField;
                 break;
-            case "STATUS":
+            }
+            case "STATUS": {
                 config.renderer = "STATUS";
-                config.valueField = byId("widgetSingleValueField").value;
-                config.statusField = byId("widgetStatusField").value;
+                const legacyVisibleFields = Array.isArray(config.visibleFields) ? config.visibleFields : [];
+                config.valueField = byId("widgetSingleValueField").value ||
+                    config.valueField || legacyVisibleFields[0] || "";
+                config.statusField = byId("widgetStatusField").value || config.statusField || "";
+                config.valueColor = byId("widgetStatusMessageColor").value || "default";
+                delete config.messageColor;
+                config.showMessage = byId("widgetStatusShowMessage").checked;
                 config.visibleFields = [config.valueField, config.statusField].filter(Boolean);
+                if (!config.valueField) delete config.valueField;
+                if (!config.statusField) delete config.statusField;
                 break;
+            }
             case "TEXT":
                 config.renderer = "TEXT";
                 config.textFields = selectedValues("widgetTextFields");
@@ -1055,15 +1049,14 @@
                 const columns = readFieldEditor().map(({ aggregation, groupable, sortable, searchable, ...column }) => column);
                 config.details.columns = columns;
                 config.fields = config.fields && typeof config.fields === "object" && !Array.isArray(config.fields) ? config.fields : {};
-                const hostnameColumn = columns.find(column => column.field === "hostname");
-                const statusColumn = columns.find(column => column.field === "status");
-                if (hostnameColumn) {
-                    config.fields.hostname = hostnameColumn.field;
-                    config.labels = Object.assign({}, config.labels || {}, { hostname: hostnameColumn.label });
-                }
-                if (statusColumn) config.statusField = statusColumn.field;
-                // Dynamic metrics use the same mapping table as Summary Table. The specialized
-                // renderer consumes these rows while retaining its existing machine health cards.
+                const hostnameField = byId("systemMetricHostnameField").value;
+                const statusField = byId("widgetMetricStatusField").value;
+                if (hostnameField) config.fields.hostname = hostnameField;
+                else delete config.fields.hostname;
+                if (statusField) config.statusField = statusField;
+                else delete config.statusField;
+                // The shared mapping table is the source of truth for every displayed metric.
+                // Arbitrary flat fields and newly discovered metrics require no code changes.
                 config.view = Object.assign({}, config.view || {}, {
                     showSummaryCards: byId("systemMetricShowSummaryCards").checked,
                     metrics: columns.filter(column => String(column.field).startsWith("metrics::")).map((column, index) => ({
@@ -1074,40 +1067,6 @@
                         order: index
                     }))
                 });
-                // Preserve legacy flat-field mapping controls for older scripts.
-                if (!state.rows.some(row => row && row.metrics)) {
-                    const legacyControls = {
-                        hostname: "systemMetricHostnameField", cpu: "systemMetricCpuField", ram: "systemMetricRamField",
-                        load1m: "systemMetricLoad1Field", load5m: "systemMetricLoad5Field", load15m: "systemMetricLoad15Field",
-                        cpuCores: "systemMetricCoresField", uptimeSeconds: "systemMetricUptimeSecondsField",
-                        uptimeHours: "systemMetricUptimeHoursField", diskUsedPercent: "systemMetricDiskField",
-                        ramUsedMb: "systemMetricRamUsedField", ramTotalMb: "systemMetricRamTotalField"
-                    };
-                    Object.keys(legacyControls).forEach(key => {
-                        const value = byId(legacyControls[key]).value;
-                        if (value) config.fields[key] = value;
-                        else delete config.fields[key];
-                    });
-                    config.labels = Object.assign({}, config.labels || {});
-                    const labelControls = {
-                        cpu: "systemMetricCpuLabel", ram: "systemMetricRamLabel", load1m: "systemMetricLoadLabel",
-                        uptimeSeconds: "systemMetricUptimeLabel", diskUsedPercent: "systemMetricDiskLabel",
-                        ramCapacity: "systemMetricRamCapacityLabel"
-                    };
-                    Object.keys(labelControls).forEach(key => {
-                        const value = byId(labelControls[key]).value.trim();
-                        if (value) config.labels[key] = value;
-                        else delete config.labels[key];
-                    });
-                    config.view = Object.assign({}, config.view, {
-                        showCpu: byId("systemMetricShowCpu").checked,
-                        showRam: byId("systemMetricShowRam").checked,
-                        showLoad: byId("systemMetricShowLoad").checked,
-                        showUptime: byId("systemMetricShowUptime").checked,
-                        showDisk: byId("systemMetricShowDisk").checked,
-                        showRamCapacity: byId("systemMetricShowRamCapacity").checked
-                    });
-                }
                 break;
             }
             case "ELASTICSEARCH":
@@ -1190,7 +1149,7 @@
         const type = currentWidgetType();
         const isSummary = type === "SUMMARY_TABLE";
         const isTable = type === "TABLE" || isSummary;
-        const isFieldMapping = isTable || type === "SYSTEM_METRICS";
+        const isFieldMapping = isTable || ["STAT", "SYSTEM_METRICS"].includes(type);
         const rowPathTypes = ["TABLE", "SUMMARY_TABLE", "CHART", "SYSTEM_METRICS"];
         byId("summaryTableConfigurator").hidden = !type;
         byId("dashboardWidgetAdvancedConfig").open = false;
@@ -1359,18 +1318,7 @@
         });
         ["widgetCategoryField", "widgetValueField", "widgetSeriesField", "widgetSingleValueField",
             "widgetStatusField", "widgetMetricStatusField", "widgetTextFields",
-            "systemMetricHostnameField", "systemMetricCpuField", "systemMetricRamField",
-            "systemMetricLoad1Field", "systemMetricLoad5Field", "systemMetricLoad15Field",
-            "systemMetricCoresField", "systemMetricUptimeSecondsField", "systemMetricUptimeHoursField",
-            "systemMetricDiskField", "systemMetricRamUsedField", "systemMetricRamTotalField",
-            "systemMetricShowSummaryCards", "systemMetricShowCpu", "systemMetricShowRam",
-            "systemMetricShowLoad", "systemMetricShowUptime", "systemMetricShowDisk",
-            "systemMetricShowRamCapacity"].forEach(id => {
-            byId(id).addEventListener("change", refreshConfigFromEditor);
-        });
-        ["systemMetricCpuLabel", "systemMetricRamLabel", "systemMetricLoadLabel", "systemMetricUptimeLabel",
-            "systemMetricDiskLabel", "systemMetricRamCapacityLabel"].forEach(id => {
-            byId(id).addEventListener("input", refreshConfigFromEditor);
+            "systemMetricHostnameField", "systemMetricShowSummaryCards"].forEach(id => {
             byId(id).addEventListener("change", refreshConfigFromEditor);
         });
         byId("widgetTextTemplate").addEventListener("input", refreshConfigFromEditor);
@@ -1628,6 +1576,20 @@
                 lastWidgetType = type.value;
             });
         }
+
+        // Run the same type-mapping path used by the guided editor immediately
+        // before submit, so the saved configuration has one source of truth.
+        const widgetForm = byId("dashboardWidgetFieldConfigJson").closest("form");
+        if (widgetForm) {
+            widgetForm.addEventListener("submit", function () {
+                const type = currentWidgetType();
+                if (!["STAT", "STATUS"].includes(type)) return;
+                const config = getConfig();
+                syncTypeMappingToConfig(config, type);
+                setConfig(config);
+            });
+        }
+
         showForSelectedType();
     });
 })();

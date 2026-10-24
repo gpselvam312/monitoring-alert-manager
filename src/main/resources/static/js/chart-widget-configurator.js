@@ -482,6 +482,11 @@ byId("chartMapNumberFormat").value = config.numberFormat || "auto";
         });
         const form = byId(fieldId).closest("form");
         form?.addEventListener("submit", function (event) {
+            // This editor owns CHART configuration only. Running readUi for other
+            // widget types deletes chart-only fields including valueField, which is
+            // required by STAT and STATUS widgets, immediately before the form saves.
+            if (String(byId(typeId)?.value || "").toUpperCase() !== "CHART") return;
+
             try {
                 const config = readUi(parseConfig());
                 byId(fieldId).value = JSON.stringify(config);

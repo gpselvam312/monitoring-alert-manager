@@ -3102,6 +3102,7 @@ textarea.form-control {
 
 .dashboard-tab-pane.active {
     display: block;
+    padding-top: 6px;
 }
 
 .dashboard-widget {
@@ -3592,6 +3593,14 @@ textarea.form-control {
     font-size: 0.82rem;
 }
 
+.dashboard-status-value-color-blue { color: var(--theme-primary); }
+.dashboard-status-value-color-green { color: var(--success); }
+.dashboard-status-value-color-red { color: var(--danger); }
+.dashboard-status-value-color-amber { color: var(--warning); }
+.dashboard-status-value-color-purple { color: #8b5cf6; }
+.dashboard-status-value-color-teal { color: #0d9488; }
+.dashboard-status-value-color-gray { color: var(--text-secondary); }
+
 .dashboard-status-metrics {
     display: flex;
     flex-wrap: wrap;
@@ -3645,8 +3654,9 @@ textarea.form-control {
 
 .dashboard-stat-content .dashboard-stat-metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 0.75rem;
+    /* Fit as many metric columns as the widget can comfortably support. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    gap: 0.75rem 1rem;
     width: 100%;
     padding-top: 0.7rem;
     border-top: 1px solid var(--border-color);
@@ -3654,20 +3664,65 @@ textarea.form-control {
 
 .dashboard-stat-content .dashboard-stat-metric {
     min-width: 0;
+    padding: 0.35rem 0.45rem;
+    border-radius: 0.35rem;
+    background: var(--surface-secondary, transparent);
 }
 
 .dashboard-stat-content .dashboard-stat-metric-label {
     display: block;
     color: var(--text-secondary);
-    font-size: 0.7rem;
-    margin-bottom: 0.2rem;
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
 }
 
 .dashboard-stat-content .dashboard-stat-metric-value {
     display: block;
     color: var(--text-primary);
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+/* Default follows the active theme; explicit colors are chosen per field in widget configuration. */
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-blue,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-blue {
+    color: var(--info);
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-green,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-green {
+    color: var(--success);
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-red,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-red {
+    color: var(--danger);
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-amber,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-amber {
+    color: var(--warning);
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-purple,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-purple {
+    color: #8b5cf6;
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-teal,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-teal {
+    color: #0d9488;
+}
+
+.dashboard-stat-content .dashboard-stat-value.dashboard-stat-color-gray,
+.dashboard-stat-content .dashboard-stat-metric-value.dashboard-stat-color-gray {
+    color: var(--text-secondary);
+}
+
+@media (max-width: 420px) {
+    .dashboard-stat-content .dashboard-stat-metrics {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+    }
 }
 
 

@@ -1052,6 +1052,42 @@
         catch (ignore) { return value; }
     }
 
+    /*
+     * Widget renderers consume the same execution-result envelope. Normalize the
+     * payload here so object and JSON-string responses behave consistently.
+     */
+    function getWidgetPayload(result)
+    {
+        const source = result || {};
+        const payload = parseJsonPayload(source.payload);
+        if (payload !== undefined && payload !== null) return payload;
+        const data = parseJsonPayload(source.data);
+        return data !== undefined && data !== null ? data : {};
+    }
+
+    function getWidgetFieldValue(result, payload, field)
+    {
+        if (!field) return undefined;
+        let value = getJsonPath(payload, field);
+        if ((value === undefined || value === null) && isObjectRow(payload) &&
+            payload.data !== undefined && payload.data !== null)
+        {
+            value = getJsonPath(payload.data, field);
+        }
+        const metrics = result && result.metrics;
+        if ((value === undefined || value === null) && isObjectRow(metrics) &&
+            Object.prototype.hasOwnProperty.call(metrics, field))
+        {
+            value = metrics[field];
+        }
+        return value;
+    }
+
+    function formatWidgetValue(value)
+    {
+        return value !== null && typeof value === "object" ? JSON.stringify(value) : value;
+    }
+
     function getConfiguredTableRows(result, config)
     {
         result = result || {};
@@ -1387,15 +1423,23 @@
         };
 
         const configuredColumns = columns.length ? columns : [];
-        const hostColumn = configuredColumns.find(function (column) {
-            return /^(hostname|hostName|host|server|machine|name)$/i.test(String(column.field));
-        });
-        const statusColumn = configuredColumns.find(function (column) {
-            return /^(status|healthStatus|health_status)$/i.test(String(column.field));
-        }) || configuredColumns.find(function (column) {
-            return String(column.format || "").toLowerCase() === "status"
-                || /^(collection_status|collectionStatus)$/i.test(String(column.field));
-        });
+        const configuredHostField = config.fields && typeof config.fields === "object"
+            ? String(config.fields.hostname || "") : "";
+        const configuredStatusField = String(config.statusField ||
+            (config.fields && typeof config.fields === "object" ? config.fields.status || "" : ""));
+        const hostColumn = (configuredHostField
+            ? configuredColumns.find(function (column) { return String(column.field) === configuredHostField; })
+            : null) || configuredColumns.find(function (column) {
+                return /^(hostname|hostName|host|server|machine|name)$/i.test(String(column.field));
+            });
+        const statusColumn = (configuredStatusField
+            ? configuredColumns.find(function (column) { return String(column.field) === configuredStatusField; })
+            : null) || configuredColumns.find(function (column) {
+                return /^(status|healthStatus|health_status)$/i.test(String(column.field));
+            }) || configuredColumns.find(function (column) {
+                return String(column.format || "").toLowerCase() === "status"
+                    || /^(collection_status|collectionStatus)$/i.test(String(column.field));
+            });
 
         const legacyPick = function (row, keys)
         {
@@ -1428,31 +1472,20 @@
             return text;
         };
 
-        const inferLegacyStatus = function (row)
+        // Health thresholds belong to the collector. Never infer health from metric values.
+        const configuredStatusValue = function (row)
         {
-            const explicit = legacyPick(row, ["status", "healthStatus", "health_status"]);
-            if (explicit !== null) return normalizeStatus(explicit);
-            const cpu = number(legacyPick(row, ["cpu_used_percent", "cpuUsedPercent", "cpu_percent"]));
-            const ram = number(legacyPick(row, ["ram_used_percent", "ramUsedPercent", "memory_used_percent"]));
-            const load = number(legacyPick(row, ["load_1m", "load1m", "load_average_1m"]));
-            const cores = Math.max(1, number(legacyPick(row, ["cpu_cores", "cpuCores"])) || 1);
-            const disk = number(legacyPick(row, ["u01_used_percent", "u01_percent", "disk_u01_used_percent"]));
-            const levels = [];
-            if (cpu !== null) levels.push(cpu >= 85 ? 2 : cpu >= 70 ? 1 : 0);
-            if (ram !== null) levels.push(ram >= 90 ? 2 : ram >= 75 ? 1 : 0);
-            if (load !== null) levels.push(load / cores >= 1 ? 2 : load / cores >= 0.70 ? 1 : 0);
-            if (disk !== null) levels.push(disk >= 95 ? 2 : disk >= 85 ? 1 : 0);
-            if (!levels.length) return "UNKNOWN";
-            const worst = Math.max.apply(null, levels);
-            return worst === 2 ? "CRITICAL" : worst === 1 ? "WARNING" : "HEALTHY";
+            if (configuredStatusField) return valueOf(row, configuredStatusField);
+            return legacyPick(row, ["status", "healthStatus", "health_status"]);
         };
 
         const items = rows.map(function (row)
         {
-            const explicitStatus = legacyPick(row, ["status", "healthStatus", "health_status"]);
-            const status = explicitStatus !== null
+            const explicitStatus = configuredStatusValue(row);
+            const status = explicitStatus !== null && explicitStatus !== undefined && explicitStatus !== ""
                 ? normalizeStatus(explicitStatus)
-                : (statusColumn ? normalizeStatus(valueOf(row, statusColumn.field)) : inferLegacyStatus(row));
+                : (configuredStatusField ? "UNKNOWN"
+                    : (statusColumn ? normalizeStatus(valueOf(row, statusColumn.field)) : "UNKNOWN"));
             let pressure = 0;
             configuredColumns.forEach(function (column)
             {
@@ -2195,38 +2228,60 @@
 
     function renderStatusWidget(result, widget)
     {
+        result = result || {};
         const config = parseWidgetFieldConfig(widget);
-        const configuredValue = config.valueField
-            ? getJsonPath(result.payload || {}, config.valueField)
-            : undefined;
+        const payload = getWidgetPayload(result);
+        const configuredValue = getWidgetFieldValue(result, payload, config.valueField);
         const value = configuredValue !== undefined && configuredValue !== null
             ? configuredValue
             : (result.value !== null && result.value !== undefined ? result.value : "");
+        const configuredStatus = getWidgetFieldValue(result, payload, config.statusField);
+        const statusValue = config.statusField
+            ? (configuredStatus !== undefined && configuredStatus !== null && configuredStatus !== "" ? configuredStatus : "")
+            : (result.status !== undefined && result.status !== null && result.status !== ""
+                ? result.status
+                : (result.healthStatus !== undefined && result.healthStatus !== null ? result.healthStatus : ""));
+        const statusText = statusValue === "" ? "Unknown" : getStatusLabel(statusValue);
+        const statusHtml = '<div class="dashboard-status ' + escapeHtml(getStatusClass(statusValue)) + '">' +
+            '<i class="bi ' + escapeHtml(getStatusIcon(statusValue)) + '" aria-hidden="true"></i>' +
+            '<span>' + escapeHtml(statusText) + '</span></div>';
+        const displayValue = formatWidgetValue(value);
         const message = result.message || "";
-        const labels = config.labels && typeof config.labels === "object" ? config.labels : {};
+        const valueColor = ["blue", "green", "red", "amber", "purple", "teal", "gray"].includes(config.valueColor || config.messageColor)
+            ? (config.valueColor || config.messageColor) : "default";
+        const valueColorClass = valueColor === "default"
+            ? "" : " dashboard-status-value-color-" + valueColor;
+        const labels = config.labels && typeof config.labels === "object" && !Array.isArray(config.labels)
+            ? config.labels : {};
 
         let metricsHtml = "";
-        if (result.metrics && typeof result.metrics === "object")
+        const metricSource = isObjectRow(result.metrics) ? result.metrics :
+            (isObjectRow(payload) && isObjectRow(payload.metrics) ? payload.metrics : {});
+        if (Object.keys(metricSource).length)
         {
-            let metricEntries = Object.entries(result.metrics);
-            if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
+            const configuredColumns = Array.isArray(config.columns)
+                ? config.columns.filter(function (column) { return column && column.field; }) : [];
+            const visibleFields = configuredColumns.length
+                ? configuredColumns.filter(function (column) { return column.visible !== false; })
+                    .map(function (column) { return String(column.field); })
+                : (Array.isArray(config.visibleFields) ? config.visibleFields.map(String) : []);
+            let metricEntries = Object.entries(metricSource).filter(function (entry)
             {
-                metricEntries = metricEntries.filter(function (entry)
-                {
-                    return config.visibleFields.includes(entry[0]);
-                });
-            }
+                return entry[0] !== config.valueField && entry[0] !== config.statusField &&
+                    (!visibleFields.length || visibleFields.includes(entry[0]));
+            });
 
             if (metricEntries.length > 0)
             {
                 metricsHtml = '<div class="dashboard-status-metrics">' +
                     metricEntries.map(function (entry)
                     {
+                        const metricValue = formatWidgetValue(entry[1]);
                         return '<div class="dashboard-status-metric">' +
                             '<span class="dashboard-status-metric-label">' +
                                 escapeHtml(labels[entry[0]] || entry[0]) +
                             '</span><span class="dashboard-status-metric-value">' +
-                                escapeHtml(entry[1]) +
+                                escapeHtml(metricValue) +
                             '</span></div>';
                     }).join("") +
                     '</div>';
@@ -2234,84 +2289,120 @@
         }
 
         return '<div class="dashboard-status-content">' +
-            (value !== "" ? '<div class="dashboard-status-value">' + escapeHtml(value) + '</div>' : "") +
-            (message ? '<div class="dashboard-status-message">' + escapeHtml(message) + '</div>' : "") +
+            statusHtml +
+            (displayValue !== "" ? '<div class="dashboard-status-value' + valueColorClass + '">' + escapeHtml(displayValue) + '</div>' : "") +
+            (config.showMessage === true && message ? '<div class="dashboard-status-message">' + escapeHtml(message) + '</div>' : "") +
             metricsHtml +
             '</div>';
     }
 
 
     function renderStatWidget(result, widget)
-	{
-	    const config = parseWidgetFieldConfig(widget);
-	    const configuredValue = config.valueField
-	        ? getJsonPath(result.payload || {}, config.valueField)
-	        : undefined;
-	    const value = configuredValue !== undefined && configuredValue !== null
-	        ? configuredValue
-	        : (result.value !== null && result.value !== undefined ? result.value : "");
+    {
+        const config = parseWidgetFieldConfig(widget);
+        result = result || {};
+        const payload = getWidgetPayload(result);
+        const payloadData = payload && typeof payload === "object" &&
+            !Array.isArray(payload) && Object.prototype.hasOwnProperty.call(payload, "data")
+                ? payload.data : payload;
+        const labels = config.labels && typeof config.labels === "object" && !Array.isArray(config.labels)
+            ? config.labels : {};
+        const configuredColumns = Array.isArray(config.columns) ? config.columns.filter(function (column)
+        {
+            return column && typeof column === "object" && column.field;
+        }) : [];
+        // When a column mapping exists, its visibility flags are the source of truth.
+        // visibleFields may be stale in older saved configurations.
+        const configuredVisibleFields = configuredColumns.length
+            ? configuredColumns.filter(function (column) { return column.visible !== false; })
+                .map(function (column) { return String(column.field); })
+            : (Array.isArray(config.visibleFields) ? config.visibleFields.map(String).filter(Boolean) : []);
+        const primaryField = String(config.valueField || configuredVisibleFields[0] || "");
+        const visibleFields = Array.from(new Set(configuredVisibleFields.filter(Boolean)));
+        if (primaryField && configuredVisibleFields.includes(primaryField) && !visibleFields.includes(primaryField))
+        {
+            visibleFields.unshift(primaryField);
+        }
+        const getFieldValue = function (field)
+        {
+            const fieldValue = getWidgetFieldValue(result, payloadData, field);
+            return fieldValue === undefined || fieldValue === null
+                ? getWidgetFieldValue(result, payload, field)
+                : fieldValue;
+        };
+        const humanizeField = function (field)
+        {
+            return String(field || "").split(".").map(function (part)
+            {
+                return part.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                    .replace(/[_-]+/g, " ")
+                    .replace(/^./, function (character) { return character.toUpperCase(); });
+            }).join(" / ");
+        };
+        const getColumn = function (field)
+        {
+            return configuredColumns.find(function (column) { return String(column.field) === field; }) || {};
+        };
+        const getLabel = function (field)
+        {
+            const column = getColumn(field);
+            return labels[field] || column.label || humanizeField(field);
+        };
+        const getColorClass = function (field)
+        {
+            const column = getColumn(field);
+            const color = String(column.color || "default").toLowerCase();
+            return ["blue", "green", "red", "amber", "purple", "teal", "gray"].includes(color)
+                ? " dashboard-stat-color-" + color : "";
+        };
+        const formatFieldValue = function (field, fieldValue)
+        {
+            if (fieldValue === null || fieldValue === undefined) return "N/A";
+            const column = getColumn(field);
+            const format = column.format || (config.formats && config.formats[field]) || "";
+            if (format === "percentage" || format === "percent")
+            {
+                const number = Number(fieldValue);
+                return Number.isFinite(number) ? number + "%" : String(fieldValue);
+            }
+            return typeof fieldValue === "object" ? JSON.stringify(fieldValue) : String(fieldValue);
+        };
+        const primaryIsVisible = !configuredColumns.length
+            ? (!visibleFields.length || visibleFields.includes(primaryField))
+            : visibleFields.includes(primaryField);
+        const primaryValue = primaryField ? getFieldValue(primaryField) :
+            (result && result.value !== undefined && result.value !== null ? result.value : "");
+        const primaryLabel = primaryField ? getLabel(primaryField) : "";
+        const primaryHtml = primaryField && primaryIsVisible
+            ? '<div class="dashboard-stat-primary">' +
+                '<div class="dashboard-stat-primary-label">' + escapeHtml(primaryLabel) + '</div>' +
+                '<div class="dashboard-stat-value' + getColorClass(primaryField) + '">' + escapeHtml(formatFieldValue(primaryField, primaryValue)) + '</div>' +
+              '</div>'
+            : (!primaryField && primaryValue !== "" ? '<div class="dashboard-stat-value">' + escapeHtml(formatFieldValue("", primaryValue)) + '</div>' : "");
 
-	    const message =
-	        result.message || "";
+        // Render every configured visible field, using the selected value field as the
+        // prominent metric and the remaining visible fields as labelled secondary metrics.
+        // Execution messages belong to job history, not Stat values.
+        const additionalFields = visibleFields.filter(function (field)
+        {
+            return field !== primaryField;
+        });
+        const metricsHtml = additionalFields.length
+            ? '<div class="dashboard-stat-metrics">' + additionalFields.map(function (field)
+                {
+                    return '<div class="dashboard-stat-metric">' +
+                        '<span class="dashboard-stat-metric-label">' +
+                            escapeHtml(getLabel(field)) +
+                        '</span>' +
+                        '<span class="dashboard-stat-metric-value' + getColorClass(field) + '">' +
+                            escapeHtml(formatFieldValue(field, getFieldValue(field))) +
+                        '</span>' +
+                    '</div>';
+                }).join("") + '</div>'
+            : "";
 
-	    let metricsHtml = "";
-
-	    if (
-	        result.metrics &&
-	        typeof result.metrics === "object"
-	    )
-	    {
-	        let metricEntries =
-	            Object.entries(result.metrics);
-
-	        if (Array.isArray(config.visibleFields) && config.visibleFields.length > 0)
-	        {
-	            metricEntries = metricEntries.filter(function (entry)
-	            {
-	                return config.visibleFields.includes(entry[0]);
-	            });
-	        }
-
-	        if (metricEntries.length > 0)
-	        {
-	            metricsHtml =
-	                '<div class="dashboard-stat-metrics">' +
-	                    metricEntries.map(
-	                        function (entry)
-	                        {
-	                            return (
-	                                '<div class="dashboard-stat-metric">' +
-	                                    '<span class="dashboard-stat-metric-label">' +
-	                                        escapeHtml((config.labels && config.labels[entry[0]]) || entry[0]) +
-	                                    '</span>' +
-	                                    '<span class="dashboard-stat-metric-value">' +
-	                                        escapeHtml(entry[1]) +
-	                                    '</span>' +
-	                                '</div>'
-	                            );
-	                        }
-	                    ).join("") +
-	                '</div>';
-	        }
-	    }
-
-	    return (
-	        '<div class="dashboard-stat-content">' +
-	            '<div class="dashboard-stat-value">' +
-	                escapeHtml(value) +
-	            '</div>' +
-	            (
-	                message
-	                    ? '<div class="dashboard-stat-message">' +
-	                        escapeHtml(message) +
-	                      '</div>'
-	                    : ""
-	            ) +
-	            metricsHtml +
-	        '</div>'
-	    );
-	}
-
+        return '<div class="dashboard-stat-content">' + primaryHtml + metricsHtml + '</div>';
+    }
 
     function renderElasticsearchWidget(result, widget, config)
     {
@@ -2511,8 +2602,10 @@
 
         const isSystemMetrics = widgetType === "SYSTEM_METRICS";
         const isElasticsearch = widgetType === "ELASTICSEARCH";
+        const showUpdated = fieldConfig.showUpdated !== false;
+        const showStatus = fieldConfig.showStatus !== false;
         let headerUpdatedHtml = "";
-        if (updated)
+        if (showUpdated && updated)
         {
             const timestampLabel = (isSystemMetrics || isElasticsearch) ? "Last collection: " : "Updated: ";
             headerUpdatedHtml = '<span class="dashboard-widget-updated dashboard-widget-collected" title="' +
@@ -2717,7 +2810,7 @@
 
         return (
 
-            '<div class="dashboard-widget-column ' + getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) + (isIframeWidget ? ' dashboard-iframe-column' : '') + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
+            '<div class="dashboard-widget-column dashboard-widget-size-' + escapeHtml(String(widgetType === "ELASTICSEARCH" ? "FULL" : (widget.size || "MEDIUM")).toLowerCase()) + ' ' + getWidgetSizeClass(widgetType === "ELASTICSEARCH" ? "FULL" : widget.size) + (isIframeWidget ? ' dashboard-iframe-column' : '') + '" data-widget-id="' + escapeHtml(widget.id) + '">' +
                 '<div class="dashboard-widget h-100' + (hideWidgetHeader ? ' dashboard-widget-no-header' : '') +
                     (isTextWidget && fieldConfig.border === false ? ' dashboard-text-widget-no-border' : '') + '">' +
 
@@ -2770,7 +2863,7 @@
                             headerUpdatedHtml +
 
 
-                            (isIframeWidget ? "" :
+                            (isIframeWidget || !showStatus ? "" :
                                 '<span class="dashboard-status ' + statusClass + '">' +
                                     '<i class="bi ' + statusIcon + '"></i>' +
                                     '<span>' + escapeHtml(statusLabel) + '</span>' +
