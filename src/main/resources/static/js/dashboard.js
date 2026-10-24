@@ -2483,18 +2483,17 @@
                 (invalidRange ? 'Configure a maximum greater than the minimum.' : 'The configured field "' + escapeHtml(config.valueField || 'valueField') + '" is missing or is not numeric.') +
                 '</div></div>';
         }
+
         const clamped = Math.max(minimum, Math.min(maximum, value));
         const ratio = (clamped - minimum) / (maximum - minimum);
         const angle = 180 + ratio * 180;
-        const radians = angle * Math.PI / 180;
-        const needleX = 100 + 57 * Math.cos(radians);
-        const needleY = 100 + 57 * Math.sin(radians);
         const warning = Number.isFinite(Number(config.warningThreshold)) ? Number(config.warningThreshold) : minimum + (maximum - minimum) * 0.7;
         const critical = Number.isFinite(Number(config.criticalThreshold)) ? Number(config.criticalThreshold) : minimum + (maximum - minimum) * 0.9;
         const direction = String(config.thresholdDirection || "HIGH").toUpperCase();
         const state = direction === "LOW"
             ? (value <= critical ? "critical" : value <= warning ? "warning" : "normal")
             : (value >= critical ? "critical" : value >= warning ? "warning" : "normal");
+
         function configuredColor(key, fallback) {
             const candidate = config[key];
             return typeof candidate === "string" && /^#[0-9a-fA-F]{6}$/.test(candidate.trim())
@@ -2509,26 +2508,78 @@
         const displayValue = value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
         const outOfRange = value < minimum || value > maximum;
         const rangeLabel = minimum.toLocaleString() + ' – ' + maximum.toLocaleString();
-        function point(degrees) {
-            const a = degrees * Math.PI / 180;
-            return { x: 100 + 72 * Math.cos(a), y: 100 + 72 * Math.sin(a) };
+
+        function point(degrees, radius) {
+            const radians = degrees * Math.PI / 180;
+            return { x: 100 + radius * Math.cos(radians), y: 100 + radius * Math.sin(radians) };
         }
-        const left = point(180), right = point(360), progressEnd = point(180 + ratio * 180);
-        const arc = 'M ' + left.x + ' ' + left.y + ' A 72 72 0 0 1 ' + right.x + ' ' + right.y;
-        const progressArc = ratio <= 0 ? "" : '<path class="dashboard-speedometer-progress" d="M ' + left.x + ' ' + left.y + ' A 72 72 0 0 1 ' + progressEnd.x + ' ' + progressEnd.y + '" style="stroke:' + color + '" />';
-        return '<div class="dashboard-speedometer" role="img" aria-label="' + escapeHtml(label || widget.name || 'Gauge') + ': ' +
+        function arcBetween(startRatio, endRatio, radius) {
+            if (endRatio - startRatio < 0.001) return "";
+            const startPoint = point(180 + startRatio * 180, radius);
+            const endPoint = point(180 + endRatio * 180, radius);
+            return 'M ' + startPoint.x + ' ' + startPoint.y + ' A ' + radius + ' ' + radius + ' 0 0 1 ' + endPoint.x + ' ' + endPoint.y;
+        }
+        function ratioForThreshold(threshold) {
+            return Math.max(0, Math.min(1, (threshold - minimum) / (maximum - minimum)));
+        }
+
+        let warningRatio = ratioForThreshold(warning);
+        let criticalRatio = ratioForThreshold(critical);
+        // Keep the colored bands in ascending dial order even for legacy configs
+        // that may have threshold values saved in the opposite order.
+        if ((direction === "LOW" && criticalRatio > warningRatio)
+            || (direction !== "LOW" && warningRatio > criticalRatio)) {
+            const temporary = warningRatio;
+            warningRatio = criticalRatio;
+            criticalRatio = temporary;
+        }
+
+        const zones = direction === "LOW"
+            ? [
+                { start: 0, end: criticalRatio, color: colors.critical },
+                { start: criticalRatio, end: warningRatio, color: colors.warning },
+                { start: warningRatio, end: 1, color: colors.normal }
+            ]
+            : [
+                { start: 0, end: warningRatio, color: colors.normal },
+                { start: warningRatio, end: criticalRatio, color: colors.warning },
+                { start: criticalRatio, end: 1, color: colors.critical }
+            ];
+        const zoneArcs = zones.map(zone => {
+            const path = arcBetween(zone.start, zone.end, 72);
+            return path ? '<path class="dashboard-speedometer-zone" d="' + path + '" style="stroke:' + zone.color + '" />' : "";
+        }).join("");
+        const progressPath = arcBetween(0, ratio, 72);
+        const progressArc = '<path class="dashboard-speedometer-progress" pathLength="100" d="' + arcBetween(0, 1, 72) +
+            '" style="stroke:' + color + ';--gauge-progress:' + (100 - ratio * 100) + '" />';
+        const ticks = Array.from({ length: 21 }, (_, index) => {
+            const degrees = 180 + index * 9;
+            const outer = point(degrees, index % 2 === 0 ? 88 : 84);
+            const inner = point(degrees, 78);
+            return '<line class="dashboard-speedometer-tick' + (index % 2 === 0 ? ' dashboard-speedometer-tick-major' : '') +
+                '" x1="' + outer.x + '" y1="' + outer.y + '" x2="' + inner.x + '" y2="' + inner.y + '" />';
+        }).join("");
+        const needleEnd = point(0, 57);
+        const safeName = label || widget.name || "Gauge";
+
+        return '<div class="dashboard-speedometer" role="img" aria-label="' + escapeHtml(safeName) + ': ' +
             escapeHtml(displayValue + (unit ? ' ' + unit : '')) + ', ' + escapeHtml(state) + '">' +
+            '<div class="dashboard-speedometer-topline"><span class="dashboard-speedometer-eyebrow">' +
+                escapeHtml(label || "Live reading") + '</span><span class="dashboard-speedometer-live"><span></span> LIVE</span></div>' +
             '<svg class="dashboard-speedometer-dial" viewBox="0 0 200 116" aria-hidden="true">' +
-                '<path class="dashboard-speedometer-track" d="' + arc + '" />' + progressArc +
-                '<line class="dashboard-speedometer-needle" x1="100" y1="100" x2="' + needleX + '" y2="' + needleY + '" />' +
-                '<circle class="dashboard-speedometer-hub" cx="100" cy="100" r="5" />' +
+                '<path class="dashboard-speedometer-track" d="' + arcBetween(0, 1, 72) + '" />' +
+                zoneArcs + progressArc + ticks +
+                '<line class="dashboard-speedometer-needle" x1="100" y1="100" x2="' + needleEnd.x + '" y2="' + needleEnd.y +
+                    '" style="--gauge-angle:' + angle + 'deg" />' +
+                '<circle class="dashboard-speedometer-hub-ring" cx="100" cy="100" r="8" />' +
+                '<circle class="dashboard-speedometer-hub" cx="100" cy="100" r="4.5" />' +
                 '<text class="dashboard-speedometer-scale" x="22" y="112" text-anchor="middle">' + escapeHtml(String(minimum)) + '</text>' +
                 '<text class="dashboard-speedometer-scale" x="178" y="112" text-anchor="middle">' + escapeHtml(String(maximum)) + '</text>' +
             '</svg>' +
-            '<div class="dashboard-speedometer-reading" style="color:' + color + '">' + escapeHtml(displayValue) +
-                '<span class="dashboard-speedometer-unit">' + escapeHtml(unit) + '</span></div>' +
-            (label ? '<div class="dashboard-speedometer-label">' + escapeHtml(label) + '</div>' : '') +
-            '<div class="dashboard-speedometer-state dashboard-speedometer-state-' + state + '">' + state.charAt(0).toUpperCase() + state.slice(1) +
+            '<div class="dashboard-speedometer-reading" style="--gauge-value-color:' + color + ';color:' + color + '">' +
+                escapeHtml(displayValue) + '<span class="dashboard-speedometer-unit">' + escapeHtml(unit) + '</span></div>' +
+            '<div class="dashboard-speedometer-state dashboard-speedometer-state-' + state + '">' +
+                '<span class="dashboard-speedometer-state-dot"></span>' + state.charAt(0).toUpperCase() + state.slice(1) +
                 (outOfRange ? ' · outside range' : '') + '</div>' +
             '<div class="dashboard-speedometer-range">' + escapeHtml(rangeLabel) + '</div>' +
         '</div>';
