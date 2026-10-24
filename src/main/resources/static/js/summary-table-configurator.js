@@ -669,11 +669,24 @@
 
     function discoverSystemMetricFields(rows) {
         const fields = [], metricNames = [];
+        const addField = field => {
+            if (field && !fields.includes(field)) fields.push(field);
+        };
+        const visitObject = (value, prefix, depth) => {
+            if (!value || typeof value !== "object" || Array.isArray(value) || depth > 6) return;
+            Object.keys(value).forEach(key => {
+                // Metrics use their own name/value mapping and must not appear as a JSON object field.
+                if (!prefix && key === "metrics") return;
+                const field = prefix ? prefix + "." + key : key;
+                addField(field);
+                if (value[key] && typeof value[key] === "object" && !Array.isArray(value[key])) {
+                    visitObject(value[key], field, depth + 1);
+                }
+            });
+        };
         (rows || []).forEach(row => {
             if (!row || typeof row !== "object") return;
-            Object.keys(row).filter(key => key !== "metrics").forEach(key => {
-                if (!fields.includes(key)) fields.push(key);
-            });
+            visitObject(row, "", 0);
             const metrics = row.metrics;
             if (Array.isArray(metrics)) metrics.forEach(metric => {
                 const name = metric && (metric.name !== undefined && String(metric.name).trim()
