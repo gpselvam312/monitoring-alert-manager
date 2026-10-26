@@ -55,12 +55,14 @@
             <div class="mb-3">
               <label class="form-label" for="chartMapSampleJson">Sample JSON response</label>
               <textarea class="form-control font-monospace" id="chartMapSampleJson" rows="5" spellcheck="false" placeholder="Paste a sample JSON response, or load the latest job output."></textarea>
-              <div class="d-flex flex-wrap gap-2 mt-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapLoadLatest">Load latest job output</button>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="chartMapDiscover">Discover fields</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapClearMapping">Clear Mapping</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapResetMapping">Reset Default</button>
-                <span class="small text-muted align-self-center" id="chartMapSampleMessage" role="status" aria-live="polite">Paste JSON or load the latest output to begin.</span>
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                <div class="d-flex flex-wrap gap-2">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapLoadLatest">Load latest job output</button>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="chartMapDiscover">Discover fields</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapClearMapping">Clear Mapping</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapResetMapping">Reset Default</button>
+                </div>
+                <span class="small text-muted" id="chartMapSampleMessage" role="status" aria-live="polite">Paste JSON or load the latest output to begin.</span>
               </div>
           </div>
           <div class="row g-3">
