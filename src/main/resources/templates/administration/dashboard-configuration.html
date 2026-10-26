@@ -1886,41 +1886,67 @@
                             </div>
 
                             <div class="col-12 d-none" id="dashboardWidgetSpeedometerConfig">
-                                <div class="border rounded p-3">
-                                    <h6 class="mb-1">Speedometer / Gauge settings</h6>
-                                    <p class="text-muted small mb-3">Choose a numeric field from a sample response, then configure the dial range and alert thresholds.</p>
-                                    <div class="row g-3">
-                                        <div class="col-12">
-                                            <label for="dashboardWidgetSpeedometerSample" class="form-label">Sample response (optional)</label>
-                                            <textarea class="form-control font-monospace" id="dashboardWidgetSpeedometerSample" rows="3" placeholder='Paste a JSON response to discover numeric fields'></textarea>
-                                            <div class="d-flex flex-wrap gap-2 mt-2">
-                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="dashboardWidgetSpeedometerDiscover">Discover numeric fields</button>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="dashboardWidgetSpeedometerLoadSample">Load latest saved output</button>
-                                                <span class="small text-muted align-self-center" id="dashboardWidgetSpeedometerMessage" role="status" aria-live="polite"></span>
+                                <section class="border rounded p-3 mb-3">
+                                    <div class="mb-3">
+                                        <h6 class="mb-1">Speedometer / Gauge settings</h6>
+                                        <p class="text-muted small mb-0">Choose a numeric field from a sample response, then configure the dial range and alert thresholds.</p>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <h6 class="small fw-semibold mb-2">1. Data source</h6>
+                                        <div class="row g-3">
+                                            <div class="col-12">
+                                                <label for="dashboardWidgetSpeedometerSample" class="form-label">Sample response (optional)</label>
+                                                <textarea class="form-control font-monospace" id="dashboardWidgetSpeedometerSample" rows="3" placeholder='Paste a JSON response to discover numeric fields'></textarea>
+                                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="dashboardWidgetSpeedometerLoadSample">Load latest saved output</button>
+                                                        <button type="button" class="btn btn-outline-primary btn-sm" id="dashboardWidgetSpeedometerDiscover">Discover numeric fields</button>
+                                                    </div>
+                                                    <span class="small text-muted" id="dashboardWidgetSpeedometerMessage" role="status" aria-live="polite"></span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="dashboardWidgetSpeedometerFieldSelect" class="form-label">Discovered numeric field</label>
+                                                <select class="form-select" id="dashboardWidgetSpeedometerFieldSelect"><option value="">Discover fields or enter a path below</option></select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="dashboardWidgetSpeedometerValueField" class="form-label">Value field path <span class="text-danger">*</span></label>
+                                                <input type="text" class="form-control" id="dashboardWidgetSpeedometerValueField" maxlength="250" placeholder="e.g. metrics.cpuUsage">
+                                                <div class="form-text">Use dot notation for nested JSON fields.</div>
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <label for="dashboardWidgetSpeedometerFieldSelect" class="form-label">Discovered numeric field</label>
-                                            <select class="form-select" id="dashboardWidgetSpeedometerFieldSelect"><option value="">Discover fields or enter a path below</option></select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="dashboardWidgetSpeedometerValueField" class="form-label">Value field path <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" id="dashboardWidgetSpeedometerValueField" maxlength="250" placeholder="e.g. metrics.cpuUsage">
-                                            <div class="form-text">Use dot notation for nested JSON fields.</div>
-                                        </div>
-                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerMinimum" class="form-label">Minimum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMinimum" step="any" value="0"></div>
-                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerMaximum" class="form-label">Maximum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMaximum" step="any" value="100"></div>
-                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerUnit" class="form-label">Unit</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerUnit" maxlength="20" placeholder="%"></div>
-                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerDecimals" class="form-label">Decimal places</label><select class="form-select" id="dashboardWidgetSpeedometerDecimals"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
-                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerLabel" class="form-label">Value label (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerLabel" maxlength="100" placeholder="CPU Utilization"></div>
-                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerDirection" class="form-label">Threshold direction</label><select class="form-select" id="dashboardWidgetSpeedometerDirection"><option value="HIGH">Higher values are worse</option><option value="LOW">Lower values are worse</option></select></div>
-                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerWarning" class="form-label">Warning threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerWarning" step="any" value="70"></div>
-                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerCritical" class="form-label">Critical threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerCritical" step="any" value="90"></div>
-                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerNormalColor" class="form-label">Normal color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerNormalColor" maxlength="7" placeholder="#198754"><div class="form-text">Hex color, e.g. #198754.</div></div>
-                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerWarningColor" class="form-label">Warning color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerWarningColor" maxlength="7" placeholder="#ffc107"></div>
-                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerCriticalColor" class="form-label">Critical color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerCriticalColor" maxlength="7" placeholder="#dc3545"></div>
                                     </div>
-                                </div>
+
+                                    <div class="mb-4">
+                                        <h6 class="small fw-semibold mb-2">2. Display range</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-3 col-sm-6"><label for="dashboardWidgetSpeedometerMinimum" class="form-label">Minimum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMinimum" step="any" value="0"></div>
+                                            <div class="col-md-3 col-sm-6"><label for="dashboardWidgetSpeedometerMaximum" class="form-label">Maximum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMaximum" step="any" value="100"></div>
+                                            <div class="col-md-3 col-sm-6"><label for="dashboardWidgetSpeedometerUnit" class="form-label">Unit</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerUnit" maxlength="20" placeholder="%"></div>
+                                            <div class="col-md-3 col-sm-6"><label for="dashboardWidgetSpeedometerDecimals" class="form-label">Decimal places</label><select class="form-select" id="dashboardWidgetSpeedometerDecimals"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+                                            <div class="col-md-6"><label for="dashboardWidgetSpeedometerLabel" class="form-label">Value label (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerLabel" maxlength="100" placeholder="CPU Utilization"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <h6 class="small fw-semibold mb-2">3. Alert thresholds</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerDirection" class="form-label">Threshold direction</label><select class="form-select" id="dashboardWidgetSpeedometerDirection"><option value="HIGH">Higher values are worse</option><option value="LOW">Lower values are worse</option></select></div>
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerWarning" class="form-label">Warning threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerWarning" step="any" value="70"></div>
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerCritical" class="form-label">Critical threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerCritical" step="any" value="90"></div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h6 class="small fw-semibold mb-2">4. Status colours</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerNormalColor" class="form-label">Normal color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerNormalColor" maxlength="7" placeholder="#198754"><div class="form-text">Hex color, e.g. #198754.</div></div>
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerWarningColor" class="form-label">Warning color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerWarningColor" maxlength="7" placeholder="#ffc107"></div>
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerCriticalColor" class="form-label">Critical color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerCriticalColor" maxlength="7" placeholder="#dc3545"></div>
+                                        </div>
+                                    </div>
+                                </section>
                             </div>
 
                             <div class="col-12" id="dashboardWidgetAdvancedConfigGroup">
