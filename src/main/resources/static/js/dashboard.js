@@ -2844,7 +2844,7 @@
             } else if (externalApplicationStatus === "NOT_CONFIGURED" || !safeUrl) {
                 widgetContentHtml = '<div class="app-message app-message-warning" role="status"><div class="app-message-icon"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></div><div class="app-message-content"><div class="app-message-title">External application unavailable</div><div class="app-message-text">The selected external application is unavailable or not configured. Check External Application Configuration.</div></div></div>';
             } else {
-                widgetContentHtml = '<div class="dashboard-iframe-wrapper"><iframe class="dashboard-iframe" src="' + escapeHtml(safeUrl) + '" title="' + escapeHtml(widget.name || "Embedded dashboard") + '" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; clipboard-read; clipboard-write" style="height:' + iframeHeight + 'px"></iframe></div>';
+                widgetContentHtml = '<div class="dashboard-iframe-wrapper"><iframe class="dashboard-iframe" src="' + escapeHtml(safeUrl) + '" title="' + escapeHtml(widget.name || "Embedded dashboard") + '" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen" style="height:' + iframeHeight + 'px"></iframe></div>';
             }
         }
 
