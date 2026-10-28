@@ -2041,8 +2041,10 @@
             const sourceType = sourceSelect.value;
             const widgetType = document.getElementById('dashboardWidgetType').value;
             const isIframe = widgetType === 'IFRAME';
+            const textDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
             const isSectionHeader = widgetType === 'TEXT'
-                && document.getElementById('dashboardWidgetTextDisplayMode').value === 'SECTION_HEADER';
+                && textDisplayMode
+                && textDisplayMode.value === 'SECTION_HEADER';
             const sourceGroup = document.getElementById('dashboardWidgetDataSourceTypeGroup');
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
             const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
@@ -2126,7 +2128,8 @@
 
         function syncDashboardWidgetTextConfigToJson() {
             const config = readWidgetConfigJson();
-            config.displayMode = document.getElementById('dashboardWidgetTextDisplayMode').value || 'INFORMATION';
+            const displayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            config.displayMode = displayMode ? (displayMode.value || 'INFORMATION') : 'INFORMATION';
             config.title = document.getElementById('dashboardWidgetTextTitle').value;
             config.subtitle = document.getElementById('dashboardWidgetTextSubtitle').value;
             config.content = document.getElementById('dashboardWidgetTextContent').value;
@@ -2140,8 +2143,11 @@
 
         function loadDashboardWidgetTextConfigFromJson() {
             const config = readWidgetConfigJson();
-            document.getElementById('dashboardWidgetTextDisplayMode').value =
-                String(config.displayMode || 'INFORMATION').toUpperCase() === 'SECTION_HEADER' ? 'SECTION_HEADER' : 'INFORMATION';
+            const displayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            if (displayMode) {
+                displayMode.value =
+                    String(config.displayMode || 'INFORMATION').toUpperCase() === 'SECTION_HEADER' ? 'SECTION_HEADER' : 'INFORMATION';
+            }
             document.getElementById('dashboardWidgetTextTitle').value = typeof config.title === 'string' ? config.title : '';
             document.getElementById('dashboardWidgetTextSubtitle').value = typeof config.subtitle === 'string' ? config.subtitle : '';
             document.getElementById('dashboardWidgetTextContent').value = typeof config.content === 'string' ? config.content : '';
@@ -2210,7 +2216,8 @@
             const widgetType = document.getElementById('dashboardWidgetType').value;
             const isText = widgetType === 'TEXT';
             const isSpeedometer = widgetType === 'SPEEDOMETER';
-            const mode = document.getElementById('dashboardWidgetTextDisplayMode').value;
+            const textDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            const mode = textDisplayMode ? textDisplayMode.value : 'INFORMATION';
             const isSectionHeader = isText && mode === 'SECTION_HEADER';
             const configGroup = document.getElementById('dashboardWidgetTextConfig');
             const title = document.getElementById('dashboardWidgetTextTitle');
@@ -2282,13 +2289,15 @@
                 syncDashboardWidgetTextFields();
             });
 
-        document.getElementById('dashboardWidgetTextDisplayMode')
-            .addEventListener('change', function () {
+        const dashboardWidgetTextDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+        if (dashboardWidgetTextDisplayMode) {
+            dashboardWidgetTextDisplayMode.addEventListener('change', function () {
                 syncDashboardWidgetTextFields();
                 syncDashboardWidgetDataSourceFields(false);
                 syncDashboardWidgetRefreshFields(false);
                 syncDashboardWidgetTextConfigToJson();
             });
+        }
 
         ['dashboardWidgetTextTitle', 'dashboardWidgetTextSubtitle', 'dashboardWidgetTextContent',
          'dashboardWidgetTextBorder', 'dashboardWidgetTextAssociatedWidget'].forEach(function (id) {
