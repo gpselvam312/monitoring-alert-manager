@@ -1356,10 +1356,26 @@
         }));
         byId("summaryTableLayout").addEventListener("change", refreshConfigFromEditor);
         function clearSummaryTableMapping(resetToDefaults) {
-            const message = resetToDefaults
-                ? "Reset mapping to defaults? Column display settings, summary cards, grouping, and conditional formatting will be reset. The response parser and row path will be preserved."
-                : "Clear the current mapping? Columns will be hidden, summary cards and grouping cleared, and conditional-formatting rules removed. The response parser and row path will be preserved.";
-            if (!window.confirm(message)) return;
+            if (!window.AppModal || typeof window.AppModal.show !== "function") {
+                console.error("AppModal is unavailable; Summary Table mapping was not changed.");
+                return;
+            }
+
+            window.AppModal.show({
+                title: resetToDefaults ? "Reset Summary Table Mapping" : "Clear Summary Table Mapping",
+                message: resetToDefaults
+                    ? "Reset the mapping to defaults?"
+                    : "Clear the current mapping?",
+                description: resetToDefaults
+                    ? "Column display settings, summary cards, grouping, and conditional formatting will be reset. The response parser and row path will be preserved."
+                    : "Columns will be hidden, summary cards and grouping cleared, and conditional-formatting rules removed. The response parser and row path will be preserved.",
+                icon: resetToDefaults ? "bi-arrow-counterclockwise" : "bi-eraser",
+                confirmText: resetToDefaults ? "Reset to Defaults" : "Clear Mapping",
+                confirmIcon: resetToDefaults ? "bi-arrow-counterclockwise" : "bi-eraser",
+                confirmClass: resetToDefaults ? "btn-primary" : "btn-warning",
+                showCancel: true,
+                showConfirm: true,
+                onConfirm: function () {
             const config = getConfig();
             config.renderer = "SUMMARY_TABLE";
             config.details = config.details && typeof config.details === "object" ? config.details : {};
@@ -1393,6 +1409,8 @@
             byId("summaryTableDefaultSort").value = "";
             byId("summaryTableSortDirection").value = "asc";
             refreshConfigFromEditor();
+                }
+            });
         }
         byId("summaryTableClearMapping").addEventListener("click", function () { clearSummaryTableMapping(false); });
         byId("summaryTableResetMapping").addEventListener("click", function () { clearSummaryTableMapping(true); });

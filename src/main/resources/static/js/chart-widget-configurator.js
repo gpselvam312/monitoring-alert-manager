@@ -55,12 +55,14 @@
             <div class="mb-3">
               <label class="form-label" for="chartMapSampleJson">Sample JSON response</label>
               <textarea class="form-control font-monospace" id="chartMapSampleJson" rows="5" spellcheck="false" placeholder="Paste a sample JSON response, or load the latest job output."></textarea>
-              <div class="d-flex flex-wrap gap-2 mt-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapLoadLatest">Load latest job output</button>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="chartMapDiscover">Discover fields</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapClearMapping">Clear Mapping</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapResetMapping">Reset Default</button>
-                <span class="small text-muted align-self-center" id="chartMapSampleMessage" role="status" aria-live="polite">Paste JSON or load the latest output to begin.</span>
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                <div class="d-flex flex-wrap gap-2">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapLoadLatest">Load latest job output</button>
+                  <button type="button" class="btn btn-outline-primary btn-sm" id="chartMapDiscover">Discover fields</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapClearMapping">Clear Mapping</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="chartMapResetMapping">Reset Default</button>
+                </div>
+                <span class="small text-muted" id="chartMapSampleMessage" role="status" aria-live="polite">Paste JSON or load the latest output to begin.</span>
               </div>
           </div>
           <div class="row g-3">
@@ -287,20 +289,50 @@
         }
     }
 
+    function showMappingConfirmation(options, onConfirm) {
+        if (!window.AppModal || typeof window.AppModal.show !== "function") {
+            chartMessage("The confirmation dialog is unavailable. Please refresh the page and try again.", true);
+            return;
+        }
+
+        window.AppModal.show({
+            title: options.title,
+            message: options.message,
+            description: options.description,
+            icon: options.icon || "bi-question-circle",
+            confirmText: options.confirmText,
+            confirmIcon: options.confirmIcon || "bi-check-lg",
+            confirmClass: options.confirmClass || "btn-primary",
+            showCancel: true,
+            showConfirm: true,
+            onConfirm: onConfirm
+        });
+    }
+
     function clearMapping() {
         const rows = Array.from(byId("chartMapSeriesRows").querySelectorAll("[data-chart-series-row]"));
         if (!rows.length) {
             chartMessage("Discover fields from the sample JSON before clearing the mapping.", true);
             return;
         }
-        if (!window.confirm("Clear the chart field mapping? All chart series will be disabled. Chart titles and display options will be preserved.")) return;
-        rows.forEach(row => {
-            const enabled = row.querySelector(".chart-map-series-enabled");
-            if (enabled) enabled.checked = false;
+
+        showMappingConfirmation({
+            title: "Clear Chart Mapping",
+            message: "Clear the chart field mapping?",
+            description: "All chart series will be disabled. Chart titles and display options will be preserved.",
+            icon: "bi-eraser",
+            confirmText: "Clear Mapping",
+            confirmIcon: "bi-eraser",
+            confirmClass: "btn-warning"
+        }, function () {
+            rows.forEach(row => {
+                const enabled = row.querySelector(".chart-map-series-enabled");
+                if (enabled) enabled.checked = false;
+            });
+            updateEnableAllControl();
+            syncToJson();
+            chartMessage("Mapping cleared. All chart series are disabled.", false);
         });
-        updateEnableAllControl();
-        syncToJson();
-        chartMessage("Mapping cleared. All chart series are disabled.", false);
     }
 
     function resetMappingToDefaults() {
@@ -308,26 +340,36 @@
             chartMessage("Discover fields from the sample JSON before resetting the mapping.", true);
             return;
         }
-        if (!window.confirm("Reset chart field mapping to defaults? All discovered numeric fields will be enabled with default labels and colours. Chart display options will be preserved.")) return;
-        renderSeriesRows([], false);
-        const categorySelect = byId("chartMapCategory");
-        const collection = sampleState.collections.find(item => item.path === byId("chartMapRowPath").value);
-        if (collection && categorySelect) {
-            const nonNumeric = [];
-            function visit(value, prefix, depth) {
-                if (depth > 8 || value == null || Array.isArray(value)) return;
-                if (typeof value === "object") {
-                    Object.keys(value).forEach(key => visit(value[key], prefix ? prefix + "." + key : key, depth + 1));
-                } else if (prefix && !(typeof value === "number" || (typeof value === "string" && value.trim() && Number.isFinite(Number(value.replace(/,/g, "")))))) {
-                    nonNumeric.push(prefix);
+
+        showMappingConfirmation({
+            title: "Reset Chart Mapping",
+            message: "Reset chart field mapping to defaults?",
+            description: "All discovered numeric fields will be enabled with default labels and colours. Chart display options will be preserved.",
+            icon: "bi-arrow-counterclockwise",
+            confirmText: "Reset to Default",
+            confirmIcon: "bi-arrow-counterclockwise",
+            confirmClass: "btn-primary"
+        }, function () {
+            renderSeriesRows([], false);
+            const categorySelect = byId("chartMapCategory");
+            const collection = sampleState.collections.find(item => item.path === byId("chartMapRowPath").value);
+            if (collection && categorySelect) {
+                const nonNumeric = [];
+                function visit(value, prefix, depth) {
+                    if (depth > 8 || value == null || Array.isArray(value)) return;
+                    if (typeof value === "object") {
+                        Object.keys(value).forEach(key => visit(value[key], prefix ? prefix + "." + key : key, depth + 1));
+                    } else if (prefix && !(typeof value === "number" || (typeof value === "string" && value.trim() && Number.isFinite(Number(value.replace(/,/g, "")))))) {
+                        nonNumeric.push(prefix);
+                    }
                 }
+                collection.rows.slice(0, 100).forEach(row => visit(row, "", 0));
+                const preferredCategory = Array.from(new Set(nonNumeric)).sort((a, b) => a.localeCompare(b))[0];
+                if (preferredCategory) categorySelect.value = preferredCategory;
             }
-            collection.rows.slice(0, 100).forEach(row => visit(row, "", 0));
-            const preferredCategory = Array.from(new Set(nonNumeric)).sort((a, b) => a.localeCompare(b))[0];
-            if (preferredCategory) categorySelect.value = preferredCategory;
-        }
-        syncToJson();
-        chartMessage("Mapping reset to defaults for the current sample.", false);
+            syncToJson();
+            chartMessage("Mapping reset to defaults for the current sample.", false);
+        });
     }
 
     async function loadLatestSample() {

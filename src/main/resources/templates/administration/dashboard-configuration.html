@@ -1351,7 +1351,8 @@
                             </div>
 
 
-                          <div class="row g-3 align-items-end mb-2">
+                            <div class="col-12">
+                                <div class="row g-3 align-items-end mb-2">
 <div class="col-md-2">
                                         <div class="form-check mt-2">
                                             <input class="form-check-input" type="checkbox"
@@ -1443,44 +1444,11 @@
 
 
 
-</div>
-
-<div class="col-md-6" id="dashboardWidgetDataSourceTypeGroup">
-                                <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
-                                <select class="form-select"
-                                        id="dashboardWidgetDataSourceType"
-                                        th:field="*{dataSourceType}"
-                                        th:classappend="${#fields.hasErrors('dataSourceType')} ? ' is-invalid' : ''">
-                                    <option value="">No data source</option>
-                                    <option value="MONITORING_JOB">Monitoring Job</option>
-                                </select>
-                                <div class="invalid-feedback"
-                                     th:if="${#fields.hasErrors('dataSourceType')}"
-                                     th:errors="*{dataSourceType}">Select a valid data source.</div>
-                                <div class="form-text">Select a job to show its latest monitoring result.</div>
+                                </div>
                             </div>
 
-                            <div class="col-md-6" id="dashboardWidgetJobSourceGroup">
-                                <label for="dashboardWidgetJobSourceId" class="form-label">
-                                    Monitoring Job <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-select"
-                                        id="dashboardWidgetJobSourceId"
-                                        th:field="*{dataSourceId}"
-                                        th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
-                                    <option value="">Select monitoring job</option>
-                                    <option th:each="job : ${monitoringJobs}"
-                                            th:value="${job.id}"
-                                            th:attr="data-application-id=${job.application != null ? job.application.id : ''},
-                                                     data-environment-id=${job.environment != null ? job.environment.id : ''}"
-                                            th:text="${job.name}">Monitoring Job</option>
-                                </select>
-                                <div class="invalid-feedback"
-                                     th:if="${#fields.hasErrors('dataSourceId')}"
-                                     th:errors="*{dataSourceId}">Select a monitoring job.</div>
-                            </div>
-
-                            <div class="col-md-6">
+                            <div class="row g-3">
+<div class="col-md-6">
 
                                 <label for="dashboardWidgetType"
                                        class="form-label">
@@ -1497,16 +1465,16 @@
 								        required>
 							
 							    <option value="">Select widget type</option>
-							    <option value="STAT">Stat</option>
-							    <option value="SPEEDOMETER">Speedometer / Gauge</option>
-							    <option value="STATUS">Status</option>
-							    <option value="TABLE">Table</option>
-							    <option value="SUMMARY_TABLE">Summary Table</option>
 							    <option value="CHART">Chart</option>
-							    <option value="TEXT">Text / Info</option>
-							    <option value="SYSTEM_METRICS">System Metrics</option>
 							    <option value="ELASTICSEARCH">Elasticsearch</option>
 							    <option value="IFRAME">iFrame / External Dashboard</option>
+							    <option value="SPEEDOMETER">Speedometer / Gauge</option>
+							    <option value="STAT">Stat</option>
+							    <option value="STATUS">Status</option>
+							    <option value="SUMMARY_TABLE">Summary Table</option>
+							    <option value="SYSTEM_METRICS">System Metrics</option>
+							    <option value="TABLE">Table</option>
+							    <option value="TEXT">Text / Info</option>
 							
 							</select>
 							
@@ -1517,9 +1485,35 @@
 							</div>
 
                             </div>
+<div class="col-md-6" id="dashboardWidgetChartTypeGroup">
+							
+							    <label for="dashboardWidgetChartType"
+							           class="form-label">
+							        Chart Type
+							    </label>
+							
+							   <select class="form-select"
+								        id="dashboardWidgetChartType"
+								        th:field="*{chartType}"
+								        th:classappend="${#fields.hasErrors('chartType')} ? ' is-invalid' : ''">
+								
+								    <option value="">Not applicable</option>
+								    <option value="LINE">Line</option>
+								    <option value="BAR">Bar</option>
+								    <option value="PIE">Pie</option>
+								    <option value="DONUT">Donut</option>
+								</select>
+								
+								<div class="invalid-feedback"
+								     th:if="${#fields.hasErrors('chartType')}"
+								     th:errors="*{chartType}">
+								    Chart type is required for chart widgets.
+								</div>
+							
+							</div>
+                            </div>
 
-
-                            <div class="col-12 d-none" id="dashboardWidgetTextConfig">
+<div class="col-12 d-none" id="dashboardWidgetTextConfig">
                                 <div class="border rounded p-3">
                                     <h6 class="mb-1">Text / Info settings</h6>
                                     <p class="text-muted small mb-3">Use Information for text content or Section Header to introduce another widget.</p>
@@ -1561,35 +1555,42 @@
                                 </div>
                             </div>
 
-<div class="col-md-4" id="dashboardWidgetChartTypeGroup">
-							
-							    <label for="dashboardWidgetChartType"
-							           class="form-label">
-							        Chart Type
-							    </label>
-							
-							   <select class="form-select"
-								        id="dashboardWidgetChartType"
-								        th:field="*{chartType}"
-								        th:classappend="${#fields.hasErrors('chartType')} ? ' is-invalid' : ''">
-								
-								    <option value="">Not applicable</option>
-								    <option value="LINE">Line</option>
-								    <option value="BAR">Bar</option>
-								    <option value="PIE">Pie</option>
-								    <option value="DONUT">Donut</option>
-								</select>
-								
-								<div class="invalid-feedback"
-								     th:if="${#fields.hasErrors('chartType')}"
-								     th:errors="*{chartType}">
-								    Chart type is required for chart widgets.
-								</div>
-							
-							</div>
+                            <div class="col-md-6" id="dashboardWidgetDataSourceTypeGroup">
+                                <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
+                                <select class="form-select"
+                                        id="dashboardWidgetDataSourceType"
+                                        th:field="*{dataSourceType}"
+                                        th:classappend="${#fields.hasErrors('dataSourceType')} ? ' is-invalid' : ''">
+                                    <option value="">No data source</option>
+                                    <option value="MONITORING_JOB">Monitoring Job</option>
+                                </select>
+                                <div class="invalid-feedback"
+                                     th:if="${#fields.hasErrors('dataSourceType')}"
+                                     th:errors="*{dataSourceType}">Select a valid data source.</div>
+                                <div class="form-text">Select a job to show its latest monitoring result.</div>
+                            </div>
 
+                            <div class="col-md-6 d-none" id="dashboardWidgetJobSourceGroup" hidden>
+                                <label for="dashboardWidgetJobSourceId" class="form-label">
+                                    Monitoring Job <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select"
+                                        id="dashboardWidgetJobSourceId"
+                                        th:field="*{dataSourceId}"
+                                        th:classappend="${#fields.hasErrors('dataSourceId')} ? ' is-invalid' : ''">
+                                    <option value="">Select monitoring job</option>
+                                    <option th:each="job : ${monitoringJobs}"
+                                            th:value="${job.id}"
+                                            th:attr="data-application-id=${job.application != null ? job.application.id : ''},
+                                                     data-environment-id=${job.environment != null ? job.environment.id : ''}"
+                                            th:text="${job.name}">Monitoring Job</option>
+                                </select>
+                                <div class="invalid-feedback"
+                                     th:if="${#fields.hasErrors('dataSourceId')}"
+                                     th:errors="*{dataSourceId}">Select a monitoring job.</div>
+                            </div>
 
-                            <div class="col-12" id="summaryTableConfigurator">
+<div class="col-12" id="summaryTableConfigurator">
                                 <div class="border rounded p-3 mb-3">
                                     <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
                                         <div>
@@ -1653,10 +1654,12 @@
                                     <label for="summaryTableSampleJson" class="form-label">Sample response</label>
                                     <textarea class="form-control font-monospace mb-2" id="summaryTableSampleJson" rows="5"
                                               placeholder="Paste a sample response or load the latest job output"></textarea>
-                                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="summaryTableLoadLatest">Load latest job output</button>
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableDiscoverFields">Discover fields / preview</button>
-                                        <span class="small text-muted" id="summaryTableDiscoveryMessage" aria-live="polite">Paste a sample or load the latest job output.</span>
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="summaryTableLoadLatest">Load latest job output</button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableDiscoverFields">Discover fields / preview</button>
+                                        </div>
+                                        <span class="small text-muted" id="summaryTableDiscoveryMessage" role="status" aria-live="polite">Paste a sample or load the latest job output.</span>
                                     </div>
                                     <div class="row g-3 mb-3">
                                         <div class="col-md-6" id="summaryTableRowPathGroup">
@@ -1886,41 +1889,67 @@
                             </div>
 
                             <div class="col-12 d-none" id="dashboardWidgetSpeedometerConfig">
-                                <div class="border rounded p-3">
-                                    <h6 class="mb-1">Speedometer / Gauge settings</h6>
-                                    <p class="text-muted small mb-3">Choose a numeric field from a sample response, then configure the dial range and alert thresholds.</p>
-                                    <div class="row g-3">
-                                        <div class="col-12">
-                                            <label for="dashboardWidgetSpeedometerSample" class="form-label">Sample response (optional)</label>
-                                            <textarea class="form-control font-monospace" id="dashboardWidgetSpeedometerSample" rows="3" placeholder='Paste a JSON response to discover numeric fields'></textarea>
-                                            <div class="d-flex flex-wrap gap-2 mt-2">
-                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="dashboardWidgetSpeedometerDiscover">Discover numeric fields</button>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="dashboardWidgetSpeedometerLoadSample">Load latest saved output</button>
-                                                <span class="small text-muted align-self-center" id="dashboardWidgetSpeedometerMessage" role="status" aria-live="polite"></span>
+                                <section class="border rounded p-3 mb-3">
+                                    <div class="mb-3">
+                                        <h6 class="mb-1">Speedometer / Gauge settings</h6>
+                                        <p class="text-muted small mb-0">Choose a numeric field from a sample response, then configure the dial range and alert thresholds.</p>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <h6 class="small fw-semibold mb-2">1. Data source</h6>
+                                        <div class="row g-3">
+                                            <div class="col-12">
+                                                <label for="dashboardWidgetSpeedometerSample" class="form-label">Sample response (optional)</label>
+                                                <textarea class="form-control font-monospace" id="dashboardWidgetSpeedometerSample" rows="3" placeholder='Paste a JSON response to discover numeric fields'></textarea>
+                                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="dashboardWidgetSpeedometerLoadSample">Load latest saved output</button>
+                                                        <button type="button" class="btn btn-outline-primary btn-sm" id="dashboardWidgetSpeedometerDiscover">Discover numeric fields</button>
+                                                    </div>
+                                                    <span class="small text-muted" id="dashboardWidgetSpeedometerMessage" role="status" aria-live="polite"></span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="dashboardWidgetSpeedometerFieldSelect" class="form-label">Discovered numeric field</label>
+                                                <select class="form-select" id="dashboardWidgetSpeedometerFieldSelect"><option value="">Discover fields or enter a path below</option></select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="dashboardWidgetSpeedometerValueField" class="form-label">Value field path <span class="text-danger">*</span></label>
+                                                <input type="text" class="form-control" id="dashboardWidgetSpeedometerValueField" maxlength="250" placeholder="e.g. metrics.cpuUsage">
+                                                <div class="form-text">Use dot notation for nested JSON fields.</div>
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <label for="dashboardWidgetSpeedometerFieldSelect" class="form-label">Discovered numeric field</label>
-                                            <select class="form-select" id="dashboardWidgetSpeedometerFieldSelect"><option value="">Discover fields or enter a path below</option></select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="dashboardWidgetSpeedometerValueField" class="form-label">Value field path <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" id="dashboardWidgetSpeedometerValueField" maxlength="250" placeholder="e.g. metrics.cpuUsage">
-                                            <div class="form-text">Use dot notation for nested JSON fields.</div>
-                                        </div>
-                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerMinimum" class="form-label">Minimum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMinimum" step="any" value="0"></div>
-                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerMaximum" class="form-label">Maximum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMaximum" step="any" value="100"></div>
-                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerUnit" class="form-label">Unit</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerUnit" maxlength="20" placeholder="%"></div>
-                                        <div class="col-md-3"><label for="dashboardWidgetSpeedometerDecimals" class="form-label">Decimal places</label><select class="form-select" id="dashboardWidgetSpeedometerDecimals"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
-                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerLabel" class="form-label">Value label (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerLabel" maxlength="100" placeholder="CPU Utilization"></div>
-                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerDirection" class="form-label">Threshold direction</label><select class="form-select" id="dashboardWidgetSpeedometerDirection"><option value="HIGH">Higher values are worse</option><option value="LOW">Lower values are worse</option></select></div>
-                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerWarning" class="form-label">Warning threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerWarning" step="any" value="70"></div>
-                                        <div class="col-md-6"><label for="dashboardWidgetSpeedometerCritical" class="form-label">Critical threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerCritical" step="any" value="90"></div>
-                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerNormalColor" class="form-label">Normal color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerNormalColor" maxlength="7" placeholder="#198754"><div class="form-text">Hex color, e.g. #198754.</div></div>
-                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerWarningColor" class="form-label">Warning color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerWarningColor" maxlength="7" placeholder="#ffc107"></div>
-                                        <div class="col-md-4"><label for="dashboardWidgetSpeedometerCriticalColor" class="form-label">Critical color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerCriticalColor" maxlength="7" placeholder="#dc3545"></div>
                                     </div>
-                                </div>
+
+                                    <div class="mb-4">
+                                        <h6 class="small fw-semibold mb-2">2. Display range</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-3 col-sm-6"><label for="dashboardWidgetSpeedometerMinimum" class="form-label">Minimum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMinimum" step="any" value="0"></div>
+                                            <div class="col-md-3 col-sm-6"><label for="dashboardWidgetSpeedometerMaximum" class="form-label">Maximum</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerMaximum" step="any" value="100"></div>
+                                            <div class="col-md-3 col-sm-6"><label for="dashboardWidgetSpeedometerUnit" class="form-label">Unit</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerUnit" maxlength="20" placeholder="%"></div>
+                                            <div class="col-md-3 col-sm-6"><label for="dashboardWidgetSpeedometerDecimals" class="form-label">Decimal places</label><select class="form-select" id="dashboardWidgetSpeedometerDecimals"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+                                            <div class="col-md-6"><label for="dashboardWidgetSpeedometerLabel" class="form-label">Value label (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerLabel" maxlength="100" placeholder="CPU Utilization"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <h6 class="small fw-semibold mb-2">3. Alert thresholds</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerDirection" class="form-label">Threshold direction</label><select class="form-select" id="dashboardWidgetSpeedometerDirection"><option value="HIGH">Higher values are worse</option><option value="LOW">Lower values are worse</option></select></div>
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerWarning" class="form-label">Warning threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerWarning" step="any" value="70"></div>
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerCritical" class="form-label">Critical threshold</label><input type="number" class="form-control" id="dashboardWidgetSpeedometerCritical" step="any" value="90"></div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h6 class="small fw-semibold mb-2">4. Status colours</h6>
+                                        <div class="row g-3">
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerNormalColor" class="form-label">Normal color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerNormalColor" maxlength="7" placeholder="#198754"><div class="form-text">Hex color, e.g. #198754.</div></div>
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerWarningColor" class="form-label">Warning color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerWarningColor" maxlength="7" placeholder="#ffc107"></div>
+                                            <div class="col-md-4"><label for="dashboardWidgetSpeedometerCriticalColor" class="form-label">Critical color (optional)</label><input type="text" class="form-control" id="dashboardWidgetSpeedometerCriticalColor" maxlength="7" placeholder="#dc3545"></div>
+                                        </div>
+                                    </div>
+                                </section>
                             </div>
 
                             <div class="col-12" id="dashboardWidgetAdvancedConfigGroup">
@@ -2054,8 +2083,8 @@
             const sourceType = sourceSelect.value;
             const widgetType = document.getElementById('dashboardWidgetType').value;
             const isIframe = widgetType === 'IFRAME';
-            const isSectionHeader = widgetType === 'TEXT'
-                && document.getElementById('dashboardWidgetTextDisplayMode').value === 'SECTION_HEADER';
+            const textDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            const isSectionHeader = widgetType === 'TEXT' && textDisplayMode.value === 'SECTION_HEADER';
             const sourceGroup = document.getElementById('dashboardWidgetDataSourceTypeGroup');
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
             const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
@@ -2071,6 +2100,9 @@
             sourceSelect.disabled = isIframe || isSectionHeader;
             sourceGroup.classList.toggle('d-none', isSectionHeader);
             jobGroup.classList.toggle('d-none', !useJob);
+            // Keep the native hidden state in sync as well as Bootstrap's utility class,
+            // so the selector is hidden on first render before/without CSS transitions.
+            jobGroup.hidden = !useJob;
             jobSelect.disabled = !useJob;
             jobSelect.required = useJob;
         }
@@ -2136,7 +2168,8 @@
 
         function syncDashboardWidgetTextConfigToJson() {
             const config = readWidgetConfigJson();
-            config.displayMode = document.getElementById('dashboardWidgetTextDisplayMode').value || 'INFORMATION';
+            const displayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            config.displayMode = displayMode.value || 'INFORMATION';
             config.title = document.getElementById('dashboardWidgetTextTitle').value;
             config.subtitle = document.getElementById('dashboardWidgetTextSubtitle').value;
             config.content = document.getElementById('dashboardWidgetTextContent').value;
@@ -2150,8 +2183,11 @@
 
         function loadDashboardWidgetTextConfigFromJson() {
             const config = readWidgetConfigJson();
-            document.getElementById('dashboardWidgetTextDisplayMode').value =
-                String(config.displayMode || 'INFORMATION').toUpperCase() === 'SECTION_HEADER' ? 'SECTION_HEADER' : 'INFORMATION';
+            const displayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            if (displayMode) {
+                displayMode.value =
+                    String(config.displayMode || 'INFORMATION').toUpperCase() === 'SECTION_HEADER' ? 'SECTION_HEADER' : 'INFORMATION';
+            }
             document.getElementById('dashboardWidgetTextTitle').value = typeof config.title === 'string' ? config.title : '';
             document.getElementById('dashboardWidgetTextSubtitle').value = typeof config.subtitle === 'string' ? config.subtitle : '';
             document.getElementById('dashboardWidgetTextContent').value = typeof config.content === 'string' ? config.content : '';
@@ -2220,7 +2256,8 @@
             const widgetType = document.getElementById('dashboardWidgetType').value;
             const isText = widgetType === 'TEXT';
             const isSpeedometer = widgetType === 'SPEEDOMETER';
-            const mode = document.getElementById('dashboardWidgetTextDisplayMode').value;
+            const textDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            const mode = textDisplayMode.value;
             const isSectionHeader = isText && mode === 'SECTION_HEADER';
             const configGroup = document.getElementById('dashboardWidgetTextConfig');
             const title = document.getElementById('dashboardWidgetTextTitle');
@@ -2292,13 +2329,15 @@
                 syncDashboardWidgetTextFields();
             });
 
-        document.getElementById('dashboardWidgetTextDisplayMode')
-            .addEventListener('change', function () {
+        const dashboardWidgetTextDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+        if (dashboardWidgetTextDisplayMode) {
+            dashboardWidgetTextDisplayMode.addEventListener('change', function () {
                 syncDashboardWidgetTextFields();
                 syncDashboardWidgetDataSourceFields(false);
                 syncDashboardWidgetRefreshFields(false);
                 syncDashboardWidgetTextConfigToJson();
             });
+        }
 
         ['dashboardWidgetTextTitle', 'dashboardWidgetTextSubtitle', 'dashboardWidgetTextContent',
          'dashboardWidgetTextBorder', 'dashboardWidgetTextAssociatedWidget'].forEach(function (id) {
@@ -2506,6 +2545,14 @@
                 if (!widgetId && currentTabFilter && currentTabFilter.value) {
                     widgetTab.value = currentTabFilter.value;
                 }
+                // New widgets start without a data source. Show the Monitoring Job
+                // selector only after the user explicitly selects Monitoring Job.
+                // Existing widgets retain their saved source when opened for editing.
+                if (!widgetId) {
+                    document.getElementById('dashboardWidgetDataSourceType').value = '';
+                    document.getElementById('dashboardWidgetJobSourceId').value = '';
+                    syncDashboardWidgetDataSourceFields(false);
+                }
                 loadDashboardWidgetTextConfigFromJson();
                 loadDashboardWidgetTextAssociationOptions();
                 // Widget type can be assigned programmatically when editing, so refresh
@@ -2640,7 +2687,8 @@
             syncDashboardWidgetRefreshFields(false);
             document.getElementById('dashboardWidgetId').value = '';
             document.getElementById('dashboardWidgetTextAssociatedWidget').dataset.savedValue = '';
-            document.getElementById('dashboardWidgetTextDisplayMode').value = 'INFORMATION';
+            const textDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            if (textDisplayMode) textDisplayMode.value = 'INFORMATION';
             document.getElementById('dashboardWidgetTextTitle').value = '';
             document.getElementById('dashboardWidgetTextSubtitle').value = '';
             document.getElementById('dashboardWidgetTextContent').value = '';
