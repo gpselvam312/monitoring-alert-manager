@@ -1655,10 +1655,12 @@
                                     <label for="summaryTableSampleJson" class="form-label">Sample response</label>
                                     <textarea class="form-control font-monospace mb-2" id="summaryTableSampleJson" rows="5"
                                               placeholder="Paste a sample response or load the latest job output"></textarea>
-                                    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="summaryTableLoadLatest">Load latest job output</button>
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableDiscoverFields">Discover fields / preview</button>
-                                        <span class="small text-muted" id="summaryTableDiscoveryMessage" aria-live="polite">Paste a sample or load the latest job output.</span>
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="summaryTableLoadLatest">Load latest job output</button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="summaryTableDiscoverFields">Discover fields / preview</button>
+                                        </div>
+                                        <span class="small text-muted" id="summaryTableDiscoveryMessage" role="status" aria-live="polite">Paste a sample or load the latest job output.</span>
                                     </div>
                                     <div class="row g-3 mb-3">
                                         <div class="col-md-6" id="summaryTableRowPathGroup">
