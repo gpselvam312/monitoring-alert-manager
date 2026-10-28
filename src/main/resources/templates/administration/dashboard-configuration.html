@@ -1513,7 +1513,49 @@
 							</div>
                             </div>
 
-<div class="col-md-6" id="dashboardWidgetDataSourceTypeGroup">
+<div class="col-12 d-none" id="dashboardWidgetTextConfig">
+                                <div class="border rounded p-3">
+                                    <h6 class="mb-1">Text / Info settings</h6>
+                                    <p class="text-muted small mb-3">Use Information for text content or Section Header to introduce another widget.</p>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label for="dashboardWidgetTextDisplayMode" class="form-label">Display mode</label>
+                                            <select class="form-select" id="dashboardWidgetTextDisplayMode">
+                                                <option value="INFORMATION">Information</option>
+                                                <option value="SECTION_HEADER">Section Header</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label for="dashboardWidgetTextTitle" class="form-label">Title</label>
+                                            <input type="text" class="form-control" id="dashboardWidgetTextTitle" maxlength="150" placeholder="Heading or title">
+                                        </div>
+                                        <div class="col-12" id="dashboardWidgetTextSubtitleGroup">
+                                            <label for="dashboardWidgetTextSubtitle" class="form-label">Subtitle (optional)</label>
+                                            <input type="text" class="form-control" id="dashboardWidgetTextSubtitle" maxlength="250" placeholder="Additional context">
+                                        </div>
+                                        <div class="col-12" id="dashboardWidgetTextContentGroup">
+                                            <label for="dashboardWidgetTextContent" class="form-label">Text content</label>
+                                            <textarea class="form-control" id="dashboardWidgetTextContent" rows="4" maxlength="4000" placeholder="Enter informational text. Leave blank to use the configured response fields or template."></textarea>
+                                            <div class="form-text">Static text is supported without a Monitoring Job. If left blank, the existing dynamic text field/template mapping can be used.</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check mt-2">
+                                                <input class="form-check-input" type="checkbox" id="dashboardWidgetTextBorder">
+                                                <label class="form-check-label" for="dashboardWidgetTextBorder">Show border</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 d-none" id="dashboardWidgetTextAssociatedGroup">
+                                            <label for="dashboardWidgetTextAssociatedWidget" class="form-label">Widget introduced by this header <span class="text-danger">*</span></label>
+                                            <select class="form-select" id="dashboardWidgetTextAssociatedWidget" disabled>
+                                                <option value="">Select a widget in this dashboard tab</option>
+                                            </select>
+                                            <div class="form-text">The header is automatically rendered immediately before the selected widget.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6" id="dashboardWidgetDataSourceTypeGroup">
                                 <label for="dashboardWidgetDataSourceType" class="form-label">Data Source</label>
                                 <select class="form-select"
                                         id="dashboardWidgetDataSourceType"
@@ -2042,9 +2084,7 @@
             const widgetType = document.getElementById('dashboardWidgetType').value;
             const isIframe = widgetType === 'IFRAME';
             const textDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
-            const isSectionHeader = widgetType === 'TEXT'
-                && textDisplayMode
-                && textDisplayMode.value === 'SECTION_HEADER';
+            const isSectionHeader = widgetType === 'TEXT' && textDisplayMode.value === 'SECTION_HEADER';
             const sourceGroup = document.getElementById('dashboardWidgetDataSourceTypeGroup');
             const jobGroup = document.getElementById('dashboardWidgetJobSourceGroup');
             const jobSelect = document.getElementById('dashboardWidgetJobSourceId');
@@ -2129,7 +2169,7 @@
         function syncDashboardWidgetTextConfigToJson() {
             const config = readWidgetConfigJson();
             const displayMode = document.getElementById('dashboardWidgetTextDisplayMode');
-            config.displayMode = displayMode ? (displayMode.value || 'INFORMATION') : 'INFORMATION';
+            config.displayMode = displayMode.value || 'INFORMATION';
             config.title = document.getElementById('dashboardWidgetTextTitle').value;
             config.subtitle = document.getElementById('dashboardWidgetTextSubtitle').value;
             config.content = document.getElementById('dashboardWidgetTextContent').value;
@@ -2217,7 +2257,7 @@
             const isText = widgetType === 'TEXT';
             const isSpeedometer = widgetType === 'SPEEDOMETER';
             const textDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
-            const mode = textDisplayMode ? textDisplayMode.value : 'INFORMATION';
+            const mode = textDisplayMode.value;
             const isSectionHeader = isText && mode === 'SECTION_HEADER';
             const configGroup = document.getElementById('dashboardWidgetTextConfig');
             const title = document.getElementById('dashboardWidgetTextTitle');
