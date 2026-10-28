@@ -2647,7 +2647,8 @@
             syncDashboardWidgetRefreshFields(false);
             document.getElementById('dashboardWidgetId').value = '';
             document.getElementById('dashboardWidgetTextAssociatedWidget').dataset.savedValue = '';
-            document.getElementById('dashboardWidgetTextDisplayMode').value = 'INFORMATION';
+            const textDisplayMode = document.getElementById('dashboardWidgetTextDisplayMode');
+            if (textDisplayMode) textDisplayMode.value = 'INFORMATION';
             document.getElementById('dashboardWidgetTextTitle').value = '';
             document.getElementById('dashboardWidgetTextSubtitle').value = '';
             document.getElementById('dashboardWidgetTextContent').value = '';
