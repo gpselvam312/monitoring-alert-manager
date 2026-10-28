@@ -2493,6 +2493,14 @@
                 if (!widgetId && currentTabFilter && currentTabFilter.value) {
                     widgetTab.value = currentTabFilter.value;
                 }
+                // New widgets start without a data source. Show the Monitoring Job
+                // selector only after the user explicitly selects Monitoring Job.
+                // Existing widgets retain their saved source when opened for editing.
+                if (!widgetId) {
+                    document.getElementById('dashboardWidgetDataSourceType').value = '';
+                    document.getElementById('dashboardWidgetJobSourceId').value = '';
+                    syncDashboardWidgetDataSourceFields(false);
+                }
                 loadDashboardWidgetTextConfigFromJson();
                 loadDashboardWidgetTextAssociationOptions();
                 // Widget type can be assigned programmatically when editing, so refresh
