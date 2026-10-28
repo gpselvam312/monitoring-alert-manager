@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class MenuItemService
 {
     private static final Set<String> ADMIN_ONLY_MENUS = Set.of("USERS", "ROLES", "MENU_MANAGEMENT");
-    private static final Set<String> NOT_YET_SUPPORTED_MENUS = Set.of("ACTIVE_ALERTS", "ALERT_HISTORY", "AUDIT_LOG");
+    private static final Set<String> NOT_YET_SUPPORTED_MENUS = Set.of("AUDIT_LOG");
 
     private final MenuItemRepository menuItemRepository;
 

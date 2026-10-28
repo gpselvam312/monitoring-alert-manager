@@ -55,8 +55,13 @@ class MenuItemServiceTest
         var authentication = new UsernamePasswordAuthenticationToken("operator", "n/a",
                 List.of(new SimpleGrantedAuthority("ALERT_VIEW")));
 
-        // Alert routes are deliberately not exposed until the corresponding pages exist.
-        assertEquals(0, menuItemService.getVisibleSections(authentication).size());
+        // Alert routes are exposed once the corresponding pages are implemented.
+        List<MenuItemService.SidebarSection> sections = menuItemService.getVisibleSections(authentication);
+        assertEquals(1, sections.size());
+        assertEquals("Alerts", sections.get(0).getName());
+        assertEquals(1, sections.get(0).getItems().size());
+        assertEquals("active-alerts", sections.get(0).getItems().get(0).getMenuKey());
+        assertEquals("/alerts", sections.get(0).getItems().get(0).getHref());
     }
 
     @Test

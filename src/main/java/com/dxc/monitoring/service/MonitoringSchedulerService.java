@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
+import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.Schedule;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
@@ -135,7 +136,7 @@ public class MonitoringSchedulerService
 
         try
         {
-            monitoringExecutionManager.execute(job);
+            monitoringExecutionManager.execute(job, MonitoringExecution.TriggerSource.SCHEDULED);
         }
         catch (Exception exception)
         {

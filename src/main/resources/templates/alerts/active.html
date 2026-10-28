@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/layout :: layout('Active Alerts', ~{::content})}">
+<body><div th:fragment="content">
+<div class="page-header"><div><h1 class="page-title"><i class="bi bi-exclamation-triangle me-2"></i>Active Alerts</h1><p class="page-subtitle">Current alert conditions across applications you can access.</p></div>
+<div class="page-header-actions" sec:authorize="hasAuthority('ALERT_CONFIG')"><a th:href="@{/alerts/rules}" class="btn btn-outline-primary"><i class="bi bi-sliders me-1"></i>Alert Rules</a></div></div>
+<div class="app-card"><div class="app-card-body p-0">
+<div th:if="${alerts.totalElements == 0}" class="empty-state"><div class="empty-state-icon"><i class="bi bi-check2-circle"></i></div><h6>No active alerts</h6><p>No active alert conditions were found in the applications available to you.</p></div>
+<div th:if="${alerts.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0">
+<thead><tr><th>Severity</th><th>Alert</th><th>Monitoring Job</th><th>Application / Environment</th><th>Occurrences</th><th>Last Occurred</th><th></th></tr></thead>
+<tbody><tr th:each="alert : ${alerts.content}">
+<td><span class="badge text-bg-danger" th:if="${alert.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${alert.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${alert.severity.name() == 'INFO'}">Info</span></td>
+<td><a class="fw-semibold text-decoration-none" th:href="@{/alerts/{id}(id=${alert.id})}" th:text="${alert.title}">Alert title</a><div class="small text-muted" th:text="${alert.summary}">Summary</div></td>
+<td th:text="${alert.monitoringJob.name}">Job</td><td><div th:text="${alert.monitoringJob.application.name}">Application</div><div class="small text-muted" th:text="${alert.monitoringJob.environment != null ? alert.monitoringJob.environment.name : '—'}">Environment</div></td>
+<td th:text="${alert.occurrenceCount}">1</td><td th:text="${#temporals.format(alert.lastOccurredAt, 'yyyy-MM-dd HH:mm:ss')}">Time</td><td class="text-end"><a class="btn btn-sm btn-outline-secondary" th:href="@{/alerts/{id}(id=${alert.id})}">Details</a></td>
+</tr></tbody></table></div>
+<div th:if="${alerts.totalPages > 1}" class="d-flex justify-content-between align-items-center p-3 border-top"><span class="small text-muted" th:text="'Page ' + (${alerts.number + 1}) + ' of ' + ${alerts.totalPages}">Page</span><div class="btn-group btn-group-sm"><a class="btn btn-outline-secondary" th:classappend="${alerts.first} ? ' disabled'" th:href="@{/alerts(page=${alerts.number - 1},size=${pageSize})}">Previous</a><a class="btn btn-outline-secondary" th:classappend="${alerts.last} ? ' disabled'" th:href="@{/alerts(page=${alerts.number + 1},size=${pageSize})}">Next</a></div></div>
+</div></div>
+</div></body></html>
