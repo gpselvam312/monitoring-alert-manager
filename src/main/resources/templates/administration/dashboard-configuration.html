@@ -1528,7 +1528,7 @@
                                 <div class="form-text">Select a job to show its latest monitoring result.</div>
                             </div>
 
-                            <div class="col-md-6" id="dashboardWidgetJobSourceGroup">
+                            <div class="col-md-6 d-none" id="dashboardWidgetJobSourceGroup" hidden>
                                 <label for="dashboardWidgetJobSourceId" class="form-label">
                                     Monitoring Job <span class="text-danger">*</span>
                                 </label>
@@ -2058,6 +2058,9 @@
             sourceSelect.disabled = isIframe || isSectionHeader;
             sourceGroup.classList.toggle('d-none', isSectionHeader);
             jobGroup.classList.toggle('d-none', !useJob);
+            // Keep the native hidden state in sync as well as Bootstrap's utility class,
+            // so the selector is hidden on first render before/without CSS transitions.
+            jobGroup.hidden = !useJob;
             jobSelect.disabled = !useJob;
             jobSelect.required = useJob;
         }
