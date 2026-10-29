@@ -66,19 +66,26 @@ public class AlertRuleFieldDiscoveryService {
         // The result message is the user-facing monitoring payload for many job types.
         // Prefer it for field discovery so the choices match the data users see.
         Object messagePayload = parseStructured(result.getMessage());
+        boolean messagePayloadFound = false;
         if (messagePayload instanceof Map<?, ?> messageMap) {
+            messagePayloadFound = true;
             messageMap.forEach((key, value) -> root.put(String.valueOf(key), value));
         } else if (messagePayload != null) {
+            messagePayloadFound = true;
             root.put("data", messagePayload);
         } else if (result.getMessage() != null && !result.getMessage().isBlank()) {
             Map<String, Object> messageFields = parseKeyValueLines(result.getMessage());
-            if (!messageFields.isEmpty()) root.putAll(messageFields);
-            else root.put("message", result.getMessage());
+            if (!messageFields.isEmpty()) {
+                messagePayloadFound = true;
+                root.putAll(messageFields);
+            } else {
+                root.put("message", result.getMessage());
+            }
         }
 
         // Keep normalized result data as a fallback for result types whose payload
         // is stored there instead of in the message column.
-        if (root.size() <= 4) {
+        if (!messagePayloadFound) {
             Object parsed = parseStructured(result.getResultData());
             if (parsed instanceof Map<?, ?> map) {
                 map.forEach((key, value) -> root.put(String.valueOf(key), value));
