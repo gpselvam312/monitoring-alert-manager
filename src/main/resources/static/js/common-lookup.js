@@ -7,6 +7,9 @@
     const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
     const elements = {
         title: document.getElementById("commonLookupTitle"),
+        headers: document.getElementById("commonLookupHeaders"),
+        applicationFilter: document.getElementById("commonLookupApplicationFilter"),
+        environmentFilter: document.getElementById("commonLookupEnvironmentFilter"),
         description: document.getElementById("commonLookupDescription"),
         search: document.getElementById("commonLookupSearch"),
         clearSearch: document.getElementById("commonLookupClearSearch"),
@@ -27,6 +30,9 @@
         trigger: null,
         endpoint: "",
         selectionMode: "SINGLE",
+        columns: [{key: "name", label: "Name", primary: true}],
+        filters: [],
+        filterEndpoint: "",
         selected: new Map(),
         items: [],
         totalElements: 0,
@@ -70,32 +76,43 @@
     }
 
     async function loadFilters() {
-        const response = await fetch(state.endpoint + "/filters", {
+        if (!state.filters.includes("application") && !state.filters.includes("environment")) return;
+        const response = await fetch(state.filterEndpoint || state.endpoint + "/filters", {
             headers: {"Accept": "application/json"},
             credentials: "same-origin"
         });
         if (!response.ok) throw new Error("Unable to load lookup filters.");
         const data = await response.json();
         const selectedApp = state.applicationId;
-        elements.application.replaceChildren(new Option("All applications", ""));
-        (data.applications || []).forEach(function (item) {
-            elements.application.add(new Option(item.name, String(item.id)));
-        });
-        elements.application.value = selectedApp;
+        if (state.filters.includes("application")) {
+            elements.applicationFilter.classList.remove("d-none");
+            elements.application.replaceChildren(new Option("All applications", ""));
+            (data.applications || []).forEach(function (item) {
+                elements.application.add(new Option(item.name, String(item.id)));
+            });
+            elements.application.value = selectedApp;
+        } else {
+            elements.applicationFilter.classList.add("d-none");
+        }
 
         const selectedEnv = state.environmentId;
-        elements.environment.replaceChildren(new Option("All environments", ""));
-        (data.environments || []).forEach(function (item) {
-            elements.environment.add(new Option(item.name, String(item.id)));
-        });
-        elements.environment.value = selectedEnv;
+        if (state.filters.includes("environment")) {
+            elements.environmentFilter.classList.remove("d-none");
+            elements.environment.replaceChildren(new Option("All environments", ""));
+            (data.environments || []).forEach(function (item) {
+                elements.environment.add(new Option(item.name, String(item.id)));
+            });
+            elements.environment.value = selectedEnv;
+        } else {
+            elements.environmentFilter.classList.add("d-none");
+        }
     }
 
     async function loadBatch(batch) {
         const sequence = ++state.requestSequence;
         setBusy(true);
         elements.summary.textContent = "Loading records…";
-        elements.rows.innerHTML = '<tr><td colspan="6" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading records…</td></tr>';
+        elements.rows.innerHTML = '<tr><td colspan="' + (state.columns.length + 1) + '" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading records…</td></tr>';
         const params = new URLSearchParams({
             search: state.search,
             batch: String(batch),
@@ -127,7 +144,7 @@
             if (sequence !== state.requestSequence) return;
             state.items = [];
             state.hasNext = false;
-            elements.rows.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>' + escapeHtml(error.message || "Lookup failed.") + '</td></tr>';
+            elements.rows.innerHTML = '<tr><td colspan="' + (state.columns.length + 1) + '" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>' + escapeHtml(error.message || "Lookup failed.") + '</td></tr>';
             elements.summary.textContent = "Lookup failed";
         } finally {
             if (sequence === state.requestSequence) {
@@ -145,26 +162,43 @@
     function renderRows() {
         const items = visibleItems();
         const multiple = state.selectionMode === "MULTIPLE";
-        modalElement.querySelector(".common-lookup-selection-column").innerHTML =
-            multiple ? '<input type="checkbox" class="form-check-input" id="commonLookupSelectPage" aria-label="Select all rows on this page">' : '<span class="visually-hidden">Select</span>';
+        const headerCells = ['<th scope="col" class="common-lookup-selection-column">' +
+            (multiple ? '<input type="checkbox" class="form-check-input" id="commonLookupSelectPage" aria-label="Select all rows on this page">' : '<span class="visually-hidden">Select</span>') +
+            '</th>'];
+        state.columns.forEach(function (column) {
+            const label = escapeHtml(column.label || column.key);
+            headerCells.push('<th scope="col">' + (column.sort
+                ? '<button type="button" class="common-lookup-sort" data-lookup-sort="' + escapeHtml(column.sort) + '">' + label + ' <i class="bi bi-arrow-down-up"></i></button>'
+                : label) + '</th>');
+        });
+        elements.headers.innerHTML = headerCells.join("");
 
         if (!items.length) {
-            elements.rows.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-search me-2"></i>No matching records found.</td></tr>';
+            elements.rows.innerHTML = '<tr><td colspan="' + (state.columns.length + 1) + '" class="text-center text-muted py-4"><i class="bi bi-search me-2"></i>No matching records found.</td></tr>';
         } else {
             elements.rows.innerHTML = items.map(function (item) {
                 const id = String(item.id);
                 const selected = state.selected.has(id);
                 const inputType = multiple ? "checkbox" : "radio";
+                const cells = ['<td><input class="form-check-input common-lookup-choice" type="' + inputType + '" name="commonLookupChoice" value="' + escapeHtml(id) + '" ' +
+                    (selected ? 'checked ' : '') + 'aria-label="Select ' + escapeHtml(item.name || id) + '"></td>'];
+                state.columns.forEach(function (column) {
+                    const value = item[column.key];
+                    let cell = escapeHtml(value == null || value === "" ? "—" : value);
+                    if (column.format === "status") {
+                        const enabled = value === true || value === "true" || value === "Enabled";
+                        cell = '<span class="badge ' + (enabled ? 'text-bg-success' : 'text-bg-secondary') + '">' +
+                            (enabled ? 'Enabled' : 'Disabled') + '</span>';
+                    } else if (column.format === "badge" && value != null && value !== "") {
+                        cell = '<span class="badge text-bg-secondary">' + escapeHtml(value) + '</span>';
+                    } else if (column.primary) {
+                        cell = '<div class="fw-semibold">' + cell + '</div>' +
+                            (item.description ? '<div class="small text-muted text-truncate common-lookup-description-cell">' + escapeHtml(item.description) + '</div>' : '');
+                    }
+                    cells.push('<td>' + cell + '</td>');
+                });
                 return '<tr class="common-lookup-row' + (selected ? ' is-selected' : '') + '" data-lookup-id="' + escapeHtml(id) + '">' +
-                    '<td><input class="form-check-input common-lookup-choice" type="' + inputType + '" name="commonLookupChoice" value="' + escapeHtml(id) + '" ' +
-                    (selected ? 'checked ' : '') + 'aria-label="Select ' + escapeHtml(item.name) + '"></td>' +
-                    '<td><div class="fw-semibold">' + escapeHtml(item.name) + '</div>' +
-                    (item.description ? '<div class="small text-muted text-truncate common-lookup-description-cell">' + escapeHtml(item.description) + '</div>' : '') + '</td>' +
-                    '<td>' + escapeHtml(item.applicationName) + '</td>' +
-                    '<td>' + escapeHtml(item.environmentName || "—") + '</td>' +
-                    '<td><span class="badge text-bg-secondary">' + escapeHtml(item.type || "—") + '</span></td>' +
-                    '<td><span class="badge ' + (item.enabled ? 'text-bg-success' : 'text-bg-secondary') + '">' + (item.enabled ? 'Enabled' : 'Disabled') + '</span></td>' +
-                    '</tr>';
+                    cells.join("") + '</tr>';
             }).join("");
         }
 
@@ -177,14 +211,13 @@
               " records · batch " + (state.batch + 1) + " (" + state.items.length + " loaded)";
         elements.selectionSummary.textContent = state.selected.size
             ? state.selected.size + " record(s) selected"
-            : (state.selectionMode === "MULTIPLE" ? "Select one or more records across pages." : "Select one record.");
+            : (multiple ? "Select one or more records across pages." : "Select one record.");
         elements.previous.disabled = state.loading || (state.batch === 0 && state.localPage === 0);
-        elements.next.disabled = state.loading ||
-            (state.localPage >= localPages - 1 && !state.hasNext);
+        elements.next.disabled = state.loading || (state.localPage >= localPages - 1 && !state.hasNext);
         elements.clearSelection.disabled = state.loading || state.selected.size === 0;
-        elements.confirmText.textContent = state.selectionMode === "MULTIPLE"
-            ? "Select " + state.selected.size + " record(s)" : "Select";
+        elements.confirmText.textContent = multiple ? "Select " + state.selected.size + " record(s)" : "Select";
         elements.confirm.disabled = state.loading || state.selected.size === 0;
+
         const selectPage = document.getElementById("commonLookupSelectPage");
         if (selectPage) {
             const pageIds = items.map(item => String(item.id));
@@ -245,6 +278,14 @@
         event.preventDefault();
         state.trigger = trigger;
         state.endpoint = trigger.dataset.lookupEndpoint;
+        state.filterEndpoint = trigger.dataset.filterEndpoint || "";
+        state.filters = (trigger.dataset.lookupFilters || "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+        try {
+            state.columns = JSON.parse(trigger.dataset.lookupColumns || '[{"key":"name","label":"Name","primary":true}]');
+            if (!Array.isArray(state.columns) || state.columns.length === 0) throw new Error("Lookup columns are required.");
+        } catch (error) {
+            state.columns = [{key: "name", label: "Name", primary: true}];
+        }
         state.selectionMode = (trigger.dataset.selectionMode || "SINGLE").toUpperCase() === "MULTIPLE" ? "MULTIPLE" : "SINGLE";
         state.selected.clear();
         const target = document.getElementById(trigger.dataset.targetId);
@@ -261,7 +302,7 @@
         state.search = "";
         state.applicationId = "";
         state.environmentId = "";
-        state.sort = "name";
+        state.sort = (state.columns.find(column => column.sort) || {}).sort || "name";
         state.direction = "asc";
         state.pageSize = Number(elements.pageSize.value) || 5;
         elements.title.textContent = trigger.dataset.lookupTitle || "Select a record";
@@ -337,14 +378,15 @@
         state.selected.clear();
         renderRows();
     });
-    modalElement.querySelectorAll("[data-lookup-sort]").forEach(function (button) {
-        button.addEventListener("click", function () {
-            const sort = button.dataset.lookupSort;
-            state.direction = state.sort === sort && state.direction === "asc" ? "desc" : "asc";
-            state.sort = sort;
-            resetBatch();
-        });
+    elements.headers.addEventListener("click", function (event) {
+        const button = event.target.closest("[data-lookup-sort]");
+        if (!button) return;
+        const sort = button.dataset.lookupSort;
+        state.direction = state.sort === sort && state.direction === "asc" ? "desc" : "asc";
+        state.sort = sort;
+        resetBatch();
     });
+
     elements.confirm.addEventListener("click", function () {
         const target = document.getElementById(state.trigger.dataset.targetId);
         const label = document.getElementById(state.trigger.dataset.labelId);
