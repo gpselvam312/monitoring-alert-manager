@@ -129,6 +129,36 @@ class AlertEvaluationServiceTest {
     }
 
     @Test
+    void evaluatesCountMatchingConditions() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {
+                  "type":"COUNT_MATCHING",
+                  "collectionPath":"data.servers",
+                  "fieldPath":"status",
+                  "operator":"EQUALS",
+                  "threshold":"DOWN",
+                  "countOperator":"GREATER_THAN_OR_EQUAL",
+                  "countThreshold":2,
+                  "consecutiveMatches":1
+                }
+                """);
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getMessage()).thenReturn("""
+                {"data":{"servers":[{"name":"a","status":"DOWN"},{"name":"b","status":"UP"},{"name":"c","status":"DOWN"}]}}
+                """);
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(result.getValue()).thenReturn("3");
+        when(result.getUnit()).thenReturn("servers");
+        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository).save(any(Alert.class));
+        verify(historyRepository).save(any(AlertHistory.class));
+        verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
     void rejectsInvalidConditionGroupOperator() {
         when(rule.getConditionConfig()).thenReturn("""
                 {
