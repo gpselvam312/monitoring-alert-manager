@@ -140,7 +140,7 @@ public class AlertEvaluationService {
         Alert alert = active.get();
         Map<String, Object> recovery = readConfig(rule.getRecoveryConfig(), "recovery");
         boolean recoveryEnabled = !Boolean.FALSE.equals(recovery.get("enabled"))
-                && recovery.containsKey("fieldPath") && recovery.containsKey("operator");
+                && (isConditionNode(recovery) || isConditionGroupNode(recovery));
         boolean recoveryMatched = false;
         Object recoveryValue = null;
         int recoveryCount = 0;
@@ -346,6 +346,16 @@ public class AlertEvaluationService {
             case ALL_NON_STREAMING -> source == MonitoringExecution.TriggerSource.SCHEDULED
                     || source == MonitoringExecution.TriggerSource.MANUAL;
         };
+    }
+
+    private boolean isConditionNode(Map<String, Object> config) {
+        String type = String.valueOf(config.getOrDefault("type", "CONDITION")).toUpperCase(Locale.ROOT);
+        return "CONDITION".equals(type) && config.containsKey("fieldPath") && config.containsKey("operator");
+    }
+
+    private boolean isConditionGroupNode(Map<String, Object> config) {
+        return "GROUP".equals(String.valueOf(config.getOrDefault("type", "")).toUpperCase(Locale.ROOT))
+                && config.containsKey("operator") && config.containsKey("children");
     }
 
     private ConditionResult evaluateCondition(Map<String, Object> config, Map<String, Object> context) {
