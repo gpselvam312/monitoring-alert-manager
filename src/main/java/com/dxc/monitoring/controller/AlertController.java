@@ -14,6 +14,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -40,6 +41,7 @@ import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.repository.UserAlertStateRepository;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.AlertRuleManagementService;
+import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
 import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.AlertRuleForm;
@@ -59,6 +61,7 @@ public class AlertController {
     private final UserAlertStateRepository userAlertStateRepository;
     private final NotificationPolicyRepository notificationPolicyRepository;
     private final AlertRuleFieldDiscoveryService fieldDiscoveryService;
+    private final AlertRuleNotificationRouteService notificationRouteService;
 
     public AlertController(AlertRepository alertRepository, AlertHistoryRepository historyRepository,
             AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
@@ -66,7 +69,8 @@ public class AlertController {
             AlertRuleManagementService ruleManagementService, DashboardAccessService accessService,
             UserAlertStateRepository userAlertStateRepository,
             NotificationPolicyRepository notificationPolicyRepository,
-            AlertRuleFieldDiscoveryService fieldDiscoveryService) {
+            AlertRuleFieldDiscoveryService fieldDiscoveryService,
+            AlertRuleNotificationRouteService notificationRouteService) {
         this.alertRepository = alertRepository;
         this.historyRepository = historyRepository;
         this.ruleRepository = ruleRepository;
@@ -77,6 +81,7 @@ public class AlertController {
         this.userAlertStateRepository = userAlertStateRepository;
         this.notificationPolicyRepository = notificationPolicyRepository;
         this.fieldDiscoveryService = fieldDiscoveryService;
+        this.notificationRouteService = notificationRouteService;
     }
 
     @GetMapping
@@ -222,7 +227,9 @@ public class AlertController {
         AlertRule rule = ruleRepository.findByIdWithJob(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert rule was not found."));
         assertRuleAccess(rule, "ALERT_CONFIG");
-        addRuleFormModel(model, ruleManagementService.toForm(rule));
+        AlertRuleForm form = ruleManagementService.toForm(rule);
+        form.setNotificationRoutesJson(notificationRouteService.routesAsJson(rule.getId()));
+        addRuleFormModel(model, form);
         model.addAttribute("currentPage", "alert-rules");
         return "alerts/rule-form";
     }
@@ -257,6 +264,7 @@ public class AlertController {
     }
 
     @PostMapping("/rules/save")
+    @Transactional
     @PreAuthorize("hasAuthority('ALERT_CONFIG')")
     public String saveRule(@ModelAttribute AlertRuleForm form, Authentication authentication, Model model,
             RedirectAttributes redirectAttributes) {
@@ -269,7 +277,8 @@ public class AlertController {
             MonitoringJob job = jobRepository.findByIdForDetails(form.getMonitoringJobId())
                     .orElseThrow(() -> new IllegalArgumentException("Select an available monitoring job."));
             assertJobAccess(job, "ALERT_CONFIG");
-            ruleManagementService.save(form, userId(authentication));
+            AlertRule savedRule = ruleManagementService.save(form, userId(authentication));
+            notificationRouteService.replaceRoutes(savedRule.getId(), form.getNotificationRoutesJson());
             redirectAttributes.addFlashAttribute("successMessage", "Alert rule saved successfully.");
             return "redirect:/alerts/rules";
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
@@ -316,7 +325,9 @@ public class AlertController {
         model.addAttribute("selectedMonitoringJobLabel", selectedMonitoringJobLabel);
         model.addAttribute("severities", AlertRule.Severity.values());
         model.addAttribute("sourcePolicies", AlertRule.ExecutionSourcePolicy.values());
-        model.addAttribute("notificationPolicies", notificationPolicyRepository.findByEnabledTrueOrderByNameAsc());
+        model.addAttribute("notificationChannels", notificationRouteService.enabledChannels());
+        model.addAttribute("notificationRecipients", notificationRouteService.enabledRecipients());
+        model.addAttribute("notificationGroups", notificationRouteService.enabledGroups());
     }
 
     private void assertRuleAccess(AlertRule rule, String permission) {
