@@ -81,8 +81,12 @@
     }
 
     async function loadFilters() {
-        elements.applicationFilter.classList.toggle("d-none", !state.filters.includes("application"));
-        elements.environmentFilter.classList.toggle("d-none", !state.filters.includes("environment"));
+        if (elements.applicationFilter) {
+            elements.applicationFilter.classList.toggle("d-none", !state.filters.includes("application"));
+        }
+        if (elements.environmentFilter) {
+            elements.environmentFilter.classList.toggle("d-none", !state.filters.includes("environment"));
+        }
         if (!state.filters.includes("application") && !state.filters.includes("environment")) return;
         const filterParams = new URLSearchParams();
         if (state.applicationId) filterParams.set("applicationId", state.applicationId);
@@ -95,26 +99,26 @@
         const data = await response.json();
         const selectedApp = state.applicationId;
         if (state.filters.includes("application")) {
-            elements.applicationFilter.classList.remove("d-none");
+            if (elements.applicationFilter) elements.applicationFilter.classList.remove("d-none");
             elements.application.replaceChildren(new Option("All applications", ""));
             (data.applications || []).forEach(function (item) {
                 elements.application.add(new Option(item.name, String(item.id)));
             });
             elements.application.value = selectedApp;
         } else {
-            elements.applicationFilter.classList.add("d-none");
+            if (elements.applicationFilter) elements.applicationFilter.classList.add("d-none");
         }
 
         const selectedEnv = state.environmentId;
         if (state.filters.includes("environment")) {
-            elements.environmentFilter.classList.remove("d-none");
+            if (elements.environmentFilter) elements.environmentFilter.classList.remove("d-none");
             elements.environment.replaceChildren(new Option("All environments", ""));
             (data.environments || []).forEach(function (item) {
                 elements.environment.add(new Option(item.name, String(item.id)));
             });
             elements.environment.value = selectedEnv;
         } else {
-            elements.environmentFilter.classList.add("d-none");
+            if (elements.environmentFilter) elements.environmentFilter.classList.add("d-none");
         }
     }
 
