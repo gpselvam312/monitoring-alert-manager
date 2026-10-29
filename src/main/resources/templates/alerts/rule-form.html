@@ -158,7 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
             label.textContent = 'Match conditions';
             const select = document.createElement('select');
             select.className = 'form-select tree-group-operator';
-            [['AND','All conditions (AND)'],['OR','Any condition (OR)']].forEach(([value,text]) => {
+            ['AND|All conditions (AND)', 'OR|Any condition (OR)'].forEach(entry => {
+                const [value, text] = entry.split('|');
                 const option = new Option(text,value);
                 option.selected = (node.operator || 'AND') === value;
                 select.add(option);
