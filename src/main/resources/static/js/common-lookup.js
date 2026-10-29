@@ -148,6 +148,9 @@
             state.hasNext = false;
             elements.rows.innerHTML = '<tr><td colspan="' + (state.columns.length + 1) + '" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>' + escapeHtml(error.message || "Lookup failed.") + '</td></tr>';
             elements.summary.textContent = "Lookup failed";
+            elements.previous.disabled = true;
+            elements.next.disabled = true;
+            elements.confirm.disabled = true;
         } finally {
             if (sequence === state.requestSequence) {
                 setBusy(false);
