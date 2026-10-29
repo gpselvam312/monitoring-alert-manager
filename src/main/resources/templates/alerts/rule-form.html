@@ -22,6 +22,14 @@
 <div class="col-12 col-lg-2"><label class="form-label" for="threshold">Threshold / Value</label><input class="form-control" id="threshold" th:field="*{threshold}" maxlength="500" placeholder="85"></div><div class="col-12 col-lg-2"><label class="form-label" for="consecutiveMatches">Consecutive Matches</label><input type="number" class="form-control" id="consecutiveMatches" th:field="*{consecutiveMatches}" min="1" max="100" required></div>
 <div class="col-12 col-lg-6"><label class="form-label" for="correlationFieldPath">Optional Grouping Field</label><input class="form-control" id="correlationFieldPath" th:field="*{correlationFieldPath}" maxlength="255" placeholder="data.serviceName"><div class="form-text">Leave blank to keep one active alert per rule.</div></div>
 </div>
+<div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="conditionGroupEnabled" th:field="*{conditionGroupEnabled}"><label class="form-check-label" for="conditionGroupEnabled">Combine two conditions with AND / OR</label></div>
+<div id="conditionGroupFields" class="row g-3 mt-2 d-none">
+<div class="col-12 col-lg-3"><label class="form-label" for="conditionGroupOperator">Match conditions</label><select class="form-select" id="conditionGroupOperator" th:field="*{conditionGroupOperator}"><option value="AND">All conditions (AND)</option><option value="OR">Any condition (OR)</option></select></div>
+<div class="col-12 col-lg-3"><label class="form-label" for="secondConditionFieldPath">Second Value Field Path</label><input class="form-control" id="secondConditionFieldPath" th:field="*{secondConditionFieldPath}" maxlength="255" placeholder="data.memory.usage"></div>
+<div class="col-12 col-lg-3"><label class="form-label" for="secondConditionOperator">Second Operator</label><select class="form-select" id="secondConditionOperator" th:field="*{secondConditionOperator}"><option value="GREATER_THAN">Greater than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="LESS_THAN">Less than</option><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option><option value="EQUALS_IGNORE_CASE">Equals (ignore case)</option><option value="CONTAINS">Contains</option><option value="REGEX">Regular expression</option><option value="EXISTS">Exists</option><option value="NOT_EXISTS">Does not exist</option><option value="IS_TRUE">Is true</option><option value="IS_FALSE">Is false</option></select></div>
+<div class="col-12 col-lg-3"><label class="form-label" for="secondThreshold">Second Threshold / Value</label><input class="form-control" id="secondThreshold" th:field="*{secondThreshold}" maxlength="500" placeholder="90"></div>
+<div class="col-12"><div class="form-text">Example: CPU usage greater than 85 AND memory usage greater than 90. Both conditions use the same monitoring result.</div></div>
+</div>
 <div id="countConditionFields" class="row g-3 mt-1 d-none">
 <div class="col-12 col-lg-4"><label class="form-label" for="collectionPath">Collection Field Path</label><input class="form-control" id="collectionPath" th:field="*{collectionPath}" maxlength="255" placeholder="data.servers"><div class="form-text">Path must resolve to an array in the result.</div></div>
 <div class="col-12 col-lg-4" id="countFieldPathContainer"><label class="form-label" for="countFieldPath">Record Field Path</label><input class="form-control" id="countFieldPath" th:field="*{countFieldPath}" maxlength="255" placeholder="status"></div>
@@ -53,6 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const recoveryPath = document.getElementById('recoveryFieldPath');
     const correlationPath = document.getElementById('correlationFieldPath');
     const threshold = document.getElementById('threshold');
+    const conditionGroupEnabled = document.getElementById('conditionGroupEnabled');
+    const conditionGroupFields = document.getElementById('conditionGroupFields');
+    const secondConditionFieldPath = document.getElementById('secondConditionFieldPath');
+    const secondConditionOperator = document.getElementById('secondConditionOperator');
+    const secondThreshold = document.getElementById('secondThreshold');
     const conditionType = document.getElementById('conditionType');
     const countFields = document.getElementById('countConditionFields');
     const collectionPath = document.getElementById('collectionPath');
@@ -75,6 +88,10 @@ document.addEventListener('DOMContentLoaded', () => {
             input.closest('.col-12')?.classList.toggle('d-none', countMode);
             if (input === conditionPath) input.required = !countMode;
         });
+        const groupMode = mode === 'CONDITION' && conditionGroupEnabled.checked;
+        conditionGroupFields.classList.toggle('d-none', !groupMode);
+        secondConditionFieldPath.required = groupMode;
+        secondThreshold.required = groupMode && !['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(secondConditionOperator.value);
         const matchingMode = mode === 'COUNT_MATCHING';
         countFieldPathContainer.classList.toggle('d-none', !matchingMode);
         countFieldOperatorContainer.classList.toggle('d-none', !matchingMode);
@@ -86,6 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     if (conditionType) {
         conditionType.addEventListener('change', updateConditionMode);
+        conditionGroupEnabled.addEventListener('change', updateConditionMode);
+        secondConditionOperator.addEventListener('change', updateConditionMode);
         countFieldOperator.addEventListener('change', updateConditionMode);
         updateConditionMode();
     }
