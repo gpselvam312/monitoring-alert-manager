@@ -349,6 +349,13 @@ public class AlertEvaluationService {
     }
 
     private ConditionResult evaluateCondition(Map<String, Object> config, Map<String, Object> context) {
+        String nodeType = String.valueOf(config.getOrDefault("type", "CONDITION")).toUpperCase(Locale.ROOT);
+        if ("GROUP".equals(nodeType)) {
+            return evaluateConditionGroup(config, context);
+        }
+        if (!"CONDITION".equals(nodeType)) {
+            throw new IllegalArgumentException("Unsupported condition node type: " + nodeType);
+        }
         String fieldPath = requiredString(config, "fieldPath");
         String operator = requiredString(config, "operator").toUpperCase(Locale.ROOT);
         Object executionStatus = context.get("executionStatus");
@@ -390,6 +397,47 @@ public class AlertEvaluationService {
             default -> throw new IllegalArgumentException("Unsupported condition operator: " + operator);
         };
         return new ConditionResult(matched, actual);
+    }
+
+    /**
+     * Evaluates a nested condition expression. GROUP nodes contain an operator
+     * (AND/OR) and a non-empty list of CONDITION or GROUP children. Legacy
+     * single-condition JSON remains supported by the default CONDITION node.
+     */
+    private ConditionResult evaluateConditionGroup(Map<String, Object> config, Map<String, Object> context) {
+        String operator = requiredString(config, "operator").toUpperCase(Locale.ROOT);
+        if (!"AND".equals(operator) && !"OR".equals(operator)) {
+            throw new IllegalArgumentException("Condition group operator must be AND or OR.");
+        }
+        Object rawChildren = config.get("children");
+        if (!(rawChildren instanceof List<?> children) || children.isEmpty()) {
+            throw new IllegalArgumentException("A condition group must contain at least one condition.");
+        }
+
+        boolean matched = "AND".equals(operator);
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (Object child : children) {
+            if (!(child instanceof Map<?, ?> childMap)) {
+                throw new IllegalArgumentException("Each condition group child must be an object.");
+            }
+            Map<String, Object> childConfig = new LinkedHashMap<>();
+            childMap.forEach((key, value) -> childConfig.put(String.valueOf(key), value));
+            ConditionResult childResult = evaluateCondition(childConfig, context);
+            results.add(Map.of(
+                    "matched", childResult.matched(),
+                    "value", childResult.value() == null ? "" : childResult.value()));
+            if ("AND".equals(operator)) {
+                matched = matched && childResult.matched();
+            } else {
+                matched = matched || childResult.matched();
+            }
+            // Do not short-circuit: evaluate every configured child so missing
+            // fields and invalid operators cannot silently pass unnoticed.
+        }
+        Map<String, Object> observed = new LinkedHashMap<>();
+        observed.put("operator", operator);
+        observed.put("children", results);
+        return new ConditionResult(matched, observed);
     }
 
     private Object resolvePath(Map<String, Object> root, String fieldPath) {
