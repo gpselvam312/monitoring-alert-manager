@@ -193,6 +193,35 @@ class AlertEvaluationServiceTest {
     }
 
     @Test
+    void evaluatesDotPathAcrossNestedJsonArraysUsingActualPayload() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {"fieldPath":"machines.metrics.value","operator":"GREATER_THAN","threshold":90}
+                """);
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getResultData()).thenReturn("""
+                {
+                  "schemaVersion":1,
+                  "status":"SUCCESS",
+                  "data":{
+                    "machines":[
+                      {"hostname":"host-a","metrics":[{"name":"cpu","value":10},{"name":"memory","value":95}]},
+                      {"hostname":"host-b","metrics":[{"name":"cpu","value":40}]}
+                    ]
+                  }
+                }
+                """);
+        when(result.getMessage()).thenReturn("Script completed successfully.");
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository).save(any(Alert.class));
+        verify(historyRepository).save(any(AlertHistory.class));
+        verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
     void rejectsInvalidConditionGroupOperator() {
         when(rule.getConditionConfig()).thenReturn("""
                 {
