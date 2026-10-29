@@ -676,7 +676,9 @@ public class AlertEvaluationService {
     private Object observedCount(Object value) {
         if (value instanceof Map<?, ?> map) {
             Object matching = map.get("matchingCount");
-            return matching == null ? map.getOrDefault("totalCount", "unknown") : matching;
+            if (matching != null) return matching;
+            Object total = map.get("totalCount");
+            return total == null ? "unknown" : total;
         }
         return value;
     }
