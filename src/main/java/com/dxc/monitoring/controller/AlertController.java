@@ -193,17 +193,19 @@ public class AlertController {
     private void addRuleFormModel(Model model, AlertRuleForm form) {
         List<Application> applications = accessService.getApplicationsWithPermission("ALERT_CONFIG");
         List<Long> applicationIds = applications.stream().map(Application::getId).toList();
-        List<MonitoringJob> jobs = applicationIds.isEmpty() ? List.of()
-                : jobRepository.findByExecutionModeAndApplication_IdInOrderByNameAsc(
+        boolean hasMonitoringJobs = !applicationIds.isEmpty()
+                && jobRepository.existsByExecutionModeAndApplication_IdIn(
                         MonitoringJob.ExecutionMode.STANDARD, applicationIds);
+        MonitoringJob selectedJob = form.getMonitoringJobId() == null ? null
+                : jobRepository.findByIdForDetails(form.getMonitoringJobId())
+                        .filter(job -> job.getExecutionMode() == MonitoringJob.ExecutionMode.STANDARD)
+                        .filter(job -> job.getApplication() != null && applicationIds.contains(job.getApplication().getId()))
+                        .orElse(null);
+        String selectedMonitoringJobLabel = selectedJob == null ? ""
+                : selectedJob.getName() + " — " + selectedJob.getApplication().getName()
+                        + (selectedJob.getEnvironment() != null ? " / " + selectedJob.getEnvironment().getName() : "");
         model.addAttribute("ruleForm", form);
-        model.addAttribute("monitoringJobs", jobs);
-        String selectedMonitoringJobLabel = jobs.stream()
-                .filter(job -> form.getMonitoringJobId() != null && form.getMonitoringJobId().equals(job.getId()))
-                .findFirst()
-                .map(job -> job.getName() + " — " + job.getApplication().getName()
-                        + (job.getEnvironment() != null ? " / " + job.getEnvironment().getName() : ""))
-                .orElse("");
+        model.addAttribute("hasMonitoringJobs", hasMonitoringJobs);
         model.addAttribute("selectedMonitoringJobLabel", selectedMonitoringJobLabel);
         model.addAttribute("severities", AlertRule.Severity.values());
         model.addAttribute("sourcePolicies", AlertRule.ExecutionSourcePolicy.values());
