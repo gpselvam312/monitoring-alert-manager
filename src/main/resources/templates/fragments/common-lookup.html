@@ -51,16 +51,11 @@
                     <div class="table-responsive common-lookup-table-wrap">
                         <table class="table table-hover table-striped align-middle mb-0 common-lookup-table">
                             <thead>
-                            <tr>
+                            <tr id="commonLookupHeaders">
                                 <th scope="col" class="common-lookup-selection-column"><span class="visually-hidden">Select</span></th>
-                                <th scope="col"><button type="button" class="common-lookup-sort" data-lookup-sort="name">Monitoring Job <i class="bi bi-arrow-down-up"></i></button></th>
-                                <th scope="col"><button type="button" class="common-lookup-sort" data-lookup-sort="application">Application <i class="bi bi-arrow-down-up"></i></button></th>
-                                <th scope="col"><button type="button" class="common-lookup-sort" data-lookup-sort="environment">Environment <i class="bi bi-arrow-down-up"></i></button></th>
-                                <th scope="col">Type</th>
-                                <th scope="col">Status</th>
+                                <th scope="col"><span class="visually-hidden">Lookup fields load when opened</span></th>
                             </tr>
-                            </thead>
-                            <tbody id="commonLookupRows">
+                            </thead>                           <tbody id="commonLookupRows">
                                 <tr><td colspan="6" class="text-center text-muted py-4">Enter search criteria to load records.</td></tr>
                             </tbody>
                         </table>
