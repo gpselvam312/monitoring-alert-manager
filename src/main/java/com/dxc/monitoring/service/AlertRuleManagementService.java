@@ -16,6 +16,7 @@ import com.dxc.monitoring.repository.AlertRuleRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.web.AlertRuleForm;
+import com.dxc.monitoring.web.AlertConditionForm;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -126,17 +127,23 @@ public class AlertRuleManagementService {
             form.setCountFieldThreshold(stringValue(condition.get("threshold"), stringValue(condition.get("value"), "")));
             form.setCountOperator(stringValue(condition.get("countOperator"), "GREATER_THAN_OR_EQUAL"));
             form.setCountThreshold(stringValue(condition.get("countThreshold"), "1"));
-            if ("GROUP".equalsIgnoreCase(stringValue(condition.get("type"), "")) && condition.get("children") instanceof java.util.List<?> children && children.size() >= 2) {
+            if ("GROUP".equalsIgnoreCase(stringValue(condition.get("type"), "")) && condition.get("children") instanceof java.util.List<?> children && !children.isEmpty()) {
                 form.setConditionGroupEnabled(true);
                 form.setConditionGroupOperator(stringValue(condition.get("operator"), "AND"));
+                java.util.List<AlertConditionForm> items = new java.util.ArrayList<>();
+                for (Object child : children) {
+                    Map<String, Object> childCondition = mapValue(child);
+                    AlertConditionForm item = new AlertConditionForm();
+                    item.setFieldPath(stringValue(childCondition.get("fieldPath"), ""));
+                    item.setOperator(stringValue(childCondition.get("operator"), "GREATER_THAN"));
+                    item.setThreshold(stringValue(childCondition.get("threshold"), stringValue(childCondition.get("value"), "")));
+                    items.add(item);
+                }
+                form.setConditionItems(items);
                 Map<String, Object> first = mapValue(children.get(0));
-                Map<String, Object> second = mapValue(children.get(1));
                 form.setConditionFieldPath(stringValue(first.get("fieldPath"), ""));
                 form.setConditionOperator(stringValue(first.get("operator"), "GREATER_THAN"));
                 form.setThreshold(stringValue(first.get("threshold"), stringValue(first.get("value"), "")));
-                form.setSecondConditionFieldPath(stringValue(second.get("fieldPath"), ""));
-                form.setSecondConditionOperator(stringValue(second.get("operator"), "GREATER_THAN"));
-                form.setSecondThreshold(stringValue(second.get("threshold"), stringValue(second.get("value"), "")));
             } else {
                 form.setConditionFieldPath(stringValue(condition.get("fieldPath"), ""));
                 form.setConditionOperator(stringValue(condition.get("operator"), "GREATER_THAN"));
@@ -161,9 +168,9 @@ public class AlertRuleManagementService {
         String type = form.getConditionType() == null ? "CONDITION"
                 : form.getConditionType().trim().toUpperCase(Locale.ROOT);
         if ("CONDITION".equals(type)) {
-            Map<String, Object> first = buildCondition(form.getConditionFieldPath(), form.getConditionOperator(),
-                    form.getThreshold(), form.getConsecutiveMatches(), null, "condition");
             if (!form.isConditionGroupEnabled()) {
+                Map<String, Object> first = buildCondition(form.getConditionFieldPath(), form.getConditionOperator(),
+                        form.getThreshold(), form.getConsecutiveMatches(), null, "condition");
                 if (form.getCorrelationFieldPath() != null && !form.getCorrelationFieldPath().isBlank()) {
                     String path = form.getCorrelationFieldPath().trim();
                     if (path.length() > 255 || !FIELD_PATH.matcher(path).matches()) {
@@ -173,17 +180,29 @@ public class AlertRuleManagementService {
                 }
                 return first;
             }
-            Map<String, Object> second = buildCondition(form.getSecondConditionFieldPath(),
-                    form.getSecondConditionOperator(), form.getSecondThreshold(), 1, null, "second condition");
+            java.util.List<AlertConditionForm> items = form.getConditionItems();
+            if (items == null || items.size() < 2) {
+                throw new IllegalArgumentException("Add at least two conditions when using AND / OR grouping.");
+            }
+            if (items.size() > 100) {
+                throw new IllegalArgumentException("A condition group cannot contain more than 100 conditions.");
+            }
             String groupOperator = form.getConditionGroupOperator() == null ? ""
                     : form.getConditionGroupOperator().trim().toUpperCase(Locale.ROOT);
             if (!Set.of("AND", "OR").contains(groupOperator)) {
                 throw new IllegalArgumentException("Choose AND or OR for the condition group.");
             }
+            java.util.List<Map<String, Object>> children = new java.util.ArrayList<>();
+            for (int i = 0; i < items.size(); i++) {
+                AlertConditionForm item = items.get(i);
+                if (item == null) throw new IllegalArgumentException("Condition " + (i + 1) + " is required.");
+                children.add(buildCondition(item.getFieldPath(), item.getOperator(), item.getThreshold(),
+                        1, null, "condition " + (i + 1)));
+            }
             Map<String, Object> group = new LinkedHashMap<>();
             group.put("type", "GROUP");
             group.put("operator", groupOperator);
-            group.put("children", java.util.List.of(first, second));
+            group.put("children", children);
             group.put("consecutiveMatches", form.getConsecutiveMatches());
             if (form.getCorrelationFieldPath() != null && !form.getCorrelationFieldPath().isBlank()) {
                 String path = form.getCorrelationFieldPath().trim();
