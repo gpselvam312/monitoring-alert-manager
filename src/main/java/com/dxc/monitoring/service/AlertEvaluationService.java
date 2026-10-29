@@ -452,7 +452,6 @@ public class AlertEvaluationService {
             default -> throw new IllegalArgumentException("Unsupported condition operator: " + operator);
         };
     }
-    }
 
     /**
      * Counts records in a configured collection that match a field condition,
