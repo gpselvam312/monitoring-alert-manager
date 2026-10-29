@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const recoveryPath = document.getElementById('recoveryFieldPath');
     const correlationPath = document.getElementById('correlationFieldPath');
     const operator = document.getElementById('conditionOperator');
+    const recoveryOperator = document.getElementById('recoveryOperator');
     const threshold = document.getElementById('threshold');
     if (!discoverButton || !jobIdInput || !fieldSelect) return;
 
@@ -58,6 +59,22 @@ document.addEventListener('DOMContentLoaded', () => {
             ? '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading saved result…'
             : '<i class="bi bi-search me-1"></i>Load Latest Saved Result';
     };
+    const applyOperatorOptions = (selectElement, type) => {
+        if (!selectElement) return;
+        const allowed = type === 'number'
+            ? ['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS']
+            : type === 'boolean'
+                ? ['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE']
+                : type === 'null'
+                    ? ['EXISTS','NOT_EXISTS']
+                    : ['EQUALS','NOT_EQUALS','EQUALS_IGNORE_CASE','CONTAINS','REGEX','EXISTS','NOT_EXISTS'];
+        Array.from(selectElement.options).forEach(option => {
+            option.hidden = !allowed.includes(option.value);
+        });
+        if (selectElement.selectedOptions.length && selectElement.selectedOptions[0].hidden) {
+            selectElement.value = allowed[0];
+        }
+    };
     const updateFieldDetails = () => {
         const field = discoveredFields.find(item => item.path === fieldSelect.value);
         if (!field) {
@@ -65,21 +82,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         sample.textContent = 'Type: ' + field.type + ' · Sample: ' + field.sampleValue;
-        if (field.type === 'number') {
-            ['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS'].forEach(value => {
-                const option = operator.querySelector('option[value="' + value + '"]');
-                if (option) option.hidden = false;
-            });
-            threshold.placeholder = 'e.g. 85';
-        } else if (field.type === 'boolean') {
-            ['IS_TRUE','IS_FALSE','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS'].forEach(value => {
-                const option = operator.querySelector('option[value="' + value + '"]');
-                if (option) option.hidden = false;
-            });
-            threshold.placeholder = 'true / false';
-        } else {
-            threshold.placeholder = 'Expected value';
-        }
+        applyOperatorOptions(operator, field.type);
+        applyOperatorOptions(recoveryOperator, field.type);
+        threshold.placeholder = field.type === 'number' ? 'e.g. 85'
+            : field.type === 'boolean' ? 'true / false' : 'Expected value';
         conditionPath.value = field.path;
         if (!recoveryPath.value) recoveryPath.value = field.path;
     };
