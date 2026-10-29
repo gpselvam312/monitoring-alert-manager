@@ -311,6 +311,7 @@ public class AlertRuleManagementService {
                 stringValue(node.get("operator"), "GREATER_THAN"),
                 stringValue(node.get("threshold"), stringValue(node.get("value"), "")),
                 1, null, "condition");
+        condition.remove("consecutiveMatches");
         condition.put("type", "CONDITION");
         return condition;
     }
