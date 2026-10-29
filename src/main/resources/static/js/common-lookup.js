@@ -33,6 +33,7 @@
         columns: [{key: "name", label: "Name", primary: true}],
         filters: [],
         filterEndpoint: "",
+        labelKey: "name",
         selected: new Map(),
         items: [],
         totalElements: 0,
@@ -59,10 +60,14 @@
 
     function setBusy(busy) {
         state.loading = busy;
-        [elements.search, elements.application, elements.environment, elements.pageSize,
-            elements.previous, elements.next, elements.confirm].forEach(function (element) {
+        [elements.search, elements.application, elements.environment, elements.pageSize].forEach(function (element) {
             if (element) element.disabled = busy;
         });
+        if (busy) {
+            elements.previous.disabled = true;
+            elements.next.disabled = true;
+            elements.confirm.disabled = true;
+        }
         modalElement.classList.toggle("common-lookup-loading", busy);
     }
 
@@ -284,6 +289,7 @@
         state.trigger = trigger;
         state.endpoint = trigger.dataset.lookupEndpoint;
         state.filterEndpoint = trigger.dataset.filterEndpoint || "";
+        state.labelKey = trigger.dataset.lookupLabelKey || "name";
         state.filters = (trigger.dataset.lookupFilters || "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
         try {
             state.columns = JSON.parse(trigger.dataset.lookupColumns || '[{"key":"name","label":"Name","primary":true}]');
@@ -298,10 +304,10 @@
         if (target && target.value) {
             const ids = target.value.split(",").map(value => value.trim()).filter(Boolean);
             if (state.selectionMode === "SINGLE" && ids.length) {
-                state.selected.set(ids[0], {id: ids[0], name: label ? label.value : ids[0]});
+                state.selected.set(ids[0], {id: ids[0], [state.labelKey]: label ? label.value : ids[0]});
             } else if (state.selectionMode === "MULTIPLE" && label) {
                 const names = label.value.split(",").map(value => value.trim());
-                ids.forEach((id, index) => state.selected.set(id, {id: id, name: names[index] || id}));
+                ids.forEach((id, index) => state.selected.set(id, {id: id, [state.labelKey]: names[index] || id}));
             }
         }
         state.search = "";
@@ -400,7 +406,7 @@
         target.value = selected.map(item => item.id).join(",");
         target.dispatchEvent(new Event("change", {bubbles: true}));
         if (label) {
-            label.value = selected.map(item => item.name || item.applicationName || item.id).join(", ");
+            label.value = selected.map(item => item[state.labelKey] || item.name || item.applicationName || item.id).join(", ");
             label.dispatchEvent(new Event("change", {bubbles: true}));
         }
         modal.hide();
