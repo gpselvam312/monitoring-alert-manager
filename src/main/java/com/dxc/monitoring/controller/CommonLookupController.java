@@ -81,13 +81,16 @@ public class CommonLookupController {
         String safeSearch = search == null ? "" : search.trim();
         Page<MonitoringJob> page = jobs.findAllForLookup(safeSearch, applicationIds, applicationId,
                 environmentId, MonitoringJob.ExecutionMode.STANDARD, pageable);
-        List<MonitoringJobRow> rows = page.getContent().stream().map(job -> new MonitoringJobRow(
-                job.getId(), job.getName(), job.getDescription(),
-                job.getApplication() == null ? null : job.getApplication().getId(),
-                job.getApplication() == null ? "" : job.getApplication().getName(),
-                job.getEnvironment() == null ? null : job.getEnvironment().getId(),
-                job.getEnvironment() == null ? "" : job.getEnvironment().getName(),
-                job.getType() == null ? "" : job.getType().name(), job.isEnabled())).toList();
+        List<MonitoringJobRow> rows = page.getContent().stream().map(job -> {
+            String applicationName = job.getApplication() == null ? "" : job.getApplication().getName();
+            String environmentName = job.getEnvironment() == null ? "" : job.getEnvironment().getName();
+            String displayName = job.getName() + " — " + applicationName
+                    + (environmentName.isBlank() ? "" : " / " + environmentName);
+            return new MonitoringJobRow(job.getId(), job.getName(), displayName, job.getDescription(),
+                    job.getApplication() == null ? null : job.getApplication().getId(), applicationName,
+                    job.getEnvironment() == null ? null : job.getEnvironment().getId(), environmentName,
+                    job.getType() == null ? "" : job.getType().name(), job.isEnabled());
+        }).toList();
         return new LookupPage<>(rows, page.getTotalElements(), safeBatch, page.hasNext(), fetchSize);
     }
 
@@ -117,7 +120,7 @@ public class CommonLookupController {
     }
 
     public record LookupOption(Long id, String name) {}
-    public record MonitoringJobRow(Long id, String name, String description, Long applicationId,
+    public record MonitoringJobRow(Long id, String name, String displayName, String description, Long applicationId,
             String applicationName, Long environmentId, String environmentName, String type, boolean enabled) {}
     public record LookupPage<T>(List<T> items, long totalElements, int batch, boolean hasNext, int fetchSize) {}
 }
