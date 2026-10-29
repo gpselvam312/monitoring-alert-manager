@@ -170,8 +170,13 @@ public class AlertRuleFieldDiscoveryService {
         try { return new java.math.BigDecimal(value); } catch (NumberFormatException ignored) { return value; }
     }
 
+    /**
+     * Flattens objects while treating arrays as collections of the same schema.
+     * Array indexes are intentionally omitted so discovered paths remain reusable
+     * when the number or order of records changes between executions.
+     */
     private void flatten(Object value, String path, List<Field> fields) {
-        if (fields.size() >= MAX_FIELDS || path.length() > 255) return;
+        if (path.length() > 255 || fields.size() >= MAX_FIELDS) return;
         if (value instanceof Map<?, ?> map && !map.isEmpty()) {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 String key = String.valueOf(entry.getKey());
@@ -187,9 +192,10 @@ public class AlertRuleFieldDiscoveryService {
                 addField(path, "array", "[]", fields);
                 return;
             }
-            for (int i = 0; i < list.size() && fields.size() < MAX_FIELDS; i++) {
-                String child = path.isEmpty() ? String.valueOf(i) : path + "." + i;
-                flatten(list.get(i), child, fields);
+            // Reuse the same path for every item. Repeated fields are merged below.
+            for (Object item : list) {
+                if (fields.size() >= MAX_FIELDS) return;
+                flatten(item, path, fields);
             }
             return;
         }
@@ -202,7 +208,15 @@ public class AlertRuleFieldDiscoveryService {
     }
 
     private void addField(String path, String type, String sample, List<Field> fields) {
-        if (path == null || path.isBlank() || fields.size() >= MAX_FIELDS) return;
+        if (path == null || path.isBlank()) return;
+        for (int i = 0; i < fields.size(); i++) {
+            Field existing = fields.get(i);
+            if (!existing.path().equals(path)) continue;
+            String mergedType = existing.type().equals(type) ? type : "mixed";
+            fields.set(i, new Field(path, path, mergedType, existing.sampleValue()));
+            return;
+        }
+        if (fields.size() >= MAX_FIELDS) return;
         if (sample.length() > MAX_SAMPLE_LENGTH) sample = sample.substring(0, MAX_SAMPLE_LENGTH) + "…";
         fields.add(new Field(path, path, type, sample));
     }
