@@ -16,7 +16,6 @@ import com.dxc.monitoring.repository.AlertRuleRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.web.AlertRuleForm;
-import com.dxc.monitoring.web.AlertConditionForm;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -131,28 +130,6 @@ public class AlertRuleManagementService {
             form.setCountFieldThreshold(stringValue(condition.get("threshold"), stringValue(condition.get("value"), "")));
             form.setCountOperator(stringValue(condition.get("countOperator"), "GREATER_THAN_OR_EQUAL"));
             form.setCountThreshold(stringValue(condition.get("countThreshold"), "1"));
-            if ("GROUP".equalsIgnoreCase(stringValue(condition.get("type"), "")) && condition.get("children") instanceof java.util.List<?> children && !children.isEmpty()) {
-                form.setConditionGroupEnabled(true);
-                form.setConditionGroupOperator(stringValue(condition.get("operator"), "AND"));
-                java.util.List<AlertConditionForm> items = new java.util.ArrayList<>();
-                for (Object child : children) {
-                    Map<String, Object> childCondition = mapValue(child);
-                    AlertConditionForm item = new AlertConditionForm();
-                    item.setFieldPath(stringValue(childCondition.get("fieldPath"), ""));
-                    item.setOperator(stringValue(childCondition.get("operator"), "GREATER_THAN"));
-                    item.setThreshold(stringValue(childCondition.get("threshold"), stringValue(childCondition.get("value"), "")));
-                    items.add(item);
-                }
-                form.setConditionItems(items);
-                Map<String, Object> first = mapValue(children.get(0));
-                form.setConditionFieldPath(stringValue(first.get("fieldPath"), ""));
-                form.setConditionOperator(stringValue(first.get("operator"), "GREATER_THAN"));
-                form.setThreshold(stringValue(first.get("threshold"), stringValue(first.get("value"), "")));
-            } else {
-                form.setConditionFieldPath(stringValue(condition.get("fieldPath"), ""));
-                form.setConditionOperator(stringValue(condition.get("operator"), "GREATER_THAN"));
-                form.setThreshold(stringValue(condition.get("threshold"), stringValue(condition.get("value"), "")));
-            }
             form.setConsecutiveMatches(integerValue(condition.get("consecutiveMatches"), 1));
             form.setCorrelationFieldPath(stringValue(condition.get("correlationFieldPath"), ""));
             Map<String, Object> recovery = objectMapper.readValue(rule.getRecoveryConfig(), Map.class);
@@ -345,15 +322,6 @@ public class AlertRuleManagementService {
 
     private String stringValue(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
-    }
-
-    private Map<String, Object> mapValue(Object value) {
-        if (!(value instanceof Map<?, ?> raw)) {
-            throw new IllegalStateException("Stored alert condition group contains an invalid child.");
-        }
-        Map<String, Object> result = new LinkedHashMap<>();
-        raw.forEach((key, item) -> result.put(String.valueOf(key), item));
-        return result;
     }
 
     private int integerValue(Object value, int fallback) {
