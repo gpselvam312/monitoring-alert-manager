@@ -118,7 +118,8 @@ public class AlertRuleManagementService {
         form.setNotificationPolicyId(rule.getNotificationPolicyId());
         try {
             Map<String, Object> condition = objectMapper.readValue(rule.getConditionConfig(), Map.class);
-            form.setConditionType(stringValue(condition.get("type"), "CONDITION"));
+            String storedConditionType = stringValue(condition.get("type"), "CONDITION");
+            form.setConditionType("GROUP".equalsIgnoreCase(storedConditionType) ? "CONDITION" : storedConditionType);
             form.setCollectionPath(stringValue(condition.get("collectionPath"), ""));
             form.setCountFieldPath(stringValue(condition.get("fieldPath"), ""));
             form.setCountFieldOperator(stringValue(condition.get("operator"), "EQUALS"));
