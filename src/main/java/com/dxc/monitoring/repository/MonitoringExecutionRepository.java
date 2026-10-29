@@ -1,6 +1,7 @@
 package com.dxc.monitoring.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,9 @@ import com.dxc.monitoring.entity.MonitoringExecution;
 
 public interface MonitoringExecutionRepository extends JpaRepository<MonitoringExecution, Long>
 {
+    Optional<MonitoringExecution> findFirstByMonitoringJob_IdAndStatusOrderByStartedAtDescIdDesc(
+            Long monitoringJobId, MonitoringExecution.ExecutionStatus status);
+
     List<MonitoringExecution> findByMonitoringJobIdOrderByStartedAtDesc(Long monitoringJobId);
 
     @Query("""
