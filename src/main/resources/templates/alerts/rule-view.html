@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout('View Alert Rule', ~{::content})}">
+<body><div th:fragment="content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title"><i class="bi bi-eye me-2"></i>View Alert Rule</h1>
+            <p class="page-subtitle">Review the alert rule and its configured conditions.</p>
+        </div>
+        <div class="page-header-actions">
+            <a th:href="@{/alerts/rules/{id}/edit(id=${rule.id})}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit Rule</a>
+            <a th:href="@{/alerts/rules}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Rules</a>
+        </div>
+    </div>
+    <div class="app-card mb-3">
+        <div class="app-card-header"><h2 class="h6 mb-0">Rule Details</h2></div>
+        <div class="app-card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Rule Name</dt><dd class="col-sm-9" th:text="${rule.name}">Rule</dd>
+                <dt class="col-sm-3">Description</dt><dd class="col-sm-9" th:text="${rule.description != null and !rule.description.isBlank() ? rule.description : '—'}">—</dd>
+                <dt class="col-sm-3">Monitoring Job</dt><dd class="col-sm-9" th:text="${rule.monitoringJob.name}">Job</dd>
+                <dt class="col-sm-3">Application</dt><dd class="col-sm-9" th:text="${rule.monitoringJob.application.name}">Application</dd>
+                <dt class="col-sm-3">Environment</dt><dd class="col-sm-9" th:text="${rule.monitoringJob.environment != null ? rule.monitoringJob.environment.name : '—'}">Environment</dd>
+                <dt class="col-sm-3">Severity</dt><dd class="col-sm-9" th:text="${rule.severity}">CRITICAL</dd>
+                <dt class="col-sm-3">Execution Source</dt><dd class="col-sm-9" th:text="${rule.executionSourcePolicy}">SCHEDULED_ONLY</dd>
+                <dt class="col-sm-3">Status</dt><dd class="col-sm-9"><span class="badge text-bg-success" th:if="${rule.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${rule.enabled}">Disabled</span></dd>
+                <dt class="col-sm-3">Created</dt><dd class="col-sm-9" th:text="${rule.createdAt != null ? #temporals.format(rule.createdAt, 'yyyy-MM-dd HH:mm:ss') : '—'}">—</dd>
+                <dt class="col-sm-3">Last Updated</dt><dd class="col-sm-9" th:text="${rule.updatedAt != null ? #temporals.format(rule.updatedAt, 'yyyy-MM-dd HH:mm:ss') : '—'}">—</dd>
+            </dl>
+        </div>
+    </div>
+    <div class="app-card mb-3">
+        <div class="app-card-header"><h2 class="h6 mb-0">Alert Condition Configuration</h2></div>
+        <div class="app-card-body"><pre class="font-monospace text-break mb-0" style="white-space: pre-wrap" th:text="${rule.conditionConfig}">Condition configuration</pre></div>
+    </div>
+    <div class="app-card">
+        <div class="app-card-header"><h2 class="h6 mb-0">Recovery Configuration</h2></div>
+        <div class="app-card-body"><pre class="font-monospace text-break mb-0" style="white-space: pre-wrap" th:text="${rule.recoveryConfig}">Recovery configuration</pre></div>
+    </div>
+</div></body></html>
