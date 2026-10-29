@@ -46,12 +46,12 @@ class AlertRuleManagementServiceTest {
         job.setId(JOB_ID);
         job.setName("API Health");
         job.setExecutionMode(MonitoringJob.ExecutionMode.STANDARD);
-        when(jobRepository.findByIdForDetails(JOB_ID)).thenReturn(Optional.of(job));
-        when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
     void savesNestedOrOfAndGroupsWithoutFlatteningTheExpression() throws Exception {
+        stubJobLookup();
+        when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
         AlertRuleForm form = validForm();
         form.setConditionTreeJson("""
                 {
@@ -94,6 +94,7 @@ class AlertRuleManagementServiceTest {
 
     @Test
     void rejectsGroupsWithFewerThanTwoChildren() {
+        stubJobLookup();
         AlertRuleForm form = validForm();
         form.setConditionTreeJson("""
                 {
@@ -147,6 +148,10 @@ class AlertRuleManagementServiceTest {
         assertEquals("OR", root.get("operator"));
         assertEquals(2, groups.size());
         assertEquals("data.memory", ((Map<?, ?>) ((List<?>) ((Map<?, ?>) groups.get(0)).get("children")).get(1)).get("fieldPath"));
+    }
+
+    private void stubJobLookup() {
+        when(jobRepository.findByIdForDetails(JOB_ID)).thenReturn(Optional.of(job));
     }
 
     private AlertRuleForm validForm() {
