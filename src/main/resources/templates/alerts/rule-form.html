@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(sampleButton.dataset.sampleUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain; charset=UTF-8', 'Accept': 'application/json' },
+                headers: { 'Content-Type': 'text/plain; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name="_csrf"]')?.value || '' },
                 body: sampleInput.value,
                 credentials: 'same-origin'
             });
