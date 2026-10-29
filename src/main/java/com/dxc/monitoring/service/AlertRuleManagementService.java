@@ -94,9 +94,7 @@ public class AlertRuleManagementService {
             throw new IllegalArgumentException("Choose a supported severity and execution source policy.");
         }
 
-        Map<String, Object> condition = buildCondition(form.getConditionFieldPath(),
-                form.getConditionOperator(), form.getThreshold(), form.getConsecutiveMatches(),
-                form.getCorrelationFieldPath(), "condition");
+        Map<String, Object> condition = buildConfiguredCondition(form);
         Map<String, Object> recovery = new LinkedHashMap<>();
         recovery.put("enabled", true);
         recovery.putAll(buildCondition(form.getRecoveryFieldPath(), form.getRecoveryOperator(),
@@ -120,6 +118,13 @@ public class AlertRuleManagementService {
         form.setNotificationPolicyId(rule.getNotificationPolicyId());
         try {
             Map<String, Object> condition = objectMapper.readValue(rule.getConditionConfig(), Map.class);
+            form.setConditionType(stringValue(condition.get("type"), "CONDITION"));
+            form.setCollectionPath(stringValue(condition.get("collectionPath"), ""));
+            form.setCountFieldPath(stringValue(condition.get("fieldPath"), ""));
+            form.setCountFieldOperator(stringValue(condition.get("operator"), "EQUALS"));
+            form.setCountFieldThreshold(stringValue(condition.get("threshold"), stringValue(condition.get("value"), "")));
+            form.setCountOperator(stringValue(condition.get("countOperator"), "GREATER_THAN_OR_EQUAL"));
+            form.setCountThreshold(stringValue(condition.get("countThreshold"), "1"));
             form.setConditionFieldPath(stringValue(condition.get("fieldPath"), ""));
             form.setConditionOperator(stringValue(condition.get("operator"), "GREATER_THAN"));
             form.setThreshold(stringValue(condition.get("threshold"), stringValue(condition.get("value"), "")));
@@ -136,6 +141,61 @@ public class AlertRuleManagementService {
             throw new IllegalStateException("Stored alert rule configuration could not be loaded.", exception);
         }
         return form;
+    }
+
+    private Map<String, Object> buildConfiguredCondition(AlertRuleForm form) {
+        String type = form.getConditionType() == null ? "CONDITION"
+                : form.getConditionType().trim().toUpperCase(Locale.ROOT);
+        if ("CONDITION".equals(type)) {
+            return buildCondition(form.getConditionFieldPath(), form.getConditionOperator(),
+                    form.getThreshold(), form.getConsecutiveMatches(),
+                    form.getCorrelationFieldPath(), "condition");
+        }
+        if (!"COUNT_TOTAL".equals(type) && !"COUNT_MATCHING".equals(type)) {
+            throw new IllegalArgumentException("Choose a supported alert condition type.");
+        }
+        String collectionPath = form.getCollectionPath() == null ? "" : form.getCollectionPath().trim();
+        if (collectionPath.length() > 255 || !FIELD_PATH.matcher(collectionPath).matches()) {
+            throw new IllegalArgumentException("Collection field path must use dot notation, for example data.servers.");
+        }
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("type", type);
+        config.put("collectionPath", collectionPath);
+        if ("COUNT_MATCHING".equals(type)) {
+            Map<String, Object> rowCondition = buildCondition(form.getCountFieldPath(),
+                    form.getCountFieldOperator(), form.getCountFieldThreshold(), 1, null, "count row");
+            config.put("fieldPath", rowCondition.get("fieldPath"));
+            config.put("operator", rowCondition.get("operator"));
+            if (rowCondition.containsKey("threshold")) config.put("threshold", rowCondition.get("threshold"));
+        }
+        String countOperator = form.getCountOperator() == null ? ""
+                : form.getCountOperator().trim().toUpperCase(Locale.ROOT);
+        Set<String> countOperators = Set.of("GREATER_THAN", "GREATER_THAN_OR_EQUAL", "LESS_THAN",
+                "LESS_THAN_OR_EQUAL", "EQUALS", "NOT_EQUALS");
+        if (!countOperators.contains(countOperator)) {
+            throw new IllegalArgumentException("Choose a supported count comparison operator.");
+        }
+        String countThreshold = form.getCountThreshold() == null ? "" : form.getCountThreshold().trim();
+        try {
+            long parsed = new BigDecimal(countThreshold).longValueExact();
+            if (parsed < 0) throw new IllegalArgumentException("Count threshold cannot be negative.");
+            config.put("countThreshold", parsed);
+        } catch (NumberFormatException | ArithmeticException exception) {
+            throw new IllegalArgumentException("Count threshold must be a non-negative whole number.");
+        }
+        config.put("countOperator", countOperator);
+        config.put("consecutiveMatches", form.getConsecutiveMatches());
+        if (form.getConsecutiveMatches() < 1 || form.getConsecutiveMatches() > 100) {
+            throw new IllegalArgumentException("Consecutive matches must be between 1 and 100.");
+        }
+        if (form.getCorrelationFieldPath() != null && !form.getCorrelationFieldPath().isBlank()) {
+            String correlationPath = form.getCorrelationFieldPath().trim();
+            if (correlationPath.length() > 255 || !FIELD_PATH.matcher(correlationPath).matches()) {
+                throw new IllegalArgumentException("Correlation field path must use dot notation.");
+            }
+            config.put("correlationFieldPath", correlationPath);
+        }
+        return config;
     }
 
     private Map<String, Object> buildCondition(String fieldPath, String operator, String threshold,
