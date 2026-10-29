@@ -8,6 +8,13 @@ public class AlertRuleForm {
     private boolean enabled = true;
     private String severity = "CRITICAL";
     private String executionSourcePolicy = "SCHEDULED_ONLY";
+    private String conditionType = "CONDITION";
+    private String collectionPath = "";
+    private String countFieldPath = "";
+    private String countFieldOperator = "EQUALS";
+    private String countFieldThreshold = "";
+    private String countOperator = "GREATER_THAN_OR_EQUAL";
+    private String countThreshold = "1";
     private String conditionFieldPath = "";
     private String conditionOperator = "GREATER_THAN";
     private String threshold = "";
@@ -34,6 +41,20 @@ public class AlertRuleForm {
     public void setSeverity(String severity) { this.severity = severity; }
     public String getExecutionSourcePolicy() { return executionSourcePolicy; }
     public void setExecutionSourcePolicy(String executionSourcePolicy) { this.executionSourcePolicy = executionSourcePolicy; }
+    public String getConditionType() { return conditionType; }
+    public void setConditionType(String conditionType) { this.conditionType = conditionType; }
+    public String getCollectionPath() { return collectionPath; }
+    public void setCollectionPath(String collectionPath) { this.collectionPath = collectionPath; }
+    public String getCountFieldPath() { return countFieldPath; }
+    public void setCountFieldPath(String countFieldPath) { this.countFieldPath = countFieldPath; }
+    public String getCountFieldOperator() { return countFieldOperator; }
+    public void setCountFieldOperator(String countFieldOperator) { this.countFieldOperator = countFieldOperator; }
+    public String getCountFieldThreshold() { return countFieldThreshold; }
+    public void setCountFieldThreshold(String countFieldThreshold) { this.countFieldThreshold = countFieldThreshold; }
+    public String getCountOperator() { return countOperator; }
+    public void setCountOperator(String countOperator) { this.countOperator = countOperator; }
+    public String getCountThreshold() { return countThreshold; }
+    public void setCountThreshold(String countThreshold) { this.countThreshold = countThreshold; }
     public String getConditionFieldPath() { return conditionFieldPath; }
     public void setConditionFieldPath(String conditionFieldPath) { this.conditionFieldPath = conditionFieldPath; }
     public String getConditionOperator() { return conditionOperator; }
