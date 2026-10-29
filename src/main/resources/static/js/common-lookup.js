@@ -92,7 +92,6 @@
     }
 
     async function loadBatch(batch) {
-        if (state.loading) return;
         const sequence = ++state.requestSequence;
         setBusy(true);
         elements.summary.textContent = "Loading records…";
@@ -229,34 +228,16 @@
         }
     }
 
-    function movePrevious() {
+    async function movePrevious() {
         if (state.localPage > 0) {
             state.localPage--;
             renderRows();
         } else if (state.batch > 0) {
-            state.localPage = 0;
-            loadBatch(state.batch - 1);
-            // Previous batch is rendered after it arrives; show its last local page.
-            const onRows = function () {
-                if (state.batch >= 0) {
-                    state.localPage = Math.max(0, Math.ceil(state.items.length / state.pageSize) - 1);
-                    renderRows();
-                }
-                elements.rows.removeEventListener("lookup:loaded", onRows);
-            };
-            elements.rows.addEventListener("lookup:loaded", onRows);
+            await loadBatch(state.batch - 1);
+            state.localPage = Math.max(0, Math.ceil(state.items.length / state.pageSize) - 1);
+            renderRows();
         }
     }
-
-    function renderLoadedMarker() {
-        elements.rows.dispatchEvent(new Event("lookup:loaded"));
-    }
-
-    const originalRenderRows = renderRows;
-    renderRows = function () {
-        originalRenderRows();
-        renderLoadedMarker();
-    };
 
     document.addEventListener("click", async function (event) {
         const trigger = event.target.closest("[data-common-lookup]");
