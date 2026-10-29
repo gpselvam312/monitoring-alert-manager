@@ -289,7 +289,10 @@
         }
     }
 
-    async function openLookup(trigger) {
+    document.addEventListener("click", async function (event) {
+        const trigger = event.target.closest("[data-common-lookup]");
+        if (!trigger) return;
+        event.preventDefault();
         state.trigger = trigger;
         state.endpoint = trigger.dataset.lookupEndpoint;
         state.filterEndpoint = trigger.dataset.filterEndpoint || "";
@@ -336,14 +339,6 @@
             elements.rows.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">' + escapeHtml(error.message) + '</td></tr>';
             elements.summary.textContent = "Unable to load lookup filters";
         }
-    }
-
-    // Bind directly to each lookup button instead of relying on document-level bubbling.
-    document.querySelectorAll("[data-common-lookup]").forEach(function (trigger) {
-        trigger.addEventListener("click", function (event) {
-            event.preventDefault();
-            openLookup(trigger);
-        });
     });
 
     elements.rows.addEventListener("change", function (event) {
