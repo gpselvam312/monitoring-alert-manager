@@ -86,6 +86,29 @@ document.addEventListener('DOMContentLoaded', () => {
     try { tree = JSON.parse(treeInput.value); } catch (_) { tree = defaultCondition(); }
     if (!tree || !['CONDITION','GROUP'].includes(tree.type)) tree = defaultCondition();
     let discoveredFields = [];
+    const fieldDatalist = document.createElement('datalist');
+    fieldDatalist.id = 'discoveredConditionFieldPaths';
+    form.appendChild(fieldDatalist);
+
+    const populateDiscoveredFields = fields => {
+        discoveredFields = Array.isArray(fields) ? fields : [];
+        fieldDatalist.replaceChildren();
+        discoveredFields.forEach(field => {
+            const option = new Option();
+            option.value = field.path;
+            option.label = field.path + ' (' + field.type + '; sample: ' + String(field.sampleValue ?? '') + ')';
+            fieldDatalist.appendChild(option);
+        });
+        fieldSelect.replaceChildren();
+        if (!discoveredFields.length) {
+            fieldSelect.add(new Option('No selectable fields found', ''));
+            fieldSelect.disabled = true;
+            return;
+        }
+        fieldSelect.add(new Option('Choose a field…', ''));
+        discoveredFields.forEach(field => fieldSelect.add(new Option(field.label + ' (' + field.type + ')', field.path)));
+        fieldSelect.disabled = false;
+    };
 
     const showMessage = (text, kind) => {
         message.textContent = text;
@@ -194,7 +217,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const pathInput = document.createElement('input');
             pathInput.type = 'text'; pathInput.className = 'form-control tree-field-path';
             pathInput.maxLength = 255; pathInput.placeholder = 'data.cpu.usage'; pathInput.value = node.fieldPath || '';
+            pathInput.setAttribute('list', fieldDatalist.id);
+            pathInput.setAttribute('autocomplete', 'off');
+            pathInput.setAttribute('aria-label', 'Value field path; type to see discovered fields');
             pathInput.addEventListener('input', () => { node.fieldPath = pathInput.value; syncTree(); });
+            pathInput.addEventListener('change', () => {
+                const selected = discoveredFields.find(field => field.path === pathInput.value);
+                if (selected) {
+                    if (selected.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS'].includes(node.operator)) node.operator = 'GREATER_THAN';
+                    if (selected.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(node.operator)) node.operator = 'IS_TRUE';
+                    if (selected.type === 'null') node.operator = 'EXISTS';
+                    renderTree();
+                }
+            });
             pathCol.append(pathLabel,pathInput);
             const operatorCol = document.createElement('div');
             operatorCol.className = 'col-12 col-lg-4';
@@ -293,16 +328,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const payload = await response.json();
                 if (!response.ok) throw new Error(payload.message || 'Unable to discover fields from the saved result.');
-                discoveredFields = Array.isArray(payload.fields) ? payload.fields : [];
-                fieldSelect.replaceChildren();
+                populateDiscoveredFields(payload.fields);
                 if (!discoveredFields.length) {
-                    fieldSelect.add(new Option('No selectable fields found',''));
                     showMessage('The latest saved result did not contain any discoverable fields. You can enter the field path manually.','warning');
                     return;
                 }
-                fieldSelect.add(new Option('Choose a field…',''));
-                discoveredFields.forEach(field => fieldSelect.add(new Option(field.label + ' (' + field.type + ')',field.path)));
-                fieldSelect.disabled = false;
                 executionInfo.textContent = 'Execution #' + payload.executionId + ' · ' + payload.executionStartedAt + ' · ' + payload.triggerSource;
                 showMessage(discoveredFields.length + ' fields discovered from the latest successful saved execution.','success');
             } catch (error) {
@@ -323,12 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.message || 'Unable to discover fields from this sample.');
-            discoveredFields = Array.isArray(payload.fields) ? payload.fields : [];
-            fieldSelect.replaceChildren();
+            populateDiscoveredFields(payload.fields);
             if (!discoveredFields.length) throw new Error('No selectable fields were found in this sample.');
-            fieldSelect.add(new Option('Choose a field…',''));
-            discoveredFields.forEach(field => fieldSelect.add(new Option(field.label + ' (' + field.type + ')',field.path)));
-            fieldSelect.disabled = false;
             executionInfo.textContent = 'Sample response · not saved';
             showMessage(discoveredFields.length + ' fields discovered from the sample.','success');
         } catch (error) {
@@ -338,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     jobIdInput.addEventListener('change', () => {
-        discoveredFields = [];
+        populateDiscoveredFields([]);
         fieldSelect.replaceChildren(new Option('Load a saved result to discover fields',''));
         fieldSelect.disabled = true; executionInfo.textContent = ''; message.className = 'alert d-none mb-3';
         discoverButton.disabled = !jobIdInput.value;
