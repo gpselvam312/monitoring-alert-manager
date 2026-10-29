@@ -100,12 +100,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const mode = conditionType ? conditionType.value : 'CONDITION';
         const countMode = mode === 'COUNT_TOTAL' || mode === 'COUNT_MATCHING';
         countFields.classList.toggle('d-none', !countMode);
+        const groupMode = mode === 'CONDITION' && conditionGroupEnabled.checked;
+        const groupedLegacyInputs = [conditionPath, document.getElementById('conditionOperator'), threshold];
         singleConditionFields.forEach(input => {
             if (!input) return;
-            input.closest('.col-12')?.classList.toggle('d-none', countMode);
-            if (input === conditionPath) input.required = !countMode;
+            input.closest('.col-12')?.classList.toggle('d-none', countMode || (groupMode && groupedLegacyInputs.includes(input)));
+            if (input === conditionPath) input.required = !countMode && !groupMode;
         });
-        const groupMode = mode === 'CONDITION' && conditionGroupEnabled.checked;
         conditionGroupToggleContainer.classList.toggle('d-none', mode !== 'CONDITION');
         conditionGroupFields.classList.toggle('d-none', !groupMode);
         conditionItemsContainer.querySelectorAll('.condition-item-path').forEach(input => input.required = groupMode);
@@ -216,6 +217,14 @@ document.addEventListener('DOMContentLoaded', () => {
         threshold.placeholder = field.type === 'number' ? 'e.g. 85'
             : field.type === 'boolean' ? 'true / false' : 'Expected value';
         conditionPath.value = field.path;
+        const firstConditionRow = conditionItemsContainer.querySelector('.condition-item');
+        if (firstConditionRow) {
+            firstConditionRow.querySelector('.condition-item-path').value = field.path;
+            const rowOperator = firstConditionRow.querySelector('.condition-item-operator');
+            applyOperatorOptions(rowOperator, field.type);
+            firstConditionRow.querySelector('.condition-item-threshold').placeholder = field.type === 'number' ? 'e.g. 85'
+                : field.type === 'boolean' ? 'true / false' : 'Expected value';
+        }
         if (conditionType && conditionType.value === 'COUNT_MATCHING') {
             countFieldPath.value = field.path;
             applyOperatorOptions(countFieldOperator, field.type);
