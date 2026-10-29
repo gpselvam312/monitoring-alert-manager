@@ -16,7 +16,7 @@
 <div class="col-12 col-md-6"><label class="form-label" for="notificationPolicyId">Notification Policy</label><select class="form-select" id="notificationPolicyId" th:field="*{notificationPolicyId}"><option value="">No notifications configured</option><option th:each="policy : ${notificationPolicies}" th:value="${policy.id}" th:text="${policy.name}"></option></select><div class="form-text">Configure channels, recipients and routes in Notification Configuration.</div></div>
 <div class="col-12 col-md-3 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="enabled" th:field="*{enabled}"><label class="form-check-label" for="enabled">Rule enabled</label></div></div>
 </div></div></div>
-<div class="app-card mb-3"><div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0">Alert Condition</h2><button type="button" class="btn btn-sm btn-outline-primary" id="discoverAlertFields" th:attr="data-discovery-url=@{/alerts/rules/discovery/}" th:disabled="${ruleForm.monitoringJobId == null}"><i class="bi bi-search me-1"></i>Load Latest Saved Result</button></div><div class="app-card-body"><p class="small text-muted">Discover selectable fields from the latest successful saved result. This does not run the monitoring job. You can also enter a field path manually if needed.</p><div id="fieldDiscoveryMessage" class="alert d-none mb-3" role="status" aria-live="polite"></div><div class="row g-3 mb-3"><div class="col-12 col-lg-6"><label class="form-label" for="discoveredFieldPath">Discovered Fields</label><select class="form-select" id="discoveredFieldPath" disabled><option value="">Load a saved result to discover fields</option></select><div id="discoveredFieldSample" class="form-text">Field type and sample value will appear here.</div></div><div class="col-12 col-lg-6 d-flex align-items-end"><div id="fieldDiscoveryExecution" class="small text-muted"></div></div></div><p class="small text-muted">You can also use <code>executionStatus</code> and other execution metadata fields.</p><div class="row g-3">
+<div class="app-card mb-3"><div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0">Alert Condition</h2><button type="button" class="btn btn-sm btn-outline-primary" id="discoverAlertFields" th:attr="data-discovery-url=@{/alerts/rules/discovery/}" th:disabled="${ruleForm.monitoringJobId == null}"><i class="bi bi-search me-1"></i>Load Latest Saved Result</button></div><div class="app-card-body"><p class="small text-muted">Discover selectable fields from the latest successful saved result. This does not run the monitoring job. You can also enter a field path manually if needed.</p><div id="fieldDiscoveryMessage" class="alert d-none mb-3" role="status" aria-live="polite"></div><div class="row g-3 mb-3"><div class="col-12 col-lg-6"><label class="form-label" for="discoveredFieldPath">Discovered Fields</label><select class="form-select" id="discoveredFieldPath" disabled><option value="">Load a saved result to discover fields</option></select><div id="discoveredFieldSample" class="form-text">Field type and sample value will appear here.</div></div><div class="col-12 col-lg-6 d-flex align-items-end"><div id="fieldDiscoveryExecution" class="small text-muted"></div></div></div><details class="mb-3"><summary class="small fw-semibold">Use a sample response instead</summary><div class="pt-3"><label class="form-label" for="sampleResponseForDiscovery">Sample response</label><textarea class="form-control font-monospace" id="sampleResponseForDiscovery" rows="5" placeholder="{ &quot;data&quot;: { &quot;cpu&quot;: { &quot;usage&quot;: 92 } } }"></textarea><div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="discoverSampleFields" th:attr="data-sample-url=@{/alerts/rules/discovery/sample}"><i class="bi bi-braces me-1"></i>Discover from Sample</button></div><div class="form-text">Supports JSON, key-value lines, and comma-delimited header/value rows. A sample is used only for field discovery; it is not saved or executed.</div></div></details><p class="small text-muted">You can also use <code>executionStatus</code> and other execution metadata fields.</p><div class="row g-3">
 <div class="col-12 col-lg-4"><label class="form-label" for="conditionFieldPath">Value Field Path</label><input class="form-control" id="conditionFieldPath" th:field="*{conditionFieldPath}" maxlength="255" placeholder="data.cpu.usage" required></div>
 <div class="col-12 col-lg-4"><label class="form-label" for="conditionOperator">Operator</label><select class="form-select" id="conditionOperator" th:field="*{conditionOperator}"><option value="GREATER_THAN">Greater than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="LESS_THAN">Less than</option><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option><option value="EQUALS_IGNORE_CASE">Equals (ignore case)</option><option value="CONTAINS">Contains</option><option value="REGEX">Regular expression</option><option value="EXISTS">Exists</option><option value="NOT_EXISTS">Does not exist</option><option value="IS_TRUE">Is true</option><option value="IS_FALSE">Is false</option></select></div>
 <div class="col-12 col-lg-2"><label class="form-label" for="threshold">Threshold / Value</label><input class="form-control" id="threshold" th:field="*{threshold}" maxlength="500" placeholder="85"></div><div class="col-12 col-lg-2"><label class="form-label" for="consecutiveMatches">Consecutive Matches</label><input type="number" class="form-control" id="consecutiveMatches" th:field="*{consecutiveMatches}" min="1" max="100" required></div>
@@ -38,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const message = document.getElementById('fieldDiscoveryMessage');
     const sample = document.getElementById('discoveredFieldSample');
     const executionInfo = document.getElementById('fieldDiscoveryExecution');
+    const sampleInput = document.getElementById('sampleResponseForDiscovery');
+    const sampleButton = document.getElementById('discoverSampleFields');
     const conditionPath = document.getElementById('conditionFieldPath');
     const recoveryPath = document.getElementById('recoveryFieldPath');
     const correlationPath = document.getElementById('correlationFieldPath');
@@ -116,6 +118,38 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(error.message || 'Unable to load the saved result. Please try again.', 'danger');
         } finally {
             setBusy(false);
+        }
+    });
+    if (sampleButton) sampleButton.addEventListener('click', async () => {
+        if (!sampleInput || !sampleInput.value.trim()) {
+            showMessage('Paste a sample response before discovering fields.', 'warning');
+            return;
+        }
+        sampleButton.disabled = true;
+        const originalText = sampleButton.innerHTML;
+        sampleButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Discovering…';
+        try {
+            const response = await fetch(sampleButton.dataset.sampleUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain; charset=UTF-8', 'Accept': 'application/json' },
+                body: sampleInput.value,
+                credentials: 'same-origin'
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.message || 'Unable to discover fields from this sample.');
+            discoveredFields = Array.isArray(payload.fields) ? payload.fields : [];
+            fieldSelect.replaceChildren();
+            if (!discoveredFields.length) throw new Error('No selectable fields were found in this sample.');
+            fieldSelect.add(new Option('Choose a field…', ''));
+            discoveredFields.forEach(field => fieldSelect.add(new Option(field.label + ' (' + field.type + ')', field.path)));
+            fieldSelect.disabled = false;
+            executionInfo.textContent = 'Sample response · not saved';
+            showMessage(discoveredFields.length + ' fields discovered from the sample.', 'success');
+        } catch (error) {
+            showMessage(error.message || 'Unable to discover fields from this sample.', 'danger');
+        } finally {
+            sampleButton.disabled = false;
+            sampleButton.innerHTML = originalText;
         }
     });
     jobIdInput.addEventListener('change', () => {
