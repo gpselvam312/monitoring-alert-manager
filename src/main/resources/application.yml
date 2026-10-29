@@ -33,6 +33,9 @@ management:
       show-details: when_authorized
 
 monitoring:
+  lookup:
+    # Records fetched per server request; independent from the UI page size.
+    fetch-size: ${MONITORING_LOOKUP_FETCH_SIZE:100}
   datetime-format: "MM/dd/yyyy hh:mm:ss a"
   streaming:
     max-runtime-seconds: ${MONITORING_STREAMING_MAX_RUNTIME_SECONDS:86400}
