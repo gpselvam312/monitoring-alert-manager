@@ -269,11 +269,15 @@ public class AlertEvaluationService {
         Object payload = parseStructuredPayload(result.getResultData());
         if (payload == null) payload = parseStructuredPayload(result.getRawOutput());
         if (payload == null) payload = parseStructuredPayload(result.getMessage());
+        boolean normalizedEnvelope = isNormalizedEnvelope(payload);
         payload = unwrapNormalizedPayload(payload);
 
         boolean payloadFound = payload != null;
         if (payload instanceof Map<?, ?> map) {
             map.forEach((key, value) -> context.put(String.valueOf(key), value));
+            // Keep legacy rules using data.<path> working when the normalized
+            // result wrapper is removed for discovery/evaluation consistency.
+            if (normalizedEnvelope) context.put("data", payload);
         } else if (payload != null) {
             context.put("data", payload);
         } else {
@@ -297,13 +301,14 @@ public class AlertEvaluationService {
         return context;
     }
 
-    private Object unwrapNormalizedPayload(Object parsed) {
-        if (parsed instanceof Map<?, ?> map
+    private boolean isNormalizedEnvelope(Object parsed) {
+        return parsed instanceof Map<?, ?> map
                 && map.containsKey("schemaVersion")
-                && map.containsKey("data")) {
-            return map.get("data");
-        }
-        return parsed;
+                && map.containsKey("data");
+    }
+
+    private Object unwrapNormalizedPayload(Object parsed) {
+        return isNormalizedEnvelope(parsed) ? ((Map<?, ?>) parsed).get("data") : parsed;
     }
 
     private Object parseStructuredPayload(String payload) {
