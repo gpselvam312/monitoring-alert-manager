@@ -48,7 +48,6 @@
 </form><script>
 document.addEventListener('DOMContentLoaded', () => {
     const jobIdInput = document.getElementById('monitoringJobId');
-    const jobLabelInput = document.getElementById('monitoringJobLabel');
     const discoverButton = document.getElementById('discoverAlertFields');
     const fieldSelect = document.getElementById('discoveredFieldPath');
     const message = document.getElementById('fieldDiscoveryMessage');
@@ -56,17 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const executionInfo = document.getElementById('fieldDiscoveryExecution');
     const sampleInput = document.getElementById('sampleResponseForDiscovery');
     const sampleButton = document.getElementById('discoverSampleFields');
-    const conditionPath = document.getElementById('conditionFieldPath');
     const recoveryPath = document.getElementById('recoveryFieldPath');
-    const correlationPath = document.getElementById('correlationFieldPath');
-    const threshold = document.getElementById('threshold');
-    const conditionGroupEnabled = document.getElementById('conditionGroupEnabled');
-    const conditionGroupFields = document.getElementById('conditionGroupFields');
-    const conditionGroupToggleContainer = document.getElementById('conditionGroupToggleContainer');
-    const conditionItemsContainer = document.getElementById('conditionItemsContainer');
-    const conditionItemTemplate = document.getElementById('conditionItemTemplate');
-    const addConditionButton = document.getElementById('addCondition');
-    const conditionCountLabel = document.getElementById('conditionCountLabel');
+    const recoveryOperator = document.getElementById('recoveryOperator');
     const conditionType = document.getElementById('conditionType');
     const countFields = document.getElementById('countConditionFields');
     const collectionPath = document.getElementById('collectionPath');
@@ -78,30 +68,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const countFieldPathContainer = document.getElementById('countFieldPathContainer');
     const countFieldOperatorContainer = document.getElementById('countFieldOperatorContainer');
     const countFieldThresholdContainer = document.getElementById('countFieldThresholdContainer');
-    const singleConditionFields = [conditionPath, document.getElementById('conditionOperator'),
-        threshold, document.getElementById('consecutiveMatches'), correlationPath];
-    const updateConditionMode = () => {
-        const mode = conditionType ? conditionType.value : 'CONDITION';
-        const countMode = mode === 'COUNT_TOTAL' || mode === 'COUNT_MATCHING';
+    const treeInput = document.getElementById('conditionTreeJson');
+    const treeEditor = document.getElementById('conditionTreeEditor');
+    const addRootCondition = document.getElementById('addRootCondition');
+    const addRootGroup = document.getElementById('addRootGroup');
+    const form = treeInput.closest('form');
+    const conditionOperators = [
+        ['GREATER_THAN','Greater than'],['GREATER_THAN_OR_EQUAL','Greater than or equal'],
+        ['LESS_THAN','Less than'],['LESS_THAN_OR_EQUAL','Less than or equal'],
+        ['EQUALS','Equals'],['NOT_EQUALS','Not equals'],['EQUALS_IGNORE_CASE','Equals (ignore case)'],
+        ['CONTAINS','Contains'],['REGEX','Regular expression'],['EXISTS','Exists'],
+        ['NOT_EXISTS','Does not exist'],['IS_TRUE','Is true'],['IS_FALSE','Is false']
+    ];
+    const defaultCondition = () => ({type:'CONDITION',fieldPath:'',operator:'GREATER_THAN',threshold:''});
+    const defaultGroup = (operator='AND') => ({type:'GROUP',operator,children:[defaultCondition(),defaultCondition()]});
+    let tree;
+    try { tree = JSON.parse(treeInput.value); } catch (_) { tree = defaultCondition(); }
+    if (!tree || !['CONDITION','GROUP'].includes(tree.type)) tree = defaultCondition();
+    let discoveredFields = [];
+
+    const showMessage = (text, kind) => {
+        message.textContent = text;
+        message.className = 'alert alert-' + kind + ' mb-3';
+    };
+    const setBusy = busy => {
+        discoverButton.disabled = busy || !jobIdInput.value;
+        discoverButton.innerHTML = busy
+            ? '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading saved result…'
+            : '<i class="bi bi-search me-1"></i>Load Latest Saved Result';
+    };
+    const syncTree = () => { treeInput.value = JSON.stringify(tree); };
+    const countNodes = node => 1 + (node.type === 'GROUP' ? node.children.reduce((sum, child) => sum + countNodes(child), 0) : 0);
+    const firstCondition = node => node.type === 'CONDITION' ? node : node.children.map(firstCondition).find(Boolean);
+    const updateConditionInputs = () => {
+        const conditionMode = conditionType.value === 'CONDITION';
+        treeEditor.querySelectorAll('.tree-field-path').forEach(input => input.required = conditionMode);
+        treeEditor.querySelectorAll('.tree-threshold').forEach(input => {
+            const op = input.dataset.operator;
+            input.required = conditionMode && !['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(op);
+        });
+        const countMode = conditionType.value === 'COUNT_TOTAL' || conditionType.value === 'COUNT_MATCHING';
         countFields.classList.toggle('d-none', !countMode);
-        const groupMode = mode === 'CONDITION' && conditionGroupEnabled.checked;
-        const groupedLegacyInputs = [conditionPath, document.getElementById('conditionOperator'), threshold];
-        singleConditionFields.forEach(input => {
-            if (!input) return;
-            input.closest('.col-12')?.classList.toggle('d-none', countMode || (groupMode && groupedLegacyInputs.includes(input)));
-            if (input === conditionPath) input.required = !countMode && !groupMode;
-        });
-        conditionGroupToggleContainer.classList.toggle('d-none', mode !== 'CONDITION');
-        conditionGroupFields.classList.toggle('d-none', !groupMode);
-        conditionItemsContainer.querySelectorAll('.condition-item-path').forEach(input => input.required = groupMode);
-        conditionItemsContainer.querySelectorAll('.condition-item-threshold').forEach(input => {
-            const op = input.closest('.condition-item').querySelector('.condition-item-operator').value;
-            input.required = groupMode && !['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(op);
-        });
-        const itemCount = conditionItemsContainer.querySelectorAll('.condition-item').length;
-        conditionCountLabel.textContent = itemCount + (itemCount === 1 ? ' condition' : ' conditions');
-        conditionItemsContainer.querySelectorAll('.remove-condition').forEach(button => button.disabled = itemCount <= 2);
-        const matchingMode = mode === 'COUNT_MATCHING';
+        const matchingMode = conditionType.value === 'COUNT_MATCHING';
         countFieldPathContainer.classList.toggle('d-none', !matchingMode);
         countFieldOperatorContainer.classList.toggle('d-none', !matchingMode);
         countFieldThresholdContainer.classList.toggle('d-none', !matchingMode);
@@ -109,70 +117,135 @@ document.addEventListener('DOMContentLoaded', () => {
         countFieldThreshold.required = matchingMode && !['EXISTS','NOT_EXISTS'].includes(countFieldOperator.value);
         collectionPath.required = countMode;
         countThreshold.required = countMode;
+        treeEditor.classList.toggle('d-none', !conditionMode);
+        addRootCondition.classList.toggle('d-none', !conditionMode);
+        addRootGroup.classList.toggle('d-none', !conditionMode);
     };
-    if (conditionType) {
-        conditionType.addEventListener('change', updateConditionMode);
-        conditionGroupEnabled.addEventListener('change', updateConditionMode);
-        conditionItemsContainer.addEventListener('change', event => {
-            if (event.target.matches('.condition-item-operator')) updateConditionMode();
-        });
-        conditionItemsContainer.addEventListener('input', event => {
-            if (event.target.matches('.condition-item-path') && event.target === conditionItemsContainer.querySelector('.condition-item-path')) conditionPath.value = event.target.value;
-        });
-        addConditionButton.addEventListener('click', () => {
-            if (conditionItemsContainer.querySelectorAll('.condition-item').length >= 100) {
-                showMessage('A condition group can contain at most 100 conditions.', 'warning');
-                return;
-            }
-            conditionItemsContainer.appendChild(conditionItemTemplate.content.cloneNode(true));
-            renumberConditions();
-            updateConditionMode();
-        });
-        conditionItemsContainer.addEventListener('click', event => {
-            const remove = event.target.closest('.remove-condition');
-            if (!remove || conditionItemsContainer.querySelectorAll('.condition-item').length <= 2) return;
-            remove.closest('.condition-item').remove();
-            renumberConditions();
-            updateConditionMode();
-        });
-        conditionGroupEnabled.addEventListener('change', () => {
-            if (conditionGroupEnabled.checked && conditionItemsContainer.querySelectorAll('.condition-item').length < 2) {
-                conditionItemsContainer.appendChild(conditionItemTemplate.content.cloneNode(true));
-                renumberConditions();
-            }
-            updateConditionMode();
-        });
-        countFieldOperator.addEventListener('change', updateConditionMode);
-        updateConditionMode();
-    }
-    const renumberConditions = () => {
-        const rows = conditionItemsContainer.querySelectorAll('.condition-item');
-        rows.forEach((row, index) => {
-            row.dataset.conditionIndex = String(index);
-            row.querySelector('.condition-item-title').textContent = 'Condition ' + (index + 1);
-            row.querySelector('.condition-item-path').name = 'conditionItems[' + index + '].fieldPath';
-            row.querySelector('.condition-item-operator').name = 'conditionItems[' + index + '].operator';
-            row.querySelector('.condition-item-threshold').name = 'conditionItems[' + index + '].threshold';
-        });
-        conditionCountLabel.textContent = rows.length + (rows.length === 1 ? ' condition' : ' conditions');
+    const makeButton = (label, className, handler) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = className;
+        button.textContent = label;
+        button.addEventListener('click', handler);
+        return button;
     };
-    renumberConditions();
-    const operator = document.getElementById('conditionOperator');
-    const recoveryOperator = document.getElementById('recoveryOperator');
+    const renderNode = (node, parentChildren, index, isRoot=false) => {
+        const card = document.createElement('div');
+        card.className = 'condition-tree-node border rounded p-3 mb-3';
+        const heading = document.createElement('div');
+        heading.className = 'd-flex align-items-center justify-content-between gap-2 mb-3';
+        const title = document.createElement('strong');
+        title.className = 'small';
+        title.textContent = node.type === 'GROUP' ? 'Condition group' : 'Field condition';
+        heading.appendChild(title);
+        if (!isRoot) {
+            heading.appendChild(makeButton('Remove', 'btn btn-sm btn-outline-danger', () => {
+                if (parentChildren.length <= 2) return;
+                parentChildren.splice(index, 1);
+                renderTree();
+            }));
+        }
+        card.appendChild(heading);
+        if (node.type === 'GROUP') {
+            const operatorRow = document.createElement('div');
+            operatorRow.className = 'row g-2 align-items-end mb-3';
+            const operatorCol = document.createElement('div');
+            operatorCol.className = 'col-12 col-md-4';
+            const label = document.createElement('label');
+            label.className = 'form-label';
+            label.textContent = 'Match conditions';
+            const select = document.createElement('select');
+            select.className = 'form-select tree-group-operator';
+            [['AND','All conditions (AND)'],['OR','Any condition (OR)']].forEach(([value,text]) => {
+                const option = new Option(text,value);
+                option.selected = (node.operator || 'AND') === value;
+                select.add(option);
+            });
+            select.addEventListener('change', () => { node.operator = select.value; syncTree(); });
+            operatorCol.append(label,select);
+            operatorRow.appendChild(operatorCol);
+            card.appendChild(operatorRow);
+            const children = document.createElement('div');
+            children.className = 'condition-tree-children';
+            node.children.forEach((child, childIndex) => children.appendChild(renderNode(child,node.children,childIndex)));
+            card.appendChild(children);
+            const actions = document.createElement('div');
+            actions.className = 'd-flex gap-2 flex-wrap';
+            actions.appendChild(makeButton('Add condition','btn btn-sm btn-outline-primary',() => {
+                if (countNodes(tree) >= 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
+                node.children.push(defaultCondition()); renderTree();
+            }));
+            actions.appendChild(makeButton('Add subgroup','btn btn-sm btn-outline-primary',() => {
+                if (countNodes(tree) + 3 > 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
+                node.children.push(defaultGroup('OR')); renderTree();
+            }));
+            card.appendChild(actions);
+        } else {
+            const row = document.createElement('div');
+            row.className = 'row g-3';
+            const pathCol = document.createElement('div');
+            pathCol.className = 'col-12 col-lg-4';
+            const pathLabel = document.createElement('label');
+            pathLabel.className = 'form-label';
+            pathLabel.textContent = 'Value field path';
+            const pathInput = document.createElement('input');
+            pathInput.type = 'text'; pathInput.className = 'form-control tree-field-path';
+            pathInput.maxLength = 255; pathInput.placeholder = 'data.cpu.usage'; pathInput.value = node.fieldPath || '';
+            pathInput.addEventListener('input', () => { node.fieldPath = pathInput.value; syncTree(); });
+            pathCol.append(pathLabel,pathInput);
+            const operatorCol = document.createElement('div');
+            operatorCol.className = 'col-12 col-lg-4';
+            const operatorLabel = document.createElement('label');
+            operatorLabel.className = 'form-label'; operatorLabel.textContent = 'Operator';
+            const operatorSelect = document.createElement('select');
+            operatorSelect.className = 'form-select tree-condition-operator';
+            conditionOperators.forEach(([value,text]) => {
+                const option = new Option(text,value); option.selected = (node.operator || 'GREATER_THAN') === value;
+                operatorSelect.add(option);
+            });
+            operatorSelect.addEventListener('change', () => { node.operator = operatorSelect.value; renderTree(); });
+            operatorCol.append(operatorLabel,operatorSelect);
+            const thresholdCol = document.createElement('div');
+            thresholdCol.className = 'col-12 col-lg-4';
+            const thresholdLabel = document.createElement('label');
+            thresholdLabel.className = 'form-label'; thresholdLabel.textContent = 'Threshold / value';
+            const thresholdInput = document.createElement('input');
+            thresholdInput.type = 'text'; thresholdInput.className = 'form-control tree-threshold';
+            thresholdInput.maxLength = 500; thresholdInput.placeholder = '85';
+            thresholdInput.value = node.threshold ?? node.value ?? '';
+            thresholdInput.dataset.operator = node.operator || 'GREATER_THAN';
+            thresholdInput.addEventListener('input', () => { node.threshold = thresholdInput.value; syncTree(); });
+            thresholdCol.append(thresholdLabel,thresholdInput);
+            row.append(pathCol,operatorCol,thresholdCol);
+            card.appendChild(row);
+        }
+        return card;
+    };
+    const renderTree = () => {
+        treeEditor.replaceChildren(renderNode(tree,null,0,true));
+        syncTree();
+        updateConditionInputs();
+    };
+    const ensureGroup = () => {
+        if (tree.type !== 'GROUP') tree = {type:'GROUP',operator:'AND',children:[tree,defaultCondition()]};
+    };
+    addRootCondition.addEventListener('click', () => {
+        if (countNodes(tree) >= 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
+        ensureGroup();
+        tree.children.push(defaultCondition());
+        renderTree();
+    });
+    addRootGroup.addEventListener('click', () => {
+        if (countNodes(tree) + 3 > 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
+        ensureGroup();
+        tree.children.push(defaultGroup('OR'));
+        renderTree();
+    });
+    conditionType.addEventListener('change', updateConditionInputs);
+    countFieldOperator.addEventListener('change', updateConditionInputs);
+    form.addEventListener('submit', () => syncTree());
+    renderTree();
 
-    if (!discoverButton || !jobIdInput || !fieldSelect) return;
-
-    let discoveredFields = [];
-    const showMessage = (text, kind) => {
-        message.textContent = text;
-        message.className = 'alert alert-' + kind + ' mb-3';
-    };
-    const setBusy = (busy) => {
-        discoverButton.disabled = busy || !jobIdInput.value;
-        discoverButton.innerHTML = busy
-            ? '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading saved result…'
-            : '<i class="bi bi-search me-1"></i>Load Latest Saved Result';
-    };
     const applyOperatorOptions = (selectElement, type) => {
         if (!selectElement) return;
         const allowed = type === 'number'
@@ -182,116 +255,90 @@ document.addEventListener('DOMContentLoaded', () => {
                 : type === 'null'
                     ? ['EXISTS','NOT_EXISTS']
                     : ['EQUALS','NOT_EQUALS','EQUALS_IGNORE_CASE','CONTAINS','REGEX','EXISTS','NOT_EXISTS'];
-        Array.from(selectElement.options).forEach(option => {
-            option.hidden = !allowed.includes(option.value);
-        });
-        if (selectElement.selectedOptions.length && selectElement.selectedOptions[0].hidden) {
-            selectElement.value = allowed[0];
-        }
+        Array.from(selectElement.options).forEach(option => { option.hidden = !allowed.includes(option.value); });
+        if (selectElement.selectedOptions.length && selectElement.selectedOptions[0].hidden) selectElement.value = allowed[0];
     };
     const updateFieldDetails = () => {
         const field = discoveredFields.find(item => item.path === fieldSelect.value);
-        if (!field) {
-            sample.textContent = 'Field type and sample value will appear here.';
-            return;
-        }
+        if (!field) { sample.textContent = 'Field type and sample value will appear here.'; return; }
         sample.textContent = 'Type: ' + field.type + ' · Sample: ' + field.sampleValue;
-        applyOperatorOptions(operator, field.type);
         applyOperatorOptions(recoveryOperator, field.type);
-        threshold.placeholder = field.type === 'number' ? 'e.g. 85'
-            : field.type === 'boolean' ? 'true / false' : 'Expected value';
-        conditionPath.value = field.path;
-        const firstConditionRow = conditionItemsContainer.querySelector('.condition-item');
-        if (firstConditionRow) {
-            firstConditionRow.querySelector('.condition-item-path').value = field.path;
-            const rowOperator = firstConditionRow.querySelector('.condition-item-operator');
-            applyOperatorOptions(rowOperator, field.type);
-            firstConditionRow.querySelector('.condition-item-threshold').placeholder = field.type === 'number' ? 'e.g. 85'
-                : field.type === 'boolean' ? 'true / false' : 'Expected value';
+        if (conditionType.value === 'CONDITION') {
+            const first = firstCondition(tree);
+            if (first) {
+                first.fieldPath = field.path;
+                if (field.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS'].includes(first.operator)) first.operator = 'GREATER_THAN';
+                if (field.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(first.operator)) first.operator = 'IS_TRUE';
+                if (field.type === 'null') first.operator = 'EXISTS';
+                renderTree();
+            }
         }
-        if (conditionType && conditionType.value === 'COUNT_MATCHING') {
+        if (conditionType.value === 'COUNT_MATCHING') {
             countFieldPath.value = field.path;
             applyOperatorOptions(countFieldOperator, field.type);
-            countFieldThreshold.placeholder = field.type === 'number' ? 'e.g. 1'
-                : field.type === 'boolean' ? 'true / false' : 'Expected record value';
+            countFieldThreshold.placeholder = field.type === 'number' ? 'e.g. 1' : field.type === 'boolean' ? 'true / false' : 'Expected record value';
         }
         if (!recoveryPath.value) recoveryPath.value = field.path;
     };
     fieldSelect.addEventListener('change', updateFieldDetails);
-    discoverButton.addEventListener('click', async () => {
-        if (!jobIdInput.value) {
-            showMessage('Choose a monitoring job before discovering fields.', 'warning');
-            return;
-        }
-        setBusy(true);
-        message.className = 'alert d-none mb-3';
-        fieldSelect.disabled = true;
-        executionInfo.textContent = '';
-        try {
-            const response = await fetch(discoverButton.dataset.discoveryUrl + encodeURIComponent(jobIdInput.value), {
-                headers: { 'Accept': 'application/json' },
-                credentials: 'same-origin'
-            });
-            const payload = await response.json();
-            if (!response.ok) throw new Error(payload.message || 'Unable to discover fields from the saved result.');
-            discoveredFields = Array.isArray(payload.fields) ? payload.fields : [];
-            fieldSelect.replaceChildren();
-            if (!discoveredFields.length) {
-                fieldSelect.add(new Option('No selectable fields found', ''));
-                showMessage('The latest saved result did not contain any discoverable fields. You can enter the field path manually.', 'warning');
-                return;
-            }
-            fieldSelect.add(new Option('Choose a field…', ''));
-            discoveredFields.forEach(field => {
-                fieldSelect.add(new Option(field.label + ' (' + field.type + ')', field.path));
-            });
-            fieldSelect.disabled = false;
-            executionInfo.textContent = 'Execution #' + payload.executionId + ' · ' + payload.executionStartedAt + ' · ' + payload.triggerSource;
-            showMessage(discoveredFields.length + ' fields discovered from the latest successful saved execution.', 'success');
-        } catch (error) {
-            showMessage(error.message || 'Unable to load the saved result. Please try again.', 'danger');
-        } finally {
-            setBusy(false);
-        }
-    });
+    if (discoverButton && jobIdInput && fieldSelect) {
+        discoverButton.addEventListener('click', async () => {
+            if (!jobIdInput.value) { showMessage('Choose a monitoring job before discovering fields.','warning'); return; }
+            setBusy(true); message.className = 'alert d-none mb-3'; fieldSelect.disabled = true; executionInfo.textContent = '';
+            try {
+                const response = await fetch(discoverButton.dataset.discoveryUrl + encodeURIComponent(jobIdInput.value), {
+                    headers: {'Accept':'application/json'}, credentials:'same-origin'
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.message || 'Unable to discover fields from the saved result.');
+                discoveredFields = Array.isArray(payload.fields) ? payload.fields : [];
+                fieldSelect.replaceChildren();
+                if (!discoveredFields.length) {
+                    fieldSelect.add(new Option('No selectable fields found',''));
+                    showMessage('The latest saved result did not contain any discoverable fields. You can enter the field path manually.','warning');
+                    return;
+                }
+                fieldSelect.add(new Option('Choose a field…',''));
+                discoveredFields.forEach(field => fieldSelect.add(new Option(field.label + ' (' + field.type + ')',field.path)));
+                fieldSelect.disabled = false;
+                executionInfo.textContent = 'Execution #' + payload.executionId + ' · ' + payload.executionStartedAt + ' · ' + payload.triggerSource;
+                showMessage(discoveredFields.length + ' fields discovered from the latest successful saved execution.','success');
+            } catch (error) {
+                showMessage(error.message || 'Unable to load the saved result. Please try again.','danger');
+            } finally { setBusy(false); }
+        });
+    }
     if (sampleButton) sampleButton.addEventListener('click', async () => {
-        if (!sampleInput || !sampleInput.value.trim()) {
-            showMessage('Paste a sample response before discovering fields.', 'warning');
-            return;
-        }
+        if (!sampleInput || !sampleInput.value.trim()) { showMessage('Paste a sample response before discovering fields.','warning'); return; }
         sampleButton.disabled = true;
         const originalText = sampleButton.innerHTML;
         sampleButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Discovering…';
         try {
             const response = await fetch(sampleButton.dataset.sampleUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain; charset=UTF-8', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('input[name="_csrf"]')?.value || '' },
-                body: sampleInput.value,
-                credentials: 'same-origin'
+                method:'POST',
+                headers:{'Content-Type':'text/plain; charset=UTF-8','Accept':'application/json','X-CSRF-TOKEN':document.querySelector('input[name="_csrf"]')?.value || ''},
+                body:sampleInput.value, credentials:'same-origin'
             });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.message || 'Unable to discover fields from this sample.');
             discoveredFields = Array.isArray(payload.fields) ? payload.fields : [];
             fieldSelect.replaceChildren();
             if (!discoveredFields.length) throw new Error('No selectable fields were found in this sample.');
-            fieldSelect.add(new Option('Choose a field…', ''));
-            discoveredFields.forEach(field => fieldSelect.add(new Option(field.label + ' (' + field.type + ')', field.path)));
+            fieldSelect.add(new Option('Choose a field…',''));
+            discoveredFields.forEach(field => fieldSelect.add(new Option(field.label + ' (' + field.type + ')',field.path)));
             fieldSelect.disabled = false;
             executionInfo.textContent = 'Sample response · not saved';
-            showMessage(discoveredFields.length + ' fields discovered from the sample.', 'success');
+            showMessage(discoveredFields.length + ' fields discovered from the sample.','success');
         } catch (error) {
-            showMessage(error.message || 'Unable to discover fields from this sample.', 'danger');
+            showMessage(error.message || 'Unable to discover fields from this sample.','danger');
         } finally {
-            sampleButton.disabled = false;
-            sampleButton.innerHTML = originalText;
+            sampleButton.disabled = false; sampleButton.innerHTML = originalText;
         }
     });
     jobIdInput.addEventListener('change', () => {
         discoveredFields = [];
-        fieldSelect.replaceChildren(new Option('Load a saved result to discover fields', ''));
-        fieldSelect.disabled = true;
-        executionInfo.textContent = '';
-        message.className = 'alert d-none mb-3';
+        fieldSelect.replaceChildren(new Option('Load a saved result to discover fields',''));
+        fieldSelect.disabled = true; executionInfo.textContent = ''; message.className = 'alert d-none mb-3';
         discoverButton.disabled = !jobIdInput.value;
     });
     if (jobIdInput.value) discoverButton.disabled = false;
