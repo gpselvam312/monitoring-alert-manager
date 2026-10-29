@@ -133,6 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
         threshold.placeholder = field.type === 'number' ? 'e.g. 85'
             : field.type === 'boolean' ? 'true / false' : 'Expected value';
         conditionPath.value = field.path;
+        if (conditionType && conditionType.value === 'COUNT_MATCHING') {
+            countFieldPath.value = field.path;
+            applyOperatorOptions(countFieldOperator, field.type);
+            countFieldThreshold.placeholder = field.type === 'number' ? 'e.g. 1'
+                : field.type === 'boolean' ? 'true / false' : 'Expected record value';
+        }
         if (!recoveryPath.value) recoveryPath.value = field.path;
     };
     fieldSelect.addEventListener('change', updateFieldDetails);
