@@ -409,9 +409,30 @@ public class AlertEvaluationService {
         } else if ("NOT_EXISTS".equals(operator)) {
             matched = actualValues.isEmpty();
         } else {
-            matched = actualValues.stream().anyMatch(candidate -> evaluateScalarOperator(operator, candidate, expected));
+            matched = evaluateAnyValue(actualValues, operator, expected);
         }
         return new ConditionResult(matched, actual);
+    }
+
+    /**
+     * A collection can contain mixed JSON types. Ignore values that cannot be
+     * evaluated by the selected operator, but report an error if none can be
+     * evaluated at all. A valid matching value still wins (ANY semantics).
+     */
+    private boolean evaluateAnyValue(List<Object> values, String operator, Object expected) {
+        boolean evaluatedAtLeastOne = false;
+        IllegalArgumentException lastEvaluationError = null;
+        for (Object candidate : values) {
+            try {
+                boolean matched = evaluateScalarOperator(operator, candidate, expected);
+                evaluatedAtLeastOne = true;
+                if (matched) return true;
+            } catch (IllegalArgumentException exception) {
+                lastEvaluationError = exception;
+            }
+        }
+        if (!evaluatedAtLeastOne && lastEvaluationError != null) throw lastEvaluationError;
+        return false;
     }
 
     private boolean evaluateScalarOperator(String operator, Object actual, Object expected) {
