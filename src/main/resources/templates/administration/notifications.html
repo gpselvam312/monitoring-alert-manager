@@ -2,7 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{fragments/layout :: layout('Notification Configuration', ~{::content})}">
 <body><div th:fragment="content">
-<div class="page-header"><div><h1 class="page-title"><i class="bi bi-bell me-2"></i>Notification Configuration</h1><p class="page-subtitle">Configure delivery channels, recipients, groups and event routing. Credentials are encrypted before storage.</p></div></div>
+<div class="page-header"><div><h1 class="page-title"><i class="bi bi-bell me-2"></i>Notification Configuration</h1><p class="page-subtitle">Configure reusable delivery channels, recipient directories and groups. Credentials are encrypted before storage; assign recipients, channels and event preferences on each Alert Rule.</p></div></div>\n<div class="alert alert-info" role="status"><i class="bi bi-info-circle me-2"></i>Notification recipients and event routing are now configured per Alert Rule. Existing policy-based routes are retained as legacy records; migration copies enabled-policy routes to the rules that used them.</div>
 <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
 <div class="alert alert-success" th:if="${successMessage}" th:text="${successMessage}"></div>
 
@@ -54,14 +54,14 @@
 </div></form>
 </div></div>
 
-<div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Notification Policies</h2></div><div class="app-card-body">
+<div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Legacy Notification Policies</h2></div><div class="app-card-body">
 <div class="table-responsive mb-3"><table class="table app-table align-middle mb-0"><thead><tr><th>Policy</th><th>Description</th><th>Status</th><th sec:authorize="hasAuthority('NOTIFICATION_CONFIG')">Action</th></tr></thead><tbody>
 <tr th:each="policy : ${policies}"><td th:text="${policy.name}">Policy</td><td th:text="${policy.description != null ? policy.description : '—'}">Description</td><td><span class="badge text-bg-success" th:if="${policy.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${policy.enabled}">Disabled</span></td><td sec:authorize="hasAuthority('NOTIFICATION_CONFIG')"><form method="post" th:action="@{/administration/notifications/policies/{id}/toggle(id=${policy.id})}"><button class="btn btn-sm btn-outline-secondary" type="submit" th:text="${policy.enabled ? 'Disable' : 'Enable'}">Toggle</button></form></td></tr>
 <tr th:if="${#lists.isEmpty(policies)}"><td colspan="4" class="text-muted text-center py-3">No notification policies configured.</td></tr></tbody></table></div>
 <form sec:authorize="hasAuthority('NOTIFICATION_CONFIG')" th:action="@{/administration/notifications/policies}" method="post" class="border-top pt-3"><h3 class="h6 mb-3">Create Policy</h3><div class="row g-3"><div class="col-12 col-md-4"><label class="form-label">Policy Name</label><input class="form-control" name="name" maxlength="150" required></div><div class="col-12 col-md-6"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div><div class="col-12"><button class="btn btn-primary" type="submit">Create Policy</button></div></div></form>
 </div></div>
 
-<div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Notification Routes</h2></div><div class="app-card-body">
+<div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Legacy Global Notification Routes</h2></div><div class="app-card-body">
 <div class="table-responsive mb-3"><table class="table app-table align-middle mb-0"><thead><tr><th>Policy</th><th>Channel</th><th>Severity / Event</th><th>Destination</th><th>Minimum Interval</th><th>Status</th><th sec:authorize="hasAuthority('NOTIFICATION_CONFIG')">Action</th></tr></thead><tbody>
 <tr th:each="route : ${routes}"><td th:text="${route.notificationPolicy.name}">Policy</td><td th:text="${route.channel.name + ' (' + route.channel.channelType + ')'}">Channel</td><td><div th:text="${route.severity}">CRITICAL</div><div class="small text-muted" th:text="${route.eventType}">CREATED</div></td><td th:text="${route.recipient != null ? route.recipient.name : (route.group != null ? route.group.name : '—')}">Destination</td><td th:text="${route.minimumIntervalSeconds + ' sec'}">0 sec</td><td><span class="badge text-bg-success" th:if="${route.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${route.enabled}">Disabled</span></td><td sec:authorize="hasAuthority('NOTIFICATION_CONFIG')"><form method="post" th:action="@{/administration/notifications/routes/{id}/toggle(id=${route.id})}"><button class="btn btn-sm btn-outline-secondary" type="submit" th:text="${route.enabled ? 'Disable' : 'Enable'}">Toggle</button></form></td></tr>
 <tr th:if="${#lists.isEmpty(routes)}"><td colspan="7" class="text-muted text-center py-3">No routes configured.</td></tr></tbody></table></div>
