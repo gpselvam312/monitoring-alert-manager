@@ -22,14 +22,29 @@
 <div class="col-12 col-lg-2"><label class="form-label" for="threshold">Threshold / Value</label><input class="form-control" id="threshold" th:field="*{threshold}" maxlength="500" placeholder="85"></div><div class="col-12 col-lg-2"><label class="form-label" for="consecutiveMatches">Consecutive Matches</label><input type="number" class="form-control" id="consecutiveMatches" th:field="*{consecutiveMatches}" min="1" max="100" required></div>
 <div class="col-12 col-lg-6"><label class="form-label" for="correlationFieldPath">Optional Grouping Field</label><input class="form-control" id="correlationFieldPath" th:field="*{correlationFieldPath}" maxlength="255" placeholder="data.serviceName"><div class="form-text">Leave blank to keep one active alert per rule.</div></div>
 </div>
-<div id="conditionGroupToggleContainer" class="form-check mt-3"><input class="form-check-input" type="checkbox" id="conditionGroupEnabled" th:field="*{conditionGroupEnabled}"><label class="form-check-label" for="conditionGroupEnabled">Combine two conditions with AND / OR</label></div>
-<div id="conditionGroupFields" class="row g-3 mt-2 d-none">
-<div class="col-12 col-lg-3"><label class="form-label" for="conditionGroupOperator">Match conditions</label><select class="form-select" id="conditionGroupOperator" th:field="*{conditionGroupOperator}"><option value="AND">All conditions (AND)</option><option value="OR">Any condition (OR)</option></select></div>
-<div class="col-12 col-lg-3"><label class="form-label" for="secondConditionFieldPath">Second Value Field Path</label><input class="form-control" id="secondConditionFieldPath" th:field="*{secondConditionFieldPath}" maxlength="255" placeholder="data.memory.usage"></div>
-<div class="col-12 col-lg-3"><label class="form-label" for="secondConditionOperator">Second Operator</label><select class="form-select" id="secondConditionOperator" th:field="*{secondConditionOperator}"><option value="GREATER_THAN">Greater than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="LESS_THAN">Less than</option><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option><option value="EQUALS_IGNORE_CASE">Equals (ignore case)</option><option value="CONTAINS">Contains</option><option value="REGEX">Regular expression</option><option value="EXISTS">Exists</option><option value="NOT_EXISTS">Does not exist</option><option value="IS_TRUE">Is true</option><option value="IS_FALSE">Is false</option></select></div>
-<div class="col-12 col-lg-3"><label class="form-label" for="secondThreshold">Second Threshold / Value</label><input class="form-control" id="secondThreshold" th:field="*{secondThreshold}" maxlength="500" placeholder="90"></div>
-<div class="col-12"><div class="form-text">Example: CPU usage greater than 85 AND memory usage greater than 90. Both conditions use the same monitoring result.</div></div>
+<div id="conditionGroupToggleContainer" class="form-check mt-3">
+<input class="form-check-input" type="checkbox" id="conditionGroupEnabled" th:field="*{conditionGroupEnabled}">
+<label class="form-check-label" for="conditionGroupEnabled">Combine multiple conditions with AND / OR</label>
 </div>
+<div id="conditionGroupFields" class="mt-3 d-none">
+<div class="row g-3 align-items-end mb-3"><div class="col-12 col-md-5"><label class="form-label" for="conditionGroupOperator">Match conditions</label><select class="form-select" id="conditionGroupOperator" th:field="*{conditionGroupOperator}"><option value="AND">All conditions (AND)</option><option value="OR">Any condition (OR)</option></select></div><div class="col-12 col-md-7"><div class="form-text">Add as many conditions as needed. The selected AND / OR operator applies to every condition in this group.</div></div></div>
+<div id="conditionItemsContainer">
+<div class="condition-item border rounded p-3 mb-3" th:each="item, stat : \${ruleForm.conditionItems}" th:attr="data-condition-index=\${stat.index}">
+<div class="d-flex justify-content-between align-items-center mb-3"><strong class="condition-item-title" th:text="'Condition ' + (\${stat.index} + 1)">Condition 1</strong><button type="button" class="btn btn-sm btn-outline-danger remove-condition" aria-label="Remove condition"><i class="bi bi-trash me-1"></i>Remove</button></div>
+<div class="row g-3">
+<div class="col-12 col-lg-4"><label class="form-label">Value Field Path</label><input class="form-control condition-item-path" type="text" th:name="'conditionItems[' + \${stat.index} + '].fieldPath'" th:value="\${item.fieldPath}" maxlength="255" placeholder="data.cpu.usage"></div>
+<div class="col-12 col-lg-4"><label class="form-label">Operator</label><select class="form-select condition-item-operator" th:name="'conditionItems[' + \${stat.index} + '].operator'" th:value="\${item.operator}"><option value="GREATER_THAN" th:selected="\${item.operator == 'GREATER_THAN'}">Greater than</option><option value="GREATER_THAN_OR_EQUAL" th:selected="\${item.operator == 'GREATER_THAN_OR_EQUAL'}">Greater than or equal</option><option value="LESS_THAN" th:selected="\${item.operator == 'LESS_THAN'}">Less than</option><option value="LESS_THAN_OR_EQUAL" th:selected="\${item.operator == 'LESS_THAN_OR_EQUAL'}">Less than or equal</option><option value="EQUALS" th:selected="\${item.operator == 'EQUALS'}">Equals</option><option value="NOT_EQUALS" th:selected="\${item.operator == 'NOT_EQUALS'}">Not equals</option><option value="EQUALS_IGNORE_CASE" th:selected="\${item.operator == 'EQUALS_IGNORE_CASE'}">Equals (ignore case)</option><option value="CONTAINS" th:selected="\${item.operator == 'CONTAINS'}">Contains</option><option value="REGEX" th:selected="\${item.operator == 'REGEX'}">Regular expression</option><option value="EXISTS" th:selected="\${item.operator == 'EXISTS'}">Exists</option><option value="NOT_EXISTS" th:selected="\${item.operator == 'NOT_EXISTS'}">Does not exist</option><option value="IS_TRUE" th:selected="\${item.operator == 'IS_TRUE'}">Is true</option><option value="IS_FALSE" th:selected="\${item.operator == 'IS_FALSE'}">Is false</option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Threshold / Value</label><input class="form-control condition-item-threshold" type="text" th:name="'conditionItems[' + \${stat.index} + '].threshold'" th:value="\${item.threshold}" maxlength="500" placeholder="85"></div>
+</div></div>
+</div>
+<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap"><span class="small text-muted" id="conditionCountLabel">1 condition</span><button type="button" class="btn btn-outline-primary" id="addCondition"><i class="bi bi-plus-lg me-1"></i>Add condition</button></div>
+<template id="conditionItemTemplate">
+<div class="condition-item border rounded p-3 mb-3" data-condition-index="0"><div class="d-flex justify-content-between align-items-center mb-3"><strong class="condition-item-title">Condition 1</strong><button type="button" class="btn btn-sm btn-outline-danger remove-condition" aria-label="Remove condition"><i class="bi bi-trash me-1"></i>Remove</button></div><div class="row g-3">
+<div class="col-12 col-lg-4"><label class="form-label">Value Field Path</label><input class="form-control condition-item-path" type="text" name="conditionItems[0].fieldPath" maxlength="255" placeholder="data.cpu.usage"></div>
+<div class="col-12 col-lg-4"><label class="form-label">Operator</label><select class="form-select condition-item-operator" name="conditionItems[0].operator"><option value="GREATER_THAN">Greater than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="LESS_THAN">Less than</option><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option><option value="EQUALS_IGNORE_CASE">Equals (ignore case)</option><option value="CONTAINS">Contains</option><option value="REGEX">Regular expression</option><option value="EXISTS">Exists</option><option value="NOT_EXISTS">Does not exist</option><option value="IS_TRUE">Is true</option><option value="IS_FALSE">Is false</option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Threshold / Value</label><input class="form-control condition-item-threshold" type="text" name="conditionItems[0].threshold" maxlength="500" placeholder="85"></div>
+</div></div>
+</template>
 <div id="countConditionFields" class="row g-3 mt-1 d-none">
 <div class="col-12 col-lg-4"><label class="form-label" for="collectionPath">Collection Field Path</label><input class="form-control" id="collectionPath" th:field="*{collectionPath}" maxlength="255" placeholder="data.servers"><div class="form-text">Path must resolve to an array in the result.</div></div>
 <div class="col-12 col-lg-4" id="countFieldPathContainer"><label class="form-label" for="countFieldPath">Record Field Path</label><input class="form-control" id="countFieldPath" th:field="*{countFieldPath}" maxlength="255" placeholder="status"></div>
@@ -64,9 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const conditionGroupEnabled = document.getElementById('conditionGroupEnabled');
     const conditionGroupFields = document.getElementById('conditionGroupFields');
     const conditionGroupToggleContainer = document.getElementById('conditionGroupToggleContainer');
-    const secondConditionFieldPath = document.getElementById('secondConditionFieldPath');
-    const secondConditionOperator = document.getElementById('secondConditionOperator');
-    const secondThreshold = document.getElementById('secondThreshold');
+    const conditionItemsContainer = document.getElementById('conditionItemsContainer');
+    const conditionItemTemplate = document.getElementById('conditionItemTemplate');
+    const addConditionButton = document.getElementById('addCondition');
+    const conditionCountLabel = document.getElementById('conditionCountLabel');
     const conditionType = document.getElementById('conditionType');
     const countFields = document.getElementById('countConditionFields');
     const collectionPath = document.getElementById('collectionPath');
@@ -92,8 +108,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const groupMode = mode === 'CONDITION' && conditionGroupEnabled.checked;
         conditionGroupToggleContainer.classList.toggle('d-none', mode !== 'CONDITION');
         conditionGroupFields.classList.toggle('d-none', !groupMode);
-        secondConditionFieldPath.required = groupMode;
-        secondThreshold.required = groupMode && !['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(secondConditionOperator.value);
+        conditionItemsContainer.querySelectorAll('.condition-item-path').forEach(input => input.required = groupMode);
+        conditionItemsContainer.querySelectorAll('.condition-item-threshold').forEach(input => {
+            const op = input.closest('.condition-item').querySelector('.condition-item-operator').value;
+            input.required = groupMode && !['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(op);
+        });
+        const itemCount = conditionItemsContainer.querySelectorAll('.condition-item').length;
+        conditionCountLabel.textContent = itemCount + (itemCount === 1 ? ' condition' : ' conditions');
+        conditionItemsContainer.querySelectorAll('.remove-condition').forEach(button => button.disabled = itemCount <= 2);
         const matchingMode = mode === 'COUNT_MATCHING';
         countFieldPathContainer.classList.toggle('d-none', !matchingMode);
         countFieldOperatorContainer.classList.toggle('d-none', !matchingMode);
@@ -106,10 +128,50 @@ document.addEventListener('DOMContentLoaded', () => {
     if (conditionType) {
         conditionType.addEventListener('change', updateConditionMode);
         conditionGroupEnabled.addEventListener('change', updateConditionMode);
-        secondConditionOperator.addEventListener('change', updateConditionMode);
+        conditionItemsContainer.addEventListener('change', event => {
+            if (event.target.matches('.condition-item-operator')) updateConditionMode();
+        });
+        conditionItemsContainer.addEventListener('input', event => {
+            if (event.target.matches('.condition-item-path') && event.target === conditionItemsContainer.querySelector('.condition-item-path')) conditionPath.value = event.target.value;
+        });
+        addConditionButton.addEventListener('click', () => {
+            if (conditionItemsContainer.querySelectorAll('.condition-item').length >= 100) {
+                showMessage('A condition group can contain at most 100 conditions.', 'warning');
+                return;
+            }
+            conditionItemsContainer.appendChild(conditionItemTemplate.content.cloneNode(true));
+            renumberConditions();
+            updateConditionMode();
+        });
+        conditionItemsContainer.addEventListener('click', event => {
+            const remove = event.target.closest('.remove-condition');
+            if (!remove || conditionItemsContainer.querySelectorAll('.condition-item').length <= 2) return;
+            remove.closest('.condition-item').remove();
+            renumberConditions();
+            updateConditionMode();
+        });
+        conditionGroupEnabled.addEventListener('change', () => {
+            if (conditionGroupEnabled.checked && conditionItemsContainer.querySelectorAll('.condition-item').length < 2) {
+                conditionItemsContainer.appendChild(conditionItemTemplate.content.cloneNode(true));
+                renumberConditions();
+            }
+            updateConditionMode();
+        });
         countFieldOperator.addEventListener('change', updateConditionMode);
         updateConditionMode();
     }
+    const renumberConditions = () => {
+        const rows = conditionItemsContainer.querySelectorAll('.condition-item');
+        rows.forEach((row, index) => {
+            row.dataset.conditionIndex = String(index);
+            row.querySelector('.condition-item-title').textContent = 'Condition ' + (index + 1);
+            row.querySelector('.condition-item-path').name = 'conditionItems[' + index + '].fieldPath';
+            row.querySelector('.condition-item-operator').name = 'conditionItems[' + index + '].operator';
+            row.querySelector('.condition-item-threshold').name = 'conditionItems[' + index + '].threshold';
+        });
+        conditionCountLabel.textContent = rows.length + (rows.length === 1 ? ' condition' : ' conditions');
+    };
+    renumberConditions();
     const operator = document.getElementById('conditionOperator');
     const recoveryOperator = document.getElementById('recoveryOperator');
 
