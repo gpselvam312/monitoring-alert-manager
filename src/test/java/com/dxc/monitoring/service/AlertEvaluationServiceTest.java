@@ -101,22 +101,29 @@ class AlertEvaluationServiceTest {
     }
 
     @Test
-    void evaluatesNestedOrConditionGroups() {
+    void evaluatesOrOfNestedAndConditionGroups() {
         when(rule.getConditionConfig()).thenReturn("""
                 {
                   "type":"GROUP",
-                  "operator":"AND",
+                  "operator":"OR",
                   "consecutiveMatches":1,
                   "children":[
                     {
                       "type":"GROUP",
-                      "operator":"OR",
+                      "operator":"AND",
                       "children":[
-                        {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85},
-                        {"type":"CONDITION","fieldPath":"resultStatus","operator":"EQUALS","threshold":"FAILED"}
+                        {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"LESS_THAN","threshold":85},
+                        {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"LESS_THAN","threshold":100}
                       ]
                     },
-                    {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"LESS_THAN","threshold":100}
+                    {
+                      "type":"GROUP",
+                      "operator":"AND",
+                      "children":[
+                        {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":90},
+                        {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"LESS_THAN","threshold":100}
+                      ]
+                    }
                   ]
                 }
                 """);
