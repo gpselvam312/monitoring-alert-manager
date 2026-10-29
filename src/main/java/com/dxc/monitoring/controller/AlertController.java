@@ -34,6 +34,7 @@ import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertHistoryRepository;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleRepository;
+import com.dxc.monitoring.repository.AlertRuleEvaluationRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.repository.UserAlertStateRepository;
@@ -51,6 +52,7 @@ public class AlertController {
     private final AlertRepository alertRepository;
     private final AlertHistoryRepository historyRepository;
     private final AlertRuleRepository ruleRepository;
+    private final AlertRuleEvaluationRepository ruleEvaluationRepository;
     private final MonitoringJobRepository jobRepository;
     private final AlertRuleManagementService ruleManagementService;
     private final DashboardAccessService accessService;
@@ -59,7 +61,8 @@ public class AlertController {
     private final AlertRuleFieldDiscoveryService fieldDiscoveryService;
 
     public AlertController(AlertRepository alertRepository, AlertHistoryRepository historyRepository,
-            AlertRuleRepository ruleRepository, MonitoringJobRepository jobRepository,
+            AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
+            MonitoringJobRepository jobRepository,
             AlertRuleManagementService ruleManagementService, DashboardAccessService accessService,
             UserAlertStateRepository userAlertStateRepository,
             NotificationPolicyRepository notificationPolicyRepository,
@@ -67,6 +70,7 @@ public class AlertController {
         this.alertRepository = alertRepository;
         this.historyRepository = historyRepository;
         this.ruleRepository = ruleRepository;
+        this.ruleEvaluationRepository = ruleEvaluationRepository;
         this.jobRepository = jobRepository;
         this.ruleManagementService = ruleManagementService;
         this.accessService = accessService;
@@ -128,13 +132,79 @@ public class AlertController {
 
     @GetMapping("/rules")
     @PreAuthorize("hasAuthority('ALERT_CONFIG')")
-    public String alertRules(Model model) {
-        List<Long> applicationIds = applicationIds("ALERT_CONFIG");
-        List<AlertRule> rules = applicationIds.isEmpty() ? List.of()
-                : ruleRepository.findByMonitoringJob_Application_IdInOrderByIdDesc(applicationIds);
-        model.addAttribute("rules", rules);
+    public String alertRules(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "updatedAt") String sort,
+            @RequestParam(defaultValue = "desc") String direction, Model model) {
+        addRuleListModel(model, page, size, search, sort, direction);
         model.addAttribute("currentPage", "alert-rules");
         return "alerts/rules";
+    }
+
+    @GetMapping("/rules/table")
+    @PreAuthorize("hasAuthority('ALERT_CONFIG')")
+    public String alertRulesTable(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "updatedAt") String sort,
+            @RequestParam(defaultValue = "desc") String direction, Model model) {
+        addRuleListModel(model, page, size, search, sort, direction);
+        return "alerts/rules :: rulesTable";
+    }
+
+    @GetMapping("/rules/{id}")
+    @PreAuthorize("hasAuthority('ALERT_CONFIG')")
+    public String viewRule(@PathVariable Long id, Model model) {
+        AlertRule rule = ruleRepository.findByIdWithJob(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert rule was not found."));
+        assertRuleAccess(rule, "ALERT_CONFIG");
+        model.addAttribute("rule", rule);
+        model.addAttribute("currentPage", "alert-rules");
+        return "alerts/rule-view";
+    }
+
+    @PostMapping("/rules/{id}/delete")
+    @PreAuthorize("hasAuthority('ALERT_CONFIG')")
+    public String deleteRule(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        AlertRule rule = ruleRepository.findByIdWithJob(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert rule was not found."));
+        assertRuleAccess(rule, "ALERT_CONFIG");
+        if (alertRepository.existsByAlertRuleId(id) || ruleEvaluationRepository.existsByAlertRuleId(id)) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "This rule has alert or evaluation history and cannot be deleted without losing audit history. Disable it instead.");
+            return "redirect:/alerts/rules";
+        }
+        ruleRepository.delete(rule);
+        redirectAttributes.addFlashAttribute("successMessage", "Alert rule deleted successfully.");
+        return "redirect:/alerts/rules";
+    }
+
+    private void addRuleListModel(Model model, int page, int size, String search, String sort, String direction) {
+        int safeSize = size == 5 || size == 10 || size == 25 ? size : 10;
+        int safePage = Math.max(0, page);
+        String safeSearch = search == null ? "" : search.trim();
+        String sortProperty = switch (sort == null ? "" : sort) {
+            case "name" -> "name";
+            case "monitoringJob.name" -> "monitoringJob.name";
+            case "monitoringJob.application.name" -> "monitoringJob.application.name";
+            case "monitoringJob.environment.name" -> "monitoringJob.environment.name";
+            case "severity" -> "severity";
+            case "executionSourcePolicy" -> "executionSourcePolicy";
+            case "enabled" -> "enabled";
+            default -> "updatedAt";
+        };
+        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(safePage, safeSize,
+                Sort.by(sortDirection, sortProperty).and(Sort.by(Sort.Direction.DESC, "id")));
+        List<Long> allowedApplicationIds = applicationIds("ALERT_CONFIG");
+        Page<AlertRule> rules = allowedApplicationIds.isEmpty() ? Page.empty(pageable)
+                : ruleRepository.searchForManagement(allowedApplicationIds, safeSearch, pageable);
+        model.addAttribute("rules", rules);
+        model.addAttribute("pageSize", safeSize);
+        model.addAttribute("search", safeSearch);
+        model.addAttribute("sort", sortProperty);
+        model.addAttribute("direction", sortDirection.name().toLowerCase());
     }
 
     @GetMapping("/rules/new")
