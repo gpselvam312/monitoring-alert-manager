@@ -62,18 +62,11 @@ public class AlertRuleFieldDiscoveryService {
         if (result.getStatus() != null) root.put("resultStatus", result.getStatus().name());
         if (result.getValue() != null) root.put("resultValue", result.getValue());
         if (result.getUnit() != null) root.put("resultUnit", result.getUnit());
-        if (result.getMessage() != null) root.put("message", result.getMessage());
-
         Object parsed = parseStructured(result.getResultData());
-        if (parsed == null) parsed = parseStructured(result.getRawOutput());
         if (parsed instanceof Map<?, ?> map) {
             map.forEach((key, value) -> root.put(String.valueOf(key), value));
         } else if (parsed != null) {
             root.put("data", parsed);
-        } else if (result.getRawOutput() != null && !result.getRawOutput().isBlank()) {
-            Map<String, Object> pairs = parseKeyValueLines(result.getRawOutput());
-            if (!pairs.isEmpty()) root.putAll(pairs);
-            else root.put("rawOutput", result.getRawOutput());
         }
 
         List<Field> fields = new ArrayList<>();
