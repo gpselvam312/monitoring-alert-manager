@@ -111,6 +111,8 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
             @Param("executionMode") MonitoringJob.ExecutionMode executionMode,
             Pageable pageable);
 
+    boolean existsByExecutionModeAndApplication_IdIn(MonitoringJob.ExecutionMode executionMode, List<Long> applicationIds);
+
     boolean existsByApplicationId(Long applicationId);
 
     @Query("""
