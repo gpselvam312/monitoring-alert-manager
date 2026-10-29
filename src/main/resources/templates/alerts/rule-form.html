@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const conditionPath = document.getElementById('conditionFieldPath');
     const recoveryPath = document.getElementById('recoveryFieldPath');
     const correlationPath = document.getElementById('correlationFieldPath');
+    const threshold = document.getElementById('threshold');
     const conditionType = document.getElementById('conditionType');
     const countFields = document.getElementById('countConditionFields');
     const collectionPath = document.getElementById('collectionPath');
@@ -90,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const operator = document.getElementById('conditionOperator');
     const recoveryOperator = document.getElementById('recoveryOperator');
-    const threshold = document.getElementById('threshold');
+
     if (!discoverButton || !jobIdInput || !fieldSelect) return;
 
     let discoveredFields = [];
