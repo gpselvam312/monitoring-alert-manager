@@ -76,6 +76,41 @@ public class AlertRuleFieldDiscoveryService {
                 execution.getTriggerSource().name(), fields);
     }
 
+    public Discovery discoverSample(String sample) {
+        if (sample == null || sample.isBlank()) {
+            throw new IllegalArgumentException("Paste a sample response before discovering fields.");
+        }
+        Object parsed = parseStructured(sample);
+        Map<String, Object> root = new LinkedHashMap<>();
+        if (parsed instanceof Map<?, ?> map) {
+            map.forEach((key, value) -> root.put(String.valueOf(key), value));
+        } else if (parsed != null) {
+            root.put("data", parsed);
+        } else {
+            root.putAll(parseKeyValueLines(sample));
+            if (root.isEmpty()) {
+                String[] lines = sample.strip().split("\\R");
+                if (lines.length >= 2 && lines[0].contains(",")) {
+                    String[] headers = lines[0].split(",", -1);
+                    String[] values = lines[1].split(",", -1);
+                    for (int i = 0; i < Math.min(headers.length, values.length); i++) {
+                        String key = headers[i].trim();
+                        if (key.matches("[A-Za-z_][A-Za-z0-9_.-]{0,254}")) {
+                            root.put(key, coerce(values[i].trim()));
+                        }
+                    }
+                }
+            }
+        }
+        if (root.isEmpty()) {
+            throw new IllegalArgumentException("No fields could be discovered. Use JSON, key-value lines, or comma-delimited header/value rows.");
+        }
+        List<Field> fields = new ArrayList<>();
+        flatten(root, "", fields);
+        fields.sort(Comparator.comparing(Field::path, String.CASE_INSENSITIVE_ORDER));
+        return new Discovery(null, "Sample response (not saved)", "SAMPLE", fields);
+    }
+
     private Object parseStructured(String text) {
         if (text == null || text.isBlank()) return null;
         try {
