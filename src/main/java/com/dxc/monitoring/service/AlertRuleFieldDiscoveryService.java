@@ -62,11 +62,29 @@ public class AlertRuleFieldDiscoveryService {
         if (result.getStatus() != null) root.put("resultStatus", result.getStatus().name());
         if (result.getValue() != null) root.put("resultValue", result.getValue());
         if (result.getUnit() != null) root.put("resultUnit", result.getUnit());
-        Object parsed = parseStructured(result.getResultData());
-        if (parsed instanceof Map<?, ?> map) {
-            map.forEach((key, value) -> root.put(String.valueOf(key), value));
-        } else if (parsed != null) {
-            root.put("data", parsed);
+
+        // The result message is the user-facing monitoring payload for many job types.
+        // Prefer it for field discovery so the choices match the data users see.
+        Object messagePayload = parseStructured(result.getMessage());
+        if (messagePayload instanceof Map<?, ?> messageMap) {
+            messageMap.forEach((key, value) -> root.put(String.valueOf(key), value));
+        } else if (messagePayload != null) {
+            root.put("data", messagePayload);
+        } else if (result.getMessage() != null && !result.getMessage().isBlank()) {
+            Map<String, Object> messageFields = parseKeyValueLines(result.getMessage());
+            if (!messageFields.isEmpty()) root.putAll(messageFields);
+            else root.put("message", result.getMessage());
+        }
+
+        // Keep normalized result data as a fallback for result types whose payload
+        // is stored there instead of in the message column.
+        if (root.size() <= 4) {
+            Object parsed = parseStructured(result.getResultData());
+            if (parsed instanceof Map<?, ?> map) {
+                map.forEach((key, value) -> root.put(String.valueOf(key), value));
+            } else if (parsed != null) {
+                root.put("data", parsed);
+            }
         }
 
         List<Field> fields = new ArrayList<>();
