@@ -64,7 +64,7 @@ public class EmailNotificationSender implements NotificationChannelSender {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(recipient.getEmail());
-        message.setSubject("[" + severity + "] " + title);
+        message.setSubject(title);
         message.setText(body);
         mailSender.send(message);
         return null;
