@@ -366,6 +366,9 @@ public class AlertEvaluationService {
         if ("COUNT_MATCHING".equals(nodeType)) {
             return evaluateCountMatching(config, context);
         }
+        if ("COUNT_TOTAL".equals(nodeType)) {
+            return evaluateTotalCount(config, context);
+        }
         if (!"CONDITION".equals(nodeType)) {
             throw new IllegalArgumentException("Unsupported condition node type: " + nodeType);
         }
@@ -472,6 +475,38 @@ public class AlertEvaluationService {
         } catch (NumberFormatException | ArithmeticException exception) {
             throw new IllegalArgumentException("Count threshold must be a non-negative whole number.");
         }
+    }
+
+    /**
+     * Counts all entries in a configured collection and compares the total to a threshold.
+     * The collection must be an array; malformed or missing data is an evaluation error.
+     */
+    private ConditionResult evaluateTotalCount(Map<String, Object> config, Map<String, Object> context) {
+        String collectionPath = requiredString(config, "collectionPath");
+        Object collectionValue = resolvePath(context, collectionPath);
+        if (!(collectionValue instanceof List<?> records)) {
+            throw new IllegalArgumentException("Total-count collection must resolve to an array: " + collectionPath);
+        }
+        Object thresholdValue = config.get("countThreshold");
+        if (thresholdValue == null) {
+            throw new IllegalArgumentException("Total-count condition requires 'countThreshold'.");
+        }
+        long threshold = compareCountThreshold(thresholdValue);
+        long totalCount = records.size();
+        String operator = requiredString(config, "countOperator").toUpperCase(Locale.ROOT);
+        boolean matched = switch (operator) {
+            case "GREATER_THAN", "GT" -> totalCount > threshold;
+            case "GREATER_THAN_OR_EQUAL", "GTE" -> totalCount >= threshold;
+            case "LESS_THAN", "LT" -> totalCount < threshold;
+            case "LESS_THAN_OR_EQUAL", "LTE" -> totalCount <= threshold;
+            case "EQUALS", "EQ" -> totalCount == threshold;
+            case "NOT_EQUALS", "NE" -> totalCount != threshold;
+            default -> throw new IllegalArgumentException("Unsupported total-count comparison operator: " + operator);
+        };
+        Map<String, Object> observed = new LinkedHashMap<>();
+        observed.put("collectionPath", collectionPath);
+        observed.put("totalCount", totalCount);
+        return new ConditionResult(matched, observed);
     }
 
     /**
