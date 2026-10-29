@@ -6,4 +6,5 @@ import com.dxc.monitoring.entity.NotificationChannel;
 
 public interface NotificationChannelRepository extends JpaRepository<NotificationChannel, Long> {
     List<NotificationChannel> findAllByOrderByNameAsc();
+    List<NotificationChannel> findByEnabledTrueOrderByNameAsc();
 }
