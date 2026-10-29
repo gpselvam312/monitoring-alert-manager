@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateConditionInputs();
     };
     const ensureGroup = () => {
-        if (tree.type !== 'GROUP') tree = {type:'GROUP',operator:'AND',children:[tree,defaultCondition()]};
+        if (tree.type !== 'GROUP') tree = {type:'GROUP',operator:'AND',children:[tree]};
     };
     addRootCondition.addEventListener('click', () => {
         if (countNodes(tree) >= 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
