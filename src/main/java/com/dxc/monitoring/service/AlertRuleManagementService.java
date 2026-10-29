@@ -82,6 +82,16 @@ public class AlertRuleManagementService {
         rule.setMonitoringJob(job);
         rule.setName(name);
         rule.setDescription(trimToNull(form.getDescription()));
+        String alertSubject = trimToNull(form.getAlertSubject());
+        String alertMessage = trimToNull(form.getAlertMessage());
+        if (alertSubject == null || alertSubject.length() > 500) {
+            throw new IllegalArgumentException("Alert subject is required and must not exceed 500 characters.");
+        }
+        if (alertMessage == null || alertMessage.length() > 10000) {
+            throw new IllegalArgumentException("Alert message is required and must not exceed 10,000 characters.");
+        }
+        rule.setAlertSubject(alertSubject);
+        rule.setAlertMessage(alertMessage);
         if (form.getNotificationPolicyId() != null) {
             notificationPolicyRepository.findById(form.getNotificationPolicyId()).filter(com.dxc.monitoring.entity.NotificationPolicy::isEnabled)
                     .orElseThrow(() -> new IllegalArgumentException("Selected notification policy was not found."));
@@ -118,6 +128,8 @@ public class AlertRuleManagementService {
         form.setMonitoringJobId(rule.getMonitoringJob().getId());
         form.setName(rule.getName());
         form.setDescription(rule.getDescription());
+        form.setAlertSubject(rule.getAlertSubject());
+        form.setAlertMessage(rule.getAlertMessage());
         form.setEnabled(rule.isEnabled());
         form.setSeverity(rule.getSeverity().name());
         form.setExecutionSourcePolicy(rule.getExecutionSourcePolicy().name());
