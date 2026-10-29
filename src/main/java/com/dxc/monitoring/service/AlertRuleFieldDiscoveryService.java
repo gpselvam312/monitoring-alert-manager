@@ -117,10 +117,7 @@ public class AlertRuleFieldDiscoveryService {
             }
             return;
         }
-        if (value instanceof List<?> list && !list.isEmpty()) {
-            // Expose paths using the first representative array item; evaluation supports
-            // ordinary object paths, so array indexes are offered only as discovery hints.
-            flatten(list.get(0), path + "[0]", fields);
+        if (value instanceof List<?>) {
             return;
         }
         if (!path.isEmpty()) {
