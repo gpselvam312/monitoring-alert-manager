@@ -152,6 +152,11 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', handler);
         return button;
     };
+    const normalizeTree = node => {
+        if (node.type !== 'GROUP') return node;
+        node.children = node.children.map(normalizeTree);
+        return node.children.length === 1 ? node.children[0] : node;
+    };
     const renderNode = (node, parentChildren, index, isRoot=false) => {
         const card = document.createElement('div');
         card.className = 'condition-tree-node border rounded p-3 mb-3';
@@ -165,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const removeButton = makeButton('Remove', 'btn btn-sm btn-outline-danger', () => {
                 if (parentChildren.length <= 1) return;
                 parentChildren.splice(index, 1);
+                tree = normalizeTree(tree);
                 renderTree();
             });
             removeButton.disabled = parentChildren.length <= 1;
