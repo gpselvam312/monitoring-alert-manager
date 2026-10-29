@@ -55,6 +55,12 @@ public class AlertRule {
     @Column(name = "recovery_config", nullable = false, columnDefinition = "jsonb")
     private String recoveryConfig = "{}";
 
+    @Column(name = "alert_subject", nullable = false, length = 500)
+    private String alertSubject = "[{severity}] {ruleName}";
+
+    @Column(name = "alert_message", nullable = false, columnDefinition = "text")
+    private String alertMessage = "Job {jobName} in application {applicationName}, environment {environment}: {fieldPath} evaluated to {actualValue} (threshold: {threshold}).";
+
     @Column(name = "notification_policy_id")
     private Long notificationPolicyId;
 
@@ -104,6 +110,10 @@ public class AlertRule {
     public void setConditionConfig(String conditionConfig) { this.conditionConfig = conditionConfig; }
     public String getRecoveryConfig() { return recoveryConfig; }
     public void setRecoveryConfig(String recoveryConfig) { this.recoveryConfig = recoveryConfig; }
+    public String getAlertSubject() { return alertSubject; }
+    public void setAlertSubject(String alertSubject) { this.alertSubject = alertSubject; }
+    public String getAlertMessage() { return alertMessage; }
+    public void setAlertMessage(String alertMessage) { this.alertMessage = alertMessage; }
     public Long getNotificationPolicyId() { return notificationPolicyId; }
     public void setNotificationPolicyId(Long notificationPolicyId) { this.notificationPolicyId = notificationPolicyId; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
