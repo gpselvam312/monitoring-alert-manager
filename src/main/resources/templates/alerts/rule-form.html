@@ -139,11 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
         title.textContent = node.type === 'GROUP' ? 'Condition group' : 'Field condition';
         heading.appendChild(title);
         if (!isRoot) {
-            heading.appendChild(makeButton('Remove', 'btn btn-sm btn-outline-danger', () => {
+            const removeButton = makeButton('Remove', 'btn btn-sm btn-outline-danger', () => {
                 if (parentChildren.length <= 2) return;
                 parentChildren.splice(index, 1);
                 renderTree();
-            }));
+            });
+            removeButton.disabled = parentChildren.length <= 2;
+            heading.appendChild(removeButton);
         }
         card.appendChild(heading);
         if (node.type === 'GROUP') {
@@ -166,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             operatorRow.appendChild(operatorCol);
             card.appendChild(operatorRow);
             const children = document.createElement('div');
-            children.className = 'condition-tree-children';
+            children.className = 'condition-tree-children ps-3 ms-2 border-start';
             node.children.forEach((child, childIndex) => children.appendChild(renderNode(child,node.children,childIndex)));
             card.appendChild(children);
             const actions = document.createElement('div');
