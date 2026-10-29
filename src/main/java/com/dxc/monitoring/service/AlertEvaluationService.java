@@ -262,7 +262,31 @@ public class AlertEvaluationService {
             context.put("resultStatus", result.getStatus() == null ? null : result.getStatus().name());
             context.put("resultValue", result.getValue());
             context.put("resultUnit", result.getUnit());
-            if (result.getResultData() != null && !result.getResultData().isBlank()) {
+            boolean messagePayloadFound = false;
+            String message = result.getMessage();
+            if (message != null && !message.isBlank()) {
+                Object parsedMessage = parseStructuredPayload(message);
+                if (parsedMessage instanceof Map<?, ?> map) {
+                    map.forEach((key, value) -> context.put(String.valueOf(key), value));
+                    messagePayloadFound = true;
+                } else if (parsedMessage != null) {
+                    context.put("data", parsedMessage);
+                    messagePayloadFound = true;
+                } else {
+                    Map<String, Object> messageFields = parseKeyValuePayload(message);
+                    if (!messageFields.isEmpty()) {
+                        context.putAll(messageFields);
+                        messagePayloadFound = true;
+                    } else {
+                        // Preserve plain-text messages as a selectable field too.
+                        context.put("message", message);
+                    }
+                }
+            }
+
+            // Some result types persist structured output in result_data instead of message.
+            // Use it as a fallback, while keeping any message field available in the context.
+            if (!messagePayloadFound && result.getResultData() != null && !result.getResultData().isBlank()) {
                 try {
                     Object parsed = objectMapper.readValue(result.getResultData(), Object.class);
                     if (parsed instanceof Map<?, ?> map) {
@@ -273,12 +297,43 @@ public class AlertEvaluationService {
                 } catch (Exception exception) {
                     throw new IllegalArgumentException("The normalized monitoring result is not valid JSON.");
                 }
-            } else if (execution.getStatus() == MonitoringExecution.ExecutionStatus.SUCCESS) {
+            } else if (!messagePayloadFound && (result.getResultData() == null || result.getResultData().isBlank())
+                    && execution.getStatus() == MonitoringExecution.ExecutionStatus.SUCCESS) {
                 // No structured result is not equivalent to a healthy value.
                 context.put("resultDataMissing", true);
             }
         }
         return context;
+    }
+
+    private Object parseStructuredPayload(String payload) {
+        try {
+            return objectMapper.readValue(payload, Object.class);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Map<String, Object> parseKeyValuePayload(String payload) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (String line : payload.split("\\R")) {
+            int separator = line.indexOf('=');
+            if (separator < 1) separator = line.indexOf(':');
+            if (separator < 1) continue;
+            String key = line.substring(0, separator).trim();
+            String value = line.substring(separator + 1).trim();
+            if (!key.matches("[A-Za-z_][A-Za-z0-9_.-]{0,254}") || value.isEmpty()) continue;
+            if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+                values.put(key, Boolean.valueOf(value));
+            } else {
+                try {
+                    values.put(key, new BigDecimal(value));
+                } catch (NumberFormatException ignored) {
+                    values.put(key, value);
+                }
+            }
+        }
+        return values;
     }
 
     private boolean sourceAllowed(AlertRule rule, MonitoringExecution.TriggerSource source) {
