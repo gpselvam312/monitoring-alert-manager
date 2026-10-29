@@ -363,6 +363,9 @@ public class AlertEvaluationService {
         if ("GROUP".equals(nodeType)) {
             return evaluateConditionGroup(config, context);
         }
+        if ("COUNT_MATCHING".equals(nodeType)) {
+            return evaluateCountMatching(config, context);
+        }
         if (!"CONDITION".equals(nodeType)) {
             throw new IllegalArgumentException("Unsupported condition node type: " + nodeType);
         }
@@ -407,6 +410,68 @@ public class AlertEvaluationService {
             default -> throw new IllegalArgumentException("Unsupported condition operator: " + operator);
         };
         return new ConditionResult(matched, actual);
+    }
+
+    /**
+     * Counts records in a configured collection that match a field condition,
+     * then compares that count to countThreshold. The collection must be an array
+     * of objects; malformed data fails evaluation rather than silently counting zero.
+     */
+    private ConditionResult evaluateCountMatching(Map<String, Object> config, Map<String, Object> context) {
+        String collectionPath = requiredString(config, "collectionPath");
+        Object collectionValue = resolvePath(context, collectionPath);
+        if (!(collectionValue instanceof List<?> records)) {
+            throw new IllegalArgumentException("Count condition collection must resolve to an array: " + collectionPath);
+        }
+
+        String fieldPath = requiredString(config, "fieldPath");
+        String fieldOperator = requiredString(config, "operator").toUpperCase(Locale.ROOT);
+        Map<String, Object> rowCondition = new LinkedHashMap<>();
+        rowCondition.put("type", "CONDITION");
+        rowCondition.put("fieldPath", fieldPath);
+        rowCondition.put("operator", fieldOperator);
+        if (config.containsKey("threshold")) rowCondition.put("threshold", config.get("threshold"));
+        if (config.containsKey("value")) rowCondition.put("value", config.get("value"));
+
+        long matchingCount = 0;
+        for (Object record : records) {
+            if (!(record instanceof Map<?, ?> row)) {
+                throw new IllegalArgumentException("Count condition collection must contain only objects.");
+            }
+            Map<String, Object> rowContext = new LinkedHashMap<>(context);
+            row.forEach((key, value) -> rowContext.put(String.valueOf(key), value));
+            if (evaluateCondition(rowCondition, rowContext).matched()) matchingCount++;
+        }
+
+        Object countThreshold = config.get("countThreshold");
+        if (countThreshold == null) {
+            throw new IllegalArgumentException("Count condition requires 'countThreshold'.");
+        }
+        String countOperator = requiredString(config, "countOperator").toUpperCase(Locale.ROOT);
+        boolean matched = switch (countOperator) {
+            case "GREATER_THAN", "GT" -> matchingCount > compareCountThreshold(countThreshold);
+            case "GREATER_THAN_OR_EQUAL", "GTE" -> matchingCount >= compareCountThreshold(countThreshold);
+            case "LESS_THAN", "LT" -> matchingCount < compareCountThreshold(countThreshold);
+            case "LESS_THAN_OR_EQUAL", "LTE" -> matchingCount <= compareCountThreshold(countThreshold);
+            case "EQUALS", "EQ" -> matchingCount == compareCountThreshold(countThreshold);
+            case "NOT_EQUALS", "NE" -> matchingCount != compareCountThreshold(countThreshold);
+            default -> throw new IllegalArgumentException("Unsupported count comparison operator: " + countOperator);
+        };
+        Map<String, Object> observed = new LinkedHashMap<>();
+        observed.put("collectionPath", collectionPath);
+        observed.put("matchingCount", matchingCount);
+        observed.put("totalCount", records.size());
+        return new ConditionResult(matched, observed);
+    }
+
+    private long compareCountThreshold(Object value) {
+        try {
+            long threshold = new BigDecimal(String.valueOf(value)).longValueExact();
+            if (threshold < 0) throw new IllegalArgumentException("Count threshold cannot be negative.");
+            return threshold;
+        } catch (NumberFormatException | ArithmeticException exception) {
+            throw new IllegalArgumentException("Count threshold must be a non-negative whole number.");
+        }
     }
 
     /**
