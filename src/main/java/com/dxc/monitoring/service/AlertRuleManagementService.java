@@ -119,6 +119,10 @@ public class AlertRuleManagementService {
         form.setNotificationPolicyId(rule.getNotificationPolicyId());
         try {
             Map<String, Object> condition = objectMapper.readValue(rule.getConditionConfig(), Map.class);
+            Map<String, Object> editableTree = new LinkedHashMap<>(condition);
+            editableTree.remove("consecutiveMatches");
+            editableTree.remove("correlationFieldPath");
+            form.setConditionTreeJson(toJson(editableTree));
             String storedConditionType = stringValue(condition.get("type"), "CONDITION");
             form.setConditionType("GROUP".equalsIgnoreCase(storedConditionType) ? "CONDITION" : storedConditionType);
             form.setCollectionPath(stringValue(condition.get("collectionPath"), ""));
@@ -168,50 +172,16 @@ public class AlertRuleManagementService {
         String type = form.getConditionType() == null ? "CONDITION"
                 : form.getConditionType().trim().toUpperCase(Locale.ROOT);
         if ("CONDITION".equals(type)) {
-            if (!form.isConditionGroupEnabled()) {
-                Map<String, Object> first = buildCondition(form.getConditionFieldPath(), form.getConditionOperator(),
-                        form.getThreshold(), form.getConsecutiveMatches(), null, "condition");
-                if (form.getCorrelationFieldPath() != null && !form.getCorrelationFieldPath().isBlank()) {
-                    String path = form.getCorrelationFieldPath().trim();
-                    if (path.length() > 255 || !FIELD_PATH.matcher(path).matches()) {
-                        throw new IllegalArgumentException("Correlation field path must use dot notation.");
-                    }
-                    first.put("correlationFieldPath", path);
-                }
-                return first;
-            }
-            java.util.List<AlertConditionForm> items = form.getConditionItems();
-            if (items == null || items.size() < 2) {
-                throw new IllegalArgumentException("Add at least two conditions when using AND / OR grouping.");
-            }
-            if (items.size() > 100) {
-                throw new IllegalArgumentException("A condition group cannot contain more than 100 conditions.");
-            }
-            String groupOperator = form.getConditionGroupOperator() == null ? ""
-                    : form.getConditionGroupOperator().trim().toUpperCase(Locale.ROOT);
-            if (!Set.of("AND", "OR").contains(groupOperator)) {
-                throw new IllegalArgumentException("Choose AND or OR for the condition group.");
-            }
-            java.util.List<Map<String, Object>> children = new java.util.ArrayList<>();
-            for (int i = 0; i < items.size(); i++) {
-                AlertConditionForm item = items.get(i);
-                if (item == null) throw new IllegalArgumentException("Condition " + (i + 1) + " is required.");
-                children.add(buildCondition(item.getFieldPath(), item.getOperator(), item.getThreshold(),
-                        1, null, "condition " + (i + 1)));
-            }
-            Map<String, Object> group = new LinkedHashMap<>();
-            group.put("type", "GROUP");
-            group.put("operator", groupOperator);
-            group.put("children", children);
-            group.put("consecutiveMatches", form.getConsecutiveMatches());
+            Map<String, Object> root = parseConditionTree(form.getConditionTreeJson());
+            root.put("consecutiveMatches", form.getConsecutiveMatches());
             if (form.getCorrelationFieldPath() != null && !form.getCorrelationFieldPath().isBlank()) {
                 String path = form.getCorrelationFieldPath().trim();
                 if (path.length() > 255 || !FIELD_PATH.matcher(path).matches()) {
                     throw new IllegalArgumentException("Correlation field path must use dot notation.");
                 }
-                group.put("correlationFieldPath", path);
+                root.put("correlationFieldPath", path);
             }
-            return group;
+            return root;
         }
         if (!"COUNT_TOTAL".equals(type) && !"COUNT_MATCHING".equals(type)) {
             throw new IllegalArgumentException("Choose a supported alert condition type.");
@@ -258,6 +228,67 @@ public class AlertRuleManagementService {
             config.put("correlationFieldPath", correlationPath);
         }
         return config;
+    }
+
+    private Map<String, Object> parseConditionTree(String json) {
+        if (json == null || json.isBlank()) {
+            throw new IllegalArgumentException("Configure at least one alert condition.");
+        }
+        try {
+            Object parsed = objectMapper.readValue(json, Object.class);
+            int[] nodeCount = {0};
+            Map<String, Object> root = normalizeConditionNode(parsed, 0, nodeCount);
+            if (nodeCount[0] > 100) {
+                throw new IllegalArgumentException("An alert condition tree cannot contain more than 100 nodes.");
+            }
+            return root;
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("The alert condition tree is invalid.");
+        }
+    }
+
+    private Map<String, Object> normalizeConditionNode(Object rawNode, int depth, int[] nodeCount) {
+        if (depth > 8) {
+            throw new IllegalArgumentException("Condition groups cannot be nested more than 8 levels deep.");
+        }
+        if (!(rawNode instanceof Map<?, ?> rawMap)) {
+            throw new IllegalArgumentException("Each condition must be a valid condition or group.");
+        }
+        nodeCount[0]++;
+        if (nodeCount[0] > 100) {
+            throw new IllegalArgumentException("An alert condition tree cannot contain more than 100 nodes.");
+        }
+        Map<String, Object> node = new LinkedHashMap<>();
+        rawMap.forEach((key, value) -> node.put(String.valueOf(key), value));
+        String nodeType = stringValue(node.get("type"), "CONDITION").toUpperCase(Locale.ROOT);
+        if ("GROUP".equals(nodeType)) {
+            String operator = stringValue(node.get("operator"), "").toUpperCase(Locale.ROOT);
+            if (!Set.of("AND", "OR").contains(operator)) {
+                throw new IllegalArgumentException("Choose AND or OR for each condition group.");
+            }
+            Object rawChildren = node.get("children");
+            if (!(rawChildren instanceof java.util.List<?> children) || children.size() < 2) {
+                throw new IllegalArgumentException("Each condition group must contain at least two children.");
+            }
+            List<Map<String, Object>> normalizedChildren = new java.util.ArrayList<>();
+            for (Object child : children) {
+                normalizedChildren.add(normalizeConditionNode(child, depth + 1, nodeCount));
+            }
+            Map<String, Object> group = new LinkedHashMap<>();
+            group.put("type", "GROUP");
+            group.put("operator", operator);
+            group.put("children", normalizedChildren);
+            return group;
+        }
+        if (!"CONDITION".equals(nodeType)) {
+            throw new IllegalArgumentException("Only field conditions and AND / OR groups can be used in the condition tree.");
+        }
+        return buildCondition(stringValue(node.get("fieldPath"), ""),
+                stringValue(node.get("operator"), "GREATER_THAN"),
+                stringValue(node.get("threshold"), stringValue(node.get("value"), "")),
+                1, null, "condition");
     }
 
     private Map<String, Object> buildCondition(String fieldPath, String operator, String threshold,
