@@ -5,6 +5,7 @@ on:
     branches:
       - feature/monitoring-execution-scheduling
       - feature/iframe-widget-configuration
+      - feature/alert-rule-discovery-retention-scope
   pull_request:
     branches:
       - feature/monitoring-execution-scheduling
