@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
@@ -154,6 +155,17 @@ public class AlertController {
         addRuleFormModel(model, ruleManagementService.toForm(rule));
         model.addAttribute("currentPage", "alert-rules");
         return "alerts/rule-form";
+    }
+
+    @PostMapping("/rules/discovery/sample")
+    @ResponseBody
+    @PreAuthorize("hasAuthority('ALERT_CONFIG')")
+    public ResponseEntity<?> discoverSampleFields(@RequestBody(required = false) String sample) {
+        try {
+            return ResponseEntity.ok(fieldDiscoveryService.discoverSample(sample));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of("message", safeMessage(exception.getMessage())));
+        }
     }
 
     @GetMapping("/rules/discovery/{jobId}")
