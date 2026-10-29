@@ -204,7 +204,7 @@ class AlertEvaluationServiceTest {
                   "status":"SUCCESS",
                   "data":{
                     "machines":[
-                      {"hostname":"host-a","metrics":[{"name":"cpu","value":10},{"name":"memory","value":95}]},
+                      {"hostname":"host-a","metrics":[{"name":"cpu","value":"unknown"},{"name":"memory","value":95}]},
                       {"hostname":"host-b","metrics":[{"name":"cpu","value":40}]}
                     ]
                   }
