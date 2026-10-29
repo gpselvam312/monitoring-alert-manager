@@ -198,6 +198,13 @@ public class AlertController {
                         MonitoringJob.ExecutionMode.STANDARD, applicationIds);
         model.addAttribute("ruleForm", form);
         model.addAttribute("monitoringJobs", jobs);
+        String selectedMonitoringJobLabel = jobs.stream()
+                .filter(job -> form.getMonitoringJobId() != null && form.getMonitoringJobId().equals(job.getId()))
+                .findFirst()
+                .map(job -> job.getName() + " — " + job.getApplication().getName()
+                        + (job.getEnvironment() != null ? " / " + job.getEnvironment().getName() : ""))
+                .orElse("");
+        model.addAttribute("selectedMonitoringJobLabel", selectedMonitoringJobLabel);
         model.addAttribute("severities", AlertRule.Severity.values());
         model.addAttribute("sourcePolicies", AlertRule.ExecutionSourcePolicy.values());
         model.addAttribute("notificationPolicies", notificationPolicyRepository.findByEnabledTrueOrderByNameAsc());
