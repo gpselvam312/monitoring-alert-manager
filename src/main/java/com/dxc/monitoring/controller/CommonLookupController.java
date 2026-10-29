@@ -64,15 +64,22 @@ public class CommonLookupController {
         if (applicationId != null && !applicationIds.contains(applicationId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this application.");
         }
-        if (environmentId != null && (applicationId == null || environments.findById(environmentId)
-                .filter(Environment::isEnabled)
-                .filter(e -> e.getApplication() != null && applicationId.equals(e.getApplication().getId()))
-                .isEmpty())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Choose an environment belonging to the selected application.");
+        if (environmentId != null) {
+            Environment selectedEnvironment = environments.findById(environmentId)
+                    .filter(Environment::isEnabled)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Choose an available environment."));
+            Long environmentApplicationId = selectedEnvironment.getApplication() == null
+                    ? null : selectedEnvironment.getApplication().getId();
+            if (environmentApplicationId == null || !applicationIds.contains(environmentApplicationId)
+                    || (applicationId != null && !applicationId.equals(environmentApplicationId))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Choose an environment within your authorized application scope.");
+            }
         }
 
-        Page<MonitoringJob> page = jobs.findAllForLookup(search.trim(), applicationIds, applicationId,
+        String safeSearch = search == null ? "" : search.trim();
+        Page<MonitoringJob> page = jobs.findAllForLookup(safeSearch, applicationIds, applicationId,
                 environmentId, MonitoringJob.ExecutionMode.STANDARD, pageable);
         List<MonitoringJobRow> rows = page.getContent().stream().map(job -> new MonitoringJobRow(
                 job.getId(), job.getName(), job.getDescription(),
