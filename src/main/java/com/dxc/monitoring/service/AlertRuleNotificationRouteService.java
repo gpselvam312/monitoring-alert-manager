@@ -45,6 +45,21 @@ public class AlertRuleNotificationRouteService {
     }
 
     @Transactional(readOnly = true)
+    public List<NotificationChannel> enabledChannels() {
+        return channelRepository.findByEnabledTrueOrderByNameAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificationRecipient> enabledRecipients() {
+        return recipientRepository.findByEnabledTrueOrderByNameAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotificationGroup> enabledGroups() {
+        return groupRepository.findByEnabledTrueOrderByNameAsc();
+    }
+
+    @Transactional(readOnly = true)
     public String routesAsJson(Long ruleId) {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (AlertRuleNotificationRoute route : routeRepository.findByAlertRule_IdOrderByIdAsc(ruleId)) {
