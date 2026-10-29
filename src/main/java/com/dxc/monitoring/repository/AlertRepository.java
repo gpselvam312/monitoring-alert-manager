@@ -19,5 +19,6 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
             java.util.List<Long> applicationIds, Alert.AlertStatus status, Pageable pageable);
     @EntityGraph(attributePaths = {"alertRule", "monitoringJob", "monitoringJob.application", "monitoringJob.environment", "lastExecution"})
     java.util.Optional<Alert> findByIdAndMonitoringJob_Application_IdIn(Long id, java.util.List<Long> applicationIds);
+    boolean existsByAlertRuleId(Long alertRuleId);
     long countByStatus(Alert.AlertStatus status);
 }
