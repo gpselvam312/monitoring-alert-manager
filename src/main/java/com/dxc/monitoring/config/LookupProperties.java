@@ -11,7 +11,7 @@ import jakarta.validation.constraints.Min;
 @Validated
 @ConfigurationProperties(prefix = "monitoring.lookup")
 public class LookupProperties {
-    @Min(1)
+    @Min(25)
     @Max(500)
     private int fetchSize = 100;
 
