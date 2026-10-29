@@ -76,6 +76,8 @@
     }
 
     async function loadFilters() {
+        elements.applicationFilter.classList.toggle("d-none", !state.filters.includes("application"));
+        elements.environmentFilter.classList.toggle("d-none", !state.filters.includes("environment"));
         if (!state.filters.includes("application") && !state.filters.includes("environment")) return;
         const response = await fetch(state.filterEndpoint || state.endpoint + "/filters", {
             headers: {"Accept": "application/json"},
