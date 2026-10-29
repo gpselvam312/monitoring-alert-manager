@@ -89,8 +89,26 @@ function toggleChannelFields() {
     const type = document.getElementById('channelType')?.value || 'EMAIL';
     const email = document.getElementById('emailFields');
     const whatsapp = document.getElementById('whatsappFields');
-    if (email) email.classList.toggle('d-none', type !== 'EMAIL');
-    if (whatsapp) whatsapp.classList.toggle('d-none', type !== 'WHATSAPP');
+
+    // Hidden channel-specific controls must not participate in browser validation
+    // or be submitted with stale values from a previously selected channel.
+    if (email) {
+        const active = type === 'EMAIL';
+        email.classList.toggle('d-none', !active);
+        email.querySelectorAll('input, select, textarea, button').forEach(control => {
+            control.disabled = !active;
+        });
+    }
+    if (whatsapp) {
+        const active = type === 'WHATSAPP';
+        whatsapp.classList.toggle('d-none', !active);
+        whatsapp.querySelectorAll('input, select, textarea, button').forEach(control => {
+            control.disabled = !active;
+        });
+        const templateName = document.getElementById('whatsappTemplateName');
+        if (templateName) templateName.required = active;
+    }
+
     const secret = document.getElementById('channelSecret');
     const smtpAuth = document.getElementById('smtpAuth');
     if (secret) secret.required = type !== 'EMAIL' || Boolean(smtpAuth?.checked);
