@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="commonLookup">
+    <div class="modal fade common-lookup-modal" id="commonLookupModal" tabindex="-1"
+         aria-labelledby="commonLookupTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h2 class="modal-title fs-5" id="commonLookupTitle">Select a record</h2>
+                        <p class="text-muted small mb-0" id="commonLookupDescription">Search and select a record from the table.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="common-lookup-toolbar p-3 border-bottom">
+                        <div class="row g-2">
+                            <div class="col-12 col-lg-5">
+                                <label class="visually-hidden" for="commonLookupSearch">Search records</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="search" class="form-control" id="commonLookupSearch"
+                                           placeholder="Search by name, application or environment" autocomplete="off">
+                                    <button type="button" class="btn btn-outline-secondary" id="commonLookupClearSearch"
+                                            aria-label="Clear search"><i class="bi bi-x-lg"></i></button>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 col-lg-3">
+                                <label class="visually-hidden" for="commonLookupApplication">Application filter</label>
+                                <select class="form-select" id="commonLookupApplication">
+                                    <option value="">All applications</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6 col-lg-3">
+                                <label class="visually-hidden" for="commonLookupEnvironment">Environment filter</label>
+                                <select class="form-select" id="commonLookupEnvironment">
+                                    <option value="">All environments</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-lg-1">
+                                <label class="visually-hidden" for="commonLookupPageSize">Rows per page</label>
+                                <select class="form-select" id="commonLookupPageSize" aria-label="Rows per page">
+                                    <option value="5" selected>5</option>
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive common-lookup-table-wrap">
+                        <table class="table table-hover table-striped align-middle mb-0 common-lookup-table">
+                            <thead>
+                            <tr>
+                                <th scope="col" class="common-lookup-selection-column"><span class="visually-hidden">Select</span></th>
+                                <th scope="col"><button type="button" class="common-lookup-sort" data-lookup-sort="name">Monitoring Job <i class="bi bi-arrow-down-up"></i></button></th>
+                                <th scope="col"><button type="button" class="common-lookup-sort" data-lookup-sort="application">Application <i class="bi bi-arrow-down-up"></i></button></th>
+                                <th scope="col"><button type="button" class="common-lookup-sort" data-lookup-sort="environment">Environment <i class="bi bi-arrow-down-up"></i></button></th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                            </thead>
+                            <tbody id="commonLookupRows">
+                                <tr><td colspan="6" class="text-center text-muted py-4">Enter search criteria to load records.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="common-lookup-status px-3 py-2 border-top">
+                        <div class="small text-muted" id="commonLookupSummary" aria-live="polite">Ready</div>
+                        <div class="small text-muted" id="commonLookupSelectionSummary"></div>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex flex-wrap justify-content-between">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Lookup pagination">
+                        <button type="button" class="btn btn-outline-secondary" id="commonLookupPrevious">
+                            <i class="bi bi-chevron-left me-1"></i>Previous
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="commonLookupNext">
+                            Next<i class="bi bi-chevron-right ms-1"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary" id="commonLookupClearSelection">Clear selection</button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="commonLookupConfirm">
+                            <i class="bi bi-check-lg me-1"></i><span id="commonLookupConfirmText">Select</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
