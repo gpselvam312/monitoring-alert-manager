@@ -96,10 +96,15 @@ public class AlertRuleManagementService {
         }
 
         Map<String, Object> condition = buildConfiguredCondition(form);
-        Map<String, Object> recovery = new LinkedHashMap<>();
-        recovery.put("enabled", true);
-        recovery.putAll(buildCondition(form.getRecoveryFieldPath(), form.getRecoveryOperator(),
-                form.getRecoveryThreshold(), form.getRecoveryConsecutiveMatches(), null, "recovery"));
+        Map<String, Object> recovery;
+        if (form.getRecoveryFieldPath() == null || form.getRecoveryFieldPath().isBlank()) {
+            recovery = existingGroupedRecovery(rule);
+        } else {
+            recovery = new LinkedHashMap<>();
+            recovery.put("enabled", true);
+            recovery.putAll(buildCondition(form.getRecoveryFieldPath(), form.getRecoveryOperator(),
+                    form.getRecoveryThreshold(), form.getRecoveryConsecutiveMatches(), null, "recovery"));
+        }
         rule.setConditionConfig(toJson(condition));
         rule.setRecoveryConfig(toJson(recovery));
         rule.setUpdatedBy(userId);
@@ -131,8 +136,7 @@ public class AlertRuleManagementService {
             form.setConsecutiveMatches(integerValue(condition.get("consecutiveMatches"), 1));
             form.setCorrelationFieldPath(stringValue(condition.get("correlationFieldPath"), ""));
             Map<String, Object> recovery = objectMapper.readValue(rule.getRecoveryConfig(), Map.class);
-            form.setRecoveryEnabled(!Boolean.FALSE.equals(recovery.get("enabled"))
-                    && recovery.containsKey("fieldPath"));
+            form.setRecoveryEnabled(!Boolean.FALSE.equals(recovery.get("enabled")));
             form.setRecoveryFieldPath(stringValue(recovery.get("fieldPath"), ""));
             form.setRecoveryOperator(stringValue(recovery.get("operator"), "LESS_THAN_OR_EQUAL"));
             form.setRecoveryThreshold(stringValue(recovery.get("threshold"), stringValue(recovery.get("value"), "")));
@@ -141,6 +145,20 @@ public class AlertRuleManagementService {
             throw new IllegalStateException("Stored alert rule configuration could not be loaded.", exception);
         }
         return form;
+    }
+
+    private Map<String, Object> existingGroupedRecovery(AlertRule rule) {
+        if (rule.getId() != null && rule.getRecoveryConfig() != null && !rule.getRecoveryConfig().isBlank()) {
+            try {
+                Map<String, Object> existing = objectMapper.readValue(rule.getRecoveryConfig(), Map.class);
+                if ("GROUP".equalsIgnoreCase(stringValue(existing.get("type"), ""))) {
+                    return new LinkedHashMap<>(existing);
+                }
+            } catch (Exception exception) {
+                throw new IllegalStateException("Stored recovery configuration could not be loaded.", exception);
+            }
+        }
+        throw new IllegalArgumentException("Configure a recovery field path before saving this rule.");
     }
 
     private Map<String, Object> buildConfiguredCondition(AlertRuleForm form) {
