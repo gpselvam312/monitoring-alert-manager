@@ -118,10 +118,7 @@ public class AlertRuleManagementService {
         form.setNotificationPolicyId(rule.getNotificationPolicyId());
         try {
             Map<String, Object> condition = objectMapper.readValue(rule.getConditionConfig(), Map.class);
-            Map<String, Object> editableTree = new LinkedHashMap<>(condition);
-            editableTree.remove("consecutiveMatches");
-            editableTree.remove("correlationFieldPath");
-            form.setConditionTreeJson(toJson(editableTree));
+            form.setConditionTreeJson(toJson(editableConditionNode(condition)));
             String storedConditionType = stringValue(condition.get("type"), "CONDITION");
             form.setConditionType("GROUP".equalsIgnoreCase(storedConditionType) ? "CONDITION" : storedConditionType);
             form.setCollectionPath(stringValue(condition.get("collectionPath"), ""));
@@ -226,6 +223,35 @@ public class AlertRuleManagementService {
         }
     }
 
+    private Map<String, Object> editableConditionNode(Map<String, Object> storedNode) {
+        String type = stringValue(storedNode.get("type"), "CONDITION").toUpperCase(Locale.ROOT);
+        Map<String, Object> node = new LinkedHashMap<>();
+        if ("GROUP".equals(type)) {
+            node.put("type", "GROUP");
+            node.put("operator", stringValue(storedNode.get("operator"), "AND"));
+            Object rawChildren = storedNode.get("children");
+            List<Map<String, Object>> children = new java.util.ArrayList<>();
+            if (rawChildren instanceof List<?> items) {
+                for (Object item : items) {
+                    if (!(item instanceof Map<?, ?> raw)) {
+                        throw new IllegalStateException("Stored alert condition group contains an invalid child.");
+                    }
+                    Map<String, Object> child = new LinkedHashMap<>();
+                    raw.forEach((key, value) -> child.put(String.valueOf(key), value));
+                    children.add(editableConditionNode(child));
+                }
+            }
+            node.put("children", children);
+            return node;
+        }
+        node.put("type", "CONDITION");
+        node.put("fieldPath", stringValue(storedNode.get("fieldPath"), ""));
+        node.put("operator", stringValue(storedNode.get("operator"), "GREATER_THAN"));
+        if (storedNode.containsKey("threshold")) node.put("threshold", storedNode.get("threshold"));
+        else if (storedNode.containsKey("value")) node.put("threshold", storedNode.get("value"));
+        return node;
+    }
+
     private Map<String, Object> normalizeConditionNode(Object rawNode, int depth, int[] nodeCount) {
         if (depth > 8) {
             throw new IllegalArgumentException("Condition groups cannot be nested more than 8 levels deep.");
@@ -262,10 +288,12 @@ public class AlertRuleManagementService {
         if (!"CONDITION".equals(nodeType)) {
             throw new IllegalArgumentException("Only field conditions and AND / OR groups can be used in the condition tree.");
         }
-        return buildCondition(stringValue(node.get("fieldPath"), ""),
+        Map<String, Object> condition = buildCondition(stringValue(node.get("fieldPath"), ""),
                 stringValue(node.get("operator"), "GREATER_THAN"),
                 stringValue(node.get("threshold"), stringValue(node.get("value"), "")),
                 1, null, "condition");
+        condition.put("type", "CONDITION");
+        return condition;
     }
 
     private Map<String, Object> buildCondition(String fieldPath, String operator, String threshold,
