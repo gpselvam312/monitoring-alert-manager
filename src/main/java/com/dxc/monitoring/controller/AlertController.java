@@ -1,6 +1,7 @@
 package com.dxc.monitoring.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -8,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -35,6 +38,7 @@ import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.repository.UserAlertStateRepository;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.AlertRuleManagementService;
+import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.AlertRuleForm;
 
@@ -51,12 +55,14 @@ public class AlertController {
     private final DashboardAccessService accessService;
     private final UserAlertStateRepository userAlertStateRepository;
     private final NotificationPolicyRepository notificationPolicyRepository;
+    private final AlertRuleFieldDiscoveryService fieldDiscoveryService;
 
     public AlertController(AlertRepository alertRepository, AlertHistoryRepository historyRepository,
             AlertRuleRepository ruleRepository, MonitoringJobRepository jobRepository,
             AlertRuleManagementService ruleManagementService, DashboardAccessService accessService,
             UserAlertStateRepository userAlertStateRepository,
-            NotificationPolicyRepository notificationPolicyRepository) {
+            NotificationPolicyRepository notificationPolicyRepository,
+            AlertRuleFieldDiscoveryService fieldDiscoveryService) {
         this.alertRepository = alertRepository;
         this.historyRepository = historyRepository;
         this.ruleRepository = ruleRepository;
@@ -65,6 +71,7 @@ public class AlertController {
         this.accessService = accessService;
         this.userAlertStateRepository = userAlertStateRepository;
         this.notificationPolicyRepository = notificationPolicyRepository;
+        this.fieldDiscoveryService = fieldDiscoveryService;
     }
 
     @GetMapping
@@ -147,6 +154,24 @@ public class AlertController {
         addRuleFormModel(model, ruleManagementService.toForm(rule));
         model.addAttribute("currentPage", "alert-rules");
         return "alerts/rule-form";
+    }
+
+    @GetMapping("/rules/discovery/{jobId}")
+    @ResponseBody
+    @PreAuthorize("hasAuthority('ALERT_CONFIG')")
+    public ResponseEntity<?> discoverRuleFields(@PathVariable Long jobId) {
+        MonitoringJob job = jobRepository.findByIdForDetails(jobId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Monitoring job was not found."));
+        assertJobAccess(job, "ALERT_CONFIG");
+        if (job.getExecutionMode() != MonitoringJob.ExecutionMode.STANDARD) {
+            return ResponseEntity.badRequest().body(Map.of("message",
+                    "Field discovery is available only for standard monitoring jobs."));
+        }
+        try {
+            return ResponseEntity.ok(fieldDiscoveryService.discover(job));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(Map.of("message", safeMessage(exception.getMessage())));
+        }
     }
 
     @PostMapping("/rules/save")
