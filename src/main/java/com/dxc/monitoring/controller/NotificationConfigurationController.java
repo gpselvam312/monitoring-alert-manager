@@ -21,6 +21,10 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.NotificationChannel;
 import com.dxc.monitoring.entity.NotificationRoute;
 import com.dxc.monitoring.entity.NotificationDelivery;
+import com.dxc.monitoring.entity.NotificationGroup;
+import com.dxc.monitoring.entity.NotificationPolicy;
+import com.dxc.monitoring.entity.NotificationRecipient;
+import com.dxc.monitoring.repository.NotificationGroupMemberRepository;
 import com.dxc.monitoring.repository.NotificationChannelRepository;
 import com.dxc.monitoring.repository.NotificationDeliveryRepository;
 import com.dxc.monitoring.repository.NotificationGroupRepository;
@@ -40,18 +44,21 @@ public class NotificationConfigurationController {
     private final NotificationPolicyRepository policyRepository;
     private final NotificationRouteRepository routeRepository;
     private final NotificationDeliveryRepository deliveryRepository;
+    private final NotificationGroupMemberRepository groupMemberRepository;
     private final NotificationConfigurationService configurationService;
 
     public NotificationConfigurationController(NotificationChannelRepository channelRepository,
             NotificationRecipientRepository recipientRepository, NotificationGroupRepository groupRepository,
             NotificationPolicyRepository policyRepository, NotificationRouteRepository routeRepository,
-            NotificationDeliveryRepository deliveryRepository, NotificationConfigurationService configurationService) {
+            NotificationDeliveryRepository deliveryRepository, NotificationGroupMemberRepository groupMemberRepository,
+            NotificationConfigurationService configurationService) {
         this.channelRepository = channelRepository;
         this.recipientRepository = recipientRepository;
         this.groupRepository = groupRepository;
         this.policyRepository = policyRepository;
         this.routeRepository = routeRepository;
         this.deliveryRepository = deliveryRepository;
+        this.groupMemberRepository = groupMemberRepository;
         this.configurationService = configurationService;
     }
 
@@ -71,6 +78,178 @@ public class NotificationConfigurationController {
         model.addAttribute("eventTypes", NotificationRoute.EventType.values());
         model.addAttribute("currentPage", "notification-configuration");
         return "administration/notifications";
+    }
+
+
+    @GetMapping("/channels/{id}/edit")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String editChannel(@PathVariable Long id, Model model) {
+        NotificationChannel channel = channelRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Notification channel was not found."));
+        editOptions(model); model.addAttribute("editType", "CHANNEL"); model.addAttribute("editId", id);
+        model.addAttribute("channelForm", configurationService.channelFormForEdit(channel));
+        return "administration/notification-edit";
+    }
+
+    @GetMapping("/recipients/{id}/edit")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String editRecipient(@PathVariable Long id, Model model) {
+        editOptions(model); model.addAttribute("editType", "RECIPIENT"); model.addAttribute("editId", id);
+        model.addAttribute("editRecipient", recipientRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Recipient was not found.")));
+        return "administration/notification-edit";
+    }
+
+    @GetMapping("/groups/{id}/edit")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String editGroup(@PathVariable Long id, Model model) {
+        editOptions(model); model.addAttribute("editType", "GROUP"); model.addAttribute("editId", id);
+        model.addAttribute("editGroup", groupRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Recipient group was not found.")));
+        model.addAttribute("selectedRecipientIds", groupMemberRepository.findByGroup_Id(id)
+                .stream().map(member -> member.getRecipient().getId()).toList());
+        return "administration/notification-edit";
+    }
+
+    @GetMapping("/policies/{id}/edit")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String editPolicy(@PathVariable Long id, Model model) {
+        editOptions(model); model.addAttribute("editType", "POLICY"); model.addAttribute("editId", id);
+        model.addAttribute("editPolicy", policyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Notification policy was not found.")));
+        return "administration/notification-edit";
+    }
+
+    @GetMapping("/routes/{id}/edit")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String editRoute(@PathVariable Long id, Model model) {
+        editOptions(model); model.addAttribute("editType", "ROUTE"); model.addAttribute("editId", id);
+        model.addAttribute("editRoute", routeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Notification route was not found.")));
+        return "administration/notification-edit";
+    }
+
+    @PostMapping("/channels/{id}")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String updateChannel(@PathVariable Long id, @ModelAttribute NotificationChannelForm form,
+            Authentication authentication, RedirectAttributes redirect) {
+        try {
+            configurationService.updateChannel(id, form, userId(authentication));
+            redirect.addFlashAttribute("successMessage", "Channel updated. Leave the secret blank to keep the encrypted value.");
+            return "redirect:/administration/notifications";
+        } catch (IllegalArgumentException | DataIntegrityViolationException | IllegalStateException exception) {
+            redirect.addFlashAttribute("errorMessage", safeMessage(exception));
+            return "redirect:/administration/notifications/channels/" + id + "/edit";
+        }
+    }
+
+    @PostMapping("/recipients/{id}")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String updateRecipient(@PathVariable Long id, @RequestParam String name,
+            @RequestParam(required = false) String email, @RequestParam(required = false) String phoneNumber,
+            Authentication authentication, RedirectAttributes redirect) {
+        try {
+            configurationService.updateRecipient(id, name, email, phoneNumber, userId(authentication));
+            redirect.addFlashAttribute("successMessage", "Recipient updated.");
+            return "redirect:/administration/notifications";
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirect.addFlashAttribute("errorMessage", safeMessage(exception));
+            return "redirect:/administration/notifications/recipients/" + id + "/edit";
+        }
+    }
+
+    @PostMapping("/groups/{id}")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String updateGroup(@PathVariable Long id, @RequestParam String name,
+            @RequestParam(required = false) String description, @RequestParam(required = false) List<Long> recipientIds,
+            Authentication authentication, RedirectAttributes redirect) {
+        try {
+            configurationService.updateGroup(id, name, description, recipientIds, userId(authentication));
+            redirect.addFlashAttribute("successMessage", "Recipient group and memberships updated.");
+            return "redirect:/administration/notifications";
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirect.addFlashAttribute("errorMessage", safeMessage(exception));
+            return "redirect:/administration/notifications/groups/" + id + "/edit";
+        }
+    }
+
+    @PostMapping("/policies/{id}")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String updatePolicy(@PathVariable Long id, @RequestParam String name,
+            @RequestParam(required = false) String description, Authentication authentication, RedirectAttributes redirect) {
+        try {
+            configurationService.updatePolicy(id, name, description, userId(authentication));
+            redirect.addFlashAttribute("successMessage", "Legacy policy updated.");
+            return "redirect:/administration/notifications";
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirect.addFlashAttribute("errorMessage", safeMessage(exception));
+            return "redirect:/administration/notifications/policies/" + id + "/edit";
+        }
+    }
+
+    @PostMapping("/routes/{id}")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String updateRoute(@PathVariable Long id, @RequestParam Long policyId, @RequestParam Long channelId,
+            @RequestParam String severity, @RequestParam String eventType, @RequestParam String targetType,
+            @RequestParam(required = false) Long recipientId, @RequestParam(required = false) Long groupId,
+            @RequestParam(defaultValue = "0") int minimumIntervalSeconds, RedirectAttributes redirect) {
+        try {
+            configurationService.updateRoute(id, policyId, channelId, severity, eventType, targetType,
+                    recipientId, groupId, minimumIntervalSeconds);
+            redirect.addFlashAttribute("successMessage", "Legacy route updated.");
+            return "redirect:/administration/notifications";
+        } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            redirect.addFlashAttribute("errorMessage", safeMessage(exception));
+            return "redirect:/administration/notifications/routes/" + id + "/edit";
+        }
+    }
+
+    @PostMapping("/channels/{id}/delete")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String deleteChannel(@PathVariable Long id, RedirectAttributes redirect) {
+        return deleteRecord(() -> configurationService.deleteChannel(id), "channel", redirect);
+    }
+    @PostMapping("/recipients/{id}/delete")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String deleteRecipient(@PathVariable Long id, RedirectAttributes redirect) {
+        return deleteRecord(() -> configurationService.deleteRecipient(id), "recipient", redirect);
+    }
+    @PostMapping("/groups/{id}/delete")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String deleteGroup(@PathVariable Long id, RedirectAttributes redirect) {
+        return deleteRecord(() -> configurationService.deleteGroup(id), "recipient group", redirect);
+    }
+    @PostMapping("/policies/{id}/delete")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String deletePolicy(@PathVariable Long id, RedirectAttributes redirect) {
+        return deleteRecord(() -> configurationService.deletePolicy(id), "legacy policy", redirect);
+    }
+    @PostMapping("/routes/{id}/delete")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String deleteRoute(@PathVariable Long id, RedirectAttributes redirect) {
+        return deleteRecord(() -> configurationService.deleteRoute(id), "legacy route", redirect);
+    }
+
+    private String deleteRecord(Runnable action, String label, RedirectAttributes redirect) {
+        try { action.run(); redirect.addFlashAttribute("successMessage", "Deleted " + label + "."); }
+        catch (DataIntegrityViolationException exception) {
+            redirect.addFlashAttribute("errorMessage", "Cannot delete this " + label
+                    + " because it is referenced by alert rules, routes, queued deliveries or other configuration. Remove the references first, or disable the record.");
+        } catch (IllegalArgumentException exception) {
+            redirect.addFlashAttribute("errorMessage", safeMessage(exception));
+        }
+        return "redirect:/administration/notifications";
+    }
+
+    private void editOptions(Model model) {
+        model.addAttribute("channelTypes", NotificationChannel.ChannelType.values());
+        model.addAttribute("severities", AlertRule.Severity.values());
+        model.addAttribute("eventTypes", NotificationRoute.EventType.values());
+        model.addAttribute("channels", channelRepository.findAllByOrderByNameAsc());
+        model.addAttribute("recipients", recipientRepository.findAll());
+        model.addAttribute("groups", groupRepository.findAllByOrderByNameAsc());
+        model.addAttribute("policies", policyRepository.findAllByOrderByNameAsc());
+        model.addAttribute("currentPage", "notification-configuration");
     }
 
     @PostMapping("/channels")

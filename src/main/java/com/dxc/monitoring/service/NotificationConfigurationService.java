@@ -220,6 +220,224 @@ public class NotificationConfigurationService {
     }
 
 
+
+    @Transactional(readOnly = true)
+    public NotificationChannelForm channelFormForEdit(NotificationChannel channel) {
+        NotificationChannelForm form = new NotificationChannelForm();
+        form.setName(channel.getName());
+        form.setChannelType(channel.getChannelType().name());
+        try {
+            Map<?, ?> config = objectMapper.readValue(channel.getConfiguration(), Map.class);
+            form.setSmtpHost(asText(config.get("host")));
+            if (config.get("port") instanceof Number port) form.setSmtpPort(port.intValue());
+            form.setSmtpFrom(asText(config.get("from")));
+            form.setSmtpUsername(asText(config.get("username")));
+            form.setSmtpAuth(Boolean.TRUE.equals(config.get("auth")));
+            form.setSmtpStartTls(Boolean.TRUE.equals(config.get("startTls")));
+            form.setWhatsappPhoneNumberId(asText(config.get("phoneNumberId")));
+            form.setWhatsappApiVersion(asText(config.get("apiVersion")));
+            form.setWhatsappTemplateName(asText(config.get("templateName")));
+            form.setWhatsappLanguageCode(asText(config.get("languageCode")));
+        } catch (Exception exception) {
+            throw new IllegalStateException("Saved channel configuration could not be loaded for editing.");
+        }
+        // Secret values are intentionally never read into the form.
+        return form;
+    }
+
+    private String asText(Object value) { return value == null ? null : String.valueOf(value); }
+
+    @Transactional
+    public void updateChannel(Long id, NotificationChannelForm form, Long userId) {
+        NotificationChannel channel = channelRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Notification channel was not found."));
+        if (form.getName() == null || form.getName().isBlank() || form.getName().trim().length() > 100)
+            throw new IllegalArgumentException("Channel name is required and must not exceed 100 characters.");
+        NotificationChannel.ChannelType type;
+        try { type = NotificationChannel.ChannelType.valueOf(form.getChannelType()); }
+        catch (RuntimeException exception) { throw new IllegalArgumentException("Choose Email, Teams or WhatsApp."); }
+
+        boolean sameType = channel.getChannelType() == type;
+        String secret = form.getSecret() == null ? "" : form.getSecret().trim();
+        String secretKey = null;
+        Map<String, Object> config = new LinkedHashMap<>();
+        switch (type) {
+            case EMAIL -> {
+                String host = required(form.getSmtpHost(), "SMTP host");
+                String from = required(form.getSmtpFrom(), "Sender email address");
+                if (form.getSmtpPort() < 1 || form.getSmtpPort() > 65535)
+                    throw new IllegalArgumentException("SMTP port must be between 1 and 65535.");
+                if (form.isSmtpAuth()) {
+                    if (form.getSmtpUsername() == null || form.getSmtpUsername().isBlank())
+                        throw new IllegalArgumentException("SMTP authentication requires a username.");
+                    if (secret.isBlank() && !(sameType && "smtp-password".equals(channel.getCredentialReference())))
+                        throw new IllegalArgumentException("SMTP authentication requires a password.");
+                    secretKey = secret.isBlank() ? channel.getCredentialReference() : "smtp-password";
+                }
+                config.put("host", host);
+                config.put("port", form.getSmtpPort());
+                config.put("from", from);
+                config.put("username", trimToNull(form.getSmtpUsername()));
+                config.put("auth", form.isSmtpAuth());
+                config.put("startTls", form.isSmtpStartTls());
+            }
+            case TEAMS -> {
+                if (secret.isBlank()) {
+                    if (!(sameType && "webhook-url".equals(channel.getCredentialReference())))
+                        throw new IllegalArgumentException("Teams webhook URL is required.");
+                    secretKey = channel.getCredentialReference();
+                } else {
+                    validateTeamsWebhook(secret);
+                    secretKey = "webhook-url";
+                }
+            }
+            case WHATSAPP -> {
+                String phoneId = required(form.getWhatsappPhoneNumberId(), "WhatsApp phone number ID");
+                if (!phoneId.matches("[0-9]{5,30}"))
+                    throw new IllegalArgumentException("WhatsApp phone number ID must be numeric.");
+                String version = trimToNull(form.getWhatsappApiVersion());
+                if (version == null) version = "v23.0";
+                if (!version.matches("v[0-9]{2,3}\\.[0-9]+"))
+                    throw new IllegalArgumentException("WhatsApp API version is invalid.");
+                if (secret.isBlank()) {
+                    if (!(sameType && "access-token".equals(channel.getCredentialReference())))
+                        throw new IllegalArgumentException("WhatsApp Cloud API access token is required.");
+                    secretKey = channel.getCredentialReference();
+                } else secretKey = "access-token";
+                config.put("phoneNumberId", phoneId);
+                config.put("apiVersion", version);
+                config.put("templateName", required(form.getWhatsappTemplateName(), "Approved WhatsApp template name"));
+                config.put("languageCode", trimToNull(form.getWhatsappLanguageCode()) == null
+                        ? "en_US" : form.getWhatsappLanguageCode().trim());
+            }
+        }
+
+        channel.setName(form.getName().trim());
+        channel.setChannelType(type);
+        channel.setConfiguration(toJson(config));
+        channel.setCredentialReference(secretKey);
+        channel.setUpdatedBy(userId);
+        channelRepository.save(channel);
+        if (!secret.isBlank() && secretKey != null) secretService.saveSecret(id, secretKey, secret, userId);
+    }
+
+    @Transactional
+    public void updateRecipient(Long id, String name, String email, String phone, Long userId) {
+        NotificationRecipient value = recipientRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Recipient was not found."));
+        String cleanName = required(name, "Recipient name");
+        String cleanEmail = trimToNull(email), cleanPhone = trimToNull(phone);
+        if (cleanName.length() > 200) throw new IllegalArgumentException("Recipient name must not exceed 200 characters.");
+        if (cleanEmail == null && cleanPhone == null && value.getTeamsAddress() == null && value.getUserId() == null)
+            throw new IllegalArgumentException("Provide an email address or a WhatsApp phone number.");
+        if (cleanEmail != null && cleanEmail.length() > 255) throw new IllegalArgumentException("Email address is too long.");
+        if (cleanPhone != null && cleanPhone.length() > 50) throw new IllegalArgumentException("Phone number is too long.");
+        value.setName(cleanName); value.setEmail(cleanEmail); value.setPhoneNumber(cleanPhone);
+        value.setUpdatedBy(userId); recipientRepository.save(value);
+    }
+
+    @Transactional
+    public void updateGroup(Long id, String name, String description, List<Long> recipientIds, Long userId) {
+        NotificationGroup group = groupRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Recipient group was not found."));
+        String cleanName = required(name, "Group name");
+        if (cleanName.length() > 150) throw new IllegalArgumentException("Group name must not exceed 150 characters.");
+        group.setName(cleanName); group.setDescription(trimToNull(description)); group.setUpdatedBy(userId);
+        groupRepository.save(group);
+        groupMemberRepository.deleteByGroup_Id(id);
+        if (recipientIds != null) {
+            for (Long recipientId : recipientIds.stream().filter(value -> value != null).distinct().toList()) {
+                NotificationRecipient recipient = recipientRepository.findById(recipientId)
+                        .orElseThrow(() -> new IllegalArgumentException("A selected recipient is unavailable."));
+                NotificationGroupMember member = new NotificationGroupMember();
+                member.setId(new NotificationGroupMemberId(id, recipientId));
+                member.setGroup(group); member.setRecipient(recipient);
+                groupMemberRepository.save(member);
+            }
+        }
+    }
+
+    @Transactional
+    public void updatePolicy(Long id, String name, String description, Long userId) {
+        NotificationPolicy policy = policyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Notification policy was not found."));
+        String cleanName = required(name, "Policy name");
+        if (cleanName.length() > 150) throw new IllegalArgumentException("Policy name must not exceed 150 characters.");
+        policy.setName(cleanName); policy.setDescription(trimToNull(description)); policy.setUpdatedBy(userId);
+        policyRepository.save(policy);
+    }
+
+    @Transactional
+    public void updateRoute(Long id, Long policyId, Long channelId, String severityValue, String eventValue,
+            String targetType, Long recipientId, Long groupId, int interval) {
+        if (interval < 0 || interval > 86400)
+            throw new IllegalArgumentException("Minimum notification interval must be between 0 and 86400 seconds.");
+        NotificationRoute route = routeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Notification route was not found."));
+        route.setNotificationPolicy(policyRepository.findById(policyId)
+                .orElseThrow(() -> new IllegalArgumentException("Select a notification policy.")));
+        NotificationChannel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Select a notification channel."));
+        route.setChannel(channel);
+        try {
+            route.setSeverity(AlertRule.Severity.valueOf(severityValue));
+            route.setEventType(NotificationRoute.EventType.valueOf(eventValue));
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Choose a supported severity and notification event.");
+        }
+        if ("RECIPIENT".equals(targetType)) {
+            if (recipientId == null || groupId != null) throw new IllegalArgumentException("Select exactly one recipient or group.");
+            NotificationRecipient recipient = recipientRepository.findById(recipientId)
+                    .orElseThrow(() -> new IllegalArgumentException("Select a recipient."));
+            validateRecipientDestination(channel, recipient);
+            route.setRecipient(recipient); route.setGroup(null);
+        } else if ("GROUP".equals(targetType)) {
+            if (groupId == null || recipientId != null) throw new IllegalArgumentException("Select exactly one recipient or group.");
+            NotificationGroup group = groupRepository.findById(groupId)
+                    .orElseThrow(() -> new IllegalArgumentException("Select a recipient group."));
+            boolean hasDestination = groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(groupId)
+                    .stream().map(NotificationGroupMember::getRecipient).anyMatch(recipient -> hasDestination(channel, recipient));
+            if (!hasDestination) throw new IllegalArgumentException("The selected group has no enabled member with a destination for this channel.");
+            route.setGroup(group); route.setRecipient(null);
+        } else throw new IllegalArgumentException("Choose a recipient or recipient group.");
+        route.setMinimumIntervalSeconds(interval);
+        routeRepository.save(route);
+    }
+
+    @Transactional
+    public void deleteChannel(Long id) { deleteExisting(channelRepository, id, "Notification channel"); }
+
+    @Transactional
+    public void deleteRecipient(Long id) {
+        NotificationRecipient recipient = recipientRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Recipient was not found."));
+        groupMemberRepository.deleteByRecipient_Id(id);
+        recipientRepository.delete(recipient);
+        recipientRepository.flush();
+    }
+
+    @Transactional
+    public void deleteGroup(Long id) {
+        NotificationGroup group = groupRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Recipient group was not found."));
+        groupMemberRepository.deleteByGroup_Id(id);
+        groupRepository.delete(group);
+        groupRepository.flush();
+    }
+
+    @Transactional
+    public void deletePolicy(Long id) { deleteExisting(policyRepository, id, "Notification policy"); }
+
+    @Transactional
+    public void deleteRoute(Long id) { deleteExisting(routeRepository, id, "Notification route"); }
+
+    private <T, ID> void deleteExisting(org.springframework.data.jpa.repository.JpaRepository<T, ID> repository,
+            ID id, String label) {
+        if (!repository.existsById(id)) throw new IllegalArgumentException(label + " was not found.");
+        repository.deleteById(id);
+        repository.flush();
+    }
+
     @Transactional
     public void toggleChannel(Long id, Long userId) {
         NotificationChannel value = channelRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Notification channel was not found."));
