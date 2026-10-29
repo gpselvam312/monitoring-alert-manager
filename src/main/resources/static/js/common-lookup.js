@@ -84,7 +84,10 @@
         elements.applicationFilter.classList.toggle("d-none", !state.filters.includes("application"));
         elements.environmentFilter.classList.toggle("d-none", !state.filters.includes("environment"));
         if (!state.filters.includes("application") && !state.filters.includes("environment")) return;
-        const response = await fetch(state.filterEndpoint || state.endpoint + "/filters", {
+        const filterParams = new URLSearchParams();
+        if (state.applicationId) filterParams.set("applicationId", state.applicationId);
+        const filterUrl = state.filterEndpoint || state.endpoint + "/filters";
+        const response = await fetch(filterUrl + (filterParams.size ? "?" + filterParams.toString() : ""), {
             headers: {"Accept": "application/json"},
             credentials: "same-origin"
         });
