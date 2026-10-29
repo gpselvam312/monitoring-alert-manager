@@ -46,7 +46,7 @@ public class TeamsNotificationSender implements NotificationChannelSender {
             case "WARNING" -> "FFB900";
             default -> "0078D4";
         });
-        card.put("title", "[" + severity + "] " + title);
+        card.put("title", title);
         card.put("text", body);
         card.put("sections", List.of(Map.of("facts", List.of(
                 Map.of("name", "Application", "value", value(payload, "application", "—")),
