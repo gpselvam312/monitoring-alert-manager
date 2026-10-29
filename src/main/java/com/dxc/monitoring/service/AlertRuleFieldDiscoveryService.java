@@ -56,41 +56,26 @@ public class AlertRuleFieldDiscoveryService {
         }
 
         MonitoringResult result = results.get(results.size() - 1);
+
+        // Discover from the actual monitoring payload, not execution-history metadata
+        // such as executionStatus, triggerSource, or the normalized result message.
+        // Normalized resultData is preferred because it preserves structured data;
+        // rawOutput and then a structured message are fallbacks for older result types.
+        Object payload = extractPayload(parseStructured(result.getResultData()));
+        if (payload == null) payload = parseStructured(result.getRawOutput());
+        if (payload == null) payload = parseStructured(result.getMessage());
+
         Map<String, Object> root = new LinkedHashMap<>();
-        root.put("executionStatus", execution.getStatus().name());
-        root.put("triggerSource", execution.getTriggerSource().name());
-        if (result.getStatus() != null) root.put("resultStatus", result.getStatus().name());
-        if (result.getValue() != null) root.put("resultValue", result.getValue());
-        if (result.getUnit() != null) root.put("resultUnit", result.getUnit());
-
-        // The result message is the user-facing monitoring payload for many job types.
-        // Prefer it for field discovery so the choices match the data users see.
-        Object messagePayload = parseStructured(result.getMessage());
-        boolean messagePayloadFound = false;
-        if (messagePayload instanceof Map<?, ?> messageMap) {
-            messagePayloadFound = true;
-            messageMap.forEach((key, value) -> root.put(String.valueOf(key), value));
-        } else if (messagePayload != null) {
-            messagePayloadFound = true;
-            root.put("data", messagePayload);
-        } else if (result.getMessage() != null && !result.getMessage().isBlank()) {
-            Map<String, Object> messageFields = parseKeyValueLines(result.getMessage());
-            if (!messageFields.isEmpty()) {
-                messagePayloadFound = true;
-                root.putAll(messageFields);
-            } else {
-                root.put("message", result.getMessage());
-            }
-        }
-
-        // Keep normalized result data as a fallback for result types whose payload
-        // is stored there instead of in the message column.
-        if (!messagePayloadFound) {
-            Object parsed = parseStructured(result.getResultData());
-            if (parsed instanceof Map<?, ?> map) {
-                map.forEach((key, value) -> root.put(String.valueOf(key), value));
-            } else if (parsed != null) {
-                root.put("data", parsed);
+        if (payload instanceof Map<?, ?> map) {
+            map.forEach((key, value) -> root.put(String.valueOf(key), value));
+        } else if (payload != null) {
+            root.put("data", payload);
+        } else {
+            // Support plain text key-value responses when no structured payload is stored.
+            String textPayload = firstNonBlank(result.getRawOutput(), result.getMessage());
+            if (textPayload != null) {
+                root.putAll(parseKeyValueLines(textPayload));
+                if (root.isEmpty()) root.put("message", textPayload);
             }
         }
 
@@ -136,6 +121,26 @@ public class AlertRuleFieldDiscoveryService {
         return new Discovery(null, "Sample response (not saved)", "SAMPLE", fields);
     }
 
+    /**
+     * Unwrap the normalized result envelope while preserving ordinary response
+     * objects that happen to contain a property named "data".
+     */
+    private Object extractPayload(Object parsed) {
+        if (parsed instanceof Map<?, ?> map
+                && map.containsKey("schemaVersion")
+                && map.containsKey("data")) {
+            return map.get("data");
+        }
+        return parsed;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value;
+        }
+        return null;
+    }
+
     private Object parseStructured(String text) {
         if (text == null || text.isBlank()) return null;
         try {
@@ -177,17 +182,29 @@ public class AlertRuleFieldDiscoveryService {
             }
             return;
         }
-        if (value instanceof List<?>) {
+        if (value instanceof List<?> list) {
+            if (list.isEmpty()) {
+                addField(path, "array", "[]", fields);
+                return;
+            }
+            for (int i = 0; i < list.size() && fields.size() < MAX_FIELDS; i++) {
+                String child = path.isEmpty() ? String.valueOf(i) : path + "." + i;
+                flatten(list.get(i), child, fields);
+            }
             return;
         }
         if (!path.isEmpty()) {
             String type = value == null ? "null"
                     : value instanceof Number ? "number"
                     : value instanceof Boolean ? "boolean" : "string";
-            String sample = value == null ? "null" : String.valueOf(value);
-            if (sample.length() > MAX_SAMPLE_LENGTH) sample = sample.substring(0, MAX_SAMPLE_LENGTH) + "…";
-            fields.add(new Field(path, path, type, sample));
+            addField(path, type, value == null ? "null" : String.valueOf(value), fields);
         }
+    }
+
+    private void addField(String path, String type, String sample, List<Field> fields) {
+        if (path == null || path.isBlank() || fields.size() >= MAX_FIELDS) return;
+        if (sample.length() > MAX_SAMPLE_LENGTH) sample = sample.substring(0, MAX_SAMPLE_LENGTH) + "…";
+        fields.add(new Field(path, path, type, sample));
     }
 
     public record Field(String path, String label, String type, String sampleValue) {}
