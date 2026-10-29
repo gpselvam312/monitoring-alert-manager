@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pathLabel.textContent = 'Value field path';
             const pathInput = document.createElement('input');
             pathInput.type = 'text'; pathInput.className = 'form-control tree-field-path';
-            pathInput.maxLength = 255; pathInput pathInput.value = node.fieldPath || '';
+            pathInput.maxLength = 255; pathInput.value = node.fieldPath || '';
             pathInput.setAttribute('list', fieldDatalist.id);
             pathInput.setAttribute('autocomplete', 'off');
             pathInput.setAttribute('aria-label', 'Value field path; type to see discovered fields');
