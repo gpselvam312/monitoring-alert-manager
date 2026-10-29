@@ -657,8 +657,28 @@ public class AlertEvaluationService {
     }
 
     private String summary(AlertRule rule, Map<String, Object> condition, Object value) {
+        String type = String.valueOf(condition.getOrDefault("type", "CONDITION")).toUpperCase(Locale.ROOT);
+        if ("COUNT_TOTAL".equals(type)) {
+            return "Rule '" + rule.getName() + "' matched total record count for collection '"
+                    + condition.get("collectionPath") + "' with observed count " + observedCount(value) + ".";
+        }
+        if ("COUNT_MATCHING".equals(type)) {
+            return "Rule '" + rule.getName() + "' matched record count for collection '"
+                    + condition.get("collectionPath") + "' with observed matching count " + observedCount(value) + ".";
+        }
+        if ("GROUP".equals(type)) {
+            return "Rule '" + rule.getName() + "' matched its configured condition group.";
+        }
         return "Rule '" + rule.getName() + "' matched field '" + condition.get("fieldPath")
                 + "' with observed value " + String.valueOf(value) + ".";
+    }
+
+    private Object observedCount(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            Object matching = map.get("matchingCount");
+            return matching == null ? map.getOrDefault("totalCount", "unknown") : matching;
+        }
+        return value;
     }
 
     private String toJson(Object value) {
