@@ -16,6 +16,31 @@
 <div class="col-12 col-md-6"><label class="form-label" for="notificationPolicyId">Notification Policy</label><select class="form-select" id="notificationPolicyId" th:field="*{notificationPolicyId}"><option value="">No notifications configured</option><option th:each="policy : ${notificationPolicies}" th:value="${policy.id}" th:text="${policy.name}"></option></select><div class="form-text">Configure channels, recipients and routes in Notification Configuration.</div></div>
 <div class="col-12 col-md-3 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="enabled" th:field="*{enabled}"><label class="form-check-label" for="enabled">Rule enabled</label></div></div>
 </div></div></div>
+<div class="app-card mb-3">
+    <div class="app-card-header"><h2 class="h6 mb-0"><i class="bi bi-envelope-paper me-2"></i>Alert Content</h2></div>
+    <div class="app-card-body">
+        <p class="small text-muted">Customize the subject and message shown in the alert and reused by notification channels. Template variables are replaced when an alert is created.</p>
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label" for="alertSubject">Alert Subject <span class="text-danger">*</span></label>
+                <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required>
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="alertMessage">Alert Message <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="alertMessage" th:field="*{alertMessage}" rows="4" maxlength="10000" required></textarea>
+            </div>
+            <div class="col-12">
+                <div class="form-text mb-2">Available variables: <code>{ruleName}</code>, <code>{severity}</code>, <code>{jobName}</code>, <code>{applicationName}</code>, <code>{environment}</code>, <code>{fieldPath}</code>, <code>{actualValue}</code>, <code>{threshold}</code>, <code>{executionId}</code>, <code>{timestamp}</code>.</div>
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2"><label class="form-label mb-0" for="alertContentPreview">Preview</label><button type="button" class="btn btn-sm btn-outline-secondary" id="refreshAlertContentPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh Preview</button></div>
+                <div class="rounded border p-3" aria-live="polite">
+                    <div class="fw-semibold text-break" id="alertContentPreviewSubject">Alert subject preview</div>
+                    <div class="small text-muted mt-2 text-break" id="alertContentPreviewMessage" style="white-space: pre-wrap">Alert message preview</div>
+                </div>
+                <div class="form-text">Preview uses example values. Actual values are filled from the rule and triggering execution.</div>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="app-card mb-3"><div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0">Alert Condition</h2><button type="button" class="btn btn-sm btn-outline-primary" id="discoverAlertFields" th:attr="data-discovery-url=@{/alerts/rules/discovery/}" th:disabled="${ruleForm.monitoringJobId == null}"><i class="bi bi-search me-1"></i>Load Latest Saved Result</button></div><div class="app-card-body"><p class="small text-muted">Discover selectable fields from the latest successful saved result. This does not run the monitoring job. You can also enter a field path manually if needed.</p><div class="row g-3 mb-3"><div class="col-12 col-lg-5"><label class="form-label" for="conditionType">Condition Mode</label><select class="form-select" id="conditionType" th:field="*{conditionType}"><option value="CONDITION">Field conditions and AND / OR groups</option><option value="COUNT_TOTAL">Total records in a collection</option><option value="COUNT_MATCHING">Count records matching a condition</option></select><div class="form-text">Use count mode for JSON arrays such as data.servers.</div></div></div><div id="fieldDiscoveryMessage" class="alert d-none mb-3" role="status" aria-live="polite"></div><div class="row g-3 mb-3"><div class="col-12 col-lg-6"><label class="form-label" for="discoveredFieldPath">Discovered Fields</label><select class="form-select" id="discoveredFieldPath" disabled><option value="">Load a saved result to discover fields</option></select><div id="discoveredFieldSample" class="form-text">Field type and sample value will appear here.</div></div><div class="col-12 col-lg-6 d-flex align-items-end"><div id="fieldDiscoveryExecution" class="small text-muted"></div></div></div><details class="mb-3"><summary class="small fw-semibold">Use a sample response instead</summary><div class="pt-3"><label class="form-label" for="sampleResponseForDiscovery">Sample response</label><textarea class="form-control font-monospace" id="sampleResponseForDiscovery" rows="5"></textarea><div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="discoverSampleFields" th:attr="data-sample-url=@{/alerts/rules/discovery/sample}"><i class="bi bi-braces me-1"></i>Discover from Sample</button></div><div class="form-text">Supports JSON, key-value lines, and comma-delimited header/value rows. A sample is used only for field discovery; it is not saved or executed.</div></div></details><p class="small text-muted">You can also use <code>executionStatus</code> and other execution metadata fields.</p><input type="hidden" th:field="*{conditionTreeJson}" id="conditionTreeJson">
 <div class="mb-3">
     <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-2">
@@ -289,6 +314,37 @@ document.addEventListener('DOMContentLoaded', () => {
     countFieldOperator.addEventListener('change', updateConditionInputs);
     form.addEventListener('submit', () => syncTree());
     renderTree();
+
+    const alertSubjectInput = document.getElementById('alertSubject');
+    const alertMessageInput = document.getElementById('alertMessage');
+    const alertPreviewSubject = document.getElementById('alertContentPreviewSubject');
+    const alertPreviewMessage = document.getElementById('alertContentPreviewMessage');
+    const refreshAlertPreview = document.getElementById('refreshAlertContentPreview');
+    const renderAlertContentPreview = () => {
+        const values = {
+            ruleName: document.getElementById('name')?.value || 'CPU Utilization Alert',
+            severity: document.getElementById('severity')?.value || 'CRITICAL',
+            jobName: document.getElementById('monitoringJobLabel')?.value || 'Monitoring Job',
+            applicationName: 'Retail Availability',
+            environment: 'Production',
+            fieldPath: firstCondition(tree)?.fieldPath || 'system.cpu.percent',
+            actualValue: '94.5',
+            threshold: firstCondition(tree)?.threshold ?? '85',
+            executionId: '12345',
+            timestamp: new Date().toLocaleString()
+        };
+        const render = (template) => (template || '').replace(/\{([A-Za-z][A-Za-z0-9]*)\}/g, (token, key) =>
+            Object.prototype.hasOwnProperty.call(values, key) ? values[key] : token);
+        if (alertPreviewSubject) alertPreviewSubject.textContent = render(alertSubjectInput?.value || '');
+        if (alertPreviewMessage) alertPreviewMessage.textContent = render(alertMessageInput?.value || '');
+    };
+    [alertSubjectInput, alertMessageInput, document.getElementById('name'),
+        document.getElementById('severity'), document.getElementById('monitoringJobLabel')].forEach(input => {
+        input?.addEventListener('input', renderAlertContentPreview);
+        input?.addEventListener('change', renderAlertContentPreview);
+    });
+    refreshAlertPreview?.addEventListener('click', renderAlertContentPreview);
+    renderAlertContentPreview();
 
     const applyOperatorOptions = (selectElement, type) => {
         if (!selectElement) return;
