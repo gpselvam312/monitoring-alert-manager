@@ -1,8 +1,5 @@
 package com.dxc.monitoring.web;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class AlertRuleForm {
     private Long id;
     private Long monitoringJobId;
@@ -11,25 +8,18 @@ public class AlertRuleForm {
     private boolean enabled = true;
     private String severity = "CRITICAL";
     private String executionSourcePolicy = "SCHEDULED_ONLY";
-    private String conditionTreeJson = "{\"type\":\"CONDITION\",\"fieldPath\":\"\",\"operator\":\"GREATER_THAN\",\"threshold\":\"\"}";
-    private boolean conditionGroupEnabled;
-    private List<AlertConditionForm> conditionItems = new ArrayList<>(List.of(new AlertConditionForm()));
-    private String conditionGroupOperator = "AND";
-    private String secondConditionFieldPath = "";
-    private String secondConditionOperator = "GREATER_THAN";
-    private String secondThreshold = "";
+
     private String conditionType = "CONDITION";
+    private String conditionTreeJson = "{\"type\":\"CONDITION\",\"fieldPath\":\"\",\"operator\":\"GREATER_THAN\",\"threshold\":\"\"}";
     private String collectionPath = "";
     private String countFieldPath = "";
     private String countFieldOperator = "EQUALS";
     private String countFieldThreshold = "";
     private String countOperator = "GREATER_THAN_OR_EQUAL";
     private String countThreshold = "1";
-    private String conditionFieldPath = "";
-    private String conditionOperator = "GREATER_THAN";
-    private String threshold = "";
     private int consecutiveMatches = 1;
     private String correlationFieldPath = "";
+
     private Long notificationPolicyId;
     private boolean recoveryEnabled = true;
     private String recoveryFieldPath = "";
@@ -51,22 +41,11 @@ public class AlertRuleForm {
     public void setSeverity(String severity) { this.severity = severity; }
     public String getExecutionSourcePolicy() { return executionSourcePolicy; }
     public void setExecutionSourcePolicy(String executionSourcePolicy) { this.executionSourcePolicy = executionSourcePolicy; }
-    public String getConditionTreeJson() { return conditionTreeJson; }
-    public void setConditionTreeJson(String conditionTreeJson) { this.conditionTreeJson = conditionTreeJson; }
-    public List<AlertConditionForm> getConditionItems() { return conditionItems; }
-    public void setConditionItems(List<AlertConditionForm> conditionItems) { this.conditionItems = conditionItems == null ? new ArrayList<>() : conditionItems; }
-    public boolean isConditionGroupEnabled() { return conditionGroupEnabled; }
-    public void setConditionGroupEnabled(boolean conditionGroupEnabled) { this.conditionGroupEnabled = conditionGroupEnabled; }
-    public String getConditionGroupOperator() { return conditionGroupOperator; }
-    public void setConditionGroupOperator(String conditionGroupOperator) { this.conditionGroupOperator = conditionGroupOperator; }
-    public String getSecondConditionFieldPath() { return secondConditionFieldPath; }
-    public void setSecondConditionFieldPath(String secondConditionFieldPath) { this.secondConditionFieldPath = secondConditionFieldPath; }
-    public String getSecondConditionOperator() { return secondConditionOperator; }
-    public void setSecondConditionOperator(String secondConditionOperator) { this.secondConditionOperator = secondConditionOperator; }
-    public String getSecondThreshold() { return secondThreshold; }
-    public void setSecondThreshold(String secondThreshold) { this.secondThreshold = secondThreshold; }
+
     public String getConditionType() { return conditionType; }
     public void setConditionType(String conditionType) { this.conditionType = conditionType; }
+    public String getConditionTreeJson() { return conditionTreeJson; }
+    public void setConditionTreeJson(String conditionTreeJson) { this.conditionTreeJson = conditionTreeJson; }
     public String getCollectionPath() { return collectionPath; }
     public void setCollectionPath(String collectionPath) { this.collectionPath = collectionPath; }
     public String getCountFieldPath() { return countFieldPath; }
@@ -79,18 +58,13 @@ public class AlertRuleForm {
     public void setCountOperator(String countOperator) { this.countOperator = countOperator; }
     public String getCountThreshold() { return countThreshold; }
     public void setCountThreshold(String countThreshold) { this.countThreshold = countThreshold; }
-    public String getConditionFieldPath() { return conditionFieldPath; }
-    public void setConditionFieldPath(String conditionFieldPath) { this.conditionFieldPath = conditionFieldPath; }
-    public String getConditionOperator() { return conditionOperator; }
-    public void setConditionOperator(String conditionOperator) { this.conditionOperator = conditionOperator; }
-    public String getThreshold() { return threshold; }
-    public void setThreshold(String threshold) { this.threshold = threshold; }
     public int getConsecutiveMatches() { return consecutiveMatches; }
     public void setConsecutiveMatches(int consecutiveMatches) { this.consecutiveMatches = consecutiveMatches; }
-    public Long getNotificationPolicyId() { return notificationPolicyId; }
-    public void setNotificationPolicyId(Long notificationPolicyId) { this.notificationPolicyId = notificationPolicyId; }
     public String getCorrelationFieldPath() { return correlationFieldPath; }
     public void setCorrelationFieldPath(String correlationFieldPath) { this.correlationFieldPath = correlationFieldPath; }
+
+    public Long getNotificationPolicyId() { return notificationPolicyId; }
+    public void setNotificationPolicyId(Long notificationPolicyId) { this.notificationPolicyId = notificationPolicyId; }
     public boolean isRecoveryEnabled() { return recoveryEnabled; }
     public void setRecoveryEnabled(boolean recoveryEnabled) { this.recoveryEnabled = recoveryEnabled; }
     public String getRecoveryFieldPath() { return recoveryFieldPath; }
