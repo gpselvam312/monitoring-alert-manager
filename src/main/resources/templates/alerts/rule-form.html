@@ -13,9 +13,31 @@
 <div class="col-12"><label class="form-label" for="description">Description</label><textarea class="form-control" id="description" th:field="*{description}" rows="2" maxlength="1000"></textarea></div>
 <div class="col-12 col-md-4"><label class="form-label" for="severity">Severity</label><select class="form-select" id="severity" th:field="*{severity}"><option th:each="severity : ${severities}" th:value="${severity.name()}" th:text="${severity.name()}"></option></select></div>
 <div class="col-12 col-md-5"><label class="form-label" for="executionSourcePolicy">Execution Source</label><select class="form-select" id="executionSourcePolicy" th:field="*{executionSourcePolicy}"><option value="SCHEDULED_ONLY">Scheduled only (recommended)</option><option value="MANUAL_ONLY">Manual only</option><option value="ALL_NON_STREAMING">Scheduled and manual</option></select><div class="form-text">Historical executions with unknown source are never evaluated.</div></div>
-<div class="col-12 col-md-6"><label class="form-label" for="notificationPolicyId">Notification Policy</label><select class="form-select" id="notificationPolicyId" th:field="*{notificationPolicyId}"><option value="">No notifications configured</option><option th:each="policy : ${notificationPolicies}" th:value="${policy.id}" th:text="${policy.name}"></option></select><div class="form-text">Configure channels, recipients and routes in Notification Configuration.</div></div>
+<div class="col-12"><div class="form-text">Notification destinations are assigned to this alert rule only. Shared channels, recipients and groups are managed under Notification Configuration.</div></div>
 <div class="col-12 col-md-3 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="enabled" th:field="*{enabled}"><label class="form-check-label" for="enabled">Rule enabled</label></div></div>
 </div></div></div>
+<div class="app-card mb-3">
+<div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0"><i class="bi bi-bell me-2"></i>Rule-specific Notifications</h2><button type="button" class="btn btn-sm btn-outline-primary" id="addNotificationRoute"><i class="bi bi-plus-lg me-1"></i>Add Route</button></div>
+<div class="app-card-body">
+<p class="small text-muted">Only destinations explicitly assigned here receive notifications for this rule. Recurrence and reminder events use the minimum interval to prevent notification spam. Existing routes were copied from the previous policy configuration.</p>
+<input type="hidden" th:field="*{notificationRoutesJson}" id="notificationRoutesJson">
+<div id="notificationRoutesEmpty" class="alert alert-light border small mb-3">No notification routes configured for this rule.</div>
+<div id="notificationRoutesContainer" class="d-grid gap-3"></div>
+<template id="notificationRouteTemplate">
+<div class="border rounded p-3 notification-route-row">
+<div class="d-flex align-items-center justify-content-between mb-3"><strong class="route-heading">Notification route</strong><button type="button" class="btn btn-sm btn-outline-danger remove-notification-route"><i class="bi bi-trash me-1"></i>Remove</button></div>
+<div class="row g-3">
+<div class="col-12 col-md-6"><label class="form-label">Channel</label><select class="form-select route-channel" required><option value="">Select channel</option><option th:each="channel : ${notificationChannels}" th:value="${channel.id}" th:text="${channel.name + ' (' + channel.channelType + ')'}"></option></select></div>
+<div class="col-6 col-md-3"><label class="form-label">Severity</label><select class="form-select route-severity" required><option value="INFO">Info</option><option value="WARNING">Warning</option><option value="CRITICAL">Critical</option></select></div>
+<div class="col-6 col-md-3"><label class="form-label">Event</label><select class="form-select route-event" required><option value="CREATED">Alert created</option><option value="RECURRENCE">Recurring alert</option><option value="ESCALATED">Severity escalated</option><option value="RECOVERED">Alert recovered</option><option value="REMINDER">Reminder</option></select></div>
+<div class="col-12 col-md-3"><label class="form-label">Target type</label><select class="form-select route-target-type"><option value="RECIPIENT">Recipient</option><option value="GROUP">Recipient group</option></select></div>
+<div class="col-12 col-md-5 route-recipient-container"><label class="form-label">Recipient</label><select class="form-select route-recipient"><option value="">Select recipient</option><option th:each="recipient : ${notificationRecipients}" th:value="${recipient.id}" th:text="${recipient.name}"></option></select></div>
+<div class="col-12 col-md-5 route-group-container d-none"><label class="form-label">Recipient group</label><select class="form-select route-group"><option value="">Select group</option><option th:each="group : ${notificationGroups}" th:value="${group.id}" th:text="${group.name}"></option></select></div>
+<div class="col-6 col-md-3"><label class="form-label">Minimum interval (seconds)</label><input class="form-control route-interval" type="number" min="0" max="2147483647" value="300" required><div class="form-text">Used for recurrence/reminder</div></div>
+<div class="col-6 col-md-3 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input route-enabled" type="checkbox" checked><label class="form-check-label">Route enabled</label></div></div>
+</div></div>
+</template>
+</div></div>
 <div class="app-card mb-3">
     <div class="app-card-header"><h2 class="h6 mb-0"><i class="bi bi-envelope-paper me-2"></i>Alert Content</h2></div>
     <div class="app-card-body">
@@ -72,6 +94,70 @@
 <div class="d-flex justify-content-end gap-2"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
 </form><script>
 document.addEventListener('DOMContentLoaded', () => {
+    const routesInput = document.getElementById('notificationRoutesJson');
+    const routesContainer = document.getElementById('notificationRoutesContainer');
+    const routesEmpty = document.getElementById('notificationRoutesEmpty');
+    const routeTemplate = document.getElementById('notificationRouteTemplate');
+    const addRouteButton = document.getElementById('addNotificationRoute');
+    const syncNotificationRoutes = () => {
+        const rows = Array.from(routesContainer.querySelectorAll('.notification-route-row')).map(row => {
+            const targetType = row.querySelector('.route-target-type').value;
+            return {
+                channelId: row.querySelector('.route-channel').value || null,
+                severity: row.querySelector('.route-severity').value,
+                eventType: row.querySelector('.route-event').value,
+                targetType,
+                recipientId: targetType === 'RECIPIENT' ? (row.querySelector('.route-recipient').value || null) : null,
+                groupId: targetType === 'GROUP' ? (row.querySelector('.route-group').value || null) : null,
+                minimumIntervalSeconds: row.querySelector('.route-interval').value || '300',
+                enabled: row.querySelector('.route-enabled').checked
+            };
+        });
+        routesInput.value = JSON.stringify(rows);
+        routesEmpty.classList.toggle('d-none', rows.length > 0);
+        routesContainer.querySelectorAll('.route-heading').forEach((heading, index) => heading.textContent = 'Notification route ' + (index + 1));
+    };
+    const setTargetType = row => {
+        const isGroup = row.querySelector('.route-target-type').value === 'GROUP';
+        row.querySelector('.route-recipient-container').classList.toggle('d-none', isGroup);
+        row.querySelector('.route-group-container').classList.toggle('d-none', !isGroup);
+        row.querySelector('.route-recipient').required = !isGroup;
+        row.querySelector('.route-group').required = isGroup;
+        syncNotificationRoutes();
+    };
+    const addRoute = route => {
+        const fragment = routeTemplate.content.cloneNode(true);
+        const row = fragment.querySelector('.notification-route-row');
+        routesContainer.appendChild(fragment);
+        const added = routesContainer.lastElementChild;
+        if (route) {
+            added.querySelector('.route-channel').value = route.channelId == null ? '' : String(route.channelId);
+            added.querySelector('.route-severity').value = route.severity || 'CRITICAL';
+            added.querySelector('.route-event').value = route.eventType || 'CREATED';
+            added.querySelector('.route-target-type').value = route.targetType || (route.groupId ? 'GROUP' : 'RECIPIENT');
+            added.querySelector('.route-recipient').value = route.recipientId == null ? '' : String(route.recipientId);
+            added.querySelector('.route-group').value = route.groupId == null ? '' : String(route.groupId);
+            added.querySelector('.route-interval').value = route.minimumIntervalSeconds == null ? '300' : String(route.minimumIntervalSeconds);
+            added.querySelector('.route-enabled').checked = route.enabled !== false;
+        }
+        added.querySelector('.route-target-type').addEventListener('change', () => setTargetType(added));
+        added.querySelector('.remove-notification-route').addEventListener('click', () => { added.remove(); syncNotificationRoutes(); });
+        added.querySelectorAll('select,input').forEach(input => input.addEventListener('change', syncNotificationRoutes));
+        added.querySelectorAll('input').forEach(input => input.addEventListener('input', syncNotificationRoutes));
+        setTargetType(added);
+        syncNotificationRoutes();
+    };
+    addRouteButton?.addEventListener('click', () => addRoute(null));
+    try {
+        const initialRoutes = JSON.parse(routesInput?.value || '[]');
+        if (Array.isArray(initialRoutes)) initialRoutes.forEach(addRoute);
+        else throw new Error('Invalid routes');
+    } catch (error) {
+        routesInput.value = '[]';
+        routesEmpty.classList.remove('d-none');
+    }
+    document.querySelector('form')?.addEventListener('submit', syncNotificationRoutes);
+
     const jobIdInput = document.getElementById('monitoringJobId');
     const discoverButton = document.getElementById('discoverAlertFields');
     const fieldSelect = document.getElementById('discoveredFieldPath');
