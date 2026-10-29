@@ -86,6 +86,31 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
             @Param("executionMode") MonitoringJob.ExecutionMode executionMode,
             @Param("applicationIds") List<Long> applicationIds, Pageable pageable);
 
+    @EntityGraph(attributePaths = { "application", "environment" })
+    @Query("""
+            SELECT j
+            FROM MonitoringJob j
+            JOIN j.application a
+            LEFT JOIN j.environment e
+            WHERE j.executionMode = :executionMode
+              AND a.id IN :applicationIds
+              AND (:applicationId IS NULL OR a.id = :applicationId)
+              AND (:environmentId IS NULL OR e.id = :environmentId)
+              AND (
+                    :search = ''
+                    OR LOWER(j.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(j.description, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(a.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(COALESCE(e.name, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+              )
+            """)
+    Page<MonitoringJob> findAllForLookup(@Param("search") String search,
+            @Param("applicationIds") List<Long> applicationIds,
+            @Param("applicationId") Long applicationId,
+            @Param("environmentId") Long environmentId,
+            @Param("executionMode") MonitoringJob.ExecutionMode executionMode,
+            Pageable pageable);
+
     boolean existsByApplicationId(Long applicationId);
 
     @Query("""
