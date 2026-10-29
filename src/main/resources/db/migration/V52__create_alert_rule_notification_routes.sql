@@ -45,5 +45,6 @@ SELECT ar.id, nr.channel_id, nr.recipient_id, nr.group_id, nr.severity, nr.event
             THEN 300 ELSE nr.minimum_interval_seconds END,
        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM ra_fcb.alert_rules ar
+JOIN ra_fcb.notification_policies np ON np.id = ar.notification_policy_id AND np.enabled = TRUE
 JOIN ra_fcb.notification_routes nr ON nr.notification_policy_id = ar.notification_policy_id
 WHERE ar.notification_policy_id IS NOT NULL;
