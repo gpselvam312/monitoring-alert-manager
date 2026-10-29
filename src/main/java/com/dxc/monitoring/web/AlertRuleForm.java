@@ -23,6 +23,7 @@ public class AlertRuleForm {
     private String alertSubject = "[{severity}] {ruleName}";
     private String alertMessage = "Job {jobName} in application {applicationName}, environment {environment}: {fieldPath} evaluated to {actualValue} (threshold: {threshold}).";
     private Long notificationPolicyId;
+    private String notificationRoutesJson = "[]";
     private boolean recoveryEnabled = true;
     private String recoveryFieldPath = "";
     private String recoveryOperator = "LESS_THAN_OR_EQUAL";
@@ -71,6 +72,8 @@ public class AlertRuleForm {
     public void setAlertMessage(String alertMessage) { this.alertMessage = alertMessage; }
     public Long getNotificationPolicyId() { return notificationPolicyId; }
     public void setNotificationPolicyId(Long notificationPolicyId) { this.notificationPolicyId = notificationPolicyId; }
+    public String getNotificationRoutesJson() { return notificationRoutesJson; }
+    public void setNotificationRoutesJson(String notificationRoutesJson) { this.notificationRoutesJson = notificationRoutesJson; }
     public boolean isRecoveryEnabled() { return recoveryEnabled; }
     public void setRecoveryEnabled(boolean recoveryEnabled) { this.recoveryEnabled = recoveryEnabled; }
     public String getRecoveryFieldPath() { return recoveryFieldPath; }
