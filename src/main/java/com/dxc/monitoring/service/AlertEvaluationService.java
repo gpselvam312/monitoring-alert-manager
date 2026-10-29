@@ -18,6 +18,7 @@ import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.AlertRuleEvaluation;
 import com.dxc.monitoring.entity.MonitoringExecution;
+import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.MonitoringResult;
 import com.dxc.monitoring.repository.AlertHistoryRepository;
 import com.dxc.monitoring.repository.AlertRepository;
@@ -204,8 +205,11 @@ public class AlertEvaluationService {
         alert.setCorrelationKey(correlationKey);
         alert.setStatus(Alert.AlertStatus.ACTIVE);
         alert.setSeverity(rule.getSeverity());
-        alert.setTitle("Alert: " + rule.getName());
-        alert.setSummary(summary(rule, readConfig(rule.getConditionConfig(), "condition"), result.value()));
+        Map<String, Object> condition = readConfig(rule.getConditionConfig(), "condition");
+        alert.setTitle(truncate(renderAlertTemplate(rule.getAlertSubject(), rule, execution, condition,
+                result.value(), now), 500));
+        alert.setSummary(renderAlertTemplate(rule.getAlertMessage(), rule, execution, condition,
+                result.value(), now));
         alert.setCurrentValue(toJson(result.value()));
         alert.setFirstOccurredAt(now);
         alert.setLastOccurredAt(now);
@@ -718,6 +722,59 @@ public class AlertEvaluationService {
             throw new IllegalArgumentException("Alert configuration requires '" + key + "'.");
         }
         return String.valueOf(value).trim();
+    }
+
+    private String renderAlertTemplate(String template, AlertRule rule, MonitoringExecution execution,
+            Map<String, Object> condition, Object observedValue, OffsetDateTime timestamp) {
+        Map<String, String> values = new LinkedHashMap<>();
+        MonitoringJob job = execution.getMonitoringJob();
+        values.put("ruleName", safeTemplateValue(rule.getName()));
+        values.put("severity", rule.getSeverity().name());
+        values.put("jobName", safeTemplateValue(job == null ? "" : job.getName()));
+        values.put("applicationName", safeTemplateValue(job == null || job.getApplication() == null
+                ? "" : job.getApplication().getName()));
+        values.put("environment", safeTemplateValue(job == null || job.getEnvironment() == null
+                ? "—" : job.getEnvironment().getName()));
+        values.put("fieldPath", safeTemplateValue(findConfiguredValue(condition, "fieldPath", "collectionPath")));
+        values.put("actualValue", safeTemplateValue(observedValue instanceof Map<?, ?> || observedValue instanceof List<?>
+                ? toJson(observedValue) : String.valueOf(observedValue == null ? "null" : observedValue)));
+        values.put("threshold", safeTemplateValue(findConfiguredValue(condition, "threshold", "value", "countThreshold")));
+        values.put("executionId", String.valueOf(execution.getId()));
+        values.put("timestamp", timestamp.toString());
+
+        String rendered = template == null ? "" : template;
+        for (Map.Entry<String, String> entry : values.entrySet()) {
+            rendered = rendered.replace("{" + entry.getKey() + "}", entry.getValue());
+        }
+        return rendered;
+    }
+
+    private String findConfiguredValue(Map<String, Object> node, String... keys) {
+        for (String key : keys) {
+            Object value = node.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) return String.valueOf(value);
+        }
+        Object childrenValue = node.get("children");
+        if (childrenValue instanceof List<?> children) {
+            for (Object child : children) {
+                if (child instanceof Map<?, ?> childMap) {
+                    Map<String, Object> childNode = new LinkedHashMap<>();
+                    childMap.forEach((key, value) -> childNode.put(String.valueOf(key), value));
+                    String found = findConfiguredValue(childNode, keys);
+                    if (!found.isBlank()) return found;
+                }
+            }
+        }
+        return "";
+    }
+
+    private String safeTemplateValue(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) return value;
+        return value.substring(0, maxLength);
     }
 
     private String summary(AlertRule rule, Map<String, Object> condition, Object value) {
