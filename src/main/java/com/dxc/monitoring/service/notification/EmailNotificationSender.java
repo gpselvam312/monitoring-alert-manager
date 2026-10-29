@@ -58,7 +58,6 @@ public class EmailNotificationSender implements NotificationChannelSender {
         properties.put("mail.smtp.timeout", "10000");
         properties.put("mail.smtp.writetimeout", "10000");
 
-        String severity = string(payload, "severity", "ALERT");
         String title = string(payload, "title", "Monitoring alert");
         String body = string(payload, "body", "");
         SimpleMailMessage message = new SimpleMailMessage();
