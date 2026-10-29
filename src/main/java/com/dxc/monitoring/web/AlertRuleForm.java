@@ -11,6 +11,7 @@ public class AlertRuleForm {
     private boolean enabled = true;
     private String severity = "CRITICAL";
     private String executionSourcePolicy = "SCHEDULED_ONLY";
+    private String conditionTreeJson = "{\"type\":\"CONDITION\",\"fieldPath\":\"\",\"operator\":\"GREATER_THAN\",\"threshold\":\"\"}";
     private boolean conditionGroupEnabled;
     private List<AlertConditionForm> conditionItems = new ArrayList<>(List.of(new AlertConditionForm()));
     private String conditionGroupOperator = "AND";
@@ -50,6 +51,8 @@ public class AlertRuleForm {
     public void setSeverity(String severity) { this.severity = severity; }
     public String getExecutionSourcePolicy() { return executionSourcePolicy; }
     public void setExecutionSourcePolicy(String executionSourcePolicy) { this.executionSourcePolicy = executionSourcePolicy; }
+    public String getConditionTreeJson() { return conditionTreeJson; }
+    public void setConditionTreeJson(String conditionTreeJson) { this.conditionTreeJson = conditionTreeJson; }
     public List<AlertConditionForm> getConditionItems() { return conditionItems; }
     public void setConditionItems(List<AlertConditionForm> conditionItems) { this.conditionItems = conditionItems == null ? new ArrayList<>() : conditionItems; }
     public boolean isConditionGroupEnabled() { return conditionGroupEnabled; }
