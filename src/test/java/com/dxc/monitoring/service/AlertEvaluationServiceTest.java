@@ -105,11 +105,18 @@ class AlertEvaluationServiceTest {
         when(rule.getConditionConfig()).thenReturn("""
                 {
                   "type":"GROUP",
-                  "operator":"OR",
+                  "operator":"AND",
                   "consecutiveMatches":1,
                   "children":[
-                    {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85},
-                    {"type":"CONDITION","fieldPath":"resultStatus","operator":"EQUALS","threshold":"FAILED"}
+                    {
+                      "type":"GROUP",
+                      "operator":"OR",
+                      "children":[
+                        {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85},
+                        {"type":"CONDITION","fieldPath":"resultStatus","operator":"EQUALS","threshold":"FAILED"}
+                      ]
+                    },
+                    {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"LESS_THAN","threshold":100}
                   ]
                 }
                 """);
