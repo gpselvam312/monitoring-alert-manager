@@ -291,8 +291,8 @@ public class AlertRuleManagementService {
                 throw new IllegalArgumentException("Choose AND or OR for each condition group.");
             }
             Object rawChildren = node.get("children");
-            if (!(rawChildren instanceof java.util.List<?> children) || children.size() < 2) {
-                throw new IllegalArgumentException("Each condition group must contain at least two children.");
+            if (!(rawChildren instanceof java.util.List<?> children) || children.isEmpty()) {
+                throw new IllegalArgumentException("Each condition group must contain at least one child.");
             }
             List<Map<String, Object>> normalizedChildren = new java.util.ArrayList<>();
             for (Object child : children) {
