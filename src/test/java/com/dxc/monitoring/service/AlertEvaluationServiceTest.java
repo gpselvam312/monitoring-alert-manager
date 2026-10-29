@@ -101,6 +101,48 @@ class AlertEvaluationServiceTest {
     }
 
     @Test
+    void evaluatesNestedOrConditionGroups() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {
+                  "type":"GROUP",
+                  "operator":"OR",
+                  "consecutiveMatches":1,
+                  "children":[
+                    {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85},
+                    {"type":"CONDITION","fieldPath":"resultStatus","operator":"EQUALS","threshold":"FAILED"}
+                  ]
+                }
+                """);
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository).save(any(Alert.class));
+        verify(historyRepository).save(any(AlertHistory.class));
+        verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
+    void rejectsInvalidConditionGroupOperator() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {
+                  "type":"GROUP",
+                  "operator":"XOR",
+                  "children":[
+                    {"type":"CONDITION","fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85}
+                  ]
+                }
+                """);
+
+        service.evaluateExecution(101L);
+
+        org.mockito.ArgumentCaptor<AlertRuleEvaluation> captor =
+                org.mockito.ArgumentCaptor.forClass(AlertRuleEvaluation.class);
+        verify(evaluationRepository).save(captor.capture());
+        assertEquals(AlertRuleEvaluation.Outcome.ERROR, captor.getValue().getOutcome());
+        verify(alertRepository, never()).save(any(Alert.class));
+    }
+
+    @Test
     void ignoresManualExecutionForScheduledOnlyRule() {
         when(execution.getTriggerSource()).thenReturn(MonitoringExecution.TriggerSource.MANUAL);
 
