@@ -206,9 +206,16 @@ public class AlertEvaluationService {
         alert.setStatus(Alert.AlertStatus.ACTIVE);
         alert.setSeverity(rule.getSeverity());
         Map<String, Object> condition = readConfig(rule.getConditionConfig(), "condition");
-        alert.setTitle(truncate(renderAlertTemplate(rule.getAlertSubject(), rule, execution, condition,
+        String subjectTemplate = rule.getAlertSubject();
+        if (subjectTemplate == null || subjectTemplate.isBlank()) subjectTemplate = "[{severity}] {ruleName}";
+        String messageTemplate = rule.getAlertMessage();
+        if (messageTemplate == null || messageTemplate.isBlank()) {
+            messageTemplate = "Job {jobName} in application {applicationName}, environment {environment}: "
+                    + "{fieldPath} evaluated to {actualValue} (threshold: {threshold}).";
+        }
+        alert.setTitle(truncate(renderAlertTemplate(subjectTemplate, rule, execution, condition,
                 result.value(), now), 500));
-        alert.setSummary(renderAlertTemplate(rule.getAlertMessage(), rule, execution, condition,
+        alert.setSummary(renderAlertTemplate(messageTemplate, rule, execution, condition,
                 result.value(), now));
         alert.setCurrentValue(toJson(result.value()));
         alert.setFirstOccurredAt(now);
