@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
             thresholdLabel.className = 'form-label'; thresholdLabel.textContent = 'Threshold / value';
             const thresholdInput = document.createElement('input');
             thresholdInput.type = 'text'; thresholdInput.className = 'form-control tree-threshold';
-            thresholdInput.maxLength = 500; thresholdInput
+            thresholdInput.maxLength = 500;
             thresholdInput.value = node.threshold ?? node.value ?? '';
             thresholdInput.dataset.operator = node.operator || 'GREATER_THAN';
             thresholdInput.addEventListener('input', () => { node.threshold = thresholdInput.value; syncTree(); });
