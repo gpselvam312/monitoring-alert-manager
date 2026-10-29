@@ -105,6 +105,7 @@
         });
         if (state.applicationId) params.set("applicationId", state.applicationId);
         if (state.environmentId) params.set("environmentId", state.environmentId);
+        let loadedSuccessfully = false;
         try {
             const response = await fetch(state.endpoint + "?" + params.toString(), {
                 headers: {"Accept": "application/json"},
@@ -121,6 +122,7 @@
             state.fetchSize = result.fetchSize || 100;
             state.hasNext = Boolean(result.hasNext);
             state.localPage = Math.max(0, Math.min(state.localPage, Math.ceil(state.items.length / state.pageSize) - 1));
+            loadedSuccessfully = true;
             renderRows();
         } catch (error) {
             if (sequence !== state.requestSequence) return;
@@ -129,7 +131,10 @@
             elements.rows.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>' + escapeHtml(error.message || "Lookup failed.") + '</td></tr>';
             elements.summary.textContent = "Lookup failed";
         } finally {
-            if (sequence === state.requestSequence) setBusy(false);
+            if (sequence === state.requestSequence) {
+                setBusy(false);
+                if (loadedSuccessfully) renderRows();
+            }
         }
     }
 
