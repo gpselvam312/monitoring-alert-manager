@@ -8,6 +8,11 @@ public class AlertRuleForm {
     private boolean enabled = true;
     private String severity = "CRITICAL";
     private String executionSourcePolicy = "SCHEDULED_ONLY";
+    private boolean conditionGroupEnabled;
+    private String conditionGroupOperator = "AND";
+    private String secondConditionFieldPath = "";
+    private String secondConditionOperator = "GREATER_THAN";
+    private String secondThreshold = "";
     private String conditionType = "CONDITION";
     private String collectionPath = "";
     private String countFieldPath = "";
@@ -41,6 +46,16 @@ public class AlertRuleForm {
     public void setSeverity(String severity) { this.severity = severity; }
     public String getExecutionSourcePolicy() { return executionSourcePolicy; }
     public void setExecutionSourcePolicy(String executionSourcePolicy) { this.executionSourcePolicy = executionSourcePolicy; }
+    public boolean isConditionGroupEnabled() { return conditionGroupEnabled; }
+    public void setConditionGroupEnabled(boolean conditionGroupEnabled) { this.conditionGroupEnabled = conditionGroupEnabled; }
+    public String getConditionGroupOperator() { return conditionGroupOperator; }
+    public void setConditionGroupOperator(String conditionGroupOperator) { this.conditionGroupOperator = conditionGroupOperator; }
+    public String getSecondConditionFieldPath() { return secondConditionFieldPath; }
+    public void setSecondConditionFieldPath(String secondConditionFieldPath) { this.secondConditionFieldPath = secondConditionFieldPath; }
+    public String getSecondConditionOperator() { return secondConditionOperator; }
+    public void setSecondConditionOperator(String secondConditionOperator) { this.secondConditionOperator = secondConditionOperator; }
+    public String getSecondThreshold() { return secondThreshold; }
+    public void setSecondThreshold(String secondThreshold) { this.secondThreshold = secondThreshold; }
     public String getConditionType() { return conditionType; }
     public void setConditionType(String conditionType) { this.conditionType = conditionType; }
     public String getCollectionPath() { return collectionPath; }
