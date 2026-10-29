@@ -55,7 +55,7 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
 
         String title = string(payload, "title", "Monitoring alert");
         String severity = string(payload, "severity", "ALERT");
-        String bodyText = "[" + severity + "] " + title + "\n" + string(payload, "body", "");
+        String bodyText = title + "\n" + string(payload, "body", "");
         if (bodyText.length() > 4000) bodyText = bodyText.substring(0, 4000);
 
         Map<String, Object> request = new LinkedHashMap<>();
