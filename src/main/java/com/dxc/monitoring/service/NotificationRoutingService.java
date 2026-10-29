@@ -12,30 +12,33 @@ import org.springframework.transaction.annotation.Transactional;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
-import com.dxc.monitoring.entity.AlertRuleNotificationRoute;
 import com.dxc.monitoring.entity.NotificationChannel;
 import com.dxc.monitoring.entity.NotificationDelivery;
 import com.dxc.monitoring.entity.NotificationGroupMember;
+import com.dxc.monitoring.entity.NotificationPolicy;
 import com.dxc.monitoring.entity.NotificationRecipient;
 import com.dxc.monitoring.entity.NotificationRoute;
 import com.dxc.monitoring.repository.NotificationDeliveryRepository;
 import com.dxc.monitoring.repository.NotificationGroupMemberRepository;
-import com.dxc.monitoring.repository.AlertRuleNotificationRouteRepository;
+import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.repository.NotificationRouteRepository;
 
 import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class NotificationRoutingService {
-    private final AlertRuleNotificationRouteRepository routeRepository;
+    private final NotificationPolicyRepository policyRepository;
+    private final NotificationRouteRepository routeRepository;
     private final NotificationGroupMemberRepository groupMemberRepository;
     private final NotificationDeliveryRepository deliveryRepository;
     private final ObjectMapper objectMapper;
 
-    public NotificationRoutingService(AlertRuleNotificationRouteRepository routeRepository,
+    public NotificationRoutingService(NotificationPolicyRepository policyRepository,
+            NotificationRouteRepository routeRepository,
             NotificationGroupMemberRepository groupMemberRepository,
             NotificationDeliveryRepository deliveryRepository,
             ObjectMapper objectMapper) {
+        this.policyRepository = policyRepository;
         this.routeRepository = routeRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.deliveryRepository = deliveryRepository;
@@ -50,14 +53,18 @@ public class NotificationRoutingService {
 
         Alert alert = history.getAlert();
         AlertRule rule = alert.getAlertRule();
+        Long policyId = rule.getNotificationPolicyId();
+        if (policyId == null || policyRepository.findById(policyId).filter(NotificationPolicy::isEnabled).isEmpty()) {
+            return;
+        }
+
         AlertRule.Severity severity = history.getNewSeverity() != null
                 ? history.getNewSeverity() : alert.getSeverity();
         if (severity == null) return;
 
-        List<AlertRuleNotificationRoute> routes =
-                routeRepository.findByAlertRule_IdAndSeverityAndEventTypeAndEnabledTrue(
-                        rule.getId(), severity, eventType);
-        for (AlertRuleNotificationRoute route : routes) {
+        List<NotificationRoute> routes = routeRepository.findByNotificationPolicy_IdAndSeverityAndEventTypeAndEnabledTrue(
+                policyId, severity, eventType);
+        for (NotificationRoute route : routes) {
             NotificationChannel channel = route.getChannel();
             if (channel == null || !channel.isEnabled()) continue;
             if (channel.getChannelType() == NotificationChannel.ChannelType.TEAMS) {
