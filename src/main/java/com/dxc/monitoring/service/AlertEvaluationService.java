@@ -257,53 +257,53 @@ public class AlertEvaluationService {
         context.put("errorMessage", execution.getErrorMessage());
 
         List<MonitoringResult> results = resultRepository.findAllByExecutionId(execution.getId());
-        if (!results.isEmpty()) {
-            MonitoringResult result = results.get(results.size() - 1);
-            context.put("resultStatus", result.getStatus() == null ? null : result.getStatus().name());
-            context.put("resultValue", result.getValue());
-            context.put("resultUnit", result.getUnit());
-            boolean messagePayloadFound = false;
-            String message = result.getMessage();
-            if (message != null && !message.isBlank()) {
-                Object parsedMessage = parseStructuredPayload(message);
-                if (parsedMessage instanceof Map<?, ?> map) {
-                    map.forEach((key, value) -> context.put(String.valueOf(key), value));
-                    messagePayloadFound = true;
-                } else if (parsedMessage != null) {
-                    context.put("data", parsedMessage);
-                    messagePayloadFound = true;
-                } else {
-                    Map<String, Object> messageFields = parseKeyValuePayload(message);
-                    if (!messageFields.isEmpty()) {
-                        context.putAll(messageFields);
-                        messagePayloadFound = true;
-                    } else {
-                        // Preserve plain-text messages as a selectable field too.
-                        context.put("message", message);
-                    }
-                }
-            }
+        if (results.isEmpty()) return context;
 
-            // Some result types persist structured output in result_data instead of message.
-            // Use it as a fallback, while keeping any message field available in the context.
-            if (!messagePayloadFound && result.getResultData() != null && !result.getResultData().isBlank()) {
-                try {
-                    Object parsed = objectMapper.readValue(result.getResultData(), Object.class);
-                    if (parsed instanceof Map<?, ?> map) {
-                        map.forEach((key, value) -> context.put(String.valueOf(key), value));
-                    } else {
-                        context.put("data", parsed);
-                    }
-                } catch (Exception exception) {
-                    throw new IllegalArgumentException("The normalized monitoring result is not valid JSON.");
+        MonitoringResult result = results.get(results.size() - 1);
+        context.put("resultStatus", result.getStatus() == null ? null : result.getStatus().name());
+        context.put("resultValue", result.getValue());
+        context.put("resultUnit", result.getUnit());
+
+        // Keep evaluation consistent with field discovery: evaluate the actual response
+        // payload first, not a generic success message that may hide the JSON response.
+        Object payload = parseStructuredPayload(result.getResultData());
+        if (payload == null) payload = parseStructuredPayload(result.getRawOutput());
+        if (payload == null) payload = parseStructuredPayload(result.getMessage());
+        payload = unwrapNormalizedPayload(payload);
+
+        boolean payloadFound = payload != null;
+        if (payload instanceof Map<?, ?> map) {
+            map.forEach((key, value) -> context.put(String.valueOf(key), value));
+        } else if (payload != null) {
+            context.put("data", payload);
+        } else {
+            String textPayload = result.getRawOutput();
+            if (textPayload == null || textPayload.isBlank()) textPayload = result.getMessage();
+            if (textPayload != null && !textPayload.isBlank()) {
+                Map<String, Object> textFields = parseKeyValuePayload(textPayload);
+                if (!textFields.isEmpty()) {
+                    context.putAll(textFields);
+                    payloadFound = true;
+                } else {
+                    context.put("message", textPayload);
                 }
-            } else if (!messagePayloadFound && (result.getResultData() == null || result.getResultData().isBlank())
-                    && execution.getStatus() == MonitoringExecution.ExecutionStatus.SUCCESS) {
-                // No structured result is not equivalent to a healthy value.
-                context.put("resultDataMissing", true);
             }
         }
+
+        if (!payloadFound && execution.getStatus() == MonitoringExecution.ExecutionStatus.SUCCESS) {
+            // No structured result is not equivalent to a healthy value.
+            context.put("resultDataMissing", true);
+        }
         return context;
+    }
+
+    private Object unwrapNormalizedPayload(Object parsed) {
+        if (parsed instanceof Map<?, ?> map
+                && map.containsKey("schemaVersion")
+                && map.containsKey("data")) {
+            return map.get("data");
+        }
+        return parsed;
     }
 
     private Object parseStructuredPayload(String payload) {
@@ -389,15 +389,28 @@ public class AlertEvaluationService {
                         .contains(fieldPath)) {
             throw new IllegalArgumentException("Monitoring result reports failure; result-based condition was not evaluated.");
         }
-        Object actual = resolvePath(context, fieldPath);
-        if (actual == null && !operator.equals("EXISTS") && !operator.equals("NOT_EXISTS")) {
+        List<Object> actualValues = resolveConditionValues(context, fieldPath);
+        if (actualValues.isEmpty() && !operator.equals("EXISTS") && !operator.equals("NOT_EXISTS")) {
             throw new IllegalArgumentException("Configured field is missing from the monitoring result: " + fieldPath);
         }
         Object expected = config.containsKey("threshold") ? config.get("threshold") : config.get("value");
+        Object actual = actualValues.size() == 1 ? actualValues.get(0) : actualValues;
 
-        boolean matched = switch (operator) {
-            case "EXISTS" -> actual != null;
-            case "NOT_EXISTS" -> actual == null;
+        // A path traversing an array represents all matching values. A scalar
+        // condition matches when ANY value in that collection satisfies it.
+        boolean matched;
+        if ("EXISTS".equals(operator)) {
+            matched = !actualValues.isEmpty();
+        } else if ("NOT_EXISTS".equals(operator)) {
+            matched = actualValues.isEmpty();
+        } else {
+            matched = actualValues.stream().anyMatch(candidate -> evaluateScalarOperator(operator, candidate, expected));
+        }
+        return new ConditionResult(matched, actual);
+    }
+
+    private boolean evaluateScalarOperator(String operator, Object actual, Object expected) {
+        return switch (operator) {
             case "GREATER_THAN", "GT" -> compareNumbers(actual, expected) > 0;
             case "GREATER_THAN_OR_EQUAL", "GTE" -> compareNumbers(actual, expected) >= 0;
             case "LESS_THAN", "LT" -> compareNumbers(actual, expected) < 0;
@@ -412,7 +425,7 @@ public class AlertEvaluationService {
             case "IS_FALSE" -> actual instanceof Boolean value && !value;
             default -> throw new IllegalArgumentException("Unsupported condition operator: " + operator);
         };
-        return new ConditionResult(matched, actual);
+    }
     }
 
     /**
@@ -551,24 +564,50 @@ public class AlertEvaluationService {
     }
 
     private Object resolvePath(Map<String, Object> root, String fieldPath) {
-        Object current = root;
-        for (String part : fieldPath.split("\\.")) {
-            if (current instanceof Map<?, ?> map) {
-                current = map.get(part);
-            } else if (current instanceof List<?> list) {
-                try {
-                    int index = Integer.parseInt(part);
-                    current = index >= 0 && index < list.size() ? list.get(index) : null;
-                } catch (NumberFormatException exception) {
-                    return null;
-                }
-            } else {
-                return null;
-            }
-        }
-        return current;
+        List<Object> values = resolveConditionValues(root, fieldPath);
+        if (values.isEmpty()) return null;
+        return values.size() == 1 ? values.get(0) : values;
     }
 
+    /**
+     * Resolves ordinary dot paths through objects and transparently traverses arrays
+     * when a path segment is not a numeric index. Numeric segments remain supported
+     * for compatibility with rules saved before array paths were simplified.
+     */
+    private List<Object> resolveConditionValues(Map<String, Object> root, String fieldPath) {
+        List<Object> values = new ArrayList<>();
+        if (fieldPath == null || fieldPath.isBlank()) return values;
+        String[] parts = fieldPath.split("\\.");
+        collectPathValues(root, parts, 0, values);
+        return values;
+    }
+
+    private void collectPathValues(Object current, String[] parts, int position, List<Object> values) {
+        if (current == null) return;
+        if (position >= parts.length) {
+            values.add(current);
+            return;
+        }
+        if (current instanceof List<?> list) {
+            String part = parts[position];
+            try {
+                int index = Integer.parseInt(part);
+                if (index >= 0 && index < list.size()) {
+                    collectPathValues(list.get(index), parts, position + 1, values);
+                }
+                return;
+            } catch (NumberFormatException ignored) {
+                // A non-numeric path segment is applied to each array item.
+            }
+            for (Object item : list) {
+                collectPathValues(item, parts, position, values);
+            }
+            return;
+        }
+        if (current instanceof Map<?, ?> map && map.containsKey(parts[position])) {
+            collectPathValues(map.get(parts[position]), parts, position + 1, values);
+        }
+    }
     private int compareNumbers(Object actual, Object expected) {
         if (actual == null || expected == null) {
             throw new IllegalArgumentException("Numeric condition requires both the field value and threshold.");
