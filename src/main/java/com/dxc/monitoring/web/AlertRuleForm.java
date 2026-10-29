@@ -1,5 +1,8 @@
 package com.dxc.monitoring.web;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class AlertRuleForm {
     private Long id;
     private Long monitoringJobId;
@@ -9,6 +12,7 @@ public class AlertRuleForm {
     private String severity = "CRITICAL";
     private String executionSourcePolicy = "SCHEDULED_ONLY";
     private boolean conditionGroupEnabled;
+    private List<AlertConditionForm> conditionItems = new ArrayList<>(List.of(new AlertConditionForm()));
     private String conditionGroupOperator = "AND";
     private String secondConditionFieldPath = "";
     private String secondConditionOperator = "GREATER_THAN";
@@ -46,6 +50,8 @@ public class AlertRuleForm {
     public void setSeverity(String severity) { this.severity = severity; }
     public String getExecutionSourcePolicy() { return executionSourcePolicy; }
     public void setExecutionSourcePolicy(String executionSourcePolicy) { this.executionSourcePolicy = executionSourcePolicy; }
+    public List<AlertConditionForm> getConditionItems() { return conditionItems; }
+    public void setConditionItems(List<AlertConditionForm> conditionItems) { this.conditionItems = conditionItems == null ? new ArrayList<>() : conditionItems; }
     public boolean isConditionGroupEnabled() { return conditionGroupEnabled; }
     public void setConditionGroupEnabled(boolean conditionGroupEnabled) { this.conditionGroupEnabled = conditionGroupEnabled; }
     public String getConditionGroupOperator() { return conditionGroupOperator; }
