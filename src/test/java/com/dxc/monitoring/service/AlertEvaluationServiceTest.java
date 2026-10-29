@@ -159,6 +159,33 @@ class AlertEvaluationServiceTest {
     }
 
     @Test
+    void evaluatesTotalCollectionCountConditions() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {
+                  "type":"COUNT_TOTAL",
+                  "collectionPath":"data.servers",
+                  "countOperator":"EQUALS",
+                  "countThreshold":3,
+                  "consecutiveMatches":1
+                }
+                """);
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getMessage()).thenReturn("""
+                {"data":{"servers":[{"name":"a"},{"name":"b"},{"name":"c"}]}}
+                """);
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(result.getValue()).thenReturn("3");
+        when(result.getUnit()).thenReturn("servers");
+        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository).save(any(Alert.class));
+        verify(historyRepository).save(any(AlertHistory.class));
+        verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
     void rejectsInvalidConditionGroupOperator() {
         when(rule.getConditionConfig()).thenReturn("""
                 {
