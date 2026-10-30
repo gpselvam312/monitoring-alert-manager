@@ -33,6 +33,7 @@ import com.dxc.monitoring.repository.NotificationRecipientRepository;
 import com.dxc.monitoring.repository.NotificationRouteRepository;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.NotificationConfigurationService;
+import com.dxc.monitoring.service.NotificationChannelTestService;
 import com.dxc.monitoring.web.NotificationChannelForm;
 
 @Controller
@@ -46,12 +47,13 @@ public class NotificationConfigurationController {
     private final NotificationDeliveryRepository deliveryRepository;
     private final NotificationGroupMemberRepository groupMemberRepository;
     private final NotificationConfigurationService configurationService;
+    private final NotificationChannelTestService channelTestService;
 
     public NotificationConfigurationController(NotificationChannelRepository channelRepository,
             NotificationRecipientRepository recipientRepository, NotificationGroupRepository groupRepository,
             NotificationPolicyRepository policyRepository, NotificationRouteRepository routeRepository,
             NotificationDeliveryRepository deliveryRepository, NotificationGroupMemberRepository groupMemberRepository,
-            NotificationConfigurationService configurationService) {
+            NotificationConfigurationService configurationService, NotificationChannelTestService channelTestService) {
         this.channelRepository = channelRepository;
         this.recipientRepository = recipientRepository;
         this.groupRepository = groupRepository;
@@ -60,6 +62,7 @@ public class NotificationConfigurationController {
         this.deliveryRepository = deliveryRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.configurationService = configurationService;
+        this.channelTestService = channelTestService;
     }
 
     @GetMapping
@@ -127,6 +130,21 @@ public class NotificationConfigurationController {
         model.addAttribute("editRoute", routeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Notification route was not found.")));
         return "administration/notification-edit";
+    }
+
+    @PostMapping("/channels/{id}/test")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String testChannel(@PathVariable Long id,
+            @RequestParam(required = false) String testEmail,
+            @RequestParam(required = false) String testPhone,
+            RedirectAttributes redirect) {
+        try {
+            channelTestService.sendTest(id, testEmail, testPhone);
+            redirect.addFlashAttribute("successMessage", "Test notification sent successfully. No alert was created.");
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            redirect.addFlashAttribute("errorMessage", safeMessage(exception));
+        }
+        return "redirect:/administration/notifications/channels/" + id + "/edit";
     }
 
     @PostMapping("/channels/{id}")
