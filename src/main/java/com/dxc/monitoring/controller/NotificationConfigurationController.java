@@ -84,6 +84,30 @@ public class NotificationConfigurationController {
     }
 
 
+    @GetMapping("/{type:channels|recipients|groups|policies|routes}/add")
+    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    public String addConfiguration(@PathVariable String type, Model model) {
+        editOptions(model);
+        model.addAttribute("editType", switch (type) {
+            case "channels" -> "CHANNEL";
+            case "recipients" -> "RECIPIENT";
+            case "groups" -> "GROUP";
+            case "policies" -> "POLICY";
+            case "routes" -> "ROUTE";
+            default -> throw new IllegalArgumentException("Unsupported notification configuration type.");
+        });
+        model.addAttribute("pageTitle", switch (type) {
+            case "channels" -> "Notification Channel";
+            case "recipients" -> "Recipient";
+            case "groups" -> "Recipient Group";
+            case "policies" -> "Legacy Notification Policy";
+            case "routes" -> "Legacy Notification Route";
+            default -> "Notification Configuration";
+        });
+        model.addAttribute("channelForm", new NotificationChannelForm());
+        return "administration/notification-add";
+    }
+
     @GetMapping("/channels/{id}/edit")
     @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
     public String editChannel(@PathVariable Long id, Model model) {
