@@ -5,6 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class NotificationRoutingService {
+    private static final Logger log = LoggerFactory.getLogger(NotificationRoutingService.class);
     private final AlertRuleNotificationRouteRepository routeRepository;
     private final NotificationGroupMemberRepository groupMemberRepository;
     private final NotificationDeliveryRepository deliveryRepository;
@@ -42,21 +45,44 @@ public class NotificationRoutingService {
 
     @Transactional
     public void queueForHistory(AlertHistory history) {
-        if (history == null || history.getAlert() == null || history.getAlert().getAlertRule() == null) return;
+        if (history == null || history.getAlert() == null || history.getAlert().getAlertRule() == null) {
+            log.warn("Notification routing skipped because alert history, alert, or alert rule is missing");
+            return;
+        }
         NotificationRoute.EventType eventType = routeEvent(history);
-        if (eventType == null) return;
+        if (eventType == null) {
+            log.debug("No notification event mapping for alertHistoryId={} eventType={}", history.getId(), history.getEventType());
+            return;
+        }
 
         Alert alert = history.getAlert();
         AlertRule rule = alert.getAlertRule();
         AlertRule.Severity severity = history.getNewSeverity() != null
                 ? history.getNewSeverity() : alert.getSeverity();
-        if (severity == null || rule.getId() == null) return;
+        if (severity == null || rule.getId() == null) {
+            log.warn("Notification routing skipped for alertHistoryId={} because severity or rule id is missing", history.getId());
+            return;
+        }
 
         List<AlertRuleNotificationRoute> routes =
                 routeRepository.findByAlertRule_IdAndSeverityAndEventTypeAndEnabledTrue(rule.getId(), severity, eventType);
+        log.info("Evaluating notifications for alertHistoryId={} alertId={} ruleId={} severity={} event={} matchingRoutes={}",
+                history.getId(), alert.getId(), rule.getId(), severity, eventType, routes.size());
+        if (routes.isEmpty()) {
+            log.warn("No enabled notification route matches alertHistoryId={} ruleId={} severity={} event={}",
+                    history.getId(), rule.getId(), severity, eventType);
+        }
         for (AlertRuleNotificationRoute route : routes) {
             NotificationChannel channel = route.getChannel();
-            if (channel == null || !channel.isEnabled()) continue;
+            if (channel == null || !channel.isEnabled()) {
+                log.warn("Skipping notification route id={} for alertHistoryId={} because its channel is missing or disabled",
+                        route.getId(), history.getId());
+                continue;
+            }
+            log.debug("Processing notification route id={} channelId={} channelType={} recipientId={} groupId={}",
+                    route.getId(), channel.getId(), channel.getChannelType(),
+                    route.getRecipient() == null ? null : route.getRecipient().getId(),
+                    route.getGroup() == null ? null : route.getGroup().getId());
             RouteTarget target = new RouteTarget(route.getId(), channel, route.getRecipient(), route.getGroup(),
                     route.getEventType(), route.getMinimumIntervalSeconds());
             if (channel.getChannelType() == NotificationChannel.ChannelType.TEAMS) {
@@ -145,6 +171,15 @@ public class NotificationRoutingService {
         delivery.setLastError(reason);
         delivery.setMessagePayload(buildPayload(history));
         deliveryRepository.save(delivery);
+        if (skipped) {
+            log.warn("Notification delivery queued as SKIPPED alertHistoryId={} alertId={} routeId={} channelId={} recipientId={} reason={}",
+                    history.getId(), history.getAlert().getId(), route.id(), route.channel().getId(),
+                    recipient == null ? null : recipient.getId(), reason);
+        } else {
+            log.info("Notification delivery queued alertHistoryId={} alertId={} deliveryChannelId={} recipientId={} deliveryStatus=PENDING",
+                    history.getId(), history.getAlert().getId(), route.channel().getId(),
+                    recipient == null ? null : recipient.getId());
+        }
     }
 
     private String buildPayload(AlertHistory history) {
