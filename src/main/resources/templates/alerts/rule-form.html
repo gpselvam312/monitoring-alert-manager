@@ -19,7 +19,7 @@
 <div class="app-card mb-3">
 <div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0"><i class="bi bi-bell me-2"></i>Rule-specific Notifications</h2><button type="button" class="btn btn-sm btn-outline-primary" id="addNotificationRoute"><i class="bi bi-plus-lg me-1"></i>Add Route</button></div>
 <div class="app-card-body">
-<p class="small text-muted">Only destinations explicitly assigned here receive notifications for this rule. Recurrence and reminder events use the minimum interval to prevent notification spam. Existing routes were copied from the previous policy configuration.</p>
+<p class="small text-muted">Only destinations explicitly assigned here receive notifications for this rule. If no dedicated Recurring alert route exists for a severity, its Alert created route is reused for recurrence notifications. Recurrence and reminder events respect the minimum interval to prevent notification spam. Existing routes were copied from the previous policy configuration.</p>
 <input type="hidden" th:field="*{notificationRoutesJson}" id="notificationRoutesJson">
 <div id="notificationRoutesEmpty" class="alert alert-light border small mb-3">No notification routes configured for this rule.</div>
 <div id="notificationRoutesContainer" class="d-grid gap-3"></div>
