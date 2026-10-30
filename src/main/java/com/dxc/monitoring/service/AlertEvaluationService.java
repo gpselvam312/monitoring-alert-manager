@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AlertEvaluationService {
+    private static final Logger log = LoggerFactory.getLogger(AlertEvaluationService.class);
     private final MonitoringExecutionRepository executionRepository;
     private final MonitoringResultRepository resultRepository;
     private final AlertRuleRepository ruleRepository;
@@ -66,10 +69,16 @@ public class AlertEvaluationService {
             throw new IllegalStateException("Cannot evaluate an execution that is still running.");
         }
 
+        log.debug("Evaluating alert rules for executionId={}, jobId={}, status={}, triggerSource={}",
+                executionId, execution.getMonitoringJob().getId(), execution.getStatus(), execution.getTriggerSource());
         Map<String, Object> context = buildContext(execution);
         List<AlertRule> rules = ruleRepository.findEnabledForJobForUpdate(execution.getMonitoringJob().getId());
+        log.debug("Found {} enabled alert rules for executionId={}, jobId={}", rules.size(), executionId,
+                execution.getMonitoringJob().getId());
         for (AlertRule rule : rules) {
             if (!sourceAllowed(rule, execution.getTriggerSource())) {
+                log.debug("Skipping alert rule id={} name={} for executionId={} due to execution-source policy",
+                        rule.getId(), rule.getName(), executionId);
                 continue;
             }
             if (evaluationRepository.existsByAlertRuleIdAndExecutionId(rule.getId(), executionId)) {
@@ -225,6 +234,8 @@ public class AlertEvaluationService {
         alert.setCreatedAt(now);
         alert.setUpdatedAt(now);
         alert = alertRepository.save(alert);
+        log.info("Created active alert id={} ruleId={} jobId={} severity={} executionId={}",
+                alert.getId(), rule.getId(), execution.getMonitoringJob().getId(), alert.getSeverity(), execution.getId());
         saveHistory(alert, AlertHistory.EventType.CREATED, null, Alert.AlertStatus.ACTIVE,
                 null, alert.getSeverity(), execution, result.value(),
                 Map.of("ruleName", rule.getName(), "correlationKey", correlationKey));
@@ -246,6 +257,8 @@ public class AlertEvaluationService {
         history.setDetails(toJson(details));
         history.setOccurredAt(OffsetDateTime.now());
         AlertHistory savedHistory = historyRepository.save(history);
+        log.debug("Saved alert history id={} alertId={} eventType={}; starting notification routing",
+                savedHistory.getId(), alert.getId(), eventType);
         notificationRoutingService.queueForHistory(savedHistory);
     }
 
