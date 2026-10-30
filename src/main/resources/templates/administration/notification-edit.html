@@ -43,7 +43,7 @@
         </form>
         <form th:if="${channelForm.channelType == 'TEAMS'}" th:action="@{/administration/notifications/channels/{id}/test(id=${editId})}" method="post">
           <p class="small mb-3">The test message will be posted to the Teams webhook saved for this channel.</p>
-          <button class="btn btn-outline-primary"><i class="bi bi-microsoft-teams me-1"></i>Send Test</button>
+          <button class="btn btn-outline-primary"><i class="bi bi-chat-dots me-1"></i>Send Test</button>
         </form>
         <form th:if="${channelForm.channelType == 'WHATSAPP'}" th:action="@{/administration/notifications/channels/{id}/test(id=${editId})}" method="post" class="row g-3 align-items-end">
           <div class="col-md-6"><label class="form-label" for="testPhone">Test WhatsApp number</label><input class="form-control" id="testPhone" name="testPhone" type="tel" maxlength="30" autocomplete="tel" required placeholder="Include country code, e.g. +919876543210"><div class="form-text">Uses the saved approved template and language settings.</div></div>
