@@ -41,15 +41,21 @@ public class NotificationDeliveryWorker {
     public void poll() {
         List<NotificationDeliveryQueueService.ClaimedDelivery> deliveries =
                 queueService.claimDueDeliveries(BATCH_SIZE, MAX_ATTEMPTS);
+        if (!deliveries.isEmpty()) {
+            log.info("Notification delivery worker claimed {} pending deliveries", deliveries.size());
+        }
         for (NotificationDeliveryQueueService.ClaimedDelivery claim : deliveries) {
             try {
                 NotificationDelivery delivery = queueService.loadForDelivery(claim.deliveryId());
                 NotificationChannel channel = delivery.getChannel();
                 if (!channel.isEnabled()) {
+                    log.warn("Skipping notification deliveryId={} because channelId={} is disabled", claim.deliveryId(), channel.getId());
                     queueService.markSkipped(claim.deliveryId(), "Notification channel is disabled.");
                     continue;
                 }
                 if (delivery.getRecipient() != null && !delivery.getRecipient().isEnabled()) {
+                    log.warn("Skipping notification deliveryId={} because recipientId={} is disabled",
+                            claim.deliveryId(), delivery.getRecipient().getId());
                     queueService.markSkipped(claim.deliveryId(), "Notification recipient is disabled.");
                     continue;
                 }
@@ -68,11 +74,17 @@ public class NotificationDeliveryWorker {
                     };
                 }
                 String credential = secretService.getSecret(channel.getId(), secretKey);
+                log.info("Sending notification deliveryId={} alertId={} channelId={} channelType={} recipientId={} attempt={}",
+                        claim.deliveryId(), delivery.getAlert() == null ? null : delivery.getAlert().getId(),
+                        channel.getId(), channel.getChannelType(),
+                        delivery.getRecipient() == null ? null : delivery.getRecipient().getId(), claim.attemptCount());
                 String providerId = sender.send(channel, delivery.getRecipient(), payload, credential);
                 queueService.markSent(claim.deliveryId(), providerId);
+                log.info("Notification deliveryId={} marked SENT via channelId={} channelType={}",
+                        claim.deliveryId(), channel.getId(), channel.getChannelType());
             } catch (Exception exception) {
-                log.error("Notification delivery {} failed on attempt {} ({}).",
-                        claim.deliveryId(), claim.attemptCount(), exception.getClass().getSimpleName());
+                log.error("Notification deliveryId={} failed on attempt {} exceptionType={} message={}",
+                        claim.deliveryId(), claim.attemptCount(), exception.getClass().getSimpleName(), safeMessage(exception), exception);
                 queueService.markFailed(claim.deliveryId(), claim.attemptCount(), MAX_ATTEMPTS,
                         safeMessage(exception));
             }
