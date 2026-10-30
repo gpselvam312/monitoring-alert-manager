@@ -8,6 +8,7 @@
       <p class="page-subtitle">Saved secrets are never displayed. Leave the secret field blank to keep the current encrypted value.</p></div>
     <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}"><i class="bi bi-arrow-left me-1"></i>Back</a>
   </div>
+  <div class="alert alert-success" th:if="${successMessage}" th:text="${successMessage}"></div>
   <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
   <div class="app-card"><div class="app-card-body">
     <form th:if="${editType == 'CHANNEL'}" th:action="@{/administration/notifications/channels/{id}(id=${editId})}" th:object="${channelForm}" method="post">
@@ -32,6 +33,24 @@
         <div class="col-12"><button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Changes</button> <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}">Cancel</a></div>
       </div>
     </form>
+    <section th:if="${editType == 'CHANNEL'}" class="app-card mt-4">
+      <div class="app-card-body">
+        <h2 class="h5 mb-2"><i class="bi bi-send-check me-2"></i>Test Notification Channel</h2>
+        <p class="text-muted mb-3">Sends a single test message using the saved channel settings. Save changes above before testing any edits. This does not create an alert or contact configured recipients or groups.</p>
+        <form th:if="${channelForm.channelType == 'EMAIL'}" th:action="@{/administration/notifications/channels/{id}/test(id=${editId})}" method="post" class="row g-3 align-items-end">
+          <div class="col-md-6"><label class="form-label" for="testEmail">Test email address</label><input class="form-control" id="testEmail" name="testEmail" type="email" maxlength="255" autocomplete="email" required placeholder="you@example.com"></div>
+          <div class="col-md-auto"><button class="btn btn-outline-primary"><i class="bi bi-envelope-check me-1"></i>Send Test</button></div>
+        </form>
+        <form th:if="${channelForm.channelType == 'TEAMS'}" th:action="@{/administration/notifications/channels/{id}/test(id=${editId})}" method="post">
+          <p class="small mb-3">The test message will be posted to the Teams webhook saved for this channel.</p>
+          <button class="btn btn-outline-primary"><i class="bi bi-microsoft-teams me-1"></i>Send Test</button>
+        </form>
+        <form th:if="${channelForm.channelType == 'WHATSAPP'}" th:action="@{/administration/notifications/channels/{id}/test(id=${editId})}" method="post" class="row g-3 align-items-end">
+          <div class="col-md-6"><label class="form-label" for="testPhone">Test WhatsApp number</label><input class="form-control" id="testPhone" name="testPhone" type="tel" maxlength="30" autocomplete="tel" required placeholder="Include country code, e.g. +919876543210"><div class="form-text">Uses the saved approved template and language settings.</div></div>
+          <div class="col-md-auto"><button class="btn btn-outline-primary"><i class="bi bi-whatsapp me-1"></i>Send Test</button></div>
+        </form>
+      </div>
+    </section>
     <form th:if="${editType == 'RECIPIENT'}" th:action="@{/administration/notifications/recipients/{id}(id=${editId})}" method="post">
       <h2 class="h5 mb-3">Edit Recipient</h2><div class="row g-3">
         <div class="col-md-4"><label class="form-label">Name</label><input class="form-control" name="name" th:value="${editRecipient.name}" maxlength="200" required></div>
