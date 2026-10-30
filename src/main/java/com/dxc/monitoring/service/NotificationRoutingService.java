@@ -66,8 +66,20 @@ public class NotificationRoutingService {
 
         List<AlertRuleNotificationRoute> routes =
                 routeRepository.findByAlertRule_IdAndSeverityAndEventTypeAndEnabledTrue(rule.getId(), severity, eventType);
-        log.info("Evaluating notifications for alertHistoryId={} alertId={} ruleId={} severity={} event={} matchingRoutes={}",
-                history.getId(), alert.getId(), rule.getId(), severity, eventType, routes.size());
+
+        // A rule's CREATED route is the default notification destination for subsequent occurrences
+        // unless the user has configured a dedicated RECURRENCE route for that severity.
+        // This avoids silently losing notifications for an already-open alert while preserving
+        // explicit recurrence routing when it exists.
+        boolean usingCreatedRouteForRecurrence = false;
+        if (eventType == NotificationRoute.EventType.RECURRENCE && routes.isEmpty()) {
+            routes = routeRepository.findByAlertRule_IdAndSeverityAndEventTypeAndEnabledTrue(
+                    rule.getId(), severity, NotificationRoute.EventType.CREATED);
+            usingCreatedRouteForRecurrence = !routes.isEmpty();
+        }
+        log.info("Evaluating notifications for alertHistoryId={} alertId={} ruleId={} severity={} event={} matchingRoutes={} createdRouteFallback={}",
+                history.getId(), alert.getId(), rule.getId(), severity, eventType, routes.size(),
+                usingCreatedRouteForRecurrence);
         if (routes.isEmpty()) {
             log.warn("No enabled notification route matches alertHistoryId={} ruleId={} severity={} event={}",
                     history.getId(), rule.getId(), severity, eventType);
@@ -84,7 +96,8 @@ public class NotificationRoutingService {
                     route.getRecipient() == null ? null : route.getRecipient().getId(),
                     route.getGroup() == null ? null : route.getGroup().getId());
             RouteTarget target = new RouteTarget(route.getId(), channel, route.getRecipient(), route.getGroup(),
-                    route.getEventType(), route.getMinimumIntervalSeconds());
+                    usingCreatedRouteForRecurrence ? eventType : route.getEventType(),
+                    route.getMinimumIntervalSeconds());
             if (channel.getChannelType() == NotificationChannel.ChannelType.TEAMS) {
                 queueTeamsDelivery(history, target);
             } else {
