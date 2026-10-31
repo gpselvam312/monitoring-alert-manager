@@ -216,6 +216,7 @@ public class NotificationRoutingService {
         if (alert.getCurrentValue() != null && !alert.getCurrentValue().isBlank()) {
             payload.put("observedValue", alert.getCurrentValue());
         }
+        addConditionDetails(payload, rule);
         payload.put("monitoringJob", alert.getMonitoringJob().getName());
         if (alert.getMonitoringJob().getApplication() != null) {
             payload.put("application", alert.getMonitoringJob().getApplication().getName());
@@ -227,6 +228,43 @@ public class NotificationRoutingService {
             return objectMapper.writeValueAsString(payload);
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to create notification message payload.", exception);
+        }
+    }
+
+    private void addConditionDetails(Map<String, Object> payload, AlertRule rule) {
+        if (rule == null || rule.getConditionConfig() == null || rule.getConditionConfig().isBlank()) return;
+        try {
+            Map<?, ?> condition = objectMapper.readValue(rule.getConditionConfig(), Map.class);
+            addConditionDetails(payload, condition);
+        } catch (Exception exception) {
+            // The alert itself remains deliverable even if optional display metadata cannot be parsed.
+            log.debug("Unable to extract condition details for alert rule id={}", rule.getId(), exception);
+        }
+    }
+
+    private void addConditionDetails(Map<String, Object> payload, Map<?, ?> condition) {
+        for (String key : List.of("fieldPath", "collectionPath")) {
+            Object value = condition.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) {
+                payload.putIfAbsent("fieldPath", value);
+                break;
+            }
+        }
+        for (String key : List.of("threshold", "value", "countThreshold")) {
+            Object value = condition.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) {
+                payload.putIfAbsent("threshold", value);
+                break;
+            }
+        }
+        Object children = condition.get("children");
+        if (children instanceof List<?> list) {
+            for (Object child : list) {
+                if (child instanceof Map<?, ?> childMap) {
+                    addConditionDetails(payload, childMap);
+                    if (payload.containsKey("threshold") && payload.containsKey("fieldPath")) return;
+                }
+            }
         }
     }
 
