@@ -38,31 +38,6 @@
 </div></div>
 </template>
 </div></div>
-<div class="app-card mb-3">
-    <div class="app-card-header"><h2 class="h6 mb-0"><i class="bi bi-envelope-paper me-2"></i>Alert Content</h2></div>
-    <div class="app-card-body">
-        <p class="small text-muted">Customize the subject and message shown in the alert and reused by notification channels. Template variables are replaced when an alert is created.</p>
-        <div class="row g-3">
-            <div class="col-12">
-                <label class="form-label" for="alertSubject">Alert Subject <span class="text-danger">*</span></label>
-                <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required>
-            </div>
-            <div class="col-12">
-                <label class="form-label" for="alertMessage">Alert Message <span class="text-danger">*</span></label>
-                <textarea class="form-control" id="alertMessage" th:field="*{alertMessage}" rows="4" maxlength="10000" required></textarea>
-            </div>
-            <div class="col-12">
-                <div class="form-text mb-2">Available variables: <code>{ruleName}</code>, <code>{severity}</code>, <code>{jobName}</code>, <code>{applicationName}</code>, <code>{environment}</code>, <code>{fieldPath}</code>, <code>{actualValue}</code>, <code>{threshold}</code>, <code>{executionId}</code>, <code>{timestamp}</code>.</div>
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2"><label class="form-label mb-0" for="alertContentPreview">Preview</label><button type="button" class="btn btn-sm btn-outline-secondary" id="refreshAlertContentPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh Preview</button></div>
-                <div class="rounded border p-3" aria-live="polite">
-                    <div class="fw-semibold text-break" id="alertContentPreviewSubject">Alert subject preview</div>
-                    <div class="small text-muted mt-2 text-break" id="alertContentPreviewMessage" style="white-space: pre-wrap">Alert message preview</div>
-                </div>
-                <div class="form-text">Preview uses example values. Actual values are filled from the rule and triggering execution.</div>
-            </div>
-        </div>
-    </div>
-</div>
 <div class="app-card mb-3"><div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0">Alert Condition</h2><button type="button" class="btn btn-sm btn-outline-primary" id="discoverAlertFields" th:attr="data-discovery-url=@{/alerts/rules/discovery/}" th:disabled="${ruleForm.monitoringJobId == null}"><i class="bi bi-search me-1"></i>Load Latest Saved Result</button></div><div class="app-card-body"><p class="small text-muted">Discover selectable fields from the latest successful saved result. This does not run the monitoring job. You can also enter a field path manually if needed.</p><div class="row g-3 mb-3"><div class="col-12 col-lg-5"><label class="form-label" for="conditionType">Condition Mode</label><select class="form-select" id="conditionType" th:field="*{conditionType}"><option value="CONDITION">Field conditions and AND / OR groups</option><option value="COUNT_TOTAL">Total records in a collection</option><option value="COUNT_MATCHING">Count records matching a condition</option></select><div class="form-text">Use count mode for JSON arrays such as data.servers.</div></div></div><div id="fieldDiscoveryMessage" class="alert d-none mb-3" role="status" aria-live="polite"></div><div class="row g-3 mb-3"><div class="col-12 col-lg-6"><label class="form-label" for="discoveredFieldPath">Discovered Fields</label><select class="form-select" id="discoveredFieldPath" disabled><option value="">Load a saved result to discover fields</option></select><div id="discoveredFieldSample" class="form-text">Field type and sample value will appear here.</div></div><div class="col-12 col-lg-6 d-flex align-items-end"><div id="fieldDiscoveryExecution" class="small text-muted"></div></div></div><details class="mb-3"><summary class="small fw-semibold">Use a sample response instead</summary><div class="pt-3"><label class="form-label" for="sampleResponseForDiscovery">Sample response</label><textarea class="form-control font-monospace" id="sampleResponseForDiscovery" rows="5"></textarea><div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="discoverSampleFields" th:attr="data-sample-url=@{/alerts/rules/discovery/sample}"><i class="bi bi-braces me-1"></i>Discover from Sample</button></div><div class="form-text">Supports JSON, key-value lines, and comma-delimited header/value rows. A sample is used only for field discovery; it is not saved or executed.</div></div></details><p class="small text-muted">You can also use <code>executionStatus</code> and other execution metadata fields.</p><input type="hidden" th:field="*{conditionTreeJson}" id="conditionTreeJson">
 <div class="mb-3">
     <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-2">
@@ -91,6 +66,31 @@
 <div class="col-12 col-lg-4"><label class="form-label" for="recoveryOperator">Recovery Operator</label><select class="form-select" id="recoveryOperator" th:field="*{recoveryOperator}"><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="LESS_THAN">Less than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="GREATER_THAN">Greater than</option><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option><option value="EXISTS">Exists</option><option value="NOT_EXISTS">Does not exist</option><option value="IS_TRUE">Is true</option><option value="IS_FALSE">Is false</option></select></div>
 <div class="col-12 col-lg-2"><label class="form-label" for="recoveryThreshold">Recovery Threshold</label><input class="form-control" id="recoveryThreshold" th:field="*{recoveryThreshold}" maxlength="500"></div><div class="col-12 col-lg-2"><label class="form-label" for="recoveryConsecutiveMatches">Consecutive Recoveries</label><input type="number" class="form-control" id="recoveryConsecutiveMatches" th:field="*{recoveryConsecutiveMatches}" min="1" max="100"></div></div>
 <div class="form-text mt-3">Missing values and execution/parser errors do not count as healthy results. Recovery uses this configured criterion.</div></div></div>
+<div class="app-card mb-3">
+    <div class="app-card-header"><h2 class="h6 mb-0"><i class="bi bi-envelope-paper me-2"></i>Alert Content</h2></div>
+    <div class="app-card-body">
+        <p class="small text-muted">Customize the subject and message shown in the alert and reused by notification channels. Template variables are replaced when an alert is created.</p>
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label" for="alertSubject">Alert Subject <span class="text-danger">*</span></label>
+                <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required>
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="alertMessage">Alert Message <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="alertMessage" th:field="*{alertMessage}" rows="4" maxlength="10000" required></textarea>
+            </div>
+            <div class="col-12">
+                <div class="form-text mb-2">Available variables: <code>{ruleName}</code>, <code>{severity}</code>, <code>{jobName}</code>, <code>{applicationName}</code>, <code>{environment}</code>, <code>{fieldPath}</code>, <code>{actualValue}</code>, <code>{threshold}</code>, <code>{executionId}</code>, <code>{timestamp}</code>.</div>
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2"><label class="form-label mb-0" for="alertContentPreview">Preview</label><button type="button" class="btn btn-sm btn-outline-secondary" id="refreshAlertContentPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh Preview</button></div>
+                <div class="rounded border p-3" aria-live="polite">
+                    <div class="fw-semibold text-break" id="alertContentPreviewSubject">Alert subject preview</div>
+                    <div class="small text-muted mt-2 text-break" id="alertContentPreviewMessage" style="white-space: pre-wrap">Alert message preview</div>
+                </div>
+                <div class="form-text">Preview uses example values. Actual values are filled from the rule and triggering execution.</div>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="d-flex justify-content-end gap-2"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
 </form><script>
 document.addEventListener('DOMContentLoaded', () => {
