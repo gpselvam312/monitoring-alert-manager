@@ -22,11 +22,16 @@ public class AlertNotificationHtmlRenderer {
         List<String[]> facts = new ArrayList<>();
         addFact(facts, "Application", value(payload, "application", ""));
         addFact(facts, "Environment", value(payload, "environment", ""));
+        addFact(facts, "Alert rule", value(payload, "ruleName", ""));
         addFact(facts, "Monitoring job", value(payload, "monitoringJob", ""));
         addFact(facts, "Alert ID", value(payload, "alertId", ""));
+        addFact(facts, "Status", value(payload, "alertStatus", ""));
         addFact(facts, "Event", eventType);
+        addFact(facts, "Occurrences", value(payload, "occurrenceCount", ""));
         addFact(facts, "Observed value", value(payload, "observedValue", ""));
         addFact(facts, "Threshold", value(payload, "threshold", ""));
+        addFact(facts, "First occurred", value(payload, "firstOccurredAt", ""));
+        addFact(facts, "Last occurred", value(payload, "lastOccurredAt", ""));
 
         StringBuilder rows = new StringBuilder();
         for (String[] fact : facts) {
