@@ -3,8 +3,10 @@ package com.dxc.monitoring.service.notification;
 import java.util.Map;
 import java.util.Properties;
 
-import org.springframework.mail.SimpleMailMessage;
+import jakarta.mail.internet.MimeMessage;
+
 import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 import com.dxc.monitoring.entity.NotificationChannel;
@@ -16,9 +18,11 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class EmailNotificationSender implements NotificationChannelSender {
     private final ObjectMapper objectMapper;
+    private final AlertNotificationHtmlRenderer htmlRenderer;
 
-    public EmailNotificationSender(ObjectMapper objectMapper) {
+    public EmailNotificationSender(ObjectMapper objectMapper, AlertNotificationHtmlRenderer htmlRenderer) {
         this.objectMapper = objectMapper;
+        this.htmlRenderer = htmlRenderer;
     }
 
     @Override
@@ -59,14 +63,36 @@ public class EmailNotificationSender implements NotificationChannelSender {
         properties.put("mail.smtp.writetimeout", "10000");
 
         String title = string(payload, "title", "Monitoring alert");
-        String body = string(payload, "body", "");
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from);
-        message.setTo(recipient.getEmail());
-        message.setSubject(title);
-        message.setText(body);
-        mailSender.send(message);
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, false, "UTF-8");
+            helper.setFrom(from);
+            helper.setTo(recipient.getEmail());
+            helper.setSubject(title);
+            helper.setText(plainText(payload), htmlRenderer.render(payload));
+            mailSender.send(mimeMessage);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Email notification delivery failed.");
+        }
         return null;
+    }
+
+    private String plainText(Map<String, Object> payload) {
+        StringBuilder text = new StringBuilder();
+        text.append(string(payload, "title", "Monitoring alert")).append("\n\n");
+        text.append(string(payload, "body", ""));
+        appendLine(text, "Severity", string(payload, "severity", ""));
+        appendLine(text, "Application", string(payload, "application", ""));
+        appendLine(text, "Environment", string(payload, "environment", ""));
+        appendLine(text, "Monitoring Job", string(payload, "monitoringJob", ""));
+        appendLine(text, "Alert ID", string(payload, "alertId", ""));
+        appendLine(text, "Observed Value", string(payload, "observedValue", ""));
+        appendLine(text, "Threshold", string(payload, "threshold", ""));
+        return text.toString();
+    }
+
+    private void appendLine(StringBuilder text, String label, String value) {
+        if (value != null && !value.isBlank()) text.append("\n").append(label).append(": ").append(value);
     }
 
     private Map<String, Object> parseConfig(String json) {
