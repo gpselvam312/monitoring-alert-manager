@@ -65,7 +65,7 @@ public class EmailNotificationSender implements NotificationChannelSender {
         String title = string(payload, "title", "Monitoring alert");
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, false, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
             helper.setFrom(from);
             helper.setTo(recipient.getEmail());
             helper.setSubject(title);
