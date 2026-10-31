@@ -72,7 +72,7 @@ public class EmailNotificationSender implements NotificationChannelSender {
             helper.setText(plainText(payload), htmlRenderer.render(payload));
             mailSender.send(mimeMessage);
         } catch (Exception exception) {
-            throw new IllegalStateException("Email notification delivery failed.");
+            throw new IllegalStateException("Email notification delivery failed.", exception);
         }
         return null;
     }
