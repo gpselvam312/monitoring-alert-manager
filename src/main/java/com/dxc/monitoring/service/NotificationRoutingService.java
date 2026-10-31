@@ -197,14 +197,18 @@ public class NotificationRoutingService {
 
     private String buildPayload(AlertHistory history) {
         Alert alert = history.getAlert();
+        AlertRule rule = alert.getAlertRule();
+        AlertRule.Severity severity = history.getNewSeverity() != null
+                ? history.getNewSeverity() : alert.getSeverity();
+        NotificationRoute.EventType eventType = routeEvent(history);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("title", alert.getTitle());
         payload.put("body", alert.getSummary() == null ? "" : alert.getSummary());
-        payload.put("severity", severity.name());
-        payload.put("eventType", eventType.name());
+        payload.put("severity", severity == null ? "INFO" : severity.name());
+        payload.put("eventType", eventType == null ? "" : eventType.name());
         payload.put("alertId", alert.getId());
         payload.put("historyId", history.getId());
-        payload.put("ruleName", rule.getName());
+        if (rule != null) payload.put("ruleName", rule.getName());
         payload.put("alertStatus", alert.getStatus().name());
         payload.put("occurrenceCount", alert.getOccurrenceCount());
         payload.put("firstOccurredAt", alert.getFirstOccurredAt() == null ? "" : alert.getFirstOccurredAt().toString());
