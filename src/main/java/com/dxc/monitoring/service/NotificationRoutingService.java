@@ -200,10 +200,18 @@ public class NotificationRoutingService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("title", alert.getTitle());
         payload.put("body", alert.getSummary() == null ? "" : alert.getSummary());
-        payload.put("severity", alert.getSeverity().name());
-        payload.put("eventType", history.getEventType().name());
+        payload.put("severity", severity.name());
+        payload.put("eventType", eventType.name());
         payload.put("alertId", alert.getId());
         payload.put("historyId", history.getId());
+        payload.put("ruleName", rule.getName());
+        payload.put("alertStatus", alert.getStatus().name());
+        payload.put("occurrenceCount", alert.getOccurrenceCount());
+        payload.put("firstOccurredAt", alert.getFirstOccurredAt() == null ? "" : alert.getFirstOccurredAt().toString());
+        payload.put("lastOccurredAt", alert.getLastOccurredAt() == null ? "" : alert.getLastOccurredAt().toString());
+        if (alert.getCurrentValue() != null && !alert.getCurrentValue().isBlank()) {
+            payload.put("observedValue", alert.getCurrentValue());
+        }
         payload.put("monitoringJob", alert.getMonitoringJob().getName());
         if (alert.getMonitoringJob().getApplication() != null) {
             payload.put("application", alert.getMonitoringJob().getApplication().getName());
