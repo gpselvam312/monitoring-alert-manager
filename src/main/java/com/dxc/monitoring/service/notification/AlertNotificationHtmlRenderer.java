@@ -52,12 +52,12 @@ public class AlertNotificationHtmlRenderer {
 
     private Palette palette(String severity, String eventType) {
         if ("RECOVERED".equalsIgnoreCase(eventType) || "RESOLVED".equalsIgnoreCase(eventType)) {
-            return new Palette("Recovery", "#067647", "#D1FADF", "#FFFFFF");
+            return new Palette("RECOVERY", "#05603A", "#067647", "#FFFFFF");
         }
         return switch (severity) {
-            case "CRITICAL" -> new Palette("CRITICAL ALERT", "#B42318", "#FEE4E2", "#7A271A");
-            case "WARNING" -> new Palette("WARNING ALERT", "#B54708", "#FEF0C7", "#7A2E0E");
-            default -> new Palette("INFORMATIONAL ALERT", "#175CD3", "#D1E9FF", "#1849A9");
+            case "CRITICAL" -> new Palette("CRITICAL ALERT", "#7A271A", "#B42318", "#FFFFFF");
+            case "WARNING" -> new Palette("WARNING ALERT", "#7A2E0E", "#B54708", "#FFFFFF");
+            default -> new Palette("INFORMATIONAL ALERT", "#1849A9", "#175CD3", "#FFFFFF");
         };
     }
 
