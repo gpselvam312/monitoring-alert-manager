@@ -40,7 +40,7 @@ public class TeamsNotificationSender implements NotificationChannelSender {
                     .body(card).retrieve().toBodilessEntity();
             return null;
         } catch (Exception exception) {
-            throw new IllegalStateException("Teams webhook delivery failed.");
+            throw new IllegalStateException("Teams webhook delivery failed: " + safeError(exception), exception);
         }
     }
 
@@ -78,6 +78,7 @@ public class TeamsNotificationSender implements NotificationChannelSender {
         addFact(facts, "Status", value(payload, "alertStatus", ""));
         addFact(facts, "Event", eventType);
         addFact(facts, "Occurrences", value(payload, "occurrenceCount", ""));
+        addFact(facts, "Field", value(payload, "fieldPath", ""));
         addFact(facts, "Observed Value", value(payload, "observedValue", ""));
         addFact(facts, "Threshold", value(payload, "threshold", ""));
         addFact(facts, "First Occurred", value(payload, "firstOccurredAt", ""));
@@ -141,6 +142,13 @@ public class TeamsNotificationSender implements NotificationChannelSender {
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Teams webhook URL is invalid or uses an unsupported host.");
         }
+    }
+
+    private String safeError(Exception exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) return exception.getClass().getSimpleName();
+        String sanitized = message.replaceAll("[\\r\\n\\t]+", " ").trim();
+        return sanitized.length() > 300 ? sanitized.substring(0, 300) : sanitized;
     }
 
     private String value(Map<String, Object> map, String key, String fallback) {
