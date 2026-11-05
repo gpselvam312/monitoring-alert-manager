@@ -51,57 +51,80 @@ public class TeamsNotificationSender implements NotificationChannelSender {
         String title = value(payload, "title", "Monitoring alert");
         String message = value(payload, "body", "");
         boolean recovered = "RECOVERED".equals(eventType) || "RESOLVED".equals(eventType);
-        String bannerStyle = recovered ? "good" : switch (severity) {
-            case "CRITICAL" -> "attention";
-            case "WARNING" -> "warning";
-            default -> "accent";
-        };
-        String label = recovered ? "RECOVERY" : switch (severity) {
-            case "CRITICAL" -> "CRITICAL ALERT";
-            case "WARNING" -> "WARNING ALERT";
-            default -> "INFORMATIONAL ALERT";
-        };
 
+        String label;
+        String semanticColor;
+        String bannerStyle;
+        if (recovered) {
+            label = "RECOVERY";
+            semanticColor = "good";
+            bannerStyle = "good";
+        } else {
+            switch (severity) {
+                case "CRITICAL" -> {
+                    label = "CRITICAL ALERT";
+                    semanticColor = "attention";
+                    bannerStyle = "attention";
+                }
+                case "WARNING" -> {
+                    label = "WARNING ALERT";
+                    semanticColor = "warning";
+                    bannerStyle = "warning";
+                }
+                default -> {
+                    label = "INFORMATIONAL ALERT";
+                    semanticColor = "accent";
+                    bannerStyle = "accent";
+                }
+            }
+        }
+
+        // Adaptive Cards expose semantic container colors rather than arbitrary
+        // hex background colors. Use the matching semantic text color as well,
+        // and dark/default text for the title to preserve contrast in Teams.
         Map<String, Object> banner = new LinkedHashMap<>();
         banner.put("type", "Container");
         banner.put("style", bannerStyle);
         banner.put("bleed", true);
         banner.put("items", List.of(
-                textBlock(label, "Bolder", "Large", "Light"),
-                textBlock(title, "Bolder", "Medium", "Light")));
+                textBlock(label, "Bolder", "Large", semanticColor),
+                textBlock(title, "Bolder", "Medium", "Default")));
+
+        List<Map<String, Object>> body = new ArrayList<>();
+        body.add(banner);
+
+        if (!message.isBlank()) {
+            Map<String, Object> messageBlock = textBlock(message, "Bolder", "Medium", "Default");
+            messageBlock.put("spacing", "Medium");
+            body.add(messageBlock);
+        }
 
         List<Map<String, String>> facts = new ArrayList<>();
         addFact(facts, "Application", value(payload, "application", ""));
         addFact(facts, "Environment", value(payload, "environment", ""));
-        addFact(facts, "Alert Rule", value(payload, "ruleName", ""));
         addFact(facts, "Monitoring Job", value(payload, "monitoringJob", ""));
-        addFact(facts, "Alert ID", value(payload, "alertId", ""));
-        addFact(facts, "Status", value(payload, "alertStatus", ""));
-        addFact(facts, "Event", eventType);
-        addFact(facts, "Occurrences", value(payload, "occurrenceCount", ""));
-        addFact(facts, "Field", value(payload, "fieldPath", ""));
-        addFact(facts, "Observed Value", value(payload, "observedValue", ""));
         addFact(facts, "Threshold", value(payload, "threshold", ""));
-        addFact(facts, "First Occurred", value(payload, "firstOccurredAt", ""));
-        addFact(facts, "Last Occurred", value(payload, "lastOccurredAt", ""));
-
-        List<Map<String, Object>> body = new ArrayList<>();
-        body.add(banner);
-        if (!message.isBlank()) {
-            Map<String, Object> messageBlock = textBlock(message, "Default", "Medium", "Default");
-            messageBlock.put("spacing", "Medium");
-            body.add(messageBlock);
-        }
         if (!facts.isEmpty()) {
             Map<String, Object> factSet = new LinkedHashMap<>();
             factSet.put("type", "FactSet");
             factSet.put("facts", facts);
+            factSet.put("spacing", "Medium");
             body.add(factSet);
         }
-        Map<String, Object> footer = textBlock("Monitoring Alert Manager", "Default", "Small", "Default");
-        footer.put("isSubtle", true);
-        footer.put("spacing", "Medium");
-        body.add(footer);
+
+        String occurrenceCount = value(payload, "occurrenceCount", "");
+        String eventSummary = eventType;
+        if (!occurrenceCount.isBlank()) {
+            eventSummary = eventSummary.isBlank()
+                    ? occurrenceCount + " occurrences"
+                    : eventSummary + " · " + occurrenceCount + " occurrences";
+        }
+        if (!eventSummary.isBlank()) {
+            Map<String, Object> eventBlock = textBlock(eventSummary, "Default", "Small", "Default");
+            eventBlock.put("isSubtle", true);
+            eventBlock.put("spacing", "Small");
+            body.add(eventBlock);
+        }
 
         Map<String, Object> card = new LinkedHashMap<>();
         card.put("$schema", "https://adaptivecards.io/schemas/adaptive-card.json");
