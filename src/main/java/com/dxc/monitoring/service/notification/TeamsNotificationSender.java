@@ -53,42 +53,42 @@ public class TeamsNotificationSender implements NotificationChannelSender {
         boolean recovered = "RECOVERED".equals(eventType) || "RESOLVED".equals(eventType);
 
         String label;
-        String semanticColor;
         String bannerStyle;
+        String bannerImage;
         if (recovered) {
             label = "RECOVERY";
-            semanticColor = "good";
             bannerStyle = "good";
+            bannerImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgK3MHAAFJAMTiIx/MAAAAAElFTkSuQmCC";
         } else {
             switch (severity) {
                 case "CRITICAL" -> {
                     label = "CRITICAL ALERT";
-                    semanticColor = "attention";
                     bannerStyle = "attention";
+                    bannerImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPYoiwBAAJ+APBMCjG1AAAAAElFTkSuQmCC";
                 }
                 case "WARNING" -> {
                     label = "WARNING ALERT";
-                    semanticColor = "warning";
                     bannerStyle = "warning";
+                    bannerImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPY6s4BAAK5AQViYejEAAAAAElFTkSuQmCC";
                 }
                 default -> {
                     label = "INFORMATIONAL ALERT";
-                    semanticColor = "accent";
                     bannerStyle = "accent";
+                    bannerImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGMQj7kMAAHUAUemTM0RAAAAAElFTkSuQmCC";
                 }
             }
         }
 
-        // Adaptive Cards expose semantic container colors rather than arbitrary
-        // hex background colors. Use the matching semantic text color as well,
-        // and dark/default text for the title to preserve contrast in Teams.
+        // Adaptive Cards 1.2 supports PNG data URIs for container backgrounds.
+        // A one-pixel image provides a solid severity color without external hosting.
         Map<String, Object> banner = new LinkedHashMap<>();
         banner.put("type", "Container");
         banner.put("style", bannerStyle);
+        banner.put("backgroundImage", bannerImage);
         banner.put("bleed", true);
         banner.put("items", List.of(
-                textBlock(label, "Bolder", "Large", semanticColor),
-                textBlock(title, "Bolder", "Medium", "Default")));
+                textBlock(label, "Bolder", "Large", "Light"),
+                textBlock(title, "Bolder", "Medium", "Light")));
 
         List<Map<String, Object>> body = new ArrayList<>();
         body.add(banner);
