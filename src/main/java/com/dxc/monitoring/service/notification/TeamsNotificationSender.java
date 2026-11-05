@@ -234,7 +234,8 @@ public class TeamsNotificationSender implements NotificationChannelSender {
         }
         if (keys.isEmpty()) return;
 
-        cardBody.add(tableRow(labels, true));
+        cardBody.add(tableRow(labels, true, false));
+        int rowIndex = 0;
         for (Object row : rows) {
             List<String> values = new ArrayList<>();
             for (String key : keys) {
@@ -243,28 +244,37 @@ public class TeamsNotificationSender implements NotificationChannelSender {
                                 ? rowList.get(keys.indexOf(key)) : null;
                 values.add(displayValue(cell));
             }
-            cardBody.add(tableRow(values, false));
+            cardBody.add(tableRow(values, false, rowIndex++ % 2 == 0));
         }
     }
 
-    // Adaptive Card 1.2 has no native Table element. ColumnSet keeps reports compatible with Teams' 1.2 renderer.
-    private Map<String, Object> tableRow(List<String> values, boolean header) {
+    // Adaptive Card 1.2 has no native Table element. ColumnSet and semantic container styles
+    // provide a Teams-compatible table with a prominent header and alternating row emphasis.
+    private Map<String, Object> tableRow(List<String> values, boolean header, boolean alternate) {
         List<Map<String, Object>> columns = new ArrayList<>();
         for (String value : values) {
             Map<String, Object> text = textBlock(value, header ? "Bolder" : "Default",
-                    header ? "Small" : "Small", "Default");
+                    "Small", header ? "Light" : "Default");
             text.put("wrap", true);
+            text.put("spacing", "Small");
             Map<String, Object> column = new LinkedHashMap<>();
             column.put("type", "Column");
             column.put("width", "stretch");
             column.put("items", List.of(text));
             columns.add(column);
         }
+
         Map<String, Object> row = new LinkedHashMap<>();
-        row.put("type", "ColumnSet");
-        row.put("columns", columns);
-        row.put("spacing", header ? "Small" : "None");
-        row.put("separator", !header);
+        row.put("type", "Container");
+        // "accent" gives the header a strong theme-colored background; "emphasis" creates
+        // subtle zebra striping without relying on unsupported CSS or arbitrary color values.
+        row.put("style", header ? "accent" : alternate ? "emphasis" : "default");
+        row.put("bleed", true);
+        row.put("items", List.of(Map.of(
+                "type", "ColumnSet",
+                "columns", columns,
+                "spacing", "None")));
+        row.put("spacing", "None");
         return row;
     }
 
