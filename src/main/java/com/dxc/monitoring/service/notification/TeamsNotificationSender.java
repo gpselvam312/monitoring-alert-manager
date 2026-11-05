@@ -36,8 +36,9 @@ public class TeamsNotificationSender implements NotificationChannelSender {
         validateWebhook(credential);
         Map<String, Object> card = buildAdaptiveCard(payload);
         try {
+            Map<String, Object> requestBody = Map.of("renderedCard", card);
             restClient.post().uri(URI.create(credential)).contentType(MediaType.APPLICATION_JSON)
-                    .body(card).retrieve().toBodilessEntity();
+                    .body(requestBody).retrieve().toBodilessEntity();
             return null;
         } catch (Exception exception) {
             throw new IllegalStateException("Teams webhook delivery failed: " + safeError(exception), exception);
