@@ -203,7 +203,8 @@ public class NotificationRoutingService {
         NotificationRoute.EventType eventType = routeEvent(history);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("title", alert.getTitle());
-        payload.put("body", alert.getSummary() == null ? "" : alert.getSummary());
+        String summary = alert.getSummary() == null ? "" : alert.getSummary();
+        payload.put("body", summary);
         payload.put("severity", severity == null ? "INFO" : severity.name());
         payload.put("eventType", eventType == null ? "" : eventType.name());
         payload.put("alertId", alert.getId());
@@ -214,9 +215,10 @@ public class NotificationRoutingService {
         payload.put("firstOccurredAt", alert.getFirstOccurredAt() == null ? "" : alert.getFirstOccurredAt().toString());
         payload.put("lastOccurredAt", alert.getLastOccurredAt() == null ? "" : alert.getLastOccurredAt().toString());
         if (alert.getCurrentValue() != null && !alert.getCurrentValue().isBlank()) {
-            payload.put("observedValue", alert.getCurrentValue());
+            payload.put("observedValue", formatObservedValue(alert.getCurrentValue()));
         }
         addConditionDetails(payload, rule);
+        payload.put("content", buildNotificationContent(payload, summary));
         payload.put("monitoringJob", alert.getMonitoringJob().getName());
         if (alert.getMonitoringJob().getApplication() != null) {
             payload.put("application", alert.getMonitoringJob().getApplication().getName());
@@ -229,6 +231,44 @@ public class NotificationRoutingService {
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to create notification message payload.", exception);
         }
+    }
+
+
+    private List<Map<String, Object>> buildNotificationContent(Map<String, Object> payload, String summary) {
+        List<Map<String, Object>> sections = new java.util.ArrayList<>();
+        List<Map<String, String>> fields = new java.util.ArrayList<>();
+        addContentField(fields, "Rule", payload.get("ruleName"));
+        addContentField(fields, "Field", payload.get("fieldPath"));
+        addContentField(fields, "Observed value", payload.get("observedValue"));
+        addContentField(fields, "Threshold", payload.get("threshold"));
+        if (!fields.isEmpty()) {
+            Map<String, Object> details = new LinkedHashMap<>();
+            details.put("type", "details");
+            details.put("title", "Alert details");
+            details.put("fields", fields);
+            sections.add(details);
+        } else if (summary != null && !summary.isBlank()) {
+            sections.add(Map.of("type", "text", "text", summary));
+        }
+        return sections;
+    }
+
+    private void addContentField(List<Map<String, String>> fields, String label, Object value) {
+        if (value != null && !String.valueOf(value).isBlank()) {
+            fields.add(Map.of("label", label, "value", String.valueOf(value)));
+        }
+    }
+
+    private String formatObservedValue(String currentValue) {
+        try {
+            Object parsed = objectMapper.readValue(currentValue, Object.class);
+            if (parsed instanceof List<?> values) {
+                return values.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(", "));
+            }
+        } catch (Exception ignored) {
+            // Keep non-JSON scalar or textual values unchanged.
+        }
+        return currentValue;
     }
 
     private void addConditionDetails(Map<String, Object> payload, AlertRule rule) {
