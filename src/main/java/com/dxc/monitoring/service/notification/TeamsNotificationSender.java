@@ -49,7 +49,6 @@ public class TeamsNotificationSender implements NotificationChannelSender {
         String severity = value(payload, "severity", "INFO").toUpperCase(Locale.ROOT);
         String eventType = value(payload, "eventType", "").toUpperCase(Locale.ROOT);
         String title = value(payload, "title", "Monitoring alert");
-        String message = value(payload, "body", "");
         boolean recovered = "RECOVERED".equals(eventType) || "RESOLVED".equals(eventType);
 
         String label;
@@ -79,8 +78,6 @@ public class TeamsNotificationSender implements NotificationChannelSender {
             }
         }
 
-        // Adaptive Cards 1.2 supports PNG data URIs for container backgrounds.
-        // A one-pixel image provides a solid severity color without external hosting.
         Map<String, Object> banner = new LinkedHashMap<>();
         banner.put("type", "Container");
         banner.put("style", bannerStyle);
@@ -92,19 +89,15 @@ public class TeamsNotificationSender implements NotificationChannelSender {
 
         List<Map<String, Object>> body = new ArrayList<>();
         body.add(banner);
-
-        if (!message.isBlank()) {
-            Map<String, Object> messageBlock = textBlock(message, "Bolder", "Medium", "Default");
-            messageBlock.put("spacing", "Medium");
-            body.add(messageBlock);
-        }
+        appendContent(body, payload);
 
         List<Map<String, String>> facts = new ArrayList<>();
         addFact(facts, "Application", value(payload, "application", ""));
         addFact(facts, "Environment", value(payload, "environment", ""));
         addFact(facts, "Monitoring Job", value(payload, "monitoringJob", ""));
-        addFact(facts, "Threshold", value(payload, "threshold", ""));
-        if (!facts.isEmpty()) {
+        if (facts.isEmpty()) {
+            // No fixed metadata is required; content sections can carry any report-specific details.
+        } else {
             Map<String, Object> factSet = new LinkedHashMap<>();
             factSet.put("type", "FactSet");
             factSet.put("facts", facts);
@@ -134,6 +127,167 @@ public class TeamsNotificationSender implements NotificationChannelSender {
         return card;
     }
 
+    /**
+     * Content contract:
+     * content: [{ type: "text", text: "..." },
+     *           { type: "details", title: "...", fields: [{ label: "...", value: "..." }] },
+     *           { type: "table", title: "...", columns: ["..."], rows: [{ "column": "value" }] }]
+     * Unknown or malformed sections are ignored. Legacy body remains the fallback.
+     */
+    private void appendContent(List<Map<String, Object>> cardBody, Map<String, Object> payload) {
+        Object contentValue = payload.get("content");
+        if (contentValue instanceof List<?> sections && !sections.isEmpty()) {
+            for (Object sectionValue : sections) {
+                if (sectionValue instanceof Map<?, ?> section) {
+                    appendSection(cardBody, section);
+                }
+            }
+            return;
+        }
+
+        // Render known alert metadata as a readable detail list instead of exposing JSON arrays.
+        String fieldPath = value(payload, "fieldPath", "");
+        String observedValue = value(payload, "observedValue", "");
+        String ruleName = value(payload, "ruleName", "");
+        String threshold = value(payload, "threshold", "");
+        if (!fieldPath.isBlank() || !observedValue.isBlank() || !threshold.isBlank()) {
+            List<Map<String, String>> fields = new ArrayList<>();
+            addDetail(fields, "Rule", ruleName);
+            addDetail(fields, "Field", fieldPath);
+            addDetail(fields, "Observed value", observedValue);
+            addDetail(fields, "Threshold", threshold);
+            appendDetails(cardBody, "Alert details", fields);
+            return;
+        }
+
+        String message = value(payload, "body", "");
+        if (!message.isBlank()) {
+            Map<String, Object> block = textBlock(message, "Default", "Medium", "Default");
+            block.put("spacing", "Medium");
+            cardBody.add(block);
+        }
+    }
+
+    private void appendSection(List<Map<String, Object>> cardBody, Map<?, ?> section) {
+        String type = string(section.get("type")).toLowerCase(Locale.ROOT);
+        String title = string(section.get("title"));
+        switch (type) {
+            case "text" -> {
+                String text = string(section.get("text"));
+                if (!text.isBlank()) {
+                    if (!title.isBlank()) cardBody.add(textBlock(title, "Bolder", "Medium", "Default"));
+                    Map<String, Object> block = textBlock(text, "Default", "Medium", "Default");
+                    block.put("spacing", "Small");
+                    cardBody.add(block);
+                }
+            }
+            case "details" -> {
+                List<Map<String, String>> fields = new ArrayList<>();
+                Object fieldValue = section.get("fields");
+                if (fieldValue instanceof List<?> list) {
+                    for (Object item : list) {
+                        if (item instanceof Map<?, ?> field) {
+                            addDetail(fields, string(field.get("label")), displayValue(field.get("value")));
+                        }
+                    }
+                }
+                appendDetails(cardBody, title, fields);
+            }
+            case "table" -> appendTable(cardBody, title, section);
+            default -> {
+                // Ignore unsupported section types so one malformed section cannot block delivery.
+            }
+        }
+    }
+
+    private void appendDetails(List<Map<String, Object>> cardBody, String title, List<Map<String, String>> fields) {
+        if (fields.isEmpty()) return;
+        if (!title.isBlank()) cardBody.add(textBlock(title, "Bolder", "Medium", "Default"));
+        Map<String, Object> factSet = new LinkedHashMap<>();
+        factSet.put("type", "FactSet");
+        factSet.put("facts", fields.stream()
+                .map(field -> Map.of("title", field.get("label"), "value", field.get("value"))).toList());
+        factSet.put("spacing", "Small");
+        cardBody.add(factSet);
+    }
+
+    private void appendTable(List<Map<String, Object>> cardBody, String title, Map<?, ?> section) {
+        Object columnsValue = section.get("columns");
+        Object rowsValue = section.get("rows");
+        if (!(columnsValue instanceof List<?> columns) || columns.isEmpty()
+                || !(rowsValue instanceof List<?> rows) || rows.isEmpty()) return;
+
+        if (!title.isBlank()) cardBody.add(textBlock(title, "Bolder", "Medium", "Default"));
+        List<String> keys = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        for (Object column : columns) {
+            if (column instanceof Map<?, ?> columnMap) {
+                String key = string(columnMap.get("key"));
+                String label = string(columnMap.get("label"));
+                if (key.isBlank()) key = label;
+                if (label.isBlank()) label = key;
+                if (!key.isBlank()) { keys.add(key); labels.add(label); }
+            } else {
+                String label = string(column);
+                if (!label.isBlank()) { keys.add(label); labels.add(label); }
+            }
+        }
+        if (keys.isEmpty()) return;
+
+        cardBody.add(tableRow(labels, true));
+        for (Object row : rows) {
+            List<String> values = new ArrayList<>();
+            for (String key : keys) {
+                Object cell = row instanceof Map<?, ?> rowMap ? rowMap.get(key)
+                        : row instanceof List<?> rowList && keys.indexOf(key) < rowList.size()
+                                ? rowList.get(keys.indexOf(key)) : null;
+                values.add(displayValue(cell));
+            }
+            cardBody.add(tableRow(values, false));
+        }
+    }
+
+    // Adaptive Card 1.2 has no native Table element. ColumnSet keeps reports compatible with Teams' 1.2 renderer.
+    private Map<String, Object> tableRow(List<String> values, boolean header) {
+        List<Map<String, Object>> columns = new ArrayList<>();
+        for (String value : values) {
+            Map<String, Object> text = textBlock(value, header ? "Bolder" : "Default",
+                    header ? "Small" : "Small", "Default");
+            text.put("wrap", true);
+            Map<String, Object> column = new LinkedHashMap<>();
+            column.put("type", "Column");
+            column.put("width", "stretch");
+            column.put("items", List.of(text));
+            columns.add(column);
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("type", "ColumnSet");
+        row.put("columns", columns);
+        row.put("spacing", header ? "Small" : "None");
+        row.put("separator", !header);
+        return row;
+    }
+
+    private void addDetail(List<Map<String, String>> fields, String label, String value) {
+        if (label != null && !label.isBlank() && value != null && !value.isBlank() && !"—".equals(value)) {
+            fields.add(Map.of("label", label, "value", value));
+        }
+    }
+
+    private String displayValue(Object value) {
+        if (value == null) return "";
+        if (value instanceof List<?> list) return String.join(", ", list.stream().map(this::displayValue).toList());
+        if (value instanceof Map<?, ?> map) {
+            return map.entrySet().stream().map(entry -> string(entry.getKey()) + ": " + displayValue(entry.getValue()))
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+        return String.valueOf(value);
+    }
+
+    private String string(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
     private Map<String, Object> textBlock(String text, String weight, String size, String color) {
         Map<String, Object> block = new LinkedHashMap<>();
         block.put("type", "TextBlock");
@@ -146,8 +300,7 @@ public class TeamsNotificationSender implements NotificationChannelSender {
     }
 
     private void addFact(List<Map<String, String>> facts, String label, String value) {
-        if (value == null || value.isBlank() || "—".equals(value)) return;
-        facts.add(Map.of("title", label, "value", value));
+        if (value != null && !value.isBlank() && !"—".equals(value)) facts.add(Map.of("title", label, "value", value));
     }
 
     private void validateWebhook(String webhook) {
@@ -177,6 +330,6 @@ public class TeamsNotificationSender implements NotificationChannelSender {
 
     private String value(Map<String, Object> map, String key, String fallback) {
         Object value = map.get(key);
-        return value == null ? fallback : String.valueOf(value);
+        return value == null ? fallback : displayValue(value);
     }
 }
