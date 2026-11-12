@@ -233,7 +233,9 @@ public class ConditionEvaluator {
             for (Object record : included) {
                 ConditionEvaluationContext itemContext = context.forElement(record);
                 ConditionEvaluationContext.ResolvedPath values = itemContext.resolve(valuePath);
-                if (!values.found() || values.values().isEmpty()) continue;
+                if (!values.found() || values.values().isEmpty()) {
+                    throw new IllegalArgumentException("Aggregate " + operation + " is missing values at " + valuePath + ".");
+                }
                 for (Object value : values.values()) {
                     if (!(value instanceof Number)) {
                         throw new IllegalArgumentException("Aggregate " + operation + " requires numeric values at " + valuePath + ".");
