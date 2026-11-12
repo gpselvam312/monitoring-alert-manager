@@ -30,7 +30,7 @@ public class AlertPresentationService {
     private static final Logger log = LoggerFactory.getLogger(AlertPresentationService.class);
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9]*)}");
     private static final int MAX_SECTION_TEXT = 10_000;
-    private static final int MAX_PRESENTATION_SIZE = 20_000;
+    private static final int MAX_PRESENTATION_SIZE = 12_000;
     private static final int MAX_DISPLAY_VALUE = 1_000;
 
     private final ObjectMapper objectMapper;
