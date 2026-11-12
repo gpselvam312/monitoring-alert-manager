@@ -124,7 +124,7 @@ public class AlertRuleManagementService {
             recovery.putAll(buildCondition(form.getRecoveryFieldPath(), form.getRecoveryOperator(),
                     form.getRecoveryThreshold(), form.getRecoveryConsecutiveMatches(), null, "recovery"));
         }
-        recovery.put("enabled", true);
+        recovery.put("enabled", form.isRecoveryEnabled());
         recovery.put("consecutiveMatches", form.getRecoveryConsecutiveMatches());
         rule.setConditionConfig(toJson(condition));
         rule.setRecoveryConfig(toJson(recovery));
