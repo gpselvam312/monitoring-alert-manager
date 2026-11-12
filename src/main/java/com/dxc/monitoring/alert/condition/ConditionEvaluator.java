@@ -317,11 +317,17 @@ public class ConditionEvaluator {
 
     private List<?> requireCollection(ConditionEvaluationContext.ResolvedPath resolved, String path) {
         if (!resolved.found() && resolved.emptyCollectionMatched()) return List.of();
-        if (!resolved.found() || resolved.values().size() != 1
-                || !(resolved.values().get(0) instanceof List<?> records)) {
-            throw new IllegalArgumentException("Collection path must resolve to one array: " + path);
+        if (!resolved.found() || resolved.values().isEmpty()) {
+            throw new IllegalArgumentException("Collection path must resolve to an array: " + path);
         }
-        return (List<?>) resolved.values().get(0);
+        List<Object> records = new ArrayList<>();
+        for (Object value : resolved.values()) {
+            if (!(value instanceof List<?> collection)) {
+                throw new IllegalArgumentException("Collection path must resolve to an array: " + path);
+            }
+            records.addAll(collection);
+        }
+        return records;
     }
 
     private boolean evaluateAny(List<Object> values, String operator, Object expected) {

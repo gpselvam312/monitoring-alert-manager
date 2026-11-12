@@ -127,6 +127,30 @@ class ConditionEvaluatorTest {
                 condition("data.value", "REGEX", "(a+)+$"), context));
     }
 
+
+    @Test
+    void countsNestedCollectionsAcrossParentRecords() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("groups", java.util.List.of(
+                Map.of("items", java.util.List.of(Map.of("id", "a"), Map.of("id", "b"))),
+                Map.of("items", java.util.List.of(Map.of("id", "c")))))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> condition = Map.of("type", "COUNT_TOTAL",
+                "collectionPath", "data.groups.items", "countOperator", "EQ", "countThreshold", 3);
+
+        assertTrue(evaluator.evaluate(condition, context).matched());
+    }
+
+    @Test
+    void treatsNestedEmptyCollectionsAsZeroRecords() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("groups", java.util.List.of(
+                Map.of("items", java.util.List.of()), Map.of("items", java.util.List.of())))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> condition = Map.of("type", "COUNT_TOTAL",
+                "collectionPath", "data.groups.items", "countOperator", "EQ", "countThreshold", 0);
+
+        assertTrue(evaluator.evaluate(condition, context).matched());
+    }
+
     private Map<String, Object> condition(String path, String operator, Object threshold) {
         return Map.of("fieldPath", path, "operator", operator, "threshold", threshold);
     }
