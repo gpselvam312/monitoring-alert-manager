@@ -56,11 +56,12 @@ public class AlertPresentationService {
             if (sections.isEmpty() && titleTemplate.isBlank() && messageTemplate.isBlank()) return null;
 
             Map<String, Object> templateValues = templateValues(alert, history, notificationPayload);
-            JsonDocument document = responseDocument(history);
+            JsonDocument document = sections.isEmpty() ? JsonDocument.from(Map.of()) : responseDocument(history);
             List<Map<String, Object>> renderedSections = new ArrayList<>();
             int renderedSize = 0;
             for (Object rawSection : sections) {
-                if (rawSection instanceof Map<?, ?> section) {
+                if (!(rawSection instanceof Map<?, ?> section)) continue;
+                try {
                     Map<String, Object> rendered = renderSection(section, document, templateValues);
                     if (rendered == null) continue;
                     int sectionSize = objectMapper.writeValueAsString(rendered).length();
@@ -70,6 +71,9 @@ public class AlertPresentationService {
                     }
                     renderedSections.add(rendered);
                     renderedSize += sectionSize;
+                } catch (Exception sectionException) {
+                    log.warn("Skipping presentation section id={} because its source data could not be rendered",
+                            section.get("id"), sectionException);
                 }
             }
             String title = titleTemplate.isBlank()
