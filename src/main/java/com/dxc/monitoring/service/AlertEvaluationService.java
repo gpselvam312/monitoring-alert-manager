@@ -313,10 +313,10 @@ public class AlertEvaluationService {
         context.put("triggerSource", execution.getTriggerSource().name());
         context.put("errorMessage", execution.getErrorMessage());
 
-        List<MonitoringResult> results = resultRepository.findAllByExecutionId(execution.getId());
-        if (results.isEmpty()) return context;
-
-        MonitoringResult result = results.get(results.size() - 1);
+        MonitoringResult result = resultRepository
+                .findFirstByExecution_IdOrderByCreatedAtDescIdDesc(execution.getId())
+                .orElse(null);
+        if (result == null) return context;
         context.put("resultStatus", result.getStatus() == null ? null : result.getStatus().name());
         context.put("resultValue", result.getValue());
         context.put("resultUnit", result.getUnit());

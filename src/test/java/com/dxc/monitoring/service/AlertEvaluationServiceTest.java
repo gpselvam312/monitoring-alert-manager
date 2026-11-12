@@ -97,7 +97,7 @@ class AlertEvaluationServiceTest {
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
         when(result.getValue()).thenReturn("92");
         when(result.getUnit()).thenReturn("%");
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
     }
 
     @Test
