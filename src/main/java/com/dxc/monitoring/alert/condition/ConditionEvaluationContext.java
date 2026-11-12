@@ -15,23 +15,25 @@ import com.dxc.monitoring.alert.json.JsonPathResolver;
 public final class ConditionEvaluationContext {
     private final JsonDocument document;
     private final Map<String, Object> legacyValues;
-    private final Map<String, Object> currentElement;
+    private final Object currentElement;
+    private final boolean scoped;
     private final JsonPathResolver pathResolver;
 
     public ConditionEvaluationContext(JsonDocument document, Map<String, Object> legacyValues) {
-        this(document, legacyValues, null, new JsonPathResolver());
+        this(document, legacyValues, null, false, new JsonPathResolver());
     }
 
     private ConditionEvaluationContext(JsonDocument document, Map<String, Object> legacyValues,
-            Map<String, Object> currentElement, JsonPathResolver pathResolver) {
+            Object currentElement, boolean scoped, JsonPathResolver pathResolver) {
         this.document = document;
         this.legacyValues = legacyValues == null ? Map.of() : legacyValues;
         this.currentElement = currentElement;
+        this.scoped = scoped;
         this.pathResolver = pathResolver;
     }
 
-    public ConditionEvaluationContext forElement(Map<String, Object> element) {
-        return new ConditionEvaluationContext(document, legacyValues, element, pathResolver);
+    public ConditionEvaluationContext forElement(Object element) {
+        return new ConditionEvaluationContext(document, legacyValues, element, true, pathResolver);
     }
 
     public ResolvedPath resolve(String path) {
@@ -43,7 +45,7 @@ public final class ConditionEvaluationContext {
             JsonPathResolver.ResolvedValues resolved = pathResolver.resolve(document, path);
             return new ResolvedPath(resolved.found(), resolved.values(), resolved.emptyCollectionMatched());
         }
-        Object root = currentElement == null ? legacyValues : currentElement;
+        Object root = scoped ? currentElement : legacyValues;
         return resolveRelative(root, path);
     }
 
@@ -66,7 +68,12 @@ public final class ConditionEvaluationContext {
         }
         List<Object> values = new ArrayList<>();
         boolean[] found = {false};
-        walk(root, segments, 0, values, found, new int[] {0});
+        if (scoped && !(root instanceof Map<?, ?>) && !(root instanceof List<?>) && "value".equals(path)) {
+            values.add(root);
+            found[0] = true;
+        } else {
+            walk(root, segments, 0, values, found, new int[] {0});
+        }
         return new ResolvedPath(found[0], values, false);
     }
 

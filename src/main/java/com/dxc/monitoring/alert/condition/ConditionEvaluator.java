@@ -174,11 +174,8 @@ public class ConditionEvaluator {
         int matchedCount = 0;
         List<Map<String, Object>> itemResults = new ArrayList<>();
         for (Object record : records) {
-            if (!(record instanceof Map<?, ?> row)) {
-                throw new IllegalArgumentException("Collection predicates currently require object elements.");
-            }
             ConditionEvaluationResult result = evaluateNode(stringMap(predicateMap),
-                    context.forElement(stringMap(row)), depth + 1, nodes);
+                    context.forElement(record), depth + 1, nodes);
             if (result.matched()) matchedCount++;
             if (itemResults.size() < MAX_EXPLANATION_ITEMS) itemResults.add(result.details());
         }
@@ -218,12 +215,9 @@ public class ConditionEvaluator {
         List<Object> included = new ArrayList<>();
         Object rawFilter = node.get("filter");
         for (Object record : records) {
-            if (!(record instanceof Map<?, ?> row)) {
-                throw new IllegalArgumentException("Aggregate collections currently require object elements.");
-            }
             if (rawFilter instanceof Map<?, ?> filter) {
                 ConditionEvaluationResult filterResult = evaluateNode(stringMap(filter),
-                        context.forElement(stringMap(row)), depth + 1, nodes);
+                        context.forElement(record), depth + 1, nodes);
                 if (!filterResult.matched()) continue;
             }
             included.add(record);
@@ -237,7 +231,7 @@ public class ConditionEvaluator {
             enforceExecutionGuard(valuePath, context);
             List<BigDecimal> numbers = new ArrayList<>();
             for (Object record : included) {
-                ConditionEvaluationContext itemContext = context.forElement(stringMap((Map<?, ?>) record));
+                ConditionEvaluationContext itemContext = context.forElement(record);
                 ConditionEvaluationContext.ResolvedPath values = itemContext.resolve(valuePath);
                 if (!values.found() || values.values().isEmpty()) continue;
                 for (Object value : values.values()) {
@@ -296,10 +290,7 @@ public class ConditionEvaluator {
         if (node.containsKey("value")) predicate.put("value", node.get("value"));
         int matching = 0;
         for (Object record : records) {
-            if (!(record instanceof Map<?, ?> row)) {
-                throw new IllegalArgumentException("Count condition collection must contain only objects.");
-            }
-            if (evaluateScalarCondition(predicate, context.forElement(stringMap(row))).matched()) matching++;
+            if (evaluateScalarCondition(predicate, context.forElement(record)).matched()) matching++;
         }
         return compareCount(matching, node, path, "COUNT_MATCHING");
     }

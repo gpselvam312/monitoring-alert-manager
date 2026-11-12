@@ -106,6 +106,18 @@ class ConditionEvaluatorTest {
         assertTrue(evaluator.evaluate(Map.of("fieldPath", "data.value", "operator", "NOT_EXISTS"), context).matched());
     }
 
+
+    @Test
+    void evaluatesPrimitiveCollectionElementsThroughTheValueField() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("states", java.util.List.of("DOWN", "DOWN"))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> condition = Map.of("type", "COLLECTION", "collectionPath", "data.states",
+                "quantifier", "ALL", "condition",
+                Map.of("fieldPath", "value", "operator", "EQ", "threshold", "DOWN"));
+
+        assertTrue(evaluator.evaluate(condition, context).matched());
+    }
+
     private Map<String, Object> condition(String path, String operator, Object threshold) {
         return Map.of("fieldPath", path, "operator", operator, "threshold", threshold);
     }
