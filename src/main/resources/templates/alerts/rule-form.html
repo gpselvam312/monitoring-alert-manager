@@ -382,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pathInput.addEventListener('change', () => {
                 const selected = discoveredFields.find(field => field.path === pathInput.value);
                 if (selected) {
-                    if (selected.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS'].includes(node.operator)) node.operator = 'GREATER_THAN';
+                    if (selected.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'].includes(node.operator)) node.operator = 'GREATER_THAN';
                     if (selected.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE','IS_NULL','IS_NOT_NULL'].includes(node.operator)) node.operator = 'IS_TRUE';
                     if (selected.type === 'null') node.operator = 'EXISTS';
                     renderTree();

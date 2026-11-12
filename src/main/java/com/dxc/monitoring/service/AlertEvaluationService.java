@@ -543,6 +543,17 @@ public class AlertEvaluationService {
         if ("GROUP".equals(type)) {
             return "Rule '" + rule.getName() + "' matched its configured condition group.";
         }
+        if ("COLLECTION".equals(type)) {
+            return "Rule '" + rule.getName() + "' matched a collection condition on '" + condition.get("collectionPath") + "'.";
+        }
+        if ("AGGREGATE".equals(type)) {
+            return "Rule '" + rule.getName() + "' matched " + condition.get("operation")
+                    + " aggregate for collection '" + condition.get("collectionPath") + "'.";
+        }
+        if ("FIELD_COMPARISON".equals(type)) {
+            return "Rule '" + rule.getName() + "' matched a comparison between '"
+                    + condition.get("leftPath") + "' and '" + condition.get("rightPath") + "'.";
+        }
         return "Rule '" + rule.getName() + "' matched field '" + condition.get("fieldPath")
                 + "' with observed value " + String.valueOf(value) + ".";
     }
