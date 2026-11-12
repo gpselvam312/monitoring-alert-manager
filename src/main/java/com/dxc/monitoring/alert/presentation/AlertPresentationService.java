@@ -28,7 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class AlertPresentationService {
     private static final Logger log = LoggerFactory.getLogger(AlertPresentationService.class);
-    private static final Pattern PLACEHOLDER = Pattern.compile("\\\\{([A-Za-z][A-Za-z0-9]*)}");
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9]*)}");
     private static final int MAX_SECTION_TEXT = 10_000;
 
     private final ObjectMapper objectMapper;
@@ -125,7 +125,7 @@ public class AlertPresentationService {
     private Map<String, Object> parseKeyValue(String source) {
         Map<String, Object> values = new LinkedHashMap<>();
         if (source == null || source.isBlank()) return values;
-        for (String line : source.split("\\\\R")) {
+        for (String line : source.split("\\R")) {
             int separator = line.indexOf(':');
             if (separator <= 0) continue;
             String key = line.substring(0, separator).trim();
@@ -238,7 +238,7 @@ public class AlertPresentationService {
     private Object resolveRelative(Object root, String path) {
         if (path == null || path.isBlank()) return root;
         Object current = root;
-        for (String segment : path.split("\\\\.")) {
+        for (String segment : path.split("\\.")) {
             if (current instanceof Map<?, ?> map) {
                 current = map.get(segment);
             } else {
