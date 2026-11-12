@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.dxc.monitoring.alert.condition.ConditionEvaluator;
+import com.dxc.monitoring.alert.presentation.AlertPresentationService;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
@@ -52,7 +53,7 @@ class AlertEvaluationServiceTest {
         historyRepository = mock(AlertHistoryRepository.class);
         evaluationRepository = mock(AlertRuleEvaluationRepository.class);
         service = new AlertEvaluationService(executionRepository, resultRepository, ruleRepository,
-                alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), new ConditionEvaluator(), mock(NotificationRoutingService.class));
+                alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), new ConditionEvaluator(), mock(NotificationRoutingService.class), mock(AlertPresentationService.class));
 
         execution = mock(MonitoringExecution.class);
         rule = mock(AlertRule.class);

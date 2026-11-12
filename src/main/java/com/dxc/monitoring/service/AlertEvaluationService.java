@@ -17,6 +17,7 @@ import com.dxc.monitoring.alert.condition.ConditionEvaluationContext;
 import com.dxc.monitoring.alert.condition.ConditionEvaluationResult;
 import com.dxc.monitoring.alert.condition.ConditionEvaluator;
 import com.dxc.monitoring.alert.json.JsonDocument;
+import com.dxc.monitoring.alert.presentation.AlertPresentationService;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
@@ -46,6 +47,7 @@ public class AlertEvaluationService {
     private final ObjectMapper objectMapper;
     private final ConditionEvaluator conditionEvaluator;
     private final NotificationRoutingService notificationRoutingService;
+    private final AlertPresentationService presentationService;
 
     public AlertEvaluationService(MonitoringExecutionRepository executionRepository,
             MonitoringResultRepository resultRepository,
@@ -54,7 +56,8 @@ public class AlertEvaluationService {
             AlertHistoryRepository historyRepository,
             AlertRuleEvaluationRepository evaluationRepository,
             ObjectMapper objectMapper, ConditionEvaluator conditionEvaluator,
-            NotificationRoutingService notificationRoutingService) {
+            NotificationRoutingService notificationRoutingService,
+            AlertPresentationService presentationService) {
         this.executionRepository = executionRepository;
         this.resultRepository = resultRepository;
         this.ruleRepository = ruleRepository;
@@ -64,6 +67,7 @@ public class AlertEvaluationService {
         this.objectMapper = objectMapper;
         this.conditionEvaluator = conditionEvaluator;
         this.notificationRoutingService = notificationRoutingService;
+        this.presentationService = presentationService;
     }
 
     @Transactional
@@ -241,6 +245,27 @@ public class AlertEvaluationService {
         alert.setLastExecution(execution);
         alert.setCreatedAt(now);
         alert.setUpdatedAt(now);
+
+        AlertHistory presentationHistory = new AlertHistory();
+        presentationHistory.setAlert(alert);
+        presentationHistory.setExecution(execution);
+        presentationHistory.setNewSeverity(alert.getSeverity());
+        presentationHistory.setOccurredAt(now);
+        Map<String, Object> presentationValues = new LinkedHashMap<>();
+        presentationValues.put("title", alert.getTitle());
+        presentationValues.put("body", alert.getSummary());
+        presentationValues.put("observedValue", result.value());
+        presentationValues.put("fieldPath", findConfiguredValue(condition,
+                "fieldPath", "collectionPath", "leftPath", "valuePath"));
+        presentationValues.put("threshold", findConfiguredValue(condition,
+                "threshold", "value", "countThreshold"));
+        AlertPresentationService.Presentation presentation =
+                presentationService.build(presentationHistory, presentationValues);
+        if (presentation != null) {
+            alert.setTitle(truncate(presentation.title(), 500));
+            alert.setSummary(presentation.message());
+        }
+
         alert = alertRepository.save(alert);
         log.info("Created active alert id={} ruleId={} jobId={} severity={} executionId={}",
                 alert.getId(), rule.getId(), execution.getMonitoringJob().getId(), alert.getSeverity(), execution.getId());
