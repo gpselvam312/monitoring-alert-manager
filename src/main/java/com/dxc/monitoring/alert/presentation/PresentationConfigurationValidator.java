@@ -81,14 +81,14 @@ public final class PresentationConfigurationValidator {
                 for (Object rawField : fields) {
                     if (!(rawField instanceof Map<?, ?> field)) throw new IllegalArgumentException("Each key/value field must be an object.");
                     String label = optionalText(field.get("label"), 100);
-                    String path = path(field.get("path"));
+                    String path = documentPath(field.get("path"));
                     if (label.isBlank()) label = path;
                     normalizedFields.add(Map.of("label", label, "path", path));
                 }
                 result.put("fields", normalizedFields);
             }
             case "TABLE" -> {
-                result.put("sourcePath", path(section.get("sourcePath")));
+                result.put("sourcePath", documentPath(section.get("sourcePath")));
                 Object rawColumns = section.get("columns");
                 if (!(rawColumns instanceof List<?> columns) || columns.isEmpty() || columns.size() > MAX_COLUMNS) {
                     throw new IllegalArgumentException("TABLE sections require between 1 and 20 columns.");
@@ -96,7 +96,7 @@ public final class PresentationConfigurationValidator {
                 List<Map<String, String>> normalizedColumns = new ArrayList<>();
                 for (Object rawColumn : columns) {
                     if (!(rawColumn instanceof Map<?, ?> column)) throw new IllegalArgumentException("Each table column must be an object.");
-                    String key = path(column.get("key"));
+                    String key = relativePath(column.get("key"));
                     String label = optionalText(column.get("label"), 100);
                     if (label.isBlank()) label = key;
                     normalizedColumns.add(Map.of("key", key, "label", label));
@@ -107,7 +107,7 @@ public final class PresentationConfigurationValidator {
             }
             case "LIST" -> {
                 result.put("sourcePath", path(section.get("sourcePath")));
-                if (section.containsKey("valuePath")) result.put("valuePath", path(section.get("valuePath")));
+                if (section.containsKey("valuePath")) result.put("valuePath", relativePath(section.get("valuePath")));
                 result.put("maxItems", boundedInteger(section.get("maxItems"), 20, 1, 100, "maxItems"));
                 copyOptionalText(section, result, "emptyText", 300);
             }
@@ -132,7 +132,16 @@ public final class PresentationConfigurationValidator {
         if (!value.isBlank()) target.put(key, value);
     }
 
-    private String path(Object raw) {
+    private String documentPath(Object raw) {
+        String value = relativePath(raw);
+        if (!(value.equals("response") || value.equals("data")
+                || value.startsWith("response.") || value.startsWith("data."))) {
+            throw new IllegalArgumentException("Presentation source paths must start with response. or data.");
+        }
+        return value;
+    }
+
+    private String relativePath(Object raw) {
         String value = optionalText(raw, 255);
         if (value.isBlank() || !PATH.matcher(value).matches()) {
             throw new IllegalArgumentException("Presentation paths must use dot notation and cannot exceed 255 characters.");
