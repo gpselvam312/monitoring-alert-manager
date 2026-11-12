@@ -58,6 +58,8 @@ public class AlertPresentationService {
                     ? text(notificationPayload.get("title")) : renderTemplate(titleTemplate, values, document);
             String message = messageTemplate.isBlank()
                     ? text(notificationPayload.get("body")) : renderTemplate(messageTemplate, values, document);
+            if (title.isBlank()) title = text(notificationPayload.get("title"));
+            if (message.isBlank()) message = text(notificationPayload.get("body"));
             return new Presentation(title, message, List.of());
         } catch (Exception exception) {
             log.warn("Alert title/message presentation could not be rendered for alertId={}; using legacy templates",
@@ -114,6 +116,8 @@ public class AlertPresentationService {
                     ? text(notificationPayload.get("title")) : renderTemplate(titleTemplate, templateValues, document);
             String message = messageTemplate.isBlank()
                     ? text(notificationPayload.get("body")) : renderTemplate(messageTemplate, templateValues, document);
+            if (title.isBlank()) title = text(notificationPayload.get("title"));
+            if (message.isBlank()) message = text(notificationPayload.get("body"));
             return new Presentation(title, message, renderedSections);
         } catch (Exception exception) {
             log.warn("Alert presentation configuration could not be rendered for alertId={}; using legacy message content",
