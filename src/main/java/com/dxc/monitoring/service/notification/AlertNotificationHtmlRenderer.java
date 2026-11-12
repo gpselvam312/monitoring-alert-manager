@@ -159,7 +159,7 @@ public class AlertNotificationHtmlRenderer {
         if (value != null && !value.isBlank() && !"—".equals(value)) facts.add(new String[] {label, value});
     }
 
-    private String value(Map<String, Object> payload, String key, String fallback) {
+    private String value(Map<?, ?> payload, String key, String fallback) {
         Object value = payload.get(key);
         return value == null ? fallback : String.valueOf(value);
     }

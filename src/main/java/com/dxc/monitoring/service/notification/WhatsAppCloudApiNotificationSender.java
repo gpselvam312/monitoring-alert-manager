@@ -156,7 +156,7 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
         catch (Exception exception) { throw new IllegalArgumentException("WhatsApp channel configuration is invalid."); }
     }
 
-    private String string(Map<String, Object> map, String key, String fallback) {
+    private String string(Map<?, ?> map, String key, String fallback) {
         Object value = map.get(key);
         return value == null ? fallback : String.valueOf(value);
     }

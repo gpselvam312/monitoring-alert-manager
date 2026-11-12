@@ -87,8 +87,11 @@ public class EmailNotificationSender implements NotificationChannelSender {
         appendLine(text, "Environment", string(payload, "environment", ""));
         appendLine(text, "Monitoring Job", string(payload, "monitoringJob", ""));
         appendLine(text, "Alert ID", string(payload, "alertId", ""));
-        appendLine(text, "Observed Value", string(payload, "observedValue", ""));
-        appendLine(text, "Threshold", string(payload, "threshold", ""));
+        boolean hasConfiguredSections = payload.get("content") instanceof java.util.List<?> content && !content.isEmpty();
+        if (!hasConfiguredSections) {
+            appendLine(text, "Observed Value", string(payload, "observedValue", ""));
+            appendLine(text, "Threshold", string(payload, "threshold", ""));
+        }
         return text.toString();
     }
 
@@ -147,7 +150,7 @@ public class EmailNotificationSender implements NotificationChannelSender {
         catch (Exception exception) { throw new IllegalArgumentException("Email channel configuration is invalid."); }
     }
 
-    private String string(Map<String, Object> map, String key, String fallback) {
+    private String string(Map<?, ?> map, String key, String fallback) {
         Object value = map.get(key);
         return value == null ? fallback : String.valueOf(value);
     }
