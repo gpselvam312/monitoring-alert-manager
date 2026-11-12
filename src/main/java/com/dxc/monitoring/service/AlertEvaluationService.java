@@ -293,6 +293,13 @@ public class AlertEvaluationService {
         Object payload = parseStructuredPayload(result.getResultData());
         if (payload == null) payload = parseStructuredPayload(result.getRawOutput());
         if (payload == null) payload = parseStructuredPayload(result.getMessage());
+        // Namespaced paths are additive: keep the legacy top-level payload view
+        // while exposing the complete response and explicit data namespace.
+        context.put("response", payload);
+        Object dataView = payload instanceof Map<?, ?> responseMap && responseMap.containsKey("data")
+                ? responseMap.get("data") : payload;
+        context.put("data", dataView);
+
         boolean normalizedEnvelope = isNormalizedEnvelope(payload);
         payload = unwrapNormalizedPayload(payload);
 
