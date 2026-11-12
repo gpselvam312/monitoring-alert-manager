@@ -27,10 +27,10 @@
 <div class="border rounded p-3 notification-route-row">
 <div class="d-flex align-items-center justify-content-between mb-3"><strong class="route-heading">Notification route</strong><button type="button" class="btn btn-sm btn-outline-danger remove-notification-route"><i class="bi bi-trash me-1"></i>Remove</button></div>
 <div class="row g-3">
-<div class="col-12 col-md-6"><label class="form-label">Channel</label><select class="form-select route-channel" required><option value="">Select channel</option><option th:each="channel : ${notificationChannels}" th:value="${channel.id}" th:text="${channel.name + ' (' + channel.channelType + ')'}"></option></select></div>
+<div class="col-12 col-md-6"><label class="form-label">Channel</label><select class="form-select route-channel" required><option value="">Select channel</option><option th:each="channel : ${notificationChannels}" th:value="${channel.id}" th:attr="data-channel-type=${channel.channelType}" th:text="${channel.name + ' (' + channel.channelType + ')'}"></option></select></div>
 <div class="col-6 col-md-3"><label class="form-label">Severity</label><select class="form-select route-severity" required><option value="INFO">Info</option><option value="WARNING">Warning</option><option value="CRITICAL">Critical</option></select></div>
 <div class="col-6 col-md-3"><label class="form-label">Event</label><select class="form-select route-event" required><option value="CREATED">Alert created</option><option value="RECURRENCE">Recurring alert</option><option value="ESCALATED">Severity escalated</option><option value="RECOVERED">Alert recovered</option><option value="REMINDER">Reminder</option></select></div>
-<div class="col-12 col-md-3"><label class="form-label">Target type</label><select class="form-select route-target-type"><option value="RECIPIENT">Recipient</option><option value="GROUP">Recipient group</option></select></div>
+<div class="col-12 col-md-3 route-target-type-container"><label class="form-label">Target type</label><select class="form-select route-target-type"><option value="RECIPIENT">Recipient</option><option value="GROUP">Recipient group</option></select></div>
 <div class="col-12 col-md-5 route-recipient-container"><label class="form-label">Recipient</label><select class="form-select route-recipient"><option value="">Select recipient</option><option th:each="recipient : ${notificationRecipients}" th:value="${recipient.id}" th:text="${recipient.name}"></option></select></div>
 <div class="col-12 col-md-5 route-group-container d-none"><label class="form-label">Recipient group</label><select class="form-select route-group"><option value="">Select group</option><option th:each="group : ${notificationGroups}" th:value="${group.id}" th:text="${group.name}"></option></select></div>
 <div class="col-6 col-md-3"><label class="form-label">Minimum interval (seconds)</label><input class="form-control route-interval" type="number" min="0" max="2147483647" value="300" required><div class="form-text">Used for recurrence/reminder</div></div>
@@ -118,11 +118,23 @@ document.addEventListener('DOMContentLoaded', () => {
         routesContainer.querySelectorAll('.route-heading').forEach((heading, index) => heading.textContent = 'Notification route ' + (index + 1));
     };
     const setTargetType = row => {
-        const isGroup = row.querySelector('.route-target-type').value === 'GROUP';
-        row.querySelector('.route-recipient-container').classList.toggle('d-none', isGroup);
-        row.querySelector('.route-group-container').classList.toggle('d-none', !isGroup);
-        row.querySelector('.route-recipient').required = !isGroup;
-        row.querySelector('.route-group').required = isGroup;
+        const channelSelect = row.querySelector('.route-channel');
+        const selectedChannel = channelSelect.selectedOptions[0];
+        const isTeams = selectedChannel?.dataset.channelType === 'TEAMS';
+        const targetType = row.querySelector('.route-target-type');
+        if (isTeams) {
+            targetType.value = 'NONE';
+            row.querySelector('.route-recipient').value = '';
+            row.querySelector('.route-group').value = '';
+        } else if (targetType.value === 'NONE') {
+            targetType.value = 'RECIPIENT';
+        }
+        const isGroup = !isTeams && targetType.value === 'GROUP';
+        row.querySelector('.route-target-type-container').classList.toggle('d-none', isTeams);
+        row.querySelector('.route-recipient-container').classList.toggle('d-none', isTeams || isGroup);
+        row.querySelector('.route-group-container').classList.toggle('d-none', isTeams || !isGroup);
+        row.querySelector('.route-recipient').required = !isTeams && !isGroup;
+        row.querySelector('.route-group').required = !isTeams && isGroup;
         syncNotificationRoutes();
     };
     const addRoute = route => {
@@ -141,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
             added.querySelector('.route-enabled').checked = route.enabled !== false;
         }
         added.querySelector('.route-target-type').addEventListener('change', () => setTargetType(added));
+        added.querySelector('.route-channel').addEventListener('change', () => setTargetType(added));
         added.querySelector('.remove-notification-route').addEventListener('click', () => { added.remove(); syncNotificationRoutes(); });
         added.querySelectorAll('select,input').forEach(input => input.addEventListener('change', syncNotificationRoutes));
         added.querySelectorAll('input').forEach(input => input.addEventListener('input', syncNotificationRoutes));
