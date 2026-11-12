@@ -101,20 +101,26 @@ public class AlertRuleNotificationRouteService {
             Long groupId = longValue(row.get("groupId"));
             String targetType = stringValue(row.get("targetType"));
             if (channelId == null) throw new IllegalArgumentException("Select a notification channel for every route.");
-            if ("RECIPIENT".equals(targetType) ? recipientId == null || groupId != null
-                    : !"GROUP".equals(targetType) || groupId == null || recipientId != null) {
-                throw new IllegalArgumentException("Each notification route must target exactly one recipient or group.");
-            }
 
             NotificationChannel channel = channelRepository.findById(channelId)
                     .filter(NotificationChannel::isEnabled)
                     .orElseThrow(() -> new IllegalArgumentException("Choose an enabled notification channel."));
+            boolean teamsChannel = channel.getChannelType() == NotificationChannel.ChannelType.TEAMS;
+            if (teamsChannel) {
+                if (!"NONE".equals(targetType) || recipientId != null || groupId != null) {
+                    throw new IllegalArgumentException("Teams routes use the destination configured on the Teams channel; no recipient or group is required.");
+                }
+            } else if ("RECIPIENT".equals(targetType) ? recipientId == null || groupId != null
+                    : !"GROUP".equals(targetType) || groupId == null || recipientId != null) {
+                throw new IllegalArgumentException("Each Email or WhatsApp route must target exactly one recipient or group.");
+            }
+
             NotificationRecipient recipient = null;
             NotificationGroup group = null;
-            if ("RECIPIENT".equals(targetType)) {
+            if (!teamsChannel && "RECIPIENT".equals(targetType)) {
                 recipient = recipientRepository.findById(recipientId).filter(NotificationRecipient::isEnabled)
                         .orElseThrow(() -> new IllegalArgumentException("Choose an enabled notification recipient."));
-            } else {
+            } else if (!teamsChannel) {
                 group = groupRepository.findById(groupId).filter(NotificationGroup::isEnabled)
                         .orElseThrow(() -> new IllegalArgumentException("Choose an enabled notification group."));
             }
