@@ -81,8 +81,9 @@ public class AlertRuleFieldDiscoveryService {
 
         JsonDocument document = JsonDocument.from(response);
         List<Field> fields = new ArrayList<>();
-        flatten(document.response(), "response", fields);
+        // Prioritize payload fields when the discovery cap is reached.
         flatten(document.data(), "data", fields);
+        flatten(document.response(), "response", fields);
         fields.sort(Comparator.comparing(Field::path, String.CASE_INSENSITIVE_ORDER));
         return new Discovery(execution.getId(), execution.getStartedAt() == null ? "" : execution.getStartedAt().toString(),
                 execution.getTriggerSource().name(), fields);

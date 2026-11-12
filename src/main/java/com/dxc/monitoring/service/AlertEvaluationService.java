@@ -317,9 +317,14 @@ public class AlertEvaluationService {
             if (textPayload != null && !textPayload.isBlank()) {
                 Map<String, Object> textFields = parseKeyValuePayload(textPayload);
                 if (!textFields.isEmpty()) {
+                    context.put("response", textFields);
+                    context.put("data", textFields);
                     context.putAll(textFields);
                     payloadFound = true;
                 } else {
+                    Map<String, Object> textResponse = Map.of("message", textPayload);
+                    context.put("response", textResponse);
+                    context.put("data", textResponse);
                     context.put("message", textPayload);
                 }
             }
