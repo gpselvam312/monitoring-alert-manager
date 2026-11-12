@@ -228,6 +228,40 @@ class AlertEvaluationServiceTest {
         verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
     }
 
+
+    @Test
+    void evaluatesAdvancedCollectionConditionThroughAlertLifecycle() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {
+                  "type":"COLLECTION",
+                  "collectionPath":"data.nodes",
+                  "quantifier":"ALL",
+                  "condition":{"fieldPath":"state","operator":"EQUALS","threshold":"DOWN"},
+                  "consecutiveMatches":1
+                }
+                """);
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getResultData()).thenReturn("""
+                {"schemaVersion":1,"status":"SUCCESS","data":{"nodes":[
+                  {"name":"node-a","state":"DOWN"},
+                  {"name":"node-b","state":"DOWN"}
+                ]}}
+                """);
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository).save(any(Alert.class));
+        verify(historyRepository).save(any(AlertHistory.class));
+        org.mockito.ArgumentCaptor<AlertRuleEvaluation> evaluationCaptor =
+                org.mockito.ArgumentCaptor.forClass(AlertRuleEvaluation.class);
+        verify(evaluationRepository).save(evaluationCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(AlertRuleEvaluation.Outcome.MATCHED,
+                evaluationCaptor.getValue().getOutcome());
+        org.junit.jupiter.api.Assertions.assertTrue(evaluationCaptor.getValue().getDetails().contains("COLLECTION"));
+    }
+
     @Test
     void rejectsInvalidConditionGroupOperator() {
         when(rule.getConditionConfig()).thenReturn("""

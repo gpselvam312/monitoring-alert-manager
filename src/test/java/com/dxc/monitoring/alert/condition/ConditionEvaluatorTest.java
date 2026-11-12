@@ -87,6 +87,17 @@ class ConditionEvaluatorTest {
         assertTrue(evaluator.evaluate(condition("cpu.usage", "GT", 85), context).matched());
     }
 
+
+    @Test
+    void comparesTwoFieldsWithoutLiteralThresholds() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("actual", 95, "limit", 80)));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> condition = Map.of("type", "FIELD_COMPARISON",
+                "leftPath", "data.actual", "rightPath", "data.limit", "operator", "GT");
+
+        assertTrue(evaluator.evaluate(condition, context).matched());
+    }
+
     private Map<String, Object> condition(String path, String operator, Object threshold) {
         return Map.of("fieldPath", path, "operator", operator, "threshold", threshold);
     }
