@@ -45,6 +45,18 @@
         <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" id="addRootCondition"><i class="bi bi-plus-lg me-1"></i>Add condition</button><button type="button" class="btn btn-sm btn-outline-primary" id="addRootGroup"><i class="bi bi-diagram-3 me-1"></i>Add group</button></div>
     </div>
     <div id="conditionTreeEditor" aria-live="polite"></div>
+    <details id="advancedConditionEditor" class="mt-3">
+        <summary class="small fw-semibold">Advanced condition JSON (collections, field comparisons and aggregations)</summary>
+        <div class="pt-3">
+            <label class="form-label" for="advancedConditionJson">Condition configuration</label>
+            <textarea class="form-control font-monospace" id="advancedConditionJson" rows="12" spellcheck="false"></textarea>
+            <div class="form-text">Supports GROUP, CONDITION, FIELD_COMPARISON, COLLECTION (ANY / ALL / NONE), and AGGREGATE (COUNT / SUM / MIN / MAX). Paths use response.* or data.*. Collection predicates use fields relative to each record.</div>
+            <div class="d-flex gap-2 justify-content-end mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="useVisualConditionBuilder">Use visual builder</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="applyAdvancedConditionJson">Use advanced JSON</button>
+            </div>
+        </div>
+    </details>
     <div class="form-text">Example: (CPU &gt; 80 AND memory &gt; 85) OR (status = DOWN AND retries &gt; 3).</div>
 </div>
 <div class="row g-3">
@@ -207,9 +219,20 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const defaultCondition = () => ({type:'CONDITION',fieldPath:'',operator:'GREATER_THAN',threshold:''});
     const defaultGroup = (operator='AND') => ({type:'GROUP',operator,children:[defaultCondition(),defaultCondition()]});
+    const advancedEditor = document.getElementById('advancedConditionEditor');
+    const advancedJsonInput = document.getElementById('advancedConditionJson');
+    const applyAdvancedJson = document.getElementById('applyAdvancedConditionJson');
+    const useVisualBuilder = document.getElementById('useVisualConditionBuilder');
     let tree;
     try { tree = JSON.parse(treeInput.value); } catch (_) { tree = defaultCondition(); }
-    if (!tree || !['CONDITION','GROUP'].includes(tree.type)) tree = defaultCondition();
+    let advancedMode = !tree || !['CONDITION','GROUP'].includes(tree.type);
+    if (advancedMode) {
+        if (advancedJsonInput) advancedJsonInput.value = JSON.stringify(tree || {}, null, 2);
+        if (advancedEditor) advancedEditor.open = true;
+        tree = defaultCondition();
+    } else if (advancedJsonInput) {
+        advancedJsonInput.value = JSON.stringify(tree, null, 2);
+    }
     let discoveredFields = [];
     const fieldDatalist = document.createElement('datalist');
     fieldDatalist.id = 'discoveredConditionFieldPaths';
@@ -245,7 +268,10 @@ document.addEventListener('DOMContentLoaded', () => {
             ? '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading saved result…'
             : '<i class="bi bi-search me-1"></i>Load Latest Saved Result';
     };
-    const syncTree = () => { treeInput.value = JSON.stringify(tree); };
+    const syncTree = () => {
+        treeInput.value = advancedMode && advancedJsonInput
+            ? advancedJsonInput.value : JSON.stringify(tree);
+    };
     const countNodes = node => 1 + (node.type === 'GROUP' ? node.children.reduce((sum, child) => sum + countNodes(child), 0) : 0);
     const firstCondition = node => node.type === 'CONDITION' ? node : node.children.map(firstCondition).find(Boolean);
     const updateConditionInputs = () => {
@@ -265,9 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
         countFieldThreshold.required = matchingMode && !['EXISTS','NOT_EXISTS'].includes(countFieldOperator.value);
         collectionPath.required = countMode;
         countThreshold.required = countMode;
-        treeEditor.classList.toggle('d-none', !conditionMode);
-        addRootCondition.classList.toggle('d-none', !conditionMode);
-        addRootGroup.classList.toggle('d-none', !conditionMode);
+        treeEditor.classList.toggle('d-none', !conditionMode || advancedMode);
+        addRootCondition.classList.toggle('d-none', !conditionMode || advancedMode);
+        addRootGroup.classList.toggle('d-none', !conditionMode || advancedMode);
+        if (advancedEditor) advancedEditor.classList.toggle('d-none', !conditionMode);
     };
     const makeButton = (label, className, handler) => {
         const button = document.createElement('button');
@@ -412,6 +439,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     conditionType.addEventListener('change', updateConditionInputs);
     countFieldOperator.addEventListener('change', updateConditionInputs);
+    advancedJsonInput?.addEventListener('input', () => {
+        if (advancedMode) treeInput.value = advancedJsonInput.value;
+    });
+    applyAdvancedJson?.addEventListener('click', () => {
+        try {
+            const parsed = JSON.parse(advancedJsonInput.value);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !parsed.type) {
+                throw new Error('The condition must be a JSON object with a node type.');
+            }
+            advancedMode = true;
+            treeInput.value = advancedJsonInput.value;
+            updateConditionInputs();
+            showMessage('Advanced condition JSON is ready for server-side validation when you save the rule.','success');
+        } catch (error) {
+            showMessage('Invalid condition JSON: ' + error.message,'danger');
+        }
+    });
+    useVisualBuilder?.addEventListener('click', () => {
+        try {
+            const parsed = JSON.parse(advancedJsonInput.value);
+            const isVisualNode = node => node && (node.type === 'CONDITION'
+                || (node.type === 'GROUP' && Array.isArray(node.children) && node.children.every(isVisualNode)));
+            if (!isVisualNode(parsed)) throw new Error('This condition uses advanced node types that the visual builder cannot edit.');
+            tree = parsed;
+            advancedMode = false;
+            if (advancedEditor) advancedEditor.open = false;
+            renderTree();
+        } catch (error) {
+            showMessage(error.message,'warning');
+        }
+    });
     form.addEventListener('submit', () => syncTree());
     renderTree();
 

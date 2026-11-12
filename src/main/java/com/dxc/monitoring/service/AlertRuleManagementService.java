@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.dxc.monitoring.alert.condition.ConditionConfigurationValidator;
 import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertRuleRepository;
@@ -35,6 +36,7 @@ public class AlertRuleManagementService {
     private final MonitoringJobRepository jobRepository;
     private final ObjectMapper objectMapper;
     private final NotificationPolicyRepository notificationPolicyRepository;
+    private final ConditionConfigurationValidator conditionConfigurationValidator = new ConditionConfigurationValidator();
 
     public AlertRuleManagementService(AlertRuleRepository ruleRepository,
             MonitoringJobRepository jobRepository, ObjectMapper objectMapper,
@@ -140,7 +142,8 @@ public class AlertRuleManagementService {
             Map<String, Object> condition = objectMapper.readValue(rule.getConditionConfig(), Map.class);
             form.setConditionTreeJson(toJson(editableConditionNode(condition)));
             String storedConditionType = stringValue(condition.get("type"), "CONDITION");
-            form.setConditionType("GROUP".equalsIgnoreCase(storedConditionType) ? "CONDITION" : storedConditionType);
+            form.setConditionType(Set.of("COUNT_TOTAL", "COUNT_MATCHING").contains(storedConditionType.toUpperCase(Locale.ROOT))
+                    ? storedConditionType.toUpperCase(Locale.ROOT) : "CONDITION");
             form.setCollectionPath(stringValue(condition.get("collectionPath"), ""));
             form.setCountFieldPath(stringValue(condition.get("fieldPath"), ""));
             form.setCountFieldOperator(stringValue(condition.get("operator"), "EQUALS"));
@@ -243,7 +246,7 @@ public class AlertRuleManagementService {
         }
         try {
             Object parsed = objectMapper.readValue(json, Object.class);
-            return new com.dxc.monitoring.alert.condition.ConditionConfigurationValidator().normalize(parsed);
+            return conditionConfigurationValidator.normalize(parsed);
         } catch (IllegalArgumentException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -270,6 +273,10 @@ public class AlertRuleManagementService {
                 }
             }
             node.put("children", children);
+            return node;
+        }
+        if (!"CONDITION".equals(type)) {
+            storedNode.forEach(node::put);
             return node;
         }
         node.put("type", "CONDITION");

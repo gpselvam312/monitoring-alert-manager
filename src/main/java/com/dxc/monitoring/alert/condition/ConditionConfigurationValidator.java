@@ -126,7 +126,15 @@ public final class ConditionConfigurationValidator {
         result.put("operation", operation);
         if (!operation.equals("COUNT")) result.put("valuePath", path(node, "valuePath"));
         result.put("operator", operator);
-        result.put("threshold", threshold(node.get("threshold"), operator));
+        Object aggregateThreshold = node.get("threshold");
+        if (aggregateThreshold == null || String.valueOf(aggregateThreshold).isBlank()) {
+            throw new IllegalArgumentException("Aggregate comparison threshold is required.");
+        }
+        try {
+            result.put("threshold", new BigDecimal(String.valueOf(aggregateThreshold)));
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Aggregate comparison threshold must be numeric.");
+        }
         if (node.containsKey("filter")) result.put("filter", normalizeNode(node.get("filter"), depth + 1, count));
         return result;
     }
