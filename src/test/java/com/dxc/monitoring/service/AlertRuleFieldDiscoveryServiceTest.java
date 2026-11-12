@@ -93,8 +93,9 @@ class AlertRuleFieldDiscoveryServiceTest {
                 mock(MonitoringResultRepository.class),
                 new ObjectMapper());
 
-        AlertRuleFieldDiscoveryService.Discovery discovery = service.discoverSample(
-                "{\\"status\\":\\"UP\\",\\"cpu\\":72}");
+        AlertRuleFieldDiscoveryService.Discovery discovery = service.discoverSample("""
+                {"status":"UP","cpu":72}
+                """);
 
         assertTrue(discovery.fields().stream().anyMatch(field -> field.path().equals("response.status")));
         assertTrue(discovery.fields().stream().anyMatch(field -> field.path().equals("data.status")));
