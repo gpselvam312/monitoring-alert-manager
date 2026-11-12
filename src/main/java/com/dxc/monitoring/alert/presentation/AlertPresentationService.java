@@ -236,8 +236,14 @@ public class AlertPresentationService {
 
     private Object sourceValue(JsonDocument document, String path) {
         JsonPathResolver.ResolvedValues resolved = resolve(document, path);
-        if (!resolved.found() || resolved.values().size() != 1) return null;
-        return resolved.values().get(0);
+        if (!resolved.found() || resolved.values().isEmpty()) return null;
+        if (resolved.values().size() == 1) return resolved.values().get(0);
+        List<Object> flattened = new ArrayList<>();
+        for (Object value : resolved.values()) {
+            if (value instanceof List<?> list) flattened.addAll(list);
+            else flattened.add(value);
+        }
+        return flattened;
     }
 
     private JsonPathResolver.ResolvedValues resolve(JsonDocument document, String path) {
