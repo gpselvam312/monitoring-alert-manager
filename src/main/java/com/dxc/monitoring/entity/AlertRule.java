@@ -55,6 +55,13 @@ public class AlertRule {
     @Column(name = "recovery_config", nullable = false, columnDefinition = "jsonb")
     private String recoveryConfig = "{}";
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "presentation_config", nullable = false, columnDefinition = "jsonb")
+    private String presentationConfig = "{}";
+
+    @Column(name = "config_version", nullable = false)
+    private Integer configVersion = 1;
+
     @Column(name = "alert_subject", nullable = false, length = 500)
     private String alertSubject = "[{severity}] {ruleName}";
 
@@ -82,6 +89,8 @@ public class AlertRule {
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
         if (recoveryConfig == null || recoveryConfig.isBlank()) recoveryConfig = "{}";
+        if (presentationConfig == null || presentationConfig.isBlank()) presentationConfig = "{}";
+        if (configVersion == null || configVersion < 1) configVersion = 1;
     }
 
     @PreUpdate
@@ -110,6 +119,10 @@ public class AlertRule {
     public void setConditionConfig(String conditionConfig) { this.conditionConfig = conditionConfig; }
     public String getRecoveryConfig() { return recoveryConfig; }
     public void setRecoveryConfig(String recoveryConfig) { this.recoveryConfig = recoveryConfig; }
+    public String getPresentationConfig() { return presentationConfig; }
+    public void setPresentationConfig(String presentationConfig) { this.presentationConfig = presentationConfig; }
+    public Integer getConfigVersion() { return configVersion; }
+    public void setConfigVersion(Integer configVersion) { this.configVersion = configVersion; }
     public String getAlertSubject() { return alertSubject; }
     public void setAlertSubject(String alertSubject) { this.alertSubject = alertSubject; }
     public String getAlertMessage() { return alertMessage; }

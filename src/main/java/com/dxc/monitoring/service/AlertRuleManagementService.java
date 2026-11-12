@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.alert.condition.ConditionConfigurationValidator;
+import com.dxc.monitoring.alert.presentation.PresentationConfigurationValidator;
 import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertRuleRepository;
@@ -37,6 +38,7 @@ public class AlertRuleManagementService {
     private final ObjectMapper objectMapper;
     private final NotificationPolicyRepository notificationPolicyRepository;
     private final ConditionConfigurationValidator conditionConfigurationValidator = new ConditionConfigurationValidator();
+    private final PresentationConfigurationValidator presentationConfigurationValidator = new PresentationConfigurationValidator();
 
     public AlertRuleManagementService(AlertRuleRepository ruleRepository,
             MonitoringJobRepository jobRepository, ObjectMapper objectMapper,
@@ -96,6 +98,8 @@ public class AlertRuleManagementService {
         }
         rule.setAlertSubject(alertSubject);
         rule.setAlertMessage(alertMessage);
+        rule.setPresentationConfig(toJson(parsePresentationConfig(form.getPresentationConfigJson())));
+        rule.setConfigVersion(1);
         if (form.getNotificationPolicyId() != null) {
             notificationPolicyRepository.findById(form.getNotificationPolicyId()).filter(com.dxc.monitoring.entity.NotificationPolicy::isEnabled)
                     .orElseThrow(() -> new IllegalArgumentException("Selected notification policy was not found."));
@@ -137,6 +141,8 @@ public class AlertRuleManagementService {
         form.setDescription(rule.getDescription());
         form.setAlertSubject(rule.getAlertSubject());
         form.setAlertMessage(rule.getAlertMessage());
+        form.setPresentationConfigJson(rule.getPresentationConfig() == null || rule.getPresentationConfig().isBlank()
+                ? "{}" : rule.getPresentationConfig());
         form.setEnabled(rule.isEnabled());
         form.setSeverity(rule.getSeverity().name());
         form.setExecutionSourcePolicy(rule.getExecutionSourcePolicy().name());
@@ -245,6 +251,18 @@ public class AlertRuleManagementService {
             config.put("correlationFieldPath", correlationPath);
         }
         return config;
+    }
+
+    private Map<String, Object> parsePresentationConfig(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        try {
+            Object parsed = objectMapper.readValue(json, Object.class);
+            return presentationConfigurationValidator.normalize(parsed);
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("The alert presentation configuration is invalid JSON.");
+        }
     }
 
     private Map<String, Object> parseRecoveryTree(String json) {
