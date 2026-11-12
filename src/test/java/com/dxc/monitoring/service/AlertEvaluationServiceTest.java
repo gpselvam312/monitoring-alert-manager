@@ -2,6 +2,7 @@ package com.dxc.monitoring.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +41,7 @@ class AlertEvaluationServiceTest {
     private AlertHistoryRepository historyRepository;
     private AlertRuleEvaluationRepository evaluationRepository;
     private AlertEvaluationService service;
+    private AlertPresentationService presentationService;
     private MonitoringExecution execution;
     private AlertRule rule;
     private MonitoringJob job;
@@ -52,8 +54,10 @@ class AlertEvaluationServiceTest {
         alertRepository = mock(AlertRepository.class);
         historyRepository = mock(AlertHistoryRepository.class);
         evaluationRepository = mock(AlertRuleEvaluationRepository.class);
+        presentationService = mock(AlertPresentationService.class);
         service = new AlertEvaluationService(executionRepository, resultRepository, ruleRepository,
-                alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), new ConditionEvaluator(), mock(NotificationRoutingService.class), mock(AlertPresentationService.class));
+                alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), new ConditionEvaluator(),
+                mock(NotificationRoutingService.class), presentationService);
 
         execution = mock(MonitoringExecution.class);
         rule = mock(AlertRule.class);
@@ -106,6 +110,20 @@ class AlertEvaluationServiceTest {
         assertEquals("data.cpu.usage: 92 > 85 (execution 101)", alertCaptor.getValue().getSummary());
         verify(historyRepository).save(any(AlertHistory.class));
         verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+
+    @Test
+    void appliesConfiguredPresentationTemplatesToTheStoredAlert() {
+        when(presentationService.buildTemplates(any(AlertHistory.class), anyMap()))
+                .thenReturn(new AlertPresentationService.Presentation("Configured title", "Configured summary", List.of()));
+
+        service.evaluateExecution(101L);
+
+        org.mockito.ArgumentCaptor<Alert> alertCaptor = org.mockito.ArgumentCaptor.forClass(Alert.class);
+        verify(alertRepository).save(alertCaptor.capture());
+        assertEquals("Configured title", alertCaptor.getValue().getTitle());
+        assertEquals("Configured summary", alertCaptor.getValue().getSummary());
     }
 
     @Test
