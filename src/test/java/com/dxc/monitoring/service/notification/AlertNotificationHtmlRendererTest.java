@@ -42,7 +42,9 @@ class AlertNotificationHtmlRendererTest {
                                 "columns", List.of(Map.of("key", "name", "label", "Node")),
                                 "rows", List.of(Map.of("name", "<node-a>"))),
                         Map.of("type", "list", "title", "Impacted", "items", List.of("consumer-a", "consumer-b")),
-                        Map.of("type", "json", "title", "Payload", "value", "{\\"state\\":\\"DOWN\\"}"))));
+                        Map.of("type", "json", "title", "Payload", "value", """
+                                {"state":"DOWN"}
+                                """))));
 
         assertTrue(html.contains("Queue &lt;b&gt;degraded&lt;/b&gt;"));
         assertTrue(html.contains("kafka &amp; prod"));
