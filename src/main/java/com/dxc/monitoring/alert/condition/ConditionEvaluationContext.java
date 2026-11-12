@@ -68,28 +68,30 @@ public final class ConditionEvaluationContext {
         }
         List<Object> values = new ArrayList<>();
         boolean[] found = {false};
+        boolean[] emptyCollectionMatched = {false};
         if (scoped && !(root instanceof Map<?, ?>) && !(root instanceof List<?>) && "value".equals(path)) {
             values.add(root);
             found[0] = true;
         } else {
-            walk(root, segments, 0, values, found, new int[] {0});
+            walk(root, segments, 0, values, found, emptyCollectionMatched, new int[] {0});
         }
-        return new ResolvedPath(found[0], values, false);
+        return new ResolvedPath(found[0], values, emptyCollectionMatched[0]);
     }
 
     private void walk(Object current, String[] segments, int position, List<Object> values,
-            boolean[] found, int[] visited) {
+            boolean[] found, boolean[] emptyCollectionMatched, int[] visited) {
         if (++visited[0] > JsonPathResolver.DEFAULT_MAX_VISITED_VALUES) {
             throw new IllegalArgumentException("Condition field traversal exceeded the configured value limit.");
         }
         if (position == segments.length) {
             found[0] = true;
+            if (current instanceof List<?> list && list.isEmpty()) emptyCollectionMatched[0] = true;
             values.add(current);
             return;
         }
         if (current instanceof Map<?, ?> map) {
             if (map.containsKey(segments[position])) {
-                walk(map.get(segments[position]), segments, position + 1, values, found, visited);
+                walk(map.get(segments[position]), segments, position + 1, values, found, emptyCollectionMatched, visited);
             }
             return;
         }
@@ -103,12 +105,16 @@ public final class ConditionEvaluationContext {
                     return;
                 }
                 if (index >= 0 && index < list.size()) {
-                    walk(list.get(index), segments, position + 1, values, found, visited);
+                    walk(list.get(index), segments, position + 1, values, found, emptyCollectionMatched, visited);
                 }
                 return;
             }
+            if (list.isEmpty()) {
+                emptyCollectionMatched[0] = true;
+                return;
+            }
             for (Object item : list) {
-                walk(item, segments, position, values, found, visited);
+                walk(item, segments, position, values, found, emptyCollectionMatched, visited);
             }
         }
     }

@@ -316,6 +316,7 @@ public class ConditionEvaluator {
     }
 
     private List<?> requireCollection(ConditionEvaluationContext.ResolvedPath resolved, String path) {
+        if (!resolved.found() && resolved.emptyCollectionMatched()) return List.of();
         if (!resolved.found() || resolved.values().size() != 1
                 || !(resolved.values().get(0) instanceof List<?> records)) {
             throw new IllegalArgumentException("Collection path must resolve to one array: " + path);
