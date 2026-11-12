@@ -14,7 +14,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -41,6 +40,7 @@ import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.repository.UserAlertStateRepository;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.AlertRuleManagementService;
+import com.dxc.monitoring.service.AlertRuleConfigurationService;
 import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
 import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
@@ -57,6 +57,7 @@ public class AlertController {
     private final AlertRuleEvaluationRepository ruleEvaluationRepository;
     private final MonitoringJobRepository jobRepository;
     private final AlertRuleManagementService ruleManagementService;
+    private final AlertRuleConfigurationService ruleConfigurationService;
     private final DashboardAccessService accessService;
     private final UserAlertStateRepository userAlertStateRepository;
     private final NotificationPolicyRepository notificationPolicyRepository;
@@ -66,7 +67,8 @@ public class AlertController {
     public AlertController(AlertRepository alertRepository, AlertHistoryRepository historyRepository,
             AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
             MonitoringJobRepository jobRepository,
-            AlertRuleManagementService ruleManagementService, DashboardAccessService accessService,
+            AlertRuleManagementService ruleManagementService, AlertRuleConfigurationService ruleConfigurationService,
+            DashboardAccessService accessService,
             UserAlertStateRepository userAlertStateRepository,
             NotificationPolicyRepository notificationPolicyRepository,
             AlertRuleFieldDiscoveryService fieldDiscoveryService,
@@ -77,6 +79,7 @@ public class AlertController {
         this.ruleEvaluationRepository = ruleEvaluationRepository;
         this.jobRepository = jobRepository;
         this.ruleManagementService = ruleManagementService;
+        this.ruleConfigurationService = ruleConfigurationService;
         this.accessService = accessService;
         this.userAlertStateRepository = userAlertStateRepository;
         this.notificationPolicyRepository = notificationPolicyRepository;
@@ -264,7 +267,6 @@ public class AlertController {
     }
 
     @PostMapping("/rules/save")
-    @Transactional
     @PreAuthorize("hasAuthority('ALERT_CONFIG')")
     public String saveRule(@ModelAttribute AlertRuleForm form, Authentication authentication, Model model,
             RedirectAttributes redirectAttributes) {
@@ -277,14 +279,13 @@ public class AlertController {
             MonitoringJob job = jobRepository.findByIdForDetails(form.getMonitoringJobId())
                     .orElseThrow(() -> new IllegalArgumentException("Select an available monitoring job."));
             assertJobAccess(job, "ALERT_CONFIG");
-            AlertRule savedRule = ruleManagementService.save(form, userId(authentication));
-            notificationRouteService.replaceRoutes(savedRule.getId(), form.getNotificationRoutesJson());
+            ruleConfigurationService.save(form, userId(authentication));
             redirectAttributes.addFlashAttribute("successMessage", "Alert rule saved successfully.");
             return "redirect:/alerts/rules";
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             addRuleFormModel(model, form);
             model.addAttribute("errorMessage", exception instanceof DataIntegrityViolationException
-                    ? "A rule with this name already exists for the selected monitoring job."
+                    ? "Unable to save the alert rule or its notification routes because of a data constraint. Review the configured values and try again."
                     : safeMessage(exception.getMessage()));
             model.addAttribute("currentPage", "alert-rules");
             return "alerts/rule-form";
