@@ -248,15 +248,23 @@ public class AlertPresentationService {
     private Object resolveRelative(Object root, String path) {
         if (path == null || path.isBlank()) return root;
         if ("value".equals(path) && !(root instanceof Map<?, ?>) && !(root instanceof List<?>)) return root;
-        Object current = root;
+        List<Object> current = new ArrayList<>();
+        current.add(root);
         for (String segment : path.split("\\.")) {
-            if (current instanceof Map<?, ?> map) {
-                current = map.get(segment);
-            } else {
-                return null;
+            List<Object> next = new ArrayList<>();
+            for (Object candidate : current) {
+                if (candidate instanceof Map<?, ?> map && map.containsKey(segment)) {
+                    next.add(map.get(segment));
+                } else if (candidate instanceof List<?> list) {
+                    for (Object item : list) {
+                        if (item instanceof Map<?, ?> map && map.containsKey(segment)) next.add(map.get(segment));
+                    }
+                }
             }
+            current = next;
+            if (current.isEmpty()) return null;
         }
-        return current;
+        return current.size() == 1 ? current.get(0) : current;
     }
 
     private Object observed(List<Object> values) {
