@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['LESS_THAN','Less than'],['LESS_THAN_OR_EQUAL','Less than or equal'],
         ['EQUALS','Equals'],['NOT_EQUALS','Not equals'],['EQUALS_IGNORE_CASE','Equals (ignore case)'],
         ['CONTAINS','Contains'],['REGEX','Regular expression'],['EXISTS','Exists'],
-        ['NOT_EXISTS','Does not exist'],['IS_TRUE','Is true'],['IS_FALSE','Is false']
+        ['NOT_EXISTS','Does not exist'],['IS_TRUE','Is true'],['IS_FALSE','Is false'],['IS_NULL','Is null'],['IS_NOT_NULL','Is not null'],['NOT_CONTAINS','Does not contain'],['STARTS_WITH','Starts with'],['ENDS_WITH','Ends with']
     ];
     const defaultCondition = () => ({type:'CONDITION',fieldPath:'',operator:'GREATER_THAN',threshold:''});
     const defaultGroup = (operator='AND') => ({type:'GROUP',operator,children:[defaultCondition(),defaultCondition()]});
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         treeEditor.querySelectorAll('.tree-field-path').forEach(input => input.required = conditionMode);
         treeEditor.querySelectorAll('.tree-threshold').forEach(input => {
             const op = input.dataset.operator;
-            input.required = conditionMode && !['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(op);
+            input.required = conditionMode && !['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE','IS_NULL','IS_NOT_NULL'].includes(op);
         });
         const countMode = conditionType.value === 'COUNT_TOTAL' || conditionType.value === 'COUNT_MATCHING';
         countFields.classList.toggle('d-none', !countMode);
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
         countFieldOperatorContainer.classList.toggle('d-none', !matchingMode);
         countFieldThresholdContainer.classList.toggle('d-none', !matchingMode);
         countFieldPath.required = matchingMode;
-        countFieldThreshold.required = matchingMode && !['EXISTS','NOT_EXISTS'].includes(countFieldOperator.value);
+        countFieldThreshold.required = matchingMode && !['EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'].includes(countFieldOperator.value);
         collectionPath.required = countMode;
         countThreshold.required = countMode;
         treeEditor.classList.toggle('d-none', !conditionMode || advancedMode);
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const selected = discoveredFields.find(field => field.path === pathInput.value);
                 if (selected) {
                     if (selected.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS'].includes(node.operator)) node.operator = 'GREATER_THAN';
-                    if (selected.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(node.operator)) node.operator = 'IS_TRUE';
+                    if (selected.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE','IS_NULL','IS_NOT_NULL'].includes(node.operator)) node.operator = 'IS_TRUE';
                     if (selected.type === 'null') node.operator = 'EXISTS';
                     renderTree();
                 }
@@ -512,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? ['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE']
                 : type === 'null'
                     ? ['EXISTS','NOT_EXISTS']
-                    : ['EQUALS','NOT_EQUALS','EQUALS_IGNORE_CASE','CONTAINS','REGEX','EXISTS','NOT_EXISTS'];
+                    : ['EQUALS','NOT_EQUALS','EQUALS_IGNORE_CASE','CONTAINS','NOT_CONTAINS','STARTS_WITH','ENDS_WITH','REGEX','EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'];
         Array.from(selectElement.options).forEach(option => { option.hidden = !allowed.includes(option.value); });
         if (selectElement.selectedOptions.length && selectElement.selectedOptions[0].hidden) selectElement.value = allowed[0];
     };
