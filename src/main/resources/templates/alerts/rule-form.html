@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         countFieldOperatorContainer.classList.toggle('d-none', !matchingMode);
         countFieldThresholdContainer.classList.toggle('d-none', !matchingMode);
         countFieldPath.required = matchingMode;
-        countFieldThreshold.required = matchingMode && !['EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'].includes(countFieldOperator.value);
+        countFieldThreshold.required = matchingMode && !['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE','IS_NULL','IS_NOT_NULL'].includes(countFieldOperator.value);
         collectionPath.required = countMode;
         countThreshold.required = countMode;
         treeEditor.classList.toggle('d-none', !conditionMode || advancedMode);
