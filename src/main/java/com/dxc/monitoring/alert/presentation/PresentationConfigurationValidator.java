@@ -106,13 +106,13 @@ public final class PresentationConfigurationValidator {
                 copyOptionalText(section, result, "emptyText", 300);
             }
             case "LIST" -> {
-                result.put("sourcePath", path(section.get("sourcePath")));
+                result.put("sourcePath", documentPath(section.get("sourcePath")));
                 if (section.containsKey("valuePath")) result.put("valuePath", relativePath(section.get("valuePath")));
                 result.put("maxItems", boundedInteger(section.get("maxItems"), 20, 1, 100, "maxItems"));
                 copyOptionalText(section, result, "emptyText", 300);
             }
             case "JSON" -> {
-                result.put("sourcePath", path(section.get("sourcePath")));
+                result.put("sourcePath", documentPath(section.get("sourcePath")));
                 result.put("maxLength", boundedInteger(section.get("maxLength"), 4000, 100, 10_000, "maxLength"));
             }
             default -> throw new IllegalArgumentException("Unsupported presentation section type.");
