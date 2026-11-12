@@ -182,7 +182,7 @@ class AlertEvaluationServiceTest {
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
         when(result.getValue()).thenReturn("3");
         when(result.getUnit()).thenReturn("servers");
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         service.evaluateExecution(101L);
 
@@ -209,7 +209,7 @@ class AlertEvaluationServiceTest {
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
         when(result.getValue()).thenReturn("3");
         when(result.getUnit()).thenReturn("servers");
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         service.evaluateExecution(101L);
 
@@ -238,7 +238,7 @@ class AlertEvaluationServiceTest {
                 """);
         when(result.getMessage()).thenReturn("Script completed successfully.");
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         service.evaluateExecution(101L);
 
@@ -267,7 +267,7 @@ class AlertEvaluationServiceTest {
                 ]}}
                 """);
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         service.evaluateExecution(101L);
 
