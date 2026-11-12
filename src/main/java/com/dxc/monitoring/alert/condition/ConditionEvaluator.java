@@ -413,7 +413,7 @@ public class ConditionEvaluator {
         if (expression.contains("(?=") || expression.contains("(?!")
                 || expression.contains("(?<=") || expression.contains("(?<!")) return true;
         for (int i = 0; i + 1 < expression.length(); i++) {
-            if (expression.charAt(i) == '\\\\' && Character.isDigit(expression.charAt(i + 1))
+            if (expression.charAt(i) == '\\' && Character.isDigit(expression.charAt(i + 1))
                     && expression.charAt(i + 1) != '0') return true;
         }
         int open = expression.indexOf('(');
