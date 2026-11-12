@@ -193,14 +193,15 @@ public final class ConditionConfigurationValidator {
 
     private Object threshold(Object raw, String operator) {
         if (raw == null || String.valueOf(raw).isBlank()) throw new IllegalArgumentException("A threshold/value is required for this condition.");
-        if (Set.of("GREATER_THAN", "GREATER_THAN_OR_EQUAL", "LESS_THAN", "LESS_THAN_OR_EQUAL",
-                "GT", "GTE", "LT", "LTE").contains(operator)) {
+        if (raw instanceof Number || Set.of("GREATER_THAN", "GREATER_THAN_OR_EQUAL",
+                "LESS_THAN", "LESS_THAN_OR_EQUAL", "GT", "GTE", "LT", "LTE").contains(operator)) {
             try {
                 return new BigDecimal(String.valueOf(raw));
             } catch (NumberFormatException exception) {
                 throw new IllegalArgumentException("Numeric comparison thresholds must be valid numbers.");
             }
         }
+        if (raw instanceof Boolean) return raw;
         String value = String.valueOf(raw).trim();
         if (value.length() > 500) throw new IllegalArgumentException("Condition value is too long.");
         return value;

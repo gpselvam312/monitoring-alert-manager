@@ -382,8 +382,12 @@ public class ConditionEvaluator {
 
     private boolean valuesEqual(Object actual, Object expected) {
         if (actual == null || expected == null) return actual == expected;
-        if (actual instanceof Number && expected instanceof Number) {
-            return new BigDecimal(String.valueOf(actual)).compareTo(new BigDecimal(String.valueOf(expected))) == 0;
+        if (actual instanceof Number && (expected instanceof Number || expected instanceof CharSequence)) {
+            try {
+                return new BigDecimal(String.valueOf(actual)).compareTo(new BigDecimal(String.valueOf(expected))) == 0;
+            } catch (NumberFormatException ignored) {
+                return false;
+            }
         }
         return actual.equals(expected) || String.valueOf(actual).equals(String.valueOf(expected));
     }
