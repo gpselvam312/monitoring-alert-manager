@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.dxc.monitoring.alert.presentation.AlertPresentationService;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
@@ -33,14 +34,17 @@ public class NotificationRoutingService {
     private final NotificationGroupMemberRepository groupMemberRepository;
     private final NotificationDeliveryRepository deliveryRepository;
     private final ObjectMapper objectMapper;
+    private final AlertPresentationService presentationService;
 
     public NotificationRoutingService(AlertRuleNotificationRouteRepository routeRepository,
             NotificationGroupMemberRepository groupMemberRepository,
-            NotificationDeliveryRepository deliveryRepository, ObjectMapper objectMapper) {
+            NotificationDeliveryRepository deliveryRepository, ObjectMapper objectMapper,
+            AlertPresentationService presentationService) {
         this.routeRepository = routeRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.deliveryRepository = deliveryRepository;
         this.objectMapper = objectMapper;
+        this.presentationService = presentationService;
     }
 
     @Transactional
@@ -218,13 +222,21 @@ public class NotificationRoutingService {
             payload.put("observedValue", formatObservedValue(alert.getCurrentValue()));
         }
         addConditionDetails(payload, rule);
-        payload.put("content", buildNotificationContent(payload, summary));
         payload.put("monitoringJob", alert.getMonitoringJob().getName());
         if (alert.getMonitoringJob().getApplication() != null) {
             payload.put("application", alert.getMonitoringJob().getApplication().getName());
         }
         if (alert.getMonitoringJob().getEnvironment() != null) {
             payload.put("environment", alert.getMonitoringJob().getEnvironment().getName());
+        }
+        payload.put("content", buildNotificationContent(payload, summary));
+        if (rule != null) {
+            AlertPresentationService.Presentation presentation = presentationService.build(history, payload);
+            if (presentation != null) {
+                payload.put("title", presentation.title());
+                payload.put("body", presentation.message());
+                payload.put("content", presentation.sections());
+            }
         }
         try {
             return objectMapper.writeValueAsString(payload);
