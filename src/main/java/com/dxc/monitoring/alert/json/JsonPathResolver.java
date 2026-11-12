@@ -31,6 +31,7 @@ public final class JsonPathResolver {
 
     public ResolvedValues resolve(JsonDocument document, String path) {
         if (document == null) throw new IllegalArgumentException("JSON document is required.");
+        if (document.response() == null) return new ResolvedValues(false, List.of(), false);
         List<String> segments = parse(path);
         Object root = document.namespaceRoot(segments.get(0));
         if (segments.size() == 1) {

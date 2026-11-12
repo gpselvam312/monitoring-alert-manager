@@ -98,6 +98,14 @@ class ConditionEvaluatorTest {
         assertTrue(evaluator.evaluate(condition, context).matched());
     }
 
+
+    @Test
+    void doesNotTreatAnAbsentResponseAsAnExplicitNullValue() {
+        ConditionEvaluationContext context = new ConditionEvaluationContext(JsonDocument.from(null), Map.of());
+        assertFalse(evaluator.evaluate(Map.of("fieldPath", "data.value", "operator", "IS_NULL"), context).matched());
+        assertTrue(evaluator.evaluate(Map.of("fieldPath", "data.value", "operator", "NOT_EXISTS"), context).matched());
+    }
+
     private Map<String, Object> condition(String path, String operator, Object threshold) {
         return Map.of("fieldPath", path, "operator", operator, "threshold", threshold);
     }
