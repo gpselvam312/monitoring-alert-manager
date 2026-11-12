@@ -156,6 +156,74 @@ class AlertRuleManagementServiceTest {
         assertEquals("data.memory", ((Map<?, ?>) ((List<?>) ((Map<?, ?>) groups.get(0)).get("children")).get(1)).get("fieldPath"));
     }
 
+
+    @Test
+    void savesAdvancedDetectionAndRecoveryConditionTrees() throws Exception {
+        stubJobLookup();
+        when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        AlertRuleForm form = validForm();
+        form.setConditionTreeJson("""
+                {
+                  "type":"AGGREGATE",
+                  "collectionPath":"data.nodes",
+                  "operation":"SUM",
+                  "valuePath":"lag",
+                  "operator":"GT",
+                  "threshold":100
+                }
+                """);
+        form.setRecoveryFieldPath("");
+        form.setRecoveryTreeJson("""
+                {
+                  "type":"COLLECTION",
+                  "collectionPath":"data.nodes",
+                  "quantifier":"ALL",
+                  "condition":{"fieldPath":"state","operator":"EQ","threshold":"UP"}
+                }
+                """);
+
+        AlertRule saved = service.save(form, 5L);
+        Map<?, ?> detection = new ObjectMapper().readValue(saved.getConditionConfig(), Map.class);
+        Map<?, ?> recovery = new ObjectMapper().readValue(saved.getRecoveryConfig(), Map.class);
+
+        assertEquals("AGGREGATE", detection.get("type"));
+        assertEquals("SUM", detection.get("operation"));
+        assertEquals("COLLECTION", recovery.get("type"));
+        assertEquals(true, recovery.get("enabled"));
+        assertEquals(2, recovery.get("consecutiveMatches"));
+    }
+
+    @Test
+    void restoresAdvancedDetectionAndRecoveryTreesWhenEditing() throws Exception {
+        AlertRule rule = new AlertRule();
+        rule.setId(31L);
+        rule.setMonitoringJob(job);
+        rule.setName("Advanced collection rule");
+        rule.setAlertSubject("[{severity}] {ruleName}");
+        rule.setAlertMessage("{jobName}: {fieldPath}");
+        rule.setConditionConfig("""
+                {"type":"GROUP","operator":"AND","consecutiveMatches":1,
+                 "children":[
+                   {"type":"CONDITION","fieldPath":"data.status","operator":"EQ","threshold":"UP"},
+                   {"type":"COLLECTION","collectionPath":"data.nodes","quantifier":"ANY",
+                    "condition":{"fieldPath":"state","operator":"EQ","threshold":"DOWN"}}
+                 ]}
+                """);
+        rule.setRecoveryConfig("""
+                {"type":"AGGREGATE","collectionPath":"data.nodes","operation":"MAX",
+                 "valuePath":"lag","operator":"LTE","threshold":10,"enabled":true,"consecutiveMatches":3}
+                """);
+
+        AlertRuleForm form = service.toForm(rule);
+        Map<?, ?> detection = new ObjectMapper().readValue(form.getConditionTreeJson(), Map.class);
+        Map<?, ?> recovery = new ObjectMapper().readValue(form.getRecoveryTreeJson(), Map.class);
+        List<?> children = (List<?>) detection.get("children");
+
+        assertEquals("COLLECTION", ((Map<?, ?>) children.get(1)).get("type"));
+        assertEquals("AGGREGATE", recovery.get("type"));
+        assertEquals(3, form.getRecoveryConsecutiveMatches());
+    }
+
     private void stubJobLookup() {
         when(jobRepository.findByIdForDetails(JOB_ID)).thenReturn(Optional.of(job));
     }
