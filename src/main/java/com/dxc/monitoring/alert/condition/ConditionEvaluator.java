@@ -19,6 +19,7 @@ public class ConditionEvaluator {
     private static final int MAX_TREE_DEPTH = 8;
     private static final int MAX_TREE_NODES = 100;
     private static final int MAX_REGEX_LENGTH = 256;
+    private static final int MAX_EXPLANATION_ITEMS = 100;
 
     public ConditionEvaluationResult evaluate(Map<String, Object> condition,
             ConditionEvaluationContext context) {
@@ -179,7 +180,7 @@ public class ConditionEvaluator {
             ConditionEvaluationResult result = evaluateNode(stringMap(predicateMap),
                     context.forElement(stringMap(row)), depth + 1, nodes);
             if (result.matched()) matchedCount++;
-            itemResults.add(result.details());
+            if (itemResults.size() < MAX_EXPLANATION_ITEMS) itemResults.add(result.details());
         }
         boolean matched = switch (quantifier) {
             case "ANY" -> matchedCount > 0;
@@ -194,6 +195,7 @@ public class ConditionEvaluator {
         details.put("recordCount", records.size());
         details.put("matchedCount", matchedCount);
         details.put("items", itemResults);
+        details.put("itemsTruncated", records.size() > MAX_EXPLANATION_ITEMS);
         details.put("matched", matched);
         return new ConditionEvaluationResult(matched, Map.of("matchedCount", matchedCount,
                 "recordCount", records.size()), details);
@@ -470,7 +472,15 @@ public class ConditionEvaluator {
 
     private Object observed(List<Object> values, boolean found) {
         if (!found) return null;
-        return values.size() == 1 ? values.get(0) : values;
+        if (values.size() == 1) return values.get(0);
+        if (values.size() > MAX_EXPLANATION_ITEMS) {
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("values", values.subList(0, MAX_EXPLANATION_ITEMS));
+            summary.put("totalCount", values.size());
+            summary.put("truncated", true);
+            return summary;
+        }
+        return values;
     }
 
     private String required(Map<String, Object> node, String key) {
