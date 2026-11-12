@@ -41,6 +41,41 @@ public class AlertPresentationService {
         this.resultRepository = resultRepository;
     }
 
+    public Presentation buildTemplates(AlertHistory history, Map<String, Object> notificationPayload) {
+        Alert alert = history == null ? null : history.getAlert();
+        AlertRule rule = alert == null ? null : alert.getAlertRule();
+        if (rule == null || rule.getPresentationConfig() == null || rule.getPresentationConfig().isBlank()) return null;
+        try {
+            Map<String, Object> config = objectMapper.readValue(rule.getPresentationConfig(), Map.class);
+            if (config == null || config.isEmpty()) return null;
+            String titleTemplate = text(config.get("titleTemplate"));
+            String messageTemplate = text(config.get("messageTemplate"));
+            if (titleTemplate.isBlank() && messageTemplate.isBlank()) return null;
+            Map<String, Object> values = templateValues(alert, history, notificationPayload);
+            JsonDocument document = hasJsonPathPlaceholder(titleTemplate) || hasJsonPathPlaceholder(messageTemplate)
+                    ? responseDocument(history) : JsonDocument.from(Map.of());
+            String title = titleTemplate.isBlank()
+                    ? text(notificationPayload.get("title")) : renderTemplate(titleTemplate, values, document);
+            String message = messageTemplate.isBlank()
+                    ? text(notificationPayload.get("body")) : renderTemplate(messageTemplate, values, document);
+            return new Presentation(title, message, List.of());
+        } catch (Exception exception) {
+            log.warn("Alert title/message presentation could not be rendered for alertId={}; using legacy templates",
+                    alert == null ? null : alert.getId(), exception);
+            return null;
+        }
+    }
+
+    private boolean hasJsonPathPlaceholder(String template) {
+        Matcher matcher = PLACEHOLDER.matcher(template);
+        while (matcher.find()) {
+            String token = matcher.group(1);
+            if (token.equals("data") || token.equals("response")
+                    || token.startsWith("data.") || token.startsWith("response.")) return true;
+        }
+        return false;
+    }
+
     public Presentation build(AlertHistory history, Map<String, Object> notificationPayload) {
         Alert alert = history == null ? null : history.getAlert();
         AlertRule rule = alert == null ? null : alert.getAlertRule();

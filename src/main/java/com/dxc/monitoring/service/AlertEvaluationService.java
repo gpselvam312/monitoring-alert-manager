@@ -260,7 +260,7 @@ public class AlertEvaluationService {
         presentationValues.put("threshold", findConfiguredValue(condition,
                 "threshold", "value", "countThreshold"));
         AlertPresentationService.Presentation presentation =
-                presentationService.build(presentationHistory, presentationValues);
+                presentationService.buildTemplates(presentationHistory, presentationValues);
         if (presentation != null) {
             alert.setTitle(truncate(presentation.title(), 500));
             alert.setSummary(presentation.message());
