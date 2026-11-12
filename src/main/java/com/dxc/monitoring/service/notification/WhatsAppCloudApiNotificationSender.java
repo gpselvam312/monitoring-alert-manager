@@ -54,8 +54,8 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
         }
 
         String title = string(payload, "title", "Monitoring alert");
-        String bodyText = title + "\n" + string(payload, "body", "");
-        if (bodyText.length() > 4000) bodyText = bodyText.substring(0, 4000);
+        String bodyText = title + "\n" + string(payload, "body", "") + renderContent(payload.get("content"));
+        if (bodyText.length() > 4000) bodyText = bodyText.substring(0, 3980) + "\n… (truncated)";
 
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("messaging_product", "whatsapp");
@@ -86,6 +86,54 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
             throw new IllegalStateException("WhatsApp Cloud API delivery failed.");
         }
         return providerMessageId(response);
+    }
+
+    private String renderContent(Object rawContent) {
+        if (!(rawContent instanceof List<?> sections)) return "";
+        StringBuilder text = new StringBuilder();
+        for (Object rawSection : sections) {
+            if (!(rawSection instanceof Map<?, ?> section)) continue;
+            String type = string(section, "type", "").toLowerCase(Locale.ROOT);
+            String title = string(section, "title", "");
+            if (!title.isBlank()) text.append("\n\n").append(title);
+            switch (type) {
+                case "text" -> text.append("\n").append(string(section, "text", ""));
+                case "details" -> {
+                    Object rawFields = section.get("fields");
+                    if (rawFields instanceof List<?> fields) {
+                        for (Object rawField : fields) {
+                            if (rawField instanceof Map<?, ?> field) text.append("\n")
+                                    .append(string(field, "label", "")).append(": ")
+                                    .append(string(field, "value", ""));
+                        }
+                    }
+                }
+                case "list" -> {
+                    Object rawItems = section.get("items");
+                    if (rawItems instanceof List<?> items) {
+                        for (Object item : items.stream().limit(50).toList()) text.append("\n• ").append(String.valueOf(item));
+                    }
+                }
+                case "json" -> text.append("\n").append(string(section, "value", ""));
+                case "table" -> {
+                    Object rawRows = section.get("rows");
+                    Object rawColumns = section.get("columns");
+                    if (rawRows instanceof List<?> rows && rawColumns instanceof List<?> columns) {
+                        for (Object rawRow : rows.stream().limit(20).toList()) {
+                            text.append("\n");
+                            if (rawRow instanceof Map<?, ?> row) {
+                                for (Object rawColumn : columns) {
+                                    String key = rawColumn instanceof Map<?, ?> column ? string(column, "key", "") : String.valueOf(rawColumn);
+                                    text.append(key).append(": ").append(String.valueOf(row.get(key))).append("  ");
+                                }
+                            }
+                        }
+                    }
+                }
+                default -> { }
+            }
+        }
+        return text.toString();
     }
 
     private String providerMessageId(String response) {

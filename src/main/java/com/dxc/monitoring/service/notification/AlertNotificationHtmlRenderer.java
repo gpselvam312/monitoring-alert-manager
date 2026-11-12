@@ -28,10 +28,15 @@ public class AlertNotificationHtmlRenderer {
         addFact(facts, "Status", value(payload, "alertStatus", ""));
         addFact(facts, "Event", eventType);
         addFact(facts, "Occurrences", value(payload, "occurrenceCount", ""));
-        addFact(facts, "Observed value", value(payload, "observedValue", ""));
-        addFact(facts, "Threshold", value(payload, "threshold", ""));
+        boolean hasConfiguredSections = payload.get("content") instanceof List<?> content && !content.isEmpty();
+        if (!hasConfiguredSections) {
+            addFact(facts, "Observed value", value(payload, "observedValue", ""));
+            addFact(facts, "Threshold", value(payload, "threshold", ""));
+        }
         addFact(facts, "First occurred", value(payload, "firstOccurredAt", ""));
         addFact(facts, "Last occurred", value(payload, "lastOccurredAt", ""));
+
+        String sectionsHtml = renderSections(payload.get("content"));
 
         StringBuilder rows = new StringBuilder();
         for (String[] fact : facts) {
@@ -50,9 +55,93 @@ public class AlertNotificationHtmlRenderer {
             + "<div style=\"font-size:23px;line-height:1.35;font-weight:700;color:" + palette.foreground() + ";padding-top:7px;\">" + escape(title) + "</div>"
             + "</td></tr><tr><td style=\"padding:24px;\">"
             + "<div style=\"font-size:15px;line-height:1.65;color:#344054;white-space:normal;\">" + escape(message).replace("\r\n", "\n").replace("\n", "<br>") + "</div>"
+            + sectionsHtml
             + (facts.isEmpty() ? "" : "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"margin-top:20px;border:1px solid #EAECF0;border-collapse:collapse;\">" + rows + "</table>")
             + "<div style=\"margin-top:24px;padding-top:14px;border-top:1px solid #EAECF0;color:#667085;font-size:12px;\">Monitoring Alert Manager</div>"
             + "</td></tr></table></td></tr></table></body></html>";
+    }
+
+    private String renderSections(Object rawContent) {
+        if (!(rawContent instanceof List<?> sections) || sections.isEmpty()) return "";
+        StringBuilder html = new StringBuilder();
+        for (Object rawSection : sections.stream().limit(20).toList()) {
+            if (!(rawSection instanceof Map<?, ?> section)) continue;
+            String type = value(section, "type", "").toLowerCase(Locale.ROOT);
+            String title = value(section, "title", "");
+            if (!title.isBlank()) html.append("<h3 style=\"font-size:15px;margin:22px 0 8px;color:#101828;\">")
+                    .append(escape(title)).append("</h3>");
+            switch (type) {
+                case "text" -> html.append("<div style=\"font-size:14px;line-height:1.6;color:#344054;white-space:pre-wrap;\">")
+                        .append(escape(value(section, "text", ""))).append("</div>");
+                case "details" -> {
+                    Object rawFields = section.get("fields");
+                    if (rawFields instanceof List<?> fields) {
+                        html.append("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:8px;border:1px solid #EAECF0;border-collapse:collapse;\">");
+                        for (Object rawField : fields.stream().limit(50).toList()) {
+                            if (!(rawField instanceof Map<?, ?> field)) continue;
+                            html.append("<tr><td style=\"padding:8px 10px;border-bottom:1px solid #EAECF0;color:#667085;font-size:13px;width:38%;\">")
+                                    .append(escape(value(field, "label", ""))).append("</td><td style=\"padding:8px 10px;border-bottom:1px solid #EAECF0;color:#101828;font-size:14px;\">")
+                                    .append(escape(display(field.get("value")))).append("</td></tr>");
+                        }
+                        html.append("</table>");
+                    }
+                }
+                case "table" -> html.append(renderTable(section));
+                case "list" -> {
+                    Object rawItems = section.get("items");
+                    if (rawItems instanceof List<?> items && !items.isEmpty()) {
+                        html.append("<ul style=\"padding-left:22px;margin:6px 0;color:#344054;font-size:14px;\">");
+                        for (Object item : items.stream().limit(100).toList()) html.append("<li style=\"padding:2px 0;\">")
+                                .append(escape(display(item))).append("</li>");
+                        html.append("</ul>");
+                    }
+                }
+                case "json" -> html.append("<pre style=\"background:#F9FAFB;border:1px solid #EAECF0;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#344054;\">")
+                        .append(escape(value(section, "value", ""))).append("</pre>");
+                default -> { }
+            }
+        }
+        return html.toString();
+    }
+
+    private String renderTable(Map<?, ?> section) {
+        Object rawColumns = section.get("columns");
+        Object rawRows = section.get("rows");
+        if (!(rawColumns instanceof List<?> columns) || columns.isEmpty()
+                || !(rawRows instanceof List<?> rows) || rows.isEmpty()) return "";
+        StringBuilder html = new StringBuilder("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:8px;border:1px solid #EAECF0;border-collapse:collapse;font-size:13px;\"><thead><tr>");
+        List<String> keys = new ArrayList<>();
+        for (Object rawColumn : columns) {
+            String key = rawColumn instanceof Map<?, ?> column ? value(column, "key", "") : String.valueOf(rawColumn);
+            String label = rawColumn instanceof Map<?, ?> column ? value(column, "label", key) : key;
+            keys.add(key);
+            html.append("<th style=\"padding:8px 10px;text-align:left;background:#F2F4F7;border-bottom:1px solid #EAECF0;\">")
+                    .append(escape(label)).append("</th>");
+        }
+        html.append("</tr></thead><tbody>");
+        for (Object rawRow : rows.stream().limit(100).toList()) {
+            html.append("<tr>");
+            for (String key : keys) {
+                Object cell = rawRow instanceof Map<?, ?> row ? row.get(key) : null;
+                html.append("<td style=\"padding:8px 10px;border-bottom:1px solid #EAECF0;\">")
+                        .append(escape(display(cell))).append("</td>");
+            }
+            html.append("</tr>");
+        }
+        html.append("</tbody></table>");
+        return html.toString();
+    }
+
+    private String display(Object value) {
+        if (value == null) return "";
+        if (value instanceof Map<?, ?> map) {
+            return map.entrySet().stream().map(entry -> String.valueOf(entry.getKey()) + ": " + display(entry.getValue()))
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+        if (value instanceof List<?> list) {
+            return list.stream().map(this::display).collect(java.util.stream.Collectors.joining(", "));
+        }
+        return String.valueOf(value);
     }
 
     private Palette palette(String severity, String eventType) {

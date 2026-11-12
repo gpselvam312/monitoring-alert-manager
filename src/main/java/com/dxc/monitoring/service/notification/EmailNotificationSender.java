@@ -81,6 +81,7 @@ public class EmailNotificationSender implements NotificationChannelSender {
         StringBuilder text = new StringBuilder();
         text.append(string(payload, "title", "Monitoring alert")).append("\n\n");
         text.append(string(payload, "body", ""));
+        appendContent(text, payload.get("content"));
         appendLine(text, "Severity", string(payload, "severity", ""));
         appendLine(text, "Application", string(payload, "application", ""));
         appendLine(text, "Environment", string(payload, "environment", ""));
@@ -89,6 +90,52 @@ public class EmailNotificationSender implements NotificationChannelSender {
         appendLine(text, "Observed Value", string(payload, "observedValue", ""));
         appendLine(text, "Threshold", string(payload, "threshold", ""));
         return text.toString();
+    }
+
+    private void appendContent(StringBuilder text, Object rawContent) {
+        if (!(rawContent instanceof java.util.List<?> sections)) return;
+        for (Object rawSection : sections) {
+            if (!(rawSection instanceof Map<?, ?> section)) continue;
+            String type = string(section, "type", "").toLowerCase(java.util.Locale.ROOT);
+            String title = string(section, "title", "");
+            if (!title.isBlank()) text.append("\n\n").append(title).append("\n");
+            switch (type) {
+                case "text" -> text.append(string(section, "text", ""));
+                case "details" -> {
+                    Object rawFields = section.get("fields");
+                    if (rawFields instanceof java.util.List<?> fields) {
+                        for (Object rawField : fields) {
+                            if (rawField instanceof Map<?, ?> field) text.append("\n")
+                                    .append(string(field, "label", "")).append(": ")
+                                    .append(String.valueOf(field.get("value")));
+                        }
+                    }
+                }
+                case "list" -> {
+                    Object rawItems = section.get("items");
+                    if (rawItems instanceof java.util.List<?> items) {
+                        for (Object item : items) text.append("\n• ").append(String.valueOf(item));
+                    }
+                }
+                case "json" -> text.append("\n").append(string(section, "value", ""));
+                case "table" -> {
+                    Object rawRows = section.get("rows");
+                    Object rawColumns = section.get("columns");
+                    if (rawRows instanceof java.util.List<?> rows && rawColumns instanceof java.util.List<?> columns) {
+                        for (Object rawRow : rows) {
+                            text.append("\n");
+                            if (rawRow instanceof Map<?, ?> row) {
+                                for (Object rawColumn : columns) {
+                                    String key = rawColumn instanceof Map<?, ?> col ? string(col, "key", "") : String.valueOf(rawColumn);
+                                    text.append(key).append(": ").append(String.valueOf(row.get(key))).append("  ");
+                                }
+                            }
+                        }
+                    }
+                }
+                default -> { }
+            }
+        }
     }
 
     private void appendLine(StringBuilder text, String label, String value) {

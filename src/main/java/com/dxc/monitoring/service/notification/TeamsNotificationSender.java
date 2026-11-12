@@ -194,6 +194,8 @@ public class TeamsNotificationSender implements NotificationChannelSender {
                 appendDetails(cardBody, title, fields);
             }
             case "table" -> appendTable(cardBody, title, section);
+            case "list" -> appendList(cardBody, title, section);
+            case "json" -> appendJson(cardBody, title, section);
             default -> {
                 // Ignore unsupported section types so one malformed section cannot block delivery.
             }
@@ -209,6 +211,34 @@ public class TeamsNotificationSender implements NotificationChannelSender {
                 .map(field -> Map.of("title", field.get("label"), "value", field.get("value"))).toList());
         factSet.put("spacing", "Small");
         cardBody.add(factSet);
+    }
+
+    private void appendList(List<Map<String, Object>> cardBody, String title, Map<?, ?> section) {
+        Object rawItems = section.get("items");
+        if (!(rawItems instanceof List<?> items) || items.isEmpty()) return;
+        if (!title.isBlank()) cardBody.add(textBlock(title, "Bolder", "Medium", "Default"));
+        StringBuilder content = new StringBuilder();
+        int limit = Math.min(items.size(), 100);
+        for (int i = 0; i < limit; i++) {
+            if (content.length() > 0) content.append("\n");
+            content.append("• ").append(displayValue(items.get(i)));
+        }
+        if (Boolean.TRUE.equals(section.get("truncated")) || items.size() > limit) {
+            content.append("\n… additional items omitted");
+        }
+        Map<String, Object> block = textBlock(content.toString(), "Default", "Medium", "Default");
+        block.put("spacing", "Small");
+        cardBody.add(block);
+    }
+
+    private void appendJson(List<Map<String, Object>> cardBody, String title, Map<?, ?> section) {
+        String value = string(section.get("value"));
+        if (value.isBlank()) return;
+        if (!title.isBlank()) cardBody.add(textBlock(title, "Bolder", "Medium", "Default"));
+        Map<String, Object> block = textBlock(value, "Default", "Small", "Default");
+        block.put("fontType", "Monospace");
+        block.put("spacing", "Small");
+        cardBody.add(block);
     }
 
     private void appendTable(List<Map<String, Object>> cardBody, String title, Map<?, ?> section) {
@@ -245,6 +275,11 @@ public class TeamsNotificationSender implements NotificationChannelSender {
                 values.add(displayValue(cell));
             }
             cardBody.add(tableRow(values, false, rowIndex++ % 2 == 0));
+        }
+        if (Boolean.TRUE.equals(section.get("truncated"))) {
+            Map<String, Object> note = textBlock("Additional rows omitted.", "Default", "Small", "Default");
+            note.put("isSubtle", true);
+            cardBody.add(note);
         }
     }
 

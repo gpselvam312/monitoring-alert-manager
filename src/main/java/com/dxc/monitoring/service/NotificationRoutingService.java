@@ -229,7 +229,6 @@ public class NotificationRoutingService {
         if (alert.getMonitoringJob().getEnvironment() != null) {
             payload.put("environment", alert.getMonitoringJob().getEnvironment().getName());
         }
-        payload.put("content", buildNotificationContent(payload, summary));
         if (rule != null) {
             AlertPresentationService.Presentation presentation = presentationService.build(history, payload);
             if (presentation != null) {
@@ -245,31 +244,6 @@ public class NotificationRoutingService {
         }
     }
 
-
-    private List<Map<String, Object>> buildNotificationContent(Map<String, Object> payload, String summary) {
-        List<Map<String, Object>> sections = new java.util.ArrayList<>();
-        List<Map<String, String>> fields = new java.util.ArrayList<>();
-        addContentField(fields, "Rule", payload.get("ruleName"));
-        addContentField(fields, "Field", payload.get("fieldPath"));
-        addContentField(fields, "Observed value", payload.get("observedValue"));
-        addContentField(fields, "Threshold", payload.get("threshold"));
-        if (!fields.isEmpty()) {
-            Map<String, Object> details = new LinkedHashMap<>();
-            details.put("type", "details");
-            details.put("title", "Alert details");
-            details.put("fields", fields);
-            sections.add(details);
-        } else if (summary != null && !summary.isBlank()) {
-            sections.add(Map.of("type", "text", "text", summary));
-        }
-        return sections;
-    }
-
-    private void addContentField(List<Map<String, String>> fields, String label, Object value) {
-        if (value != null && !String.valueOf(value).isBlank()) {
-            fields.add(Map.of("label", label, "value", String.valueOf(value)));
-        }
-    }
 
     private String formatObservedValue(String currentValue) {
         try {
@@ -295,7 +269,7 @@ public class NotificationRoutingService {
     }
 
     private void addConditionDetails(Map<String, Object> payload, Map<?, ?> condition) {
-        for (String key : List.of("fieldPath", "collectionPath")) {
+        for (String key : List.of("fieldPath", "collectionPath", "leftPath", "valuePath")) {
             Object value = condition.get(key);
             if (value != null && !String.valueOf(value).isBlank()) {
                 payload.putIfAbsent("fieldPath", value);
