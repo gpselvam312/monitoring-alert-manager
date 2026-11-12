@@ -249,6 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (recoveryTreeInput) recoveryTreeInput.value = advancedRecoveryMode ? (advancedRecoveryJson?.value || '') : '';
         standardRecoveryFields?.classList.toggle('d-none', advancedRecoveryMode);
     };
+    syncRecoveryConfig();
     advancedRecoveryJson?.addEventListener('input', syncRecoveryConfig);
     applyAdvancedRecoveryJson?.addEventListener('click', () => {
         try {
