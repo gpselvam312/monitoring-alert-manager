@@ -74,9 +74,23 @@
 </div></div>
 <div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Recovery Criteria</h2></div><div class="app-card-body">
 <div class="alert alert-info mb-3">Automatic recovery is enabled for every rule. Configure the recovery condition below so alerts can resolve safely after the required consecutive matches.</div>
-<div class="row g-3"><div class="col-12 col-lg-4"><label class="form-label" for="recoveryFieldPath">Recovery Field Path</label><input class="form-control" id="recoveryFieldPath" th:field="*{recoveryFieldPath}" maxlength="255"></div>
+<input type="hidden" th:field="*{recoveryTreeJson}" id="recoveryTreeJson">
+<div id="standardRecoveryFields" class="row g-3"><div class="col-12 col-lg-4"><label class="form-label" for="recoveryFieldPath">Recovery Field Path</label><input class="form-control" id="recoveryFieldPath" th:field="*{recoveryFieldPath}" maxlength="255"></div>
 <div class="col-12 col-lg-4"><label class="form-label" for="recoveryOperator">Recovery Operator</label><select class="form-select" id="recoveryOperator" th:field="*{recoveryOperator}"><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="LESS_THAN">Less than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="GREATER_THAN">Greater than</option><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option><option value="EXISTS">Exists</option><option value="NOT_EXISTS">Does not exist</option><option value="IS_TRUE">Is true</option><option value="IS_FALSE">Is false</option><option value="IS_NULL">Is null</option><option value="IS_NOT_NULL">Is not null</option></select></div>
-<div class="col-12 col-lg-2"><label class="form-label" for="recoveryThreshold">Recovery Threshold</label><input class="form-control" id="recoveryThreshold" th:field="*{recoveryThreshold}" maxlength="500"></div><div class="col-12 col-lg-2"><label class="form-label" for="recoveryConsecutiveMatches">Consecutive Recoveries</label><input type="number" class="form-control" id="recoveryConsecutiveMatches" th:field="*{recoveryConsecutiveMatches}" min="1" max="100"></div></div>
+<div class="col-12 col-lg-2"><label class="form-label" for="recoveryThreshold">Recovery Threshold</label><input class="form-control" id="recoveryThreshold" th:field="*{recoveryThreshold}" maxlength="500"></div></div>
+<div class="row g-3 mt-1"><div class="col-12 col-lg-3"><label class="form-label" for="recoveryConsecutiveMatches">Consecutive Recoveries</label><input type="number" class="form-control" id="recoveryConsecutiveMatches" th:field="*{recoveryConsecutiveMatches}" min="1" max="100"></div></div>
+<details id="advancedRecoveryEditor" class="mt-3">
+    <summary class="small fw-semibold">Advanced recovery JSON (groups, collections and aggregations)</summary>
+    <div class="pt-3">
+        <label class="form-label" for="advancedRecoveryJson">Recovery condition configuration</label>
+        <textarea class="form-control font-monospace" id="advancedRecoveryJson" rows="10" spellcheck="false"></textarea>
+        <div class="form-text">Uses the same condition nodes and operators as alert detection. Collection predicates are evaluated against each record.</div>
+        <div class="d-flex gap-2 justify-content-end mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="useStandardRecoveryFields">Use standard fields</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="applyAdvancedRecoveryJson">Use advanced recovery JSON</button>
+        </div>
+    </div>
+</details>
 <div class="form-text mt-3">Missing values and execution/parser errors do not count as healthy results. Recovery uses this configured criterion.</div></div></div>
 <div class="app-card mb-3">
     <div class="app-card-header"><h2 class="h6 mb-0"><i class="bi bi-envelope-paper me-2"></i>Alert Content</h2></div>
@@ -219,6 +233,41 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const defaultCondition = () => ({type:'CONDITION',fieldPath:'',operator:'GREATER_THAN',threshold:''});
     const defaultGroup = (operator='AND') => ({type:'GROUP',operator,children:[defaultCondition(),defaultCondition()]});
+    const recoveryTreeInput = document.getElementById('recoveryTreeJson');
+    const advancedRecoveryEditor = document.getElementById('advancedRecoveryEditor');
+    const advancedRecoveryJson = document.getElementById('advancedRecoveryJson');
+    const applyAdvancedRecoveryJson = document.getElementById('applyAdvancedRecoveryJson');
+    const useStandardRecoveryFields = document.getElementById('useStandardRecoveryFields');
+    const standardRecoveryFields = document.getElementById('standardRecoveryFields');
+    let advancedRecoveryMode = Boolean(recoveryTreeInput?.value?.trim());
+    if (advancedRecoveryMode && advancedRecoveryJson) {
+        try { advancedRecoveryJson.value = JSON.stringify(JSON.parse(recoveryTreeInput.value), null, 2); }
+        catch (_) { advancedRecoveryJson.value = recoveryTreeInput.value; }
+        if (advancedRecoveryEditor) advancedRecoveryEditor.open = true;
+    }
+    const syncRecoveryConfig = () => {
+        if (recoveryTreeInput) recoveryTreeInput.value = advancedRecoveryMode ? (advancedRecoveryJson?.value || '') : '';
+        standardRecoveryFields?.classList.toggle('d-none', advancedRecoveryMode);
+    };
+    advancedRecoveryJson?.addEventListener('input', syncRecoveryConfig);
+    applyAdvancedRecoveryJson?.addEventListener('click', () => {
+        try {
+            const parsed = JSON.parse(advancedRecoveryJson.value);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || !parsed.type) {
+                throw new Error('The recovery condition must be a JSON object with a node type.');
+            }
+            advancedRecoveryMode = true;
+            syncRecoveryConfig();
+            showMessage('Advanced recovery JSON is ready for server-side validation when you save the rule.','success');
+        } catch (error) {
+            showMessage('Invalid recovery JSON: ' + error.message,'danger');
+        }
+    });
+    useStandardRecoveryFields?.addEventListener('click', () => {
+        advancedRecoveryMode = false;
+        syncRecoveryConfig();
+        if (advancedRecoveryEditor) advancedRecoveryEditor.open = false;
+    });
     const advancedEditor = document.getElementById('advancedConditionEditor');
     const advancedJsonInput = document.getElementById('advancedConditionJson');
     const applyAdvancedJson = document.getElementById('applyAdvancedConditionJson');
@@ -472,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(error.message,'warning');
         }
     });
-    form.addEventListener('submit', () => syncTree());
+    form.addEventListener('submit', () => { syncTree(); syncRecoveryConfig(); });
     renderTree();
 
     const alertSubjectInput = document.getElementById('alertSubject');

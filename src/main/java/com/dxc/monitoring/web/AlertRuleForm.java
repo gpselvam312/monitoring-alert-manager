@@ -25,6 +25,7 @@ public class AlertRuleForm {
     private Long notificationPolicyId;
     private String notificationRoutesJson = "[]";
     private boolean recoveryEnabled = true;
+    private String recoveryTreeJson = "";
     private String recoveryFieldPath = "";
     private String recoveryOperator = "LESS_THAN_OR_EQUAL";
     private String recoveryThreshold = "";
@@ -76,6 +77,8 @@ public class AlertRuleForm {
     public void setNotificationRoutesJson(String notificationRoutesJson) { this.notificationRoutesJson = notificationRoutesJson; }
     public boolean isRecoveryEnabled() { return recoveryEnabled; }
     public void setRecoveryEnabled(boolean recoveryEnabled) { this.recoveryEnabled = recoveryEnabled; }
+    public String getRecoveryTreeJson() { return recoveryTreeJson; }
+    public void setRecoveryTreeJson(String recoveryTreeJson) { this.recoveryTreeJson = recoveryTreeJson; }
     public String getRecoveryFieldPath() { return recoveryFieldPath; }
     public void setRecoveryFieldPath(String recoveryFieldPath) { this.recoveryFieldPath = recoveryFieldPath; }
     public String getRecoveryOperator() { return recoveryOperator; }

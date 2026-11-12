@@ -111,14 +111,17 @@ public class AlertRuleManagementService {
 
         Map<String, Object> condition = buildConfiguredCondition(form);
         Map<String, Object> recovery;
-        if (form.getRecoveryFieldPath() == null || form.getRecoveryFieldPath().isBlank()) {
+        if (form.getRecoveryTreeJson() != null && !form.getRecoveryTreeJson().isBlank()) {
+            recovery = parseRecoveryTree(form.getRecoveryTreeJson());
+        } else if (form.getRecoveryFieldPath() == null || form.getRecoveryFieldPath().isBlank()) {
             recovery = existingGroupedRecovery(rule);
         } else {
             recovery = new LinkedHashMap<>();
-            recovery.put("enabled", true);
             recovery.putAll(buildCondition(form.getRecoveryFieldPath(), form.getRecoveryOperator(),
                     form.getRecoveryThreshold(), form.getRecoveryConsecutiveMatches(), null, "recovery"));
         }
+        recovery.put("enabled", true);
+        recovery.put("consecutiveMatches", form.getRecoveryConsecutiveMatches());
         rule.setConditionConfig(toJson(condition));
         rule.setRecoveryConfig(toJson(recovery));
         rule.setUpdatedBy(userId);
@@ -154,6 +157,10 @@ public class AlertRuleManagementService {
             form.setCorrelationFieldPath(stringValue(condition.get("correlationFieldPath"), ""));
             Map<String, Object> recovery = objectMapper.readValue(rule.getRecoveryConfig(), Map.class);
             form.setRecoveryEnabled(!Boolean.FALSE.equals(recovery.get("enabled")));
+            String recoveryType = stringValue(recovery.get("type"), "CONDITION");
+            if (!"CONDITION".equalsIgnoreCase(recoveryType)) {
+                form.setRecoveryTreeJson(toJson(recovery));
+            }
             form.setRecoveryFieldPath(stringValue(recovery.get("fieldPath"), ""));
             form.setRecoveryOperator(stringValue(recovery.get("operator"), "LESS_THAN_OR_EQUAL"));
             form.setRecoveryThreshold(stringValue(recovery.get("threshold"), stringValue(recovery.get("value"), "")));
@@ -238,6 +245,17 @@ public class AlertRuleManagementService {
             config.put("correlationFieldPath", correlationPath);
         }
         return config;
+    }
+
+    private Map<String, Object> parseRecoveryTree(String json) {
+        try {
+            Object parsed = objectMapper.readValue(json, Object.class);
+            return conditionConfigurationValidator.normalize(parsed);
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("The recovery condition tree is invalid.");
+        }
     }
 
     private Map<String, Object> parseConditionTree(String json) {
