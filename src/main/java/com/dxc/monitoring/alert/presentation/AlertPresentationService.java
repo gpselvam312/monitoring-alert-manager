@@ -247,6 +247,7 @@ public class AlertPresentationService {
 
     private Object resolveRelative(Object root, String path) {
         if (path == null || path.isBlank()) return root;
+        if ("value".equals(path) && !(root instanceof Map<?, ?>) && !(root instanceof List<?>)) return root;
         Object current = root;
         for (String segment : path.split("\\.")) {
             if (current instanceof Map<?, ?> map) {
