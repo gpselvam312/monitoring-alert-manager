@@ -283,14 +283,16 @@ public class NotificationRoutingService {
                 break;
             }
         }
-        Object children = condition.get("children");
-        if (children instanceof List<?> list) {
-            for (Object child : list) {
-                if (child instanceof Map<?, ?> childMap) {
-                    addConditionDetails(payload, childMap);
-                    if (payload.containsKey("threshold") && payload.containsKey("fieldPath")) return;
+        for (String nestedKey : List.of("children", "condition", "filter")) {
+            Object nested = condition.get(nestedKey);
+            if (nested instanceof List<?> list) {
+                for (Object child : list) {
+                    if (child instanceof Map<?, ?> childMap) addConditionDetails(payload, childMap);
                 }
+            } else if (nested instanceof Map<?, ?> nestedMap) {
+                addConditionDetails(payload, nestedMap);
             }
+            if (payload.containsKey("threshold") && payload.containsKey("fieldPath")) return;
         }
     }
 
