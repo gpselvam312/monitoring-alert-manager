@@ -2,13 +2,11 @@ package com.dxc.monitoring.service;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,7 +126,7 @@ public class AlertEvaluationService {
             try {
                 conditionResult = evaluateCondition(condition, context, document);
             } catch (IllegalArgumentException exception) {
-                conditionResult = new ConditionResult(false, null);
+                conditionResult = new ConditionResult(false, null, Map.of());
             }
         }
 
@@ -137,6 +135,7 @@ public class AlertEvaluationService {
         evaluationDetails.put("fieldPath", condition.get("fieldPath"));
         evaluationDetails.put("conditionMatched", conditionResult.matched());
         evaluationDetails.put("observedValue", conditionResult.value());
+        evaluationDetails.put("conditionDetails", conditionResult.details());
 
         if (active.isEmpty()) {
             int previousCount = previousConsecutiveCount(previousEvaluation, "CONDITION", "consecutiveMatches",
@@ -167,6 +166,7 @@ public class AlertEvaluationService {
             ConditionResult recoveryResult = evaluateCondition(recovery, context, document);
             recoveryMatched = recoveryResult.matched();
             recoveryValue = recoveryResult.value();
+            evaluationDetails.put("recoveryDetails", recoveryResult.details());
             int previousRecoveryCount = previousConsecutiveCount(previousEvaluation, "RECOVERY",
                     "consecutiveRecoveryMatches", "recoveryMatched");
             recoveryCount = recoveryMatched ? previousRecoveryCount + 1 : 0;
@@ -399,7 +399,20 @@ public class AlertEvaluationService {
 
     private boolean isConditionNode(Map<String, Object> config) {
         String type = String.valueOf(config.getOrDefault("type", "CONDITION")).toUpperCase(Locale.ROOT);
-        return "CONDITION".equals(type) && config.containsKey("fieldPath") && config.containsKey("operator");
+        return switch (type) {
+            case "CONDITION" -> config.containsKey("fieldPath") && config.containsKey("operator");
+            case "FIELD_COMPARISON" -> config.containsKey("leftPath")
+                    && config.containsKey("rightPath") && config.containsKey("operator");
+            case "COLLECTION" -> config.containsKey("collectionPath")
+                    && config.containsKey("quantifier") && config.containsKey("condition");
+            case "AGGREGATE" -> config.containsKey("collectionPath")
+                    && config.containsKey("operation") && config.containsKey("operator");
+            case "COUNT_TOTAL" -> config.containsKey("collectionPath")
+                    && config.containsKey("countOperator") && config.containsKey("countThreshold");
+            case "COUNT_MATCHING" -> config.containsKey("collectionPath")
+                    && config.containsKey("fieldPath") && config.containsKey("operator");
+            default -> false;
+        };
     }
 
     private boolean isConditionGroupNode(Map<String, Object> config) {
@@ -411,7 +424,7 @@ public class AlertEvaluationService {
             Map<String, Object> context, JsonDocument document) {
         ConditionEvaluationResult result = conditionEvaluator.evaluate(config,
                 new ConditionEvaluationContext(document, context));
-        return new ConditionResult(result.matched(), result.observedValue());
+        return new ConditionResult(result.matched(), result.observedValue(), result.details());
     }
 
     private Object resolvePath(Map<String, Object> context, String fieldPath) {
@@ -464,14 +477,6 @@ public class AlertEvaluationService {
         }
     }
 
-    private String requiredString(Map<String, Object> config, String key) {
-        Object value = config.get(key);
-        if (value == null || String.valueOf(value).isBlank()) {
-            throw new IllegalArgumentException("Alert configuration requires '" + key + "'.");
-        }
-        return String.valueOf(value).trim();
-    }
-
     private String renderAlertTemplate(String template, AlertRule rule, MonitoringExecution execution,
             Map<String, Object> condition, Object observedValue, OffsetDateTime timestamp) {
         Map<String, String> values = new LinkedHashMap<>();
@@ -483,7 +488,7 @@ public class AlertEvaluationService {
                 ? "" : job.getApplication().getName()));
         values.put("environment", safeTemplateValue(job == null || job.getEnvironment() == null
                 ? "—" : job.getEnvironment().getName()));
-        values.put("fieldPath", safeTemplateValue(findConfiguredValue(condition, "fieldPath", "collectionPath")));
+        values.put("fieldPath", safeTemplateValue(findConfiguredValue(condition, "fieldPath", "collectionPath", "leftPath", "valuePath")));
         values.put("actualValue", safeTemplateValue(observedValue instanceof Map<?, ?> || observedValue instanceof List<?>
                 ? toJson(observedValue) : String.valueOf(observedValue == null ? "null" : observedValue)));
         values.put("threshold", safeTemplateValue(findConfiguredValue(condition, "threshold", "value", "countThreshold")));
@@ -567,5 +572,5 @@ public class AlertEvaluationService {
         return safe.length() > 1000 ? safe.substring(0, 1000) : safe;
     }
 
-    private record ConditionResult(boolean matched, Object value) {}
+    private record ConditionResult(boolean matched, Object value, Map<String, Object> details) {}
 }
