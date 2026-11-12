@@ -255,6 +255,7 @@ public class AlertRuleManagementService {
 
     private Map<String, Object> parsePresentationConfig(String json) {
         if (json == null || json.isBlank()) return Map.of();
+        if (json.length() > 100_000) throw new IllegalArgumentException("Presentation configuration cannot exceed 100 KB.");
         try {
             Object parsed = objectMapper.readValue(json, Object.class);
             return presentationConfigurationValidator.normalize(parsed);
@@ -266,6 +267,9 @@ public class AlertRuleManagementService {
     }
 
     private Map<String, Object> parseRecoveryTree(String json) {
+        if (json == null || json.isBlank() || json.length() > 100_000) {
+            throw new IllegalArgumentException("Recovery condition configuration must contain valid JSON smaller than 100 KB.");
+        }
         try {
             Object parsed = objectMapper.readValue(json, Object.class);
             return conditionConfigurationValidator.normalize(parsed);
@@ -279,6 +283,9 @@ public class AlertRuleManagementService {
     private Map<String, Object> parseConditionTree(String json) {
         if (json == null || json.isBlank()) {
             throw new IllegalArgumentException("Configure at least one alert condition.");
+        }
+        if (json.length() > 100_000) {
+            throw new IllegalArgumentException("Alert condition configuration cannot exceed 100 KB.");
         }
         try {
             Object parsed = objectMapper.readValue(json, Object.class);
