@@ -169,3 +169,57 @@ Save-time validation checks schema version, node shape, required fields, operato
 7. Add integration, migration, compatibility, and load-boundary tests.
 
 No Kafka-specific code belongs in the core evaluator. Kafka is one fixture/test payload among multiple monitoring examples.
+
+
+## Versioned presentation configuration
+
+\`\`\`json
+{
+  "version": 1,
+  "titleTemplate": "[{severity}] {ruleName}",
+  "messageTemplate": "{jobName}: {fieldPath} evaluated to {actualValue}",
+  "sections": [
+    {
+      "id": "cluster-facts",
+      "type": "KEY_VALUE",
+      "title": "Cluster",
+      "fields": [
+        { "label": "Cluster", "path": "data.cluster.name" },
+        { "label": "Platform status", "path": "response.status" }
+      ]
+    },
+    {
+      "id": "consumer-groups",
+      "type": "TABLE",
+      "title": "Consumer groups",
+      "sourcePath": "data.consumerGroups",
+      "columns": [
+        { "key": "groupId", "label": "Group" },
+        { "key": "totalLag", "label": "Total lag" }
+      ],
+      "maxRows": 20
+    },
+    {
+      "id": "affected-topics",
+      "type": "LIST",
+      "title": "Affected topics",
+      "sourcePath": "data.topics",
+      "valuePath": "name",
+      "maxItems": 20
+    },
+    {
+      "id": "raw-summary",
+      "type": "JSON",
+      "title": "Cluster response",
+      "sourcePath": "data.cluster",
+      "maxLength": 4000
+    }
+  ]
+}
+\`\`\`
+
+Presentation section types are TEXT, KEY_VALUE, TABLE, LIST, and JSON. Document source paths must explicitly use response.* or data.*; table column keys and list valuePath values are relative to each selected record. This prevents a presentation from silently switching between platform metadata and monitoring payload fields.
+
+AlertPresentationService creates one channel-neutral presentation snapshot for the triggering history event and stores the rendered result in each queued delivery payload. Email HTML/plain text, Teams Adaptive Cards, and WhatsApp text render those same sections with channel-appropriate layouts. Existing alert_subject and alert_message remain the fallback when presentation_config is empty or has no presentation overrides.
+
+Migration V54 adds presentation_config JSONB and config_version. The initial configuration contract is version 1. Save-time validation limits section count, field/column count, row/item counts, text sizes, and source path formats. Runtime rendering applies an overall section output limit; malformed optional presentation content falls back to the legacy message rather than blocking notification delivery.
