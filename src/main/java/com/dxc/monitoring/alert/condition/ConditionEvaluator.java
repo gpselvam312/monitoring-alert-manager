@@ -325,7 +325,7 @@ public class ConditionEvaluator {
             if (!(value instanceof List<?> collection)) {
                 throw new IllegalArgumentException("Collection path must resolve to an array: " + path);
             }
-            records.addAll(collection);
+            flattenRecords(collection, records);
         }
         return records;
     }

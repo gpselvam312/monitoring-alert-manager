@@ -174,7 +174,8 @@ public class AlertPresentationService {
             }
             case "TABLE" -> {
                 Object source = sourceValue(document, text(section.get("sourcePath")));
-                if (!(source instanceof List<?> rows) || rows.isEmpty()) {
+                List<?> rows = collectionItems(source);
+                if (rows == null || rows.isEmpty()) {
                     return emptyText(section, title);
                 }
                 Object rawColumns = section.get("columns");
@@ -200,7 +201,8 @@ public class AlertPresentationService {
             }
             case "LIST" -> {
                 Object source = sourceValue(document, text(section.get("sourcePath")));
-                if (!(source instanceof List<?> items) || items.isEmpty()) return emptyText(section, title);
+                List<?> items = collectionItems(source);
+                if (items == null || items.isEmpty()) return emptyText(section, title);
                 int maxItems = integer(section.get("maxItems"), 20);
                 String valuePath = text(section.get("valuePath"));
                 List<String> values = new ArrayList<>();
@@ -232,6 +234,20 @@ public class AlertPresentationService {
         if (!title.isBlank()) result.put("title", title);
         result.put("text", emptyText);
         return result;
+    }
+
+    private List<?> collectionItems(Object source) {
+        if (!(source instanceof List<?> list)) return null;
+        List<Object> items = new ArrayList<>();
+        flattenItems(list, items);
+        return items;
+    }
+
+    private void flattenItems(List<?> source, List<Object> target) {
+        for (Object item : source) {
+            if (item instanceof List<?> nested) flattenItems(nested, target);
+            else target.add(item);
+        }
     }
 
     private Object sourceValue(JsonDocument document, String path) {
