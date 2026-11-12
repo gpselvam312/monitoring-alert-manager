@@ -384,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (selected) {
                     if (selected.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'].includes(node.operator)) node.operator = 'GREATER_THAN';
                     if (selected.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE','IS_NULL','IS_NOT_NULL'].includes(node.operator)) node.operator = 'IS_TRUE';
-                    if (selected.type === 'null') node.operator = 'EXISTS';
+                    if (selected.type === 'null' && !['EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'].includes(node.operator)) node.operator = 'EXISTS';
                     renderTree();
                 }
             });
@@ -525,9 +525,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const first = firstCondition(tree);
             if (first) {
                 first.fieldPath = field.path;
-                if (field.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS'].includes(first.operator)) first.operator = 'GREATER_THAN';
-                if (field.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE'].includes(first.operator)) first.operator = 'IS_TRUE';
-                if (field.type === 'null') first.operator = 'EXISTS';
+                if (field.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'].includes(first.operator)) first.operator = 'GREATER_THAN';
+                if (field.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE','IS_NULL','IS_NOT_NULL'].includes(first.operator)) first.operator = 'IS_TRUE';
+                if (field.type === 'null' && !['EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'].includes(first.operator)) first.operator = 'EXISTS';
                 renderTree();
             }
         }
