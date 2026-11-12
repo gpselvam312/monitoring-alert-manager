@@ -532,15 +532,22 @@ public class AlertEvaluationService {
             Object value = node.get(key);
             if (value != null && !String.valueOf(value).isBlank()) return String.valueOf(value);
         }
-        Object childrenValue = node.get("children");
-        if (childrenValue instanceof List<?> children) {
-            for (Object child : children) {
-                if (child instanceof Map<?, ?> childMap) {
-                    Map<String, Object> childNode = new LinkedHashMap<>();
-                    childMap.forEach((key, value) -> childNode.put(String.valueOf(key), value));
-                    String found = findConfiguredValue(childNode, keys);
-                    if (!found.isBlank()) return found;
+        for (String nestedKey : List.of("children", "condition", "filter")) {
+            Object nested = node.get(nestedKey);
+            if (nested instanceof List<?> children) {
+                for (Object child : children) {
+                    if (child instanceof Map<?, ?> childMap) {
+                        Map<String, Object> childNode = new LinkedHashMap<>();
+                        childMap.forEach((key, value) -> childNode.put(String.valueOf(key), value));
+                        String found = findConfiguredValue(childNode, keys);
+                        if (!found.isBlank()) return found;
+                    }
                 }
+            } else if (nested instanceof Map<?, ?> nestedMap) {
+                Map<String, Object> childNode = new LinkedHashMap<>();
+                nestedMap.forEach((key, value) -> childNode.put(String.valueOf(key), value));
+                String found = findConfiguredValue(childNode, keys);
+                if (!found.isBlank()) return found;
             }
         }
         return "";
