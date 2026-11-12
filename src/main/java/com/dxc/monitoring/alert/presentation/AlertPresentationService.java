@@ -27,7 +27,7 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class AlertPresentationService {
     private static final Logger log = LoggerFactory.getLogger(AlertPresentationService.class);
-    private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9]*)}");
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9_.-]*)}");
     private static final int MAX_SECTION_TEXT = 10_000;
     private static final int MAX_PRESENTATION_SIZE = 12_000;
     private static final int MAX_DISPLAY_VALUE = 1_000;
@@ -76,9 +76,9 @@ public class AlertPresentationService {
                 }
             }
             String title = titleTemplate.isBlank()
-                    ? text(notificationPayload.get("title")) : renderTemplate(titleTemplate, templateValues);
+                    ? text(notificationPayload.get("title")) : renderTemplate(titleTemplate, templateValues, document);
             String message = messageTemplate.isBlank()
-                    ? text(notificationPayload.get("body")) : renderTemplate(messageTemplate, templateValues);
+                    ? text(notificationPayload.get("body")) : renderTemplate(messageTemplate, templateValues, document);
             return new Presentation(title, message, renderedSections);
         } catch (Exception exception) {
             log.warn("Alert presentation configuration could not be rendered for alertId={}; using legacy message content",
@@ -149,12 +149,12 @@ public class AlertPresentationService {
     private Map<String, Object> renderSection(Map<?, ?> section, JsonDocument document,
             Map<String, Object> templateValues) {
         String type = text(section.get("type")).toUpperCase(Locale.ROOT);
-        String title = renderTemplate(text(section.get("title")), templateValues);
+        String title = renderTemplate(text(section.get("title")), templateValues, document);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("type", type.toLowerCase(Locale.ROOT));
         if (!title.isBlank()) result.put("title", title);
         switch (type) {
-            case "TEXT" -> result.put("text", renderTemplate(text(section.get("text")), templateValues));
+            case "TEXT" -> result.put("text", renderTemplate(text(section.get("text")), templateValues, document));
             case "KEY_VALUE" -> {
                 List<Map<String, String>> fields = new ArrayList<>();
                 Object rawFields = section.get("fields");
@@ -164,7 +164,7 @@ public class AlertPresentationService {
                         String path = text(field.get("path"));
                         JsonPathResolver.ResolvedValues resolved = resolve(document, path);
                         if (resolved.found()) {
-                            fields.add(Map.of("label", renderTemplate(text(field.get("label")), templateValues),
+                            fields.add(Map.of("label", renderTemplate(text(field.get("label")), templateValues, document),
                                     "value", displayValue(observed(resolved.values()))));
                         }
                     }
@@ -278,11 +278,16 @@ public class AlertPresentationService {
         return values;
     }
 
-    private String renderTemplate(String template, Map<String, Object> values) {
+    private String renderTemplate(String template, Map<String, Object> values, JsonDocument document) {
         Matcher matcher = PLACEHOLDER.matcher(template);
         StringBuffer output = new StringBuffer();
         while (matcher.find()) {
-            Object replacement = values.get(matcher.group(1));
+            String token = matcher.group(1);
+            Object replacement = values.get(token);
+            if (replacement == null && (token.startsWith("data.") || token.startsWith("response."))) {
+                JsonPathResolver.ResolvedValues resolved = resolve(document, token);
+                if (resolved.found()) replacement = observed(resolved.values());
+            }
             matcher.appendReplacement(output, Matcher.quoteReplacement(
                     replacement == null ? "" : displayValue(replacement)));
         }
