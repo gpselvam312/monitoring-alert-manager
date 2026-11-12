@@ -30,6 +30,8 @@ public class AlertPresentationService {
     private static final Logger log = LoggerFactory.getLogger(AlertPresentationService.class);
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9]*)}");
     private static final int MAX_SECTION_TEXT = 10_000;
+    private static final int MAX_PRESENTATION_SIZE = 20_000;
+    private static final int MAX_DISPLAY_VALUE = 1_000;
 
     private final ObjectMapper objectMapper;
     private final MonitoringResultRepository resultRepository;
@@ -56,10 +58,18 @@ public class AlertPresentationService {
             Map<String, Object> templateValues = templateValues(alert, history, notificationPayload);
             JsonDocument document = responseDocument(history);
             List<Map<String, Object>> renderedSections = new ArrayList<>();
+            int renderedSize = 0;
             for (Object rawSection : sections) {
                 if (rawSection instanceof Map<?, ?> section) {
                     Map<String, Object> rendered = renderSection(section, document, templateValues);
-                    if (rendered != null) renderedSections.add(rendered);
+                    if (rendered == null) continue;
+                    int sectionSize = objectMapper.writeValueAsString(rendered).length();
+                    if (renderedSize + sectionSize > MAX_PRESENTATION_SIZE) {
+                        log.warn("Alert presentation sections exceeded the configured output limit; remaining sections were omitted");
+                        break;
+                    }
+                    renderedSections.add(rendered);
+                    renderedSize += sectionSize;
                 }
             }
             String title = titleTemplate.isBlank()
@@ -267,11 +277,15 @@ public class AlertPresentationService {
 
     private String displayValue(Object value) {
         if (value == null) return "null";
+        String rendered;
         if (value instanceof Map<?, ?> || value instanceof List<?>) {
-            try { return objectMapper.writeValueAsString(value); }
-            catch (Exception ignored) { return String.valueOf(value); }
+            try { rendered = objectMapper.writeValueAsString(value); }
+            catch (Exception ignored) { rendered = String.valueOf(value); }
+        } else {
+            rendered = String.valueOf(value);
         }
-        return String.valueOf(value);
+        return rendered.length() > MAX_DISPLAY_VALUE
+                ? rendered.substring(0, MAX_DISPLAY_VALUE) + "… (truncated)" : rendered;
     }
 
     private String firstNonBlank(String first, String second) {
