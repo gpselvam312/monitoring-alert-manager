@@ -86,6 +86,7 @@ public final class PresentationConfigurationValidator {
                     normalizedFields.add(Map.of("label", label, "path", path));
                 }
                 result.put("fields", normalizedFields);
+                copyOptionalText(section, result, "emptyText", 300);
             }
             case "TABLE" -> {
                 result.put("sourcePath", documentPath(section.get("sourcePath")));
@@ -114,6 +115,7 @@ public final class PresentationConfigurationValidator {
             case "JSON" -> {
                 result.put("sourcePath", documentPath(section.get("sourcePath")));
                 result.put("maxLength", boundedInteger(section.get("maxLength"), 4000, 100, 10_000, "maxLength"));
+                copyOptionalText(section, result, "emptyText", 300);
             }
             default -> throw new IllegalArgumentException("Unsupported presentation section type.");
         }

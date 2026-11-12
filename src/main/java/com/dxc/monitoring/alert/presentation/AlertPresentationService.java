@@ -169,7 +169,7 @@ public class AlertPresentationService {
                         }
                     }
                 }
-                if (fields.isEmpty()) return null;
+                if (fields.isEmpty()) return emptyText(section, title);
                 result.put("fields", fields);
             }
             case "TABLE" -> {
