@@ -36,6 +36,7 @@ public interface EnvironmentRepository extends JpaRepository<Environment, Long>
     List<Environment> findByApplicationIdOrderByNameIgnoreCase(
             @Param("applicationId") Long applicationId);
 
+    @EntityGraph(attributePaths = "application")
     @Query("""
             select e
             from Environment e

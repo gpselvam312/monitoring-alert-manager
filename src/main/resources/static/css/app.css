@@ -5280,3 +5280,99 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
         transform: rotate(var(--gauge-angle, 270deg));
     }
 }
+
+
+/* =========================================================
+   Common Lookup modal — inherits application theme variables
+   ========================================================= */
+.common-lookup-modal .modal-content {
+    color: var(--text-primary);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+.common-lookup-modal .modal-header,
+.common-lookup-modal .modal-footer,
+.common-lookup-modal .common-lookup-toolbar,
+.common-lookup-modal .common-lookup-status {
+    border-color: var(--border-color) !important;
+}
+.common-lookup-modal .modal-title { color: var(--text-primary); }
+.common-lookup-modal .common-lookup-table {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+.common-lookup-modal .common-lookup-table > thead th {
+    color: var(--text-primary);
+    background: var(--table-header-bg, var(--card-bg));
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.common-lookup-modal .common-lookup-table > tbody > tr > * {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+.common-lookup-modal .common-lookup-row { cursor: pointer; }
+.common-lookup-modal .common-lookup-row.is-selected > * {
+    background: color-mix(in srgb, var(--theme-primary) 10%, var(--card-bg));
+}
+.common-lookup-modal .common-lookup-row:hover > * {
+    background: color-mix(in srgb, var(--theme-primary) 6%, var(--card-bg));
+}
+.common-lookup-modal .common-lookup-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    font-weight: 650;
+    white-space: nowrap;
+}
+.common-lookup-modal .common-lookup-sort:hover,
+.common-lookup-modal .common-lookup-sort:focus-visible { color: var(--theme-primary); }
+.common-lookup-modal .common-lookup-sort:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 3px;
+}
+.common-lookup-modal .common-lookup-table .form-check-input {
+    cursor: pointer;
+    border-color: var(--border-color);
+}
+.common-lookup-modal .common-lookup-table .form-check-input:checked {
+    background-color: var(--theme-primary);
+    border-color: var(--theme-primary);
+}
+.common-lookup-modal .common-lookup-description-cell { max-width: 24rem; }
+.common-lookup-modal .common-lookup-status {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .5rem;
+}
+.common-lookup-modal .common-lookup-loading .modal-body { cursor: progress; }
+.common-lookup-modal .form-control,
+.common-lookup-modal .form-select {
+    color: var(--text-primary);
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+}
+.common-lookup-modal .input-group-text {
+    color: var(--text-secondary);
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+.common-lookup-modal .btn-close { filter: var(--modal-close-filter, none); }
+[data-theme="orange-dark"] .common-lookup-modal .btn-close,
+[data-theme="blue-dark"] .common-lookup-modal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 1;
+}
+@media (max-width: 767.98px) {
+    .common-lookup-modal .modal-dialog { margin: .5rem; }
+    .common-lookup-modal .modal-footer { align-items: stretch; }
+    .common-lookup-modal .modal-footer > .btn-group,
+    .common-lookup-modal .modal-footer > .d-flex { width: 100%; }
+    .common-lookup-modal .modal-footer > .d-flex { justify-content: flex-end; flex-wrap: wrap; }
+}

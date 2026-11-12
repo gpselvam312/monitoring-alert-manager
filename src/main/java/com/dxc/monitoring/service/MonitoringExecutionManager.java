@@ -20,24 +20,40 @@ public class MonitoringExecutionManager
     private final MonitoringExecutorFactory executorFactory;
     private final MonitoringExecutionService executionService;
     private final MonitoringResultNormalizer resultNormalizer;
+    private final AlertEvaluationQueueService alertEvaluationQueueService;
     private final ConcurrentHashMap<Long, ReentrantLock> jobLocks = new ConcurrentHashMap<>();
 
     public MonitoringExecutionManager(MonitoringExecutorFactory executorFactory,
-            MonitoringExecutionService executionService, MonitoringResultNormalizer resultNormalizer)
+            MonitoringExecutionService executionService, MonitoringResultNormalizer resultNormalizer,
+            AlertEvaluationQueueService alertEvaluationQueueService)
     {
         this.executorFactory = executorFactory;
         this.executionService = executionService;
         this.resultNormalizer = resultNormalizer;
+        this.alertEvaluationQueueService = alertEvaluationQueueService;
     }
 
     @Transactional
     public MonitoringExecution execute(MonitoringJob job)
     {
-        return execute(job, Map.of());
+        return execute(job, Map.of(), MonitoringExecution.TriggerSource.MANUAL);
+    }
+
+    @Transactional
+    public MonitoringExecution execute(MonitoringJob job, MonitoringExecution.TriggerSource triggerSource)
+    {
+        return execute(job, Map.of(), triggerSource);
     }
 
     @Transactional
     public MonitoringExecution execute(MonitoringJob job, Map<String, String> runtimeParameters)
+    {
+        return execute(job, runtimeParameters, MonitoringExecution.TriggerSource.MANUAL);
+    }
+
+    @Transactional
+    public MonitoringExecution execute(MonitoringJob job, Map<String, String> runtimeParameters,
+            MonitoringExecution.TriggerSource triggerSource)
     {
         if (job == null || job.getId() == null)
             throw new IllegalArgumentException("Monitoring job is required.");
@@ -60,7 +76,8 @@ public class MonitoringExecutionManager
         try
         {
             MonitoringExecutor executor = executorFactory.getExecutor(job.getType());
-            MonitoringExecution execution = executionService.startExecution(job, 1);
+            MonitoringExecution execution = executionService.startExecution(job, 1,
+                    triggerSource == null ? MonitoringExecution.TriggerSource.UNKNOWN : triggerSource);
             try
             {
                 MonitoringExecutionResult result = executor.execute(job, runtimeParameters == null ? Map.of() : runtimeParameters);
@@ -85,13 +102,17 @@ public class MonitoringExecutionManager
                     executionService.saveResult(execution, result.getResultType(), result.getResultStatus(),
                             result.getValue(), result.getUnit(), result.getMessage(), resultData, result.getRawOutput());
                 }
-                return execution;
             }
             catch (Exception exception)
             {
-                return executionService.failExecution(execution, MonitoringExecution.ExecutionStatus.ERROR,
-                        exception.getMessage());
+                MonitoringExecution failedExecution = executionService.failExecution(execution,
+                        MonitoringExecution.ExecutionStatus.ERROR, exception.getMessage());
+                alertEvaluationQueueService.enqueue(failedExecution);
+                return failedExecution;
             }
+
+            alertEvaluationQueueService.enqueue(execution);
+            return execution;
         }
         finally
         {

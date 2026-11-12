@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout('Add Notification Configuration', ~{::content})}">
+<body><div th:fragment="content">
+  <div class="page-header">
+    <div><h1 class="page-title"><i class="bi bi-plus-circle me-2"></i><span th:text="'Add ' + ${pageTitle}">Add Notification Configuration</span></h1>
+      <p class="page-subtitle">Create a new notification configuration. Credentials are encrypted before storage.</p></div>
+    <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}"><i class="bi bi-arrow-left me-1"></i>Back to Lists</a>
+  </div>
+  <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+  <div class="app-card"><div class="app-card-body">
+    <form th:if="${editType == 'CHANNEL'}" th:action="@{/administration/notifications/channels}" th:object="${channelForm}" method="post">
+      <div class="row g-3">
+        <div class="col-12 col-md-4"><label class="form-label" for="channelName">Channel Name</label><input class="form-control" id="channelName" th:field="*{name}" maxlength="100" required></div>
+        <div class="col-12 col-md-4"><label class="form-label" for="channelType">Channel Type</label><select class="form-select" id="channelType" th:field="*{channelType}" onchange="toggleChannelFields()"><option th:each="type : ${channelTypes}" th:value="${type.name()}" th:text="${type.name()}"></option></select></div>
+        <div class="col-12 col-md-4"><label class="form-label" for="channelSecret">Credential / Secret</label><input class="form-control" type="password" id="channelSecret" th:field="*{secret}" autocomplete="new-password" required><div class="form-text">Stored encrypted and never displayed again.</div></div>
+        <div class="col-12" id="emailFields"><div class="row g-3">
+          <div class="col-12 col-md-4"><label class="form-label">SMTP Host</label><input class="form-control" th:field="*{smtpHost}"></div><div class="col-6 col-md-2"><label class="form-label">SMTP Port</label><input class="form-control" type="number" min="1" max="65535" th:field="*{smtpPort}"></div><div class="col-12 col-md-3"><label class="form-label">From Address</label><input class="form-control" type="email" th:field="*{smtpFrom}"></div><div class="col-12 col-md-3"><label class="form-label">SMTP Username</label><input class="form-control" th:field="*{smtpUsername}"></div>
+          <div class="col-6 col-md-3"><div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" id="smtpAuth" th:field="*{smtpAuth}"><label class="form-check-label" for="smtpAuth">SMTP Authentication</label></div></div><div class="col-6 col-md-3"><div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox" id="smtpStartTls" th:field="*{smtpStartTls}"><label class="form-check-label" for="smtpStartTls">STARTTLS</label></div></div>
+        </div></div>
+        <div class="col-12" id="whatsappFields"><div class="row g-3"><div class="col-12 col-md-4"><label class="form-label">WhatsApp Phone Number ID</label><input class="form-control" th:field="*{whatsappPhoneNumberId}"></div><div class="col-12 col-md-2"><label class="form-label">Graph API Version</label><input class="form-control" th:field="*{whatsappApiVersion}"></div><div class="col-12 col-md-3"><label class="form-label">Approved Template</label><input class="form-control" th:field="*{whatsappTemplateName}"></div><div class="col-12 col-md-3"><label class="form-label">Template Language</label><input class="form-control" th:field="*{whatsappLanguageCode}"></div><div class="col-12"><div class="form-text">Use an approved WhatsApp template for business-initiated messages.</div></div></div></div>
+        <div class="col-12"><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Create Channel</button> <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}">Cancel</a></div>
+      </div>
+    </form>
+    <form th:if="${editType == 'RECIPIENT'}" th:action="@{/administration/notifications/recipients}" method="post" class="row g-3">
+      <div class="col-12 col-md-4"><label class="form-label">Name</label><input class="form-control" name="name" maxlength="200" required></div><div class="col-12 col-md-4"><label class="form-label">Email Address</label><input class="form-control" type="email" name="email" maxlength="255"></div><div class="col-12 col-md-4"><label class="form-label">WhatsApp Phone (with country code)</label><input class="form-control" name="phoneNumber" maxlength="50" placeholder="+919876543210"></div>
+      <div class="col-12"><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Create Recipient</button> <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}">Cancel</a></div>
+    </form>
+    <form th:if="${editType == 'GROUP'}" th:action="@{/administration/notifications/groups}" method="post" class="row g-3">
+      <div class="col-12 col-md-4"><label class="form-label">Group Name</label><input class="form-control" name="name" maxlength="150" required></div><div class="col-12 col-md-4"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div><div class="col-12 col-md-4"><label class="form-label">Members</label><select class="form-select" name="recipientIds" multiple size="6"><option th:each="recipient : ${recipients}" th:if="${recipient.enabled}" th:value="${recipient.id}" th:text="${recipient.name}"></option></select><div class="form-text">Use Ctrl/Cmd to select multiple recipients.</div></div>
+      <div class="col-12"><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Create Group</button> <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}">Cancel</a></div>
+    </form>
+    <form th:if="${editType == 'POLICY'}" th:action="@{/administration/notifications/policies}" method="post" class="row g-3">
+      <div class="col-12 col-md-4"><label class="form-label">Policy Name</label><input class="form-control" name="name" maxlength="150" required></div><div class="col-12 col-md-6"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div>
+      <div class="col-12"><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Create Policy</button> <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}">Cancel</a></div>
+    </form>
+    <form th:if="${editType == 'ROUTE'}" th:action="@{/administration/notifications/routes}" method="post" class="row g-3">
+      <div class="col-12 col-md-3"><label class="form-label">Policy</label><select class="form-select" name="policyId" required><option value="">Select policy</option><option th:each="policy : ${policies}" th:if="${policy.enabled}" th:value="${policy.id}" th:text="${policy.name}"></option></select></div>
+      <div class="col-12 col-md-3"><label class="form-label">Channel</label><select class="form-select" name="channelId" required><option value="">Select channel</option><option th:each="channel : ${channels}" th:if="${channel.enabled}" th:value="${channel.id}" th:text="${channel.name + ' (' + channel.channelType + ')'}"></option></select></div>
+      <div class="col-6 col-md-2"><label class="form-label">Severity</label><select class="form-select" name="severity" required><option th:each="severity : ${severities}" th:value="${severity.name()}" th:text="${severity.name()}"></option></select></div>
+      <div class="col-6 col-md-2"><label class="form-label">Event</label><select class="form-select" name="eventType" required><option th:each="event : ${eventTypes}" th:if="${event.name() != 'REMINDER'}" th:value="${event.name()}" th:text="${event.name()}"></option></select></div>
+      <div class="col-12 col-md-2"><label class="form-label">Target Type</label><select class="form-select" id="targetType" name="targetType" onchange="toggleRouteTarget()" required><option value="GROUP">Recipient Group</option><option value="RECIPIENT">Single Recipient</option></select></div>
+      <div class="col-12 col-md-4" id="groupTarget"><label class="form-label">Group</label><select class="form-select" name="groupId"><option value="">Select group</option><option th:each="group : ${groups}" th:if="${group.enabled}" th:value="${group.id}" th:text="${group.name}"></option></select></div>
+      <div class="col-12 col-md-4 d-none" id="recipientTarget"><label class="form-label">Recipient</label><select class="form-select" name="recipientId"><option value="">Select recipient</option><option th:each="recipient : ${recipients}" th:if="${recipient.enabled}" th:value="${recipient.id}" th:text="${recipient.name}"></option></select></div>
+      <div class="col-12 col-md-4"><label class="form-label">Minimum Interval (seconds)</label><input class="form-control" type="number" name="minimumIntervalSeconds" value="0" min="0" max="86400"><div class="form-text">Applies to recurrence/reminder events only.</div></div>
+      <div class="col-12"><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Create Route</button> <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}">Cancel</a></div>
+    </form>
+  </div></div>
+  <script>
+    function toggleChannelFields() {
+      const type = document.getElementById('channelType')?.value || 'EMAIL';
+      const email = document.getElementById('emailFields'), whatsapp = document.getElementById('whatsappFields');
+      if (email) { email.classList.toggle('d-none', type !== 'EMAIL'); email.querySelectorAll('input,select').forEach(field => field.disabled = type !== 'EMAIL'); }
+      if (whatsapp) { whatsapp.classList.toggle('d-none', type !== 'WHATSAPP'); whatsapp.querySelectorAll('input,select').forEach(field => field.disabled = type !== 'WHATSAPP'); }
+    }
+    function toggleRouteTarget() {
+      const target = document.getElementById('targetType')?.value || 'GROUP';
+      const group = document.getElementById('groupTarget'), recipient = document.getElementById('recipientTarget');
+      if (group) { group.classList.toggle('d-none', target !== 'GROUP'); group.querySelector('select').disabled = target !== 'GROUP'; }
+      if (recipient) { recipient.classList.toggle('d-none', target !== 'RECIPIENT'); recipient.querySelector('select').disabled = target !== 'RECIPIENT'; }
+    }
+    document.addEventListener('DOMContentLoaded', () => { toggleChannelFields(); toggleRouteTarget(); });
+  </script>
+</div></body></html>

@@ -34,6 +34,10 @@ public class MonitoringExecution {
     @Column(nullable = false, length = 20)
     private ExecutionStatus status = ExecutionStatus.RUNNING;
 
+    @Column(name = "trigger_source", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    private TriggerSource triggerSource = TriggerSource.UNKNOWN;
+
     @Column(name = "duration_ms")
     private Long durationMs;
 
@@ -55,6 +59,12 @@ public class MonitoringExecution {
         if (createdAt == null) {
             createdAt = OffsetDateTime.now();
         }
+    }
+
+    public enum TriggerSource {
+        SCHEDULED,
+        MANUAL,
+        UNKNOWN
     }
 
     public enum ExecutionStatus {
@@ -99,6 +109,14 @@ public class MonitoringExecution {
 
     public void setStatus(ExecutionStatus status) {
         this.status = status;
+    }
+
+    public TriggerSource getTriggerSource() {
+        return triggerSource;
+    }
+
+    public void setTriggerSource(TriggerSource triggerSource) {
+        this.triggerSource = triggerSource == null ? TriggerSource.UNKNOWN : triggerSource;
     }
 
     public Long getDurationMs() {

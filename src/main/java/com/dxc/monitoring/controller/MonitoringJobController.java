@@ -625,7 +625,7 @@ public class MonitoringJobController
             throw new IllegalStateException("Manual execution is disabled for this monitoring job.");
         }
 
-        monitoringExecutionManager.execute(job);
+        monitoringExecutionManager.execute(job, MonitoringExecution.TriggerSource.MANUAL);
         redirectAttributes.addFlashAttribute("successMessage",
                 "Manual execution was started for monitoring job '" + job.getName() + "'.");
 

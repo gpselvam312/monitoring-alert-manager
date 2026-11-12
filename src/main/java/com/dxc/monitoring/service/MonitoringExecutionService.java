@@ -33,7 +33,8 @@ public class MonitoringExecutionService
     }
 
     @Transactional
-    public MonitoringExecution startExecution(MonitoringJob monitoringJob, int attemptNumber)
+    public MonitoringExecution startExecution(MonitoringJob monitoringJob, int attemptNumber,
+            MonitoringExecution.TriggerSource triggerSource)
     {
 
         MonitoringExecution execution = new MonitoringExecution();
@@ -42,6 +43,7 @@ public class MonitoringExecutionService
         execution.setStartedAt(OffsetDateTime.now());
         execution.setStatus(MonitoringExecution.ExecutionStatus.RUNNING);
         execution.setAttemptNumber(attemptNumber);
+        execution.setTriggerSource(triggerSource);
 
         return executionRepository.save(execution);
     }
