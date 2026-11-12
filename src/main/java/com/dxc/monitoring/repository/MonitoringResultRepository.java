@@ -15,6 +15,8 @@ public interface MonitoringResultRepository extends JpaRepository<MonitoringResu
 
     List<MonitoringResult> findAllByExecutionId(Long executionId);
 
+    Optional<MonitoringResult> findFirstByExecution_IdOrderByCreatedAtDescIdDesc(Long executionId);
+
     Optional<MonitoringResult> findFirstByExecution_MonitoringJob_IdOrderByCreatedAtDescIdDesc(Long jobId);
 
     @EntityGraph(attributePaths = { "execution", "execution.monitoringJob" })

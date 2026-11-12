@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -84,7 +85,7 @@ class AlertPresentationServiceTest {
                   }
                 }
                 """);
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         AlertPresentationService.Presentation presentation = service.build(history, Map.of(
                 "title", "Legacy title", "body", "Legacy message", "severity", "CRITICAL",

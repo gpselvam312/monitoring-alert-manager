@@ -1,7 +1,6 @@
 package com.dxc.monitoring.alert.presentation;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -110,11 +109,8 @@ public class AlertPresentationService {
     private JsonDocument responseDocument(AlertHistory history) {
         MonitoringExecution execution = history == null ? null : history.getExecution();
         if (execution == null || execution.getId() == null) return JsonDocument.from(Map.of());
-        List<MonitoringResult> results = resultRepository.findAllByExecutionId(execution.getId());
-        MonitoringResult latest = results.stream()
-                .max(Comparator.comparing(MonitoringResult::getCreatedAt,
-                        Comparator.nullsFirst(Comparator.naturalOrder()))
-                        .thenComparing(MonitoringResult::getId, Comparator.nullsFirst(Comparator.naturalOrder())))
+        MonitoringResult latest = resultRepository
+                .findFirstByExecution_IdOrderByCreatedAtDescIdDesc(execution.getId())
                 .orElse(null);
         if (latest == null) return JsonDocument.from(Map.of());
 
