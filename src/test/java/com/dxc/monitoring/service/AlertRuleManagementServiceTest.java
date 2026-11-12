@@ -224,6 +224,40 @@ class AlertRuleManagementServiceTest {
         assertEquals(3, form.getRecoveryConsecutiveMatches());
     }
 
+
+    @Test
+    void savesAndRestoresChannelNeutralPresentationConfiguration() throws Exception {
+        stubJobLookup();
+        when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        AlertRuleForm form = validForm();
+        form.setPresentationConfigJson("""
+                {
+                  "version":1,
+                  "titleTemplate":"[{severity}] {ruleName}",
+                  "messageTemplate":"{jobName}: {fieldPath} = {actualValue}",
+                  "sections":[
+                    {"id":"summary","type":"TEXT","title":"Summary","text":"Current status: {severity}"},
+                    {"id":"facts","type":"KEY_VALUE","title":"Details","fields":[
+                      {"label":"Cluster","path":"data.cluster.name"},
+                      {"label":"Status","path":"response.status"}
+                    ]},
+                    {"id":"nodes","type":"TABLE","title":"Nodes","sourcePath":"data.nodes",
+                     "columns":[{"key":"name","label":"Node"},{"key":"state","label":"State"}],"maxRows":10},
+                    {"id":"states","type":"LIST","sourcePath":"data.states","valuePath":"value","maxItems":5},
+                    {"id":"payload","type":"JSON","sourcePath":"data.cluster","maxLength":2000}
+                  ]
+                }
+                """);
+
+        AlertRule saved = service.save(form, 5L);
+        Map<?, ?> config = new ObjectMapper().readValue(saved.getPresentationConfig(), Map.class);
+        assertEquals(1, saved.getConfigVersion());
+        assertEquals(5, ((List<?>) config.get("sections")).size());
+
+        AlertRuleForm restored = service.toForm(saved);
+        assertEquals(saved.getPresentationConfig(), restored.getPresentationConfigJson());
+    }
+
     private void stubJobLookup() {
         when(jobRepository.findByIdForDetails(JOB_ID)).thenReturn(Optional.of(job));
     }
