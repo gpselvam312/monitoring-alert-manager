@@ -422,13 +422,31 @@ public class ConditionEvaluator {
             if (expression.charAt(i) == '\\' && Character.isDigit(expression.charAt(i + 1))
                     && expression.charAt(i + 1) != '0') return true;
         }
-        int open = expression.indexOf('(');
-        int close = open < 0 ? -1 : expression.indexOf(')', open + 1);
-        if (open >= 0 && close > open) {
-            String group = expression.substring(open + 1, close);
-            String suffix = expression.substring(close + 1);
-            if ((group.contains("+") || group.contains("*"))
-                    && (suffix.startsWith("+") || suffix.startsWith("*"))) return true;
+
+        List<boolean[]> groups = new ArrayList<>();
+        for (int i = 0; i < expression.length(); i++) {
+            char current = expression.charAt(i);
+            if (current == '(') {
+                groups.add(new boolean[2]); // quantified content, alternation
+            } else if (current == ')') {
+                if (groups.isEmpty()) continue;
+                boolean[] group = groups.remove(groups.size() - 1);
+                char next = i + 1 < expression.length() ? expression.charAt(i + 1) : '\0';
+                boolean quantifiedGroup = next == '*' || next == '+' || next == '?' || next == '{';
+                if (quantifiedGroup && (group[0] || group[1])) return true;
+                if (!groups.isEmpty()) {
+                    boolean[] parent = groups.get(groups.size() - 1);
+                    parent[0] |= group[0] || quantifiedGroup;
+                    parent[1] |= group[1];
+                }
+            } else if (!groups.isEmpty()) {
+                boolean[] group = groups.get(groups.size() - 1);
+                if (current == '|') group[1] = true;
+                if (current == '*' || current == '+' || current == '?' || current == '{') {
+                    boolean groupPrefix = current == '?' && i > 0 && expression.charAt(i - 1) == '(';
+                    if (!groupPrefix) group[0] = true;
+                }
+            }
         }
         return false;
     }
@@ -450,7 +468,8 @@ public class ConditionEvaluator {
         Object executionStatus = context.metadata("executionStatus");
         List<String> allowed = List.of("executionStatus", "executionState", "errorMessage",
                 "triggerSource", "resultStatus", "status", "message",
-                "response.status", "data.status");
+                "response.status", "data.status", "response.message", "data.message",
+                "response.errorMessage", "data.errorMessage");
         if (executionStatus != null && !"SUCCESS".equals(String.valueOf(executionStatus))
                 && !allowed.contains(path)) {
             throw new IllegalArgumentException("Monitoring execution did not complete successfully; result-based condition was not evaluated.");
