@@ -51,7 +51,7 @@ class AlertEvaluationServiceTest {
         historyRepository = mock(AlertHistoryRepository.class);
         evaluationRepository = mock(AlertRuleEvaluationRepository.class);
         service = new AlertEvaluationService(executionRepository, resultRepository, ruleRepository,
-                alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), mock(NotificationRoutingService.class));
+                alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), new ConditionEvaluator(), mock(NotificationRoutingService.class));
 
         execution = mock(MonitoringExecution.class);
         rule = mock(AlertRule.class);

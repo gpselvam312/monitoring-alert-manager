@@ -52,7 +52,13 @@ public final class ConditionEvaluationContext {
     }
 
     private ResolvedPath resolveRelative(Object root, String path) {
-        String[] segments = path.split("\\\\.", -1);
+        if (path.length() > JsonPathResolver.MAX_PATH_LENGTH) {
+            throw new IllegalArgumentException("Condition field path exceeds the maximum length.");
+        }
+        String[] segments = path.split("\\.", -1);
+        if (segments.length > JsonPathResolver.MAX_PATH_DEPTH) {
+            throw new IllegalArgumentException("Condition field path exceeds the maximum depth.");
+        }
         for (String segment : segments) {
             if (segment.isBlank() || segment.contains("[") || segment.contains("]")) {
                 throw new IllegalArgumentException("Invalid condition field path: " + path);

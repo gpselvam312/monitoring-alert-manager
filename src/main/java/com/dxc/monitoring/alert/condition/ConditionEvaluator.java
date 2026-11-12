@@ -395,9 +395,7 @@ public class ConditionEvaluator {
             throw new IllegalArgumentException("Regex condition exceeds the maximum length.");
         }
         // Reject common constructs that enable catastrophic backtracking.
-        if (expression.matches(".*\\\\\\\\[1-9].*") || expression.contains("(?=")
-                || expression.contains("(?!") || expression.contains("(?<=")
-                || expression.contains("(?<!") || expression.matches(".*\\\\([^)]*[+*][^)]*\\\\)[+*].*")) {
+        if (isUnsafeRegex(expression)) {
             throw new IllegalArgumentException("Regex uses a construct that is not supported by the safe evaluator.");
         }
         try {
@@ -405,6 +403,24 @@ public class ConditionEvaluator {
         } catch (RuntimeException exception) {
             throw new IllegalArgumentException("Regex condition is invalid.");
         }
+    }
+
+    private boolean isUnsafeRegex(String expression) {
+        if (expression.contains("(?=") || expression.contains("(?!")
+                || expression.contains("(?<=") || expression.contains("(?<!")) return true;
+        for (int i = 0; i + 1 < expression.length(); i++) {
+            if (expression.charAt(i) == '\\\\' && Character.isDigit(expression.charAt(i + 1))
+                    && expression.charAt(i + 1) != '0') return true;
+        }
+        int open = expression.indexOf('(');
+        int close = open < 0 ? -1 : expression.indexOf(')', open + 1);
+        if (open >= 0 && close > open) {
+            String group = expression.substring(open + 1, close);
+            String suffix = expression.substring(close + 1);
+            if ((group.contains("+") || group.contains("*"))
+                    && (suffix.startsWith("+") || suffix.startsWith("*"))) return true;
+        }
+        return false;
     }
 
     private boolean compareNumbers(BigDecimal actual, BigDecimal expected, String operator) {
@@ -423,7 +439,8 @@ public class ConditionEvaluator {
     private void enforceExecutionGuard(String path, ConditionEvaluationContext context) {
         Object executionStatus = context.metadata("executionStatus");
         List<String> allowed = List.of("executionStatus", "executionState", "errorMessage",
-                "triggerSource", "resultStatus", "status", "message");
+                "triggerSource", "resultStatus", "status", "message",
+                "response.status", "data.status");
         if (executionStatus != null && !"SUCCESS".equals(String.valueOf(executionStatus))
                 && !allowed.contains(path)) {
             throw new IllegalArgumentException("Monitoring execution did not complete successfully; result-based condition was not evaluated.");
