@@ -409,8 +409,12 @@ public class ConditionEvaluator {
         if (isUnsafeRegex(expression)) {
             throw new IllegalArgumentException("Regex uses a construct that is not supported by the safe evaluator.");
         }
+        String input = String.valueOf(actual);
+        if (input.length() > 100_000) {
+            throw new IllegalArgumentException("Regex input exceeds the maximum length.");
+        }
         try {
-            return Pattern.compile(expression).matcher(String.valueOf(actual)).find();
+            return Pattern.compile(expression).matcher(input).find();
         } catch (RuntimeException exception) {
             throw new IllegalArgumentException("Regex condition is invalid.");
         }

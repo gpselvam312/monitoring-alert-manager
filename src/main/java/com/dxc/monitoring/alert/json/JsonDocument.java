@@ -9,6 +9,10 @@ import java.util.Map;
  * namespaces. The original response is always retained without rewriting it.
  */
 public final class JsonDocument {
+    private static final int MAX_DOCUMENT_DEPTH = 64;
+    private static final int MAX_DOCUMENT_NODES = 50_000;
+    private static final int MAX_STRING_LENGTH = 1_000_000;
+
     private final Object response;
     private final Object data;
 
@@ -18,11 +22,11 @@ public final class JsonDocument {
     }
 
     public static JsonDocument from(Object response) {
-        Object normalizedResponse = immutableValue(response);
+        Object normalizedResponse = immutableValue(response, 0, new int[] {0});
         Object payload = normalizedResponse instanceof Map<?, ?> map && map.containsKey("data")
                 ? map.get("data")
                 : normalizedResponse;
-        return new JsonDocument(normalizedResponse, immutableValue(payload));
+        return new JsonDocument(normalizedResponse, payload);
     }
 
     public Object response() {
@@ -46,14 +50,25 @@ public final class JsonDocument {
         };
     }
 
-    private static Object immutableValue(Object value) {
+    private static Object immutableValue(Object value, int depth, int[] nodes) {
+        if (depth > MAX_DOCUMENT_DEPTH) {
+            throw new IllegalArgumentException("Monitoring response exceeds the maximum JSON nesting depth.");
+        }
+        if (++nodes[0] > MAX_DOCUMENT_NODES) {
+            throw new IllegalArgumentException("Monitoring response exceeds the maximum JSON node count.");
+        }
+        if (value instanceof String text && text.length() > MAX_STRING_LENGTH) {
+            throw new IllegalArgumentException("Monitoring response contains a string that exceeds the maximum length.");
+        }
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> copy = new LinkedHashMap<>();
-            map.forEach((key, item) -> copy.put(String.valueOf(key), immutableValue(item)));
+            map.forEach((key, item) -> copy.put(String.valueOf(key), immutableValue(item, depth + 1, nodes)));
             return Collections.unmodifiableMap(copy);
         }
         if (value instanceof java.util.List<?> list) {
-            return list.stream().map(JsonDocument::immutableValue).toList();
+            java.util.List<Object> copy = new java.util.ArrayList<>(list.size());
+            for (Object item : list) copy.add(immutableValue(item, depth + 1, nodes));
+            return Collections.unmodifiableList(copy);
         }
         return value;
     }
