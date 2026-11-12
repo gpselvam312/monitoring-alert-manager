@@ -223,9 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const advancedJsonInput = document.getElementById('advancedConditionJson');
     const applyAdvancedJson = document.getElementById('applyAdvancedConditionJson');
     const useVisualBuilder = document.getElementById('useVisualConditionBuilder');
+    const isVisualConditionNode = node => node && (node.type === 'CONDITION'
+        || (node.type === 'GROUP' && Array.isArray(node.children) && node.children.every(isVisualConditionNode)));
     let tree;
     try { tree = JSON.parse(treeInput.value); } catch (_) { tree = defaultCondition(); }
-    let advancedMode = !tree || !['CONDITION','GROUP'].includes(tree.type);
+    let advancedMode = !isVisualConditionNode(tree);
     if (advancedMode) {
         if (advancedJsonInput) advancedJsonInput.value = JSON.stringify(tree || {}, null, 2);
         if (advancedEditor) advancedEditor.open = true;
