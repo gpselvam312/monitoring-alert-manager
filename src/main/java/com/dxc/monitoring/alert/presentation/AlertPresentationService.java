@@ -47,7 +47,7 @@ public class AlertPresentationService {
         if (rule == null || rule.getPresentationConfig() == null || rule.getPresentationConfig().isBlank()) return null;
         try {
             Map<String, Object> config = objectMapper.readValue(rule.getPresentationConfig(), Map.class);
-            if (config == null || config.isEmpty()) return null;
+            if (config == null || config.isEmpty() || !supportedVersion(config)) return null;
             String titleTemplate = text(config.get("titleTemplate"));
             String messageTemplate = text(config.get("messageTemplate"));
             if (titleTemplate.isBlank() && messageTemplate.isBlank()) return null;
@@ -84,7 +84,7 @@ public class AlertPresentationService {
         if (rule == null || rule.getPresentationConfig() == null || rule.getPresentationConfig().isBlank()) return null;
         try {
             Map<String, Object> config = objectMapper.readValue(rule.getPresentationConfig(), Map.class);
-            if (config == null || config.isEmpty()) return null;
+            if (config == null || config.isEmpty() || !supportedVersion(config)) return null;
             Object rawSections = config.get("sections");
             List<?> sections = rawSections instanceof List<?> list ? list : List.of();
             String titleTemplate = text(config.get("titleTemplate"));
@@ -124,6 +124,11 @@ public class AlertPresentationService {
                     alert == null ? null : alert.getId(), exception);
             return null;
         }
+    }
+
+    private boolean supportedVersion(Map<String, Object> config) {
+        Object version = config.get("version");
+        return version == null || "1".equals(String.valueOf(version));
     }
 
     private Map<String, Object> templateValues(Alert alert, AlertHistory history,
