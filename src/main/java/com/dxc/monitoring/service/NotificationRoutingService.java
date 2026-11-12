@@ -88,6 +88,7 @@ public class NotificationRoutingService {
             log.warn("No enabled notification route matches alertHistoryId={} ruleId={} severity={} event={}",
                     history.getId(), rule.getId(), severity, eventType);
         }
+        String messagePayload = buildPayload(history);
         for (AlertRuleNotificationRoute route : routes) {
             NotificationChannel channel = route.getChannel();
             if (channel == null || !channel.isEnabled()) {
@@ -103,23 +104,23 @@ public class NotificationRoutingService {
                     usingCreatedRouteForRecurrence ? eventType : route.getEventType(),
                     route.getMinimumIntervalSeconds());
             if (channel.getChannelType() == NotificationChannel.ChannelType.TEAMS) {
-                queueTeamsDelivery(history, target);
+                queueTeamsDelivery(history, target, messagePayload);
             } else {
                 for (NotificationRecipient recipient : recipientsFor(target)) {
-                    queuePersonDelivery(history, target, recipient);
+                    queuePersonDelivery(history, target, recipient, messagePayload);
                 }
             }
         }
     }
 
-    private void queueTeamsDelivery(AlertHistory history, RouteTarget route) {
+    private void queueTeamsDelivery(AlertHistory history, RouteTarget route, String messagePayload) {
         if (route.recipient() != null && !route.recipient().isEnabled()) return;
         if (route.group() != null) {
             if (!route.group().isEnabled()) return;
             boolean hasEnabledMembers = !groupMemberRepository
                     .findByGroup_IdAndRecipient_EnabledTrue(route.group().getId()).isEmpty();
             if (!hasEnabledMembers) {
-                queueSkipped(history, route, null, "Notification group has no enabled members.");
+                queueSkipped(history, route, null, "Notification group has no enabled members.", messagePayload);
                 return;
             }
         }
@@ -127,13 +128,13 @@ public class NotificationRoutingService {
         if (deliveryRepository.existsByIdempotencyKey(key)) return;
         OptionalRecent recent = recentDelivery(history.getAlert(), route.channel(), null);
         if (cooldownApplies(route) && withinCooldown(recent, route.minimumIntervalSeconds())) {
-            queueSkipped(history, route, null, "Suppressed by the route's minimum notification interval.");
+            queueSkipped(history, route, null, "Suppressed by the route's minimum notification interval.", messagePayload);
             return;
         }
-        queueDelivery(history, route, null, route.channel().getName(), key, false, null);
+        queueDelivery(history, route, null, route.channel().getName(), key, false, null, messagePayload);
     }
 
-    private void queuePersonDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient) {
+    private void queuePersonDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient, String messagePayload) {
         if (recipient == null || !recipient.isEnabled()) return;
         String destination = switch (route.channel().getChannelType()) {
             case EMAIL -> recipient.getEmail();
@@ -144,15 +145,15 @@ public class NotificationRoutingService {
         if (deliveryRepository.existsByIdempotencyKey(key)) return;
         if (destination == null || destination.isBlank()) {
             queueSkipped(history, route, recipient, "Recipient has no destination configured for "
-                    + route.channel().getChannelType() + ".");
+                    + route.channel().getChannelType() + ".", messagePayload);
             return;
         }
         OptionalRecent recent = recentDelivery(history.getAlert(), route.channel(), recipient.getId());
         if (cooldownApplies(route) && withinCooldown(recent, route.minimumIntervalSeconds())) {
-            queueSkipped(history, route, recipient, "Suppressed by the route's minimum notification interval.");
+            queueSkipped(history, route, recipient, "Suppressed by the route's minimum notification interval.", messagePayload);
             return;
         }
-        queueDelivery(history, route, recipient, destination, key, false, null);
+        queueDelivery(history, route, recipient, destination, key, false, null, messagePayload);
     }
 
     private List<NotificationRecipient> recipientsFor(RouteTarget route) {
@@ -165,16 +166,16 @@ public class NotificationRoutingService {
     }
 
     private void queueSkipped(AlertHistory history, RouteTarget route,
-            NotificationRecipient recipient, String reason) {
+            NotificationRecipient recipient, String reason, String messagePayload) {
         String target = recipient == null ? "route-" + route.id() : "recipient-" + recipient.getId();
         String key = history.getId() + ":" + route.channel().getId() + ":" + target + ":SKIPPED";
         if (deliveryRepository.existsByIdempotencyKey(key)) return;
         queueDelivery(history, route, recipient,
-                recipient == null ? route.channel().getName() : recipient.getName(), key, true, reason);
+                recipient == null ? route.channel().getName() : recipient.getName(), key, true, reason, messagePayload);
     }
 
     private void queueDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient,
-            String destination, String key, boolean skipped, String reason) {
+            String destination, String key, boolean skipped, String reason, String messagePayload) {
         NotificationDelivery delivery = new NotificationDelivery();
         delivery.setAlert(history.getAlert());
         delivery.setAlertHistory(history);
@@ -186,7 +187,7 @@ public class NotificationRoutingService {
         delivery.setAttemptCount(0);
         delivery.setNextAttemptAt(OffsetDateTime.now());
         delivery.setLastError(reason);
-        delivery.setMessagePayload(buildPayload(history));
+        delivery.setMessagePayload(messagePayload);
         deliveryRepository.save(delivery);
         if (skipped) {
             log.warn("Notification delivery queued as SKIPPED alertHistoryId={} alertId={} routeId={} channelId={} recipientId={} reason={}",
