@@ -24,9 +24,11 @@ import tools.jackson.databind.ObjectMapper;
 public class AlertRuleManagementService {
     private static final Set<String> OPERATORS = Set.of(
             "GREATER_THAN", "GREATER_THAN_OR_EQUAL", "LESS_THAN", "LESS_THAN_OR_EQUAL",
-            "EQUALS", "NOT_EQUALS", "EQUALS_IGNORE_CASE", "CONTAINS", "REGEX",
-            "EXISTS", "NOT_EXISTS", "IS_TRUE", "IS_FALSE");
-    private static final Set<String> THRESHOLD_FREE_OPERATORS = Set.of("EXISTS", "NOT_EXISTS", "IS_TRUE", "IS_FALSE");
+            "EQUALS", "NOT_EQUALS", "EQUALS_IGNORE_CASE", "CONTAINS", "NOT_CONTAINS",
+            "STARTS_WITH", "ENDS_WITH", "REGEX", "EXISTS", "NOT_EXISTS",
+            "IS_TRUE", "IS_FALSE", "IS_NULL", "IS_NOT_NULL");
+    private static final Set<String> THRESHOLD_FREE_OPERATORS = Set.of(
+            "EXISTS", "NOT_EXISTS", "IS_TRUE", "IS_FALSE", "IS_NULL", "IS_NOT_NULL");
     private static final Pattern FIELD_PATH = Pattern.compile("[A-Za-z0-9_\\-]+(\\.[A-Za-z0-9_\\-]+)*");
 
     private final AlertRuleRepository ruleRepository;
@@ -241,12 +243,7 @@ public class AlertRuleManagementService {
         }
         try {
             Object parsed = objectMapper.readValue(json, Object.class);
-            int[] nodeCount = {0};
-            Map<String, Object> root = normalizeConditionNode(parsed, 0, nodeCount);
-            if (nodeCount[0] > 100) {
-                throw new IllegalArgumentException("An alert condition tree cannot contain more than 100 nodes.");
-            }
-            return root;
+            return new com.dxc.monitoring.alert.condition.ConditionConfigurationValidator().normalize(parsed);
         } catch (IllegalArgumentException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -281,51 +278,6 @@ public class AlertRuleManagementService {
         if (storedNode.containsKey("threshold")) node.put("threshold", storedNode.get("threshold"));
         else if (storedNode.containsKey("value")) node.put("threshold", storedNode.get("value"));
         return node;
-    }
-
-    private Map<String, Object> normalizeConditionNode(Object rawNode, int depth, int[] nodeCount) {
-        if (depth > 8) {
-            throw new IllegalArgumentException("Condition groups cannot be nested more than 8 levels deep.");
-        }
-        if (!(rawNode instanceof Map<?, ?> rawMap)) {
-            throw new IllegalArgumentException("Each condition must be a valid condition or group.");
-        }
-        nodeCount[0]++;
-        if (nodeCount[0] > 100) {
-            throw new IllegalArgumentException("An alert condition tree cannot contain more than 100 nodes.");
-        }
-        Map<String, Object> node = new LinkedHashMap<>();
-        rawMap.forEach((key, value) -> node.put(String.valueOf(key), value));
-        String nodeType = stringValue(node.get("type"), "CONDITION").toUpperCase(Locale.ROOT);
-        if ("GROUP".equals(nodeType)) {
-            String operator = stringValue(node.get("operator"), "").toUpperCase(Locale.ROOT);
-            if (!Set.of("AND", "OR").contains(operator)) {
-                throw new IllegalArgumentException("Choose AND or OR for each condition group.");
-            }
-            Object rawChildren = node.get("children");
-            if (!(rawChildren instanceof java.util.List<?> children) || children.size() < 2) {
-                throw new IllegalArgumentException("Each condition group must contain at least two children.");
-            }
-            List<Map<String, Object>> normalizedChildren = new java.util.ArrayList<>();
-            for (Object child : children) {
-                normalizedChildren.add(normalizeConditionNode(child, depth + 1, nodeCount));
-            }
-            Map<String, Object> group = new LinkedHashMap<>();
-            group.put("type", "GROUP");
-            group.put("operator", operator);
-            group.put("children", normalizedChildren);
-            return group;
-        }
-        if (!"CONDITION".equals(nodeType)) {
-            throw new IllegalArgumentException("Only field conditions and AND / OR groups can be used in the condition tree.");
-        }
-        Map<String, Object> condition = buildCondition(stringValue(node.get("fieldPath"), ""),
-                stringValue(node.get("operator"), "GREATER_THAN"),
-                stringValue(node.get("threshold"), stringValue(node.get("value"), "")),
-                1, null, "condition");
-        condition.remove("consecutiveMatches");
-        condition.put("type", "CONDITION");
-        return condition;
     }
 
     private Map<String, Object> buildCondition(String fieldPath, String operator, String threshold,
