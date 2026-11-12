@@ -50,7 +50,7 @@
         <div class="pt-3">
             <label class="form-label" for="advancedConditionJson">Condition configuration</label>
             <textarea class="form-control font-monospace" id="advancedConditionJson" rows="12" spellcheck="false"></textarea>
-            <div class="form-text">Supports GROUP, CONDITION, FIELD_COMPARISON, COLLECTION (ANY / ALL / NONE), and AGGREGATE (COUNT / SUM / MIN / MAX). Paths use response.* or data.*. Collection predicates use fields relative to each record.</div>
+            <div class="form-text">Supports GROUP, CONDITION, FIELD_COMPARISON, COLLECTION (ANY / ALL / NONE), AGGREGATE (COUNT / SUM / MIN / MAX), COUNT_TOTAL and COUNT_MATCHING. Paths use response.* or data.*. Collection predicates use fields relative to each record.</div>
             <div class="d-flex gap-2 justify-content-end mt-2">
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="useVisualConditionBuilder">Use visual builder</button>
                 <button type="button" class="btn btn-sm btn-outline-primary" id="applyAdvancedConditionJson">Use advanced JSON</button>
@@ -123,7 +123,7 @@
         <p class="small text-muted">Optionally define channel-neutral sections from the monitoring response. Leave this as an empty object to keep the existing alert subject and message behavior.</p>
         <label class="form-label" for="presentationConfigJson">Presentation configuration (JSON)</label>
         <textarea class="form-control font-monospace" id="presentationConfigJson" th:field="*{presentationConfigJson}" rows="14" spellcheck="false"></textarea>
-        <div class="form-text">Supports TEXT, KEY_VALUE, TABLE, LIST and JSON sections. Use response.* for platform metadata and data.* for the monitoring payload. Email, Teams and WhatsApp render the same sections using channel-appropriate layouts.</div>
+        <div class="form-text">Supports TEXT, KEY_VALUE, TABLE, LIST and JSON sections. Use response.* for platform metadata and data.* for the monitoring payload. Email, Teams and WhatsApp render the same sections using channel-appropriate layouts. Template placeholders include {ruleName}, {severity}, {jobName}, {applicationName}, {environment}, {fieldPath}, {actualValue}, {threshold}, {executionId}, {alertId}, {occurrenceCount} and {timestamp}.</div>
     </div>
 </div>
 <div class="d-flex justify-content-end gap-2"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
