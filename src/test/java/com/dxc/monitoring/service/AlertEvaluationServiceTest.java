@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.dxc.monitoring.alert.condition.ConditionEvaluator;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
