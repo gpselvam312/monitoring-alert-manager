@@ -118,6 +118,15 @@ class ConditionEvaluatorTest {
         assertTrue(evaluator.evaluate(condition, context).matched());
     }
 
+
+    @Test
+    void rejectsRegexPatternsWithNestedBacktrackingQuantifiers() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("value", "aaaaaaaa")));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        assertThrows(IllegalArgumentException.class, () -> evaluator.evaluate(
+                condition("data.value", "REGEX", "(a+)+$"), context));
+    }
+
     private Map<String, Object> condition(String path, String operator, Object threshold) {
         return Map.of("fieldPath", path, "operator", operator, "threshold", threshold);
     }
