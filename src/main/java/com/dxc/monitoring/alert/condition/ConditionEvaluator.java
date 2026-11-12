@@ -116,6 +116,8 @@ public class ConditionEvaluator {
             ConditionEvaluationContext context) {
         String leftPath = required(node, "leftPath");
         String rightPath = required(node, "rightPath");
+        enforceExecutionGuard(leftPath, context);
+        enforceExecutionGuard(rightPath, context);
         String operator = required(node, "operator").toUpperCase(Locale.ROOT);
         ConditionEvaluationContext.ResolvedPath left = context.resolve(leftPath);
         ConditionEvaluationContext.ResolvedPath right = context.resolve(rightPath);
@@ -146,6 +148,7 @@ public class ConditionEvaluator {
     private ConditionEvaluationResult evaluateCollection(Map<String, Object> node,
             ConditionEvaluationContext context, int depth, int[] nodes) {
         String path = required(node, "collectionPath");
+        enforceExecutionGuard(path, context);
         String quantifier = required(node, "quantifier").toUpperCase(Locale.ROOT);
         if (!List.of("ANY", "ALL", "NONE").contains(quantifier)) {
             throw new IllegalArgumentException("Collection quantifier must be ANY, ALL, or NONE.");
@@ -199,6 +202,7 @@ public class ConditionEvaluator {
     private ConditionEvaluationResult evaluateAggregate(Map<String, Object> node,
             ConditionEvaluationContext context, int depth, int[] nodes) {
         String path = required(node, "collectionPath");
+        enforceExecutionGuard(path, context);
         String operation = required(node, "operation").toUpperCase(Locale.ROOT);
         if (!List.of("COUNT", "SUM", "MIN", "MAX").contains(operation)) {
             throw new IllegalArgumentException("Aggregate operation must be COUNT, SUM, MIN, or MAX.");
@@ -228,6 +232,7 @@ public class ConditionEvaluator {
             aggregate = BigDecimal.valueOf(included.size());
         } else {
             String valuePath = required(node, "valuePath");
+            enforceExecutionGuard(valuePath, context);
             List<BigDecimal> numbers = new ArrayList<>();
             for (Object record : included) {
                 ConditionEvaluationContext itemContext = context.forElement(stringMap((Map<?, ?>) record));
@@ -269,6 +274,7 @@ public class ConditionEvaluator {
     private ConditionEvaluationResult evaluateLegacyTotalCount(Map<String, Object> node,
             ConditionEvaluationContext context) {
         String path = required(node, "collectionPath");
+        enforceExecutionGuard(path, context);
         ConditionEvaluationContext.ResolvedPath resolved = context.resolve(path);
         List<?> records = requireCollection(resolved, path);
         return compareCount(records.size(), node, path, "COUNT_TOTAL");
@@ -277,6 +283,7 @@ public class ConditionEvaluator {
     private ConditionEvaluationResult evaluateLegacyMatchingCount(Map<String, Object> node,
             ConditionEvaluationContext context) {
         String path = required(node, "collectionPath");
+        enforceExecutionGuard(path, context);
         ConditionEvaluationContext.ResolvedPath resolved = context.resolve(path);
         List<?> records = requireCollection(resolved, path);
         Map<String, Object> predicate = new LinkedHashMap<>();
