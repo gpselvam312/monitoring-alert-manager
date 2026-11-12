@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -51,6 +53,7 @@ import jakarta.validation.Valid;
 @Controller
 @RequestMapping("/alerts")
 public class AlertController {
+    private static final Logger log = LoggerFactory.getLogger(AlertController.class);
     private final AlertRepository alertRepository;
     private final AlertHistoryRepository historyRepository;
     private final AlertRuleRepository ruleRepository;
@@ -283,6 +286,7 @@ public class AlertController {
             redirectAttributes.addFlashAttribute("successMessage", "Alert rule saved successfully.");
             return "redirect:/alerts/rules";
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
+            log.error("Unable to save alert rule id={} with its notification routes", form.getId(), exception);
             addRuleFormModel(model, form);
             model.addAttribute("errorMessage", exception instanceof DataIntegrityViolationException
                     ? "Unable to save the alert rule or its notification routes because of a data constraint. Review the configured values and try again."
