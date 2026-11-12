@@ -87,6 +87,7 @@ public class NotificationRoutingService {
         if (routes.isEmpty()) {
             log.warn("No enabled notification route matches alertHistoryId={} ruleId={} severity={} event={}",
                     history.getId(), rule.getId(), severity, eventType);
+            return;
         }
         String messagePayload = buildPayload(history);
         for (AlertRuleNotificationRoute route : routes) {
