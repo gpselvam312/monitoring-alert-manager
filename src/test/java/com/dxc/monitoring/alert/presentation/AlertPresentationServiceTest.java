@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -99,6 +100,35 @@ class AlertPresentationServiceTest {
         assertEquals(true, presentation.sections().get(1).get("truncated"));
         assertEquals(List.of("DOWN", "UP"), presentation.sections().get(2).get("items"));
         assertTrue(String.valueOf(presentation.sections().get(3).get("value")).contains("kafka-sit"));
+    }
+
+
+    @Test
+    void rendersAlertRecordTemplatesWithoutLoadingResultDataWhenNoJsonPathIsUsed() {
+        AlertRule rule = new AlertRule();
+        rule.setName("API latency");
+        rule.setPresentationConfig("""
+                {"version":1,"titleTemplate":"{severity} - {ruleName}",
+                 "messageTemplate":"{jobName}: {actualValue} ms"}
+                """);
+        MonitoringJob job = new MonitoringJob();
+        job.setName("API monitor");
+        Alert alert = new Alert();
+        alert.setAlertRule(rule);
+        alert.setMonitoringJob(job);
+        alert.setSeverity(AlertRule.Severity.WARNING);
+        AlertHistory history = new AlertHistory();
+        history.setAlert(alert);
+        history.setNewSeverity(AlertRule.Severity.WARNING);
+        history.setOccurredAt(OffsetDateTime.parse("2026-11-12T10:00:00+05:30"));
+
+        AlertPresentationService.Presentation presentation = service.buildTemplates(history,
+                Map.of("title", "Legacy title", "body", "Legacy body", "observedValue", "245"));
+
+        assertEquals("WARNING - API latency", presentation.title());
+        assertEquals("API monitor: 245 ms", presentation.message());
+        assertTrue(presentation.sections().isEmpty());
+        verifyNoInteractions(resultRepository);
     }
 
     @Test
