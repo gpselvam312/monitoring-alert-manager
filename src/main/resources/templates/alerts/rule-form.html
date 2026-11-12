@@ -27,7 +27,7 @@
 <div class="border rounded p-3 notification-route-row">
 <div class="d-flex align-items-center justify-content-between mb-3"><strong class="route-heading">Notification route</strong><button type="button" class="btn btn-sm btn-outline-danger remove-notification-route"><i class="bi bi-trash me-1"></i>Remove</button></div>
 <div class="row g-3">
-<div class="col-12 col-md-6"><label class="form-label">Channel</label><select class="form-select route-channel" required><option value="">Select channel</option><option th:each="channel : ${notificationChannels}" th:value="${channel.id}" th:attr="data-channel-type=${channel.channelType}" th:text="${channel.name + ' (' + channel.channelType + ')'}"></option></select></div>
+<div class="col-12 col-md-6"><label class="form-label">Channel</label><select class="form-select route-channel" required><option value="">Select channel</option><option th:each="channel : ${notificationChannels}" th:value="${channel.id}" th:attr="data-channel-type=${channel.channelType}" th:text="${channel.name + ' (' + channel.channelType + ')'}"></option></select><div class="form-text route-teams-hint d-none">Uses the destination configured on this Teams channel. No recipient or group is needed.</div></div>
 <div class="col-6 col-md-3"><label class="form-label">Severity</label><select class="form-select route-severity" required><option value="INFO">Info</option><option value="WARNING">Warning</option><option value="CRITICAL">Critical</option></select></div>
 <div class="col-6 col-md-3"><label class="form-label">Event</label><select class="form-select route-event" required><option value="CREATED">Alert created</option><option value="RECURRENCE">Recurring alert</option><option value="ESCALATED">Severity escalated</option><option value="RECOVERED">Alert recovered</option><option value="REMINDER">Reminder</option></select></div>
 <div class="col-12 col-md-3 route-target-type-container"><label class="form-label">Target type</label><select class="form-select route-target-type"><option value="RECIPIENT">Recipient</option><option value="GROUP">Recipient group</option></select></div>
@@ -131,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const isGroup = !isTeams && targetType.value === 'GROUP';
         row.querySelector('.route-target-type-container').classList.toggle('d-none', isTeams);
+        row.querySelector('.route-teams-hint').classList.toggle('d-none', !isTeams);
         row.querySelector('.route-recipient-container').classList.toggle('d-none', isTeams || isGroup);
         row.querySelector('.route-group-container').classList.toggle('d-none', isTeams || !isGroup);
         row.querySelector('.route-recipient').required = !isTeams && !isGroup;
