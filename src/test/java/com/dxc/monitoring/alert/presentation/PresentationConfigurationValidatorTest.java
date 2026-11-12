@@ -36,6 +36,18 @@ class PresentationConfigurationValidatorTest {
                 () -> validator.normalize(Map.of("sections", List.of(Map.of("type", "JSON", "sourcePath", "data..x")))));
     }
 
+
+    @Test
+    void requiresNamespacedSourcePathsButAllowsRelativeRowKeys() {
+        assertThrows(IllegalArgumentException.class,
+                () -> validator.normalize(Map.of("sections", List.of(
+                        Map.of("type", "JSON", "sourcePath", "cluster.name")))));
+        Map<String, Object> config = validator.normalize(Map.of("sections", List.of(
+                Map.of("type", "TABLE", "sourcePath", "data.nodes",
+                        "columns", List.of(Map.of("key", "node.metrics.lag", "label", "Lag"))))));
+        assertEquals(1, ((List<?>) config.get("sections")).size());
+    }
+
     @Test
     void rejectsDuplicateSectionIds() {
         assertThrows(IllegalArgumentException.class,
