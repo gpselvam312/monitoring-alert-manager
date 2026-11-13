@@ -89,15 +89,10 @@ public class AlertRuleManagementService {
         rule.setName(name);
         rule.setDescription(trimToNull(form.getDescription()));
         String alertSubject = trimToNull(form.getAlertSubject());
-        String alertMessage = trimToNull(form.getAlertMessage());
         if (alertSubject == null || alertSubject.length() > 500) {
             throw new IllegalArgumentException("Alert subject is required and must not exceed 500 characters.");
         }
-        if (alertMessage == null || alertMessage.length() > 10000) {
-            throw new IllegalArgumentException("Alert message is required and must not exceed 10,000 characters.");
-        }
         rule.setAlertSubject(alertSubject);
-        rule.setAlertMessage(alertMessage);
         rule.setPresentationConfig(toJson(parsePresentationConfig(form.getPresentationConfigJson())));
         rule.setConfigVersion(1);
         if (form.getNotificationPolicyId() != null) {
@@ -141,7 +136,6 @@ public class AlertRuleManagementService {
         form.setDescription(rule.getDescription());
         form.setAlertSubject("[{severity}] {ruleName}".equals(rule.getAlertSubject())
                 ? "{severity} — {ruleName}" : rule.getAlertSubject());
-        form.setAlertMessage(rule.getAlertMessage());
         form.setPresentationConfigJson(rule.getPresentationConfig() == null || rule.getPresentationConfig().isBlank()
                 ? "{}" : rule.getPresentationConfig());
         form.setEnabled(rule.isEnabled());
