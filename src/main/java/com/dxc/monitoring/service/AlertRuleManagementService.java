@@ -139,7 +139,8 @@ public class AlertRuleManagementService {
         form.setMonitoringJobId(rule.getMonitoringJob().getId());
         form.setName(rule.getName());
         form.setDescription(rule.getDescription());
-        form.setAlertSubject(rule.getAlertSubject());
+        form.setAlertSubject("[{severity}] {ruleName}".equals(rule.getAlertSubject())
+                ? "{severity} — {ruleName}" : rule.getAlertSubject());
         form.setAlertMessage(rule.getAlertMessage());
         form.setPresentationConfigJson(rule.getPresentationConfig() == null || rule.getPresentationConfig().isBlank()
                 ? "{}" : rule.getPresentationConfig());
