@@ -58,10 +58,10 @@ class AlertNotificationHtmlRendererTest {
     void preservesLineBreaksInConfiguredTextSections() {
         String html = renderer.render(Map.of(
                 "title", "Multiline alert",
-                "content", List.of(Map.of("type", "text", "text", "First line\\nSecond line\\n\\nFourth line"))));
+                "content", List.of(Map.of("type", "text", "text", "First line\nSecond line\n\nFourth line"))));
 
         assertTrue(html.contains("white-space:pre-wrap;"));
-        assertTrue(html.contains("First line\\nSecond line\\n\\nFourth line"));
+        assertTrue(html.contains("First line\nSecond line\n\nFourth line"));
     }
 
     @Test
