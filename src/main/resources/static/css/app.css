@@ -5455,3 +5455,100 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     user-select: none;
 }
 .presentation-block-drag-handle:active { cursor: grabbing; }
+
+
+/* Notification channel selector and channel-specific routing accordion */
+.notification-channel-pill {
+    display: flex;
+    min-height: 4.25rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .65rem .8rem;
+    border: 1px solid var(--border-color);
+    border-radius: .65rem;
+    color: var(--text-primary);
+    background: var(--card-bg);
+    text-align: left;
+    transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.notification-channel-pill:hover {
+    border-color: var(--theme-primary);
+    background: color-mix(in srgb, var(--theme-primary) 5%, var(--card-bg));
+}
+.notification-channel-pill.active {
+    border-color: var(--theme-primary);
+    box-shadow: inset 0 0 0 1px var(--theme-primary);
+    background: color-mix(in srgb, var(--theme-primary) 8%, var(--card-bg));
+}
+.notification-channel-pill.configured:not(.active) {
+    border-color: color-mix(in srgb, var(--success) 48%, var(--border-color));
+}
+.notification-channel-pill strong,
+.notification-channel-pill small {
+    display: block;
+}
+.notification-channel-pill strong { font-size: .85rem; }
+.notification-channel-pill small {
+    margin-top: .1rem;
+    color: var(--text-secondary);
+    font-size: .7rem;
+    font-weight: 400;
+}
+.channel-route-count {
+    display: inline-flex;
+    min-width: 1.45rem;
+    height: 1.45rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0 .35rem;
+    border-radius: 999px;
+    color: var(--text-secondary);
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    font-size: .7rem;
+    font-weight: 700;
+}
+.notification-channel-pill.configured .channel-route-count {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+.notification-routing-accordion .accordion-item {
+    overflow: hidden;
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    background: var(--card-bg);
+}
+.notification-routing-accordion .accordion-button {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 4%, var(--card-bg));
+    font-size: .875rem;
+    font-weight: 650;
+}
+.notification-routing-accordion .accordion-button:not(.collapsed) {
+    color: var(--theme-primary);
+    background: color-mix(in srgb, var(--theme-primary) 7%, var(--card-bg));
+    box-shadow: none;
+}
+.notification-routing-accordion .accordion-button:focus {
+    border-color: var(--theme-primary);
+    box-shadow: 0 0 0 .15rem color-mix(in srgb, var(--theme-primary) 18%, transparent);
+}
+.notification-routing-accordion .accordion-body {
+    background: var(--card-bg);
+}
+.notification-routing-accordion .notification-route-row {
+    border-color: var(--border-color) !important;
+    background: color-mix(in srgb, var(--text-primary) 2%, var(--card-bg));
+}
+@media (max-width: 575.98px) {
+    .notification-channel-pill {
+        min-height: 3.75rem;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: .55rem;
+    }
+    .notification-channel-pill > span:first-child { gap: .35rem !important; }
+    .notification-channel-pill i { font-size: 1rem !important; }
+    .notification-channel-pill small { display: none; }
+    .channel-route-count { align-self: flex-end; margin-top: -.25rem; }
+}
