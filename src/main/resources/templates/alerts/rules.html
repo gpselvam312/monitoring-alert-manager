@@ -65,6 +65,7 @@
                                     <span class="badge text-bg-danger" th:if="${rule.severity.name() == 'CRITICAL'}">Critical</span>
                                     <span class="badge text-bg-warning" th:if="${rule.severity.name() == 'WARNING'}">Warning</span>
                                     <span class="badge text-bg-info" th:if="${rule.severity.name() == 'INFO'}">Info</span>
+                                    <span class="badge text-bg-success" th:if="${rule.severity.name() == 'SUCCESS'}">Success</span>
                                 </td>
                                 <td th:text="${rule.executionSourcePolicy}">SCHEDULED_ONLY</td>
                                 <td><span class="badge text-bg-success" th:if="${rule.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${rule.enabled}">Disabled</span></td>
