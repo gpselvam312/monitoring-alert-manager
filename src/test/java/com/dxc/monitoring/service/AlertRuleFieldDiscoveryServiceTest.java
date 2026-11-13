@@ -52,8 +52,10 @@ class AlertRuleFieldDiscoveryServiceTest {
         assertTrue(fields.containsKey("response.machines.hostname"));
         assertTrue(fields.containsKey("data.machines.hostname"));
         assertTrue(fields.containsKey("data.machines.status"));
+        assertEquals("array", fields.get("data.machines").type());
         assertTrue(fields.containsKey("data.machines.metrics.name"));
         assertTrue(fields.containsKey("data.machines.metrics.value"));
+        assertEquals("array", fields.get("data.machines.metrics").type());
         assertEquals("mixed", fields.get("data.machines.metrics.value").type());
         assertFalse(fields.keySet().stream().anyMatch(path -> path.contains(".0.") || path.contains(".1.")));
     }
