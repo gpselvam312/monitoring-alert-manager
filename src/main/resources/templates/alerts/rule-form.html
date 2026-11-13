@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (empty) empty.classList.toggle('d-none', channelRows.length > 0);
             document.querySelector('[data-channel-selector="' + type + '"]')?.classList.toggle('configured', enabledCount > 0);
             const addButton = document.querySelector('[data-add-channel-route="' + type + '"]');
-            if (addButton) addButton.disabled = !Array.from(document.querySelectorAll('.route-channel option')).some(option => option.dataset.channelType === type);
+            if (addButton) addButton.disabled = !Array.from(routeTemplate.content.querySelectorAll('.route-channel option')).some(option => option.dataset.channelType === type);
         });
         rows.forEach((row, index) => {
             const type = channelTypeFor(row);
