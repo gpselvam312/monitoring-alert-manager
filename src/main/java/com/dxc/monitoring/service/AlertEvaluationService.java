@@ -17,7 +17,6 @@ import com.dxc.monitoring.alert.condition.ConditionEvaluationContext;
 import com.dxc.monitoring.alert.condition.ConditionEvaluationResult;
 import com.dxc.monitoring.alert.condition.ConditionEvaluator;
 import com.dxc.monitoring.alert.json.JsonDocument;
-import com.dxc.monitoring.alert.presentation.AlertPresentationService;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
@@ -47,7 +46,6 @@ public class AlertEvaluationService {
     private final ObjectMapper objectMapper;
     private final ConditionEvaluator conditionEvaluator;
     private final NotificationRoutingService notificationRoutingService;
-    private final AlertPresentationService presentationService;
 
     public AlertEvaluationService(MonitoringExecutionRepository executionRepository,
             MonitoringResultRepository resultRepository,
@@ -56,8 +54,7 @@ public class AlertEvaluationService {
             AlertHistoryRepository historyRepository,
             AlertRuleEvaluationRepository evaluationRepository,
             ObjectMapper objectMapper, ConditionEvaluator conditionEvaluator,
-            NotificationRoutingService notificationRoutingService,
-            AlertPresentationService presentationService) {
+            NotificationRoutingService notificationRoutingService) {
         this.executionRepository = executionRepository;
         this.resultRepository = resultRepository;
         this.ruleRepository = ruleRepository;
@@ -67,7 +64,6 @@ public class AlertEvaluationService {
         this.objectMapper = objectMapper;
         this.conditionEvaluator = conditionEvaluator;
         this.notificationRoutingService = notificationRoutingService;
-        this.presentationService = presentationService;
     }
 
     @Transactional
