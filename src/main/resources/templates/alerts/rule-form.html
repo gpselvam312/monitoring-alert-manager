@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
         node.children = node.children.map(normalizeTree);
         return node.children.length === 1 ? node.children[0] : node;
     };
-    const renderNode = (node, parentChildren, index, isRoot=false) => {
+    const renderNode = (node, parentChildren, index, isRoot=false, scopePath=null) => {
         const card = document.createElement('div');
         card.className = 'condition-tree-node border rounded p-3 mb-3';
         const heading = document.createElement('div');
@@ -556,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
             emptyToggle.addEventListener('change', () => { node.emptyMatches = emptyToggle.checked; syncTree(); });
             emptyRow.append(emptyToggle,emptyLabel); card.appendChild(emptyRow);
             const hint = document.createElement('div'); hint.className = 'small text-muted mb-2'; hint.textContent = 'The nested conditions below are evaluated against each individual array record. AND means all predicates must match that same record.'; card.appendChild(hint);
-            card.appendChild(renderNode(node.condition, null, 0, true));
+            card.appendChild(renderNode(node.condition, null, 0, true, node.collectionPath));
         } else if (node.type === 'GROUP') {
             const operatorRow = document.createElement('div');
             operatorRow.className = 'row g-2 align-items-end mb-3';
@@ -579,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             card.appendChild(operatorRow);
             const children = document.createElement('div');
             children.className = 'condition-tree-children ps-3 ms-2 border-start';
-            node.children.forEach((child, childIndex) => children.appendChild(renderNode(child,node.children,childIndex)));
+            node.children.forEach((child, childIndex) => children.appendChild(renderNode(child,node.children,childIndex,false,scopePath)));
             card.appendChild(children);
             const actions = document.createElement('div');
             actions.className = 'd-flex gap-2 flex-wrap';
@@ -606,13 +606,15 @@ document.addEventListener('DOMContentLoaded', () => {
             pathLabel.textContent = 'Value field path';
             const pathInput = document.createElement('input');
             pathInput.type = 'text'; pathInput.className = 'form-control tree-field-path';
-            pathInput.maxLength = 255; pathInput.value = node.fieldPath || '';
+            pathInput.maxLength = 255; pathInput.value = node.fieldPath ? (scopePath && !node.fieldPath.startsWith('data.') && !node.fieldPath.startsWith('response.') ? scopePath + '.' + node.fieldPath : node.fieldPath) : '';
             pathInput.setAttribute('list', fieldDatalist.id);
             pathInput.setAttribute('autocomplete', 'off');
             pathInput.setAttribute('aria-label', 'Value field path; type to see discovered fields');
-            pathInput.addEventListener('input', () => { node.fieldPath = pathInput.value; syncTree(); });
+            pathInput.addEventListener('input', () => { node.fieldPath = scopePath && pathInput.value.startsWith(scopePath + '.') ? pathInput.value.slice(scopePath.length + 1) : pathInput.value; syncTree(); });
             pathInput.addEventListener('change', () => {
-                const selected = discoveredFields.find(field => field.path === pathInput.value);
+                const selected = discoveredFields.find(field => field.path === pathInput.value)
+                    || (scopePath ? discoveredFields.find(field => field.path === scopePath + '.' + pathInput.value) : null);
+                if (selected && scopePath && selected.path.startsWith(scopePath + '.')) node.fieldPath = selected.path.slice(scopePath.length + 1);
                 if (selected) {
                     if (selected.type === 'number' && !['GREATER_THAN','GREATER_THAN_OR_EQUAL','LESS_THAN','LESS_THAN_OR_EQUAL','EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_NULL','IS_NOT_NULL'].includes(node.operator)) node.operator = 'GREATER_THAN';
                     if (selected.type === 'boolean' && !['EQUALS','NOT_EQUALS','EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE','IS_NULL','IS_NOT_NULL'].includes(node.operator)) node.operator = 'IS_TRUE';
