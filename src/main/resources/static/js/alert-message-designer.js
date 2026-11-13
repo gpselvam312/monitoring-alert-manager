@@ -620,6 +620,44 @@
                 }
             });
         };
+        const previewRouteMetadata = channel => {
+            const routes = Array.from(document.querySelectorAll(".notification-route-row")).filter(row => {
+                const selected = row.querySelector(".route-channel")?.selectedOptions[0];
+                return row.querySelector(".route-enabled")?.checked && selected?.dataset.channelType === channel;
+            });
+            const entries = [];
+            routes.forEach(row => {
+                const channelOption = row.querySelector(".route-channel")?.selectedOptions[0];
+                const targetType = row.querySelector(".route-target-type")?.value;
+                const recipient = row.querySelector(".route-recipient")?.selectedOptions[0];
+                const group = row.querySelector(".route-group")?.selectedOptions[0];
+                if (channel === "EMAIL") {
+                    if (channelOption?.dataset.from) entries.push(["From", channelOption.dataset.from]);
+                    const to = targetType === "GROUP" ? (group?.textContent || "") : (recipient?.dataset.email || recipient?.textContent || "");
+                    if (to) entries.push(["To", to]);
+                    const cc = row.querySelector(".route-cc")?.value?.trim();
+                    if (cc) entries.push(["CC", cc]);
+                } else if (channel === "TEAMS") {
+                    if (channelOption?.dataset.channelName) entries.push(["Destination", channelOption.dataset.channelName]);
+                } else {
+                    const to = targetType === "GROUP" ? (group?.textContent || "") : (recipient?.dataset.phone || recipient?.textContent || "");
+                    if (to) entries.push(["To", to]);
+                }
+            });
+            return entries;
+        };
+        const appendPreviewMetadata = (container, channel) => {
+            const entries = previewRouteMetadata(channel);
+            if (!entries.length) return;
+            const panel = element("div", "small border-bottom px-3 py-2 mb-2");
+            panel.style.color = "#475467";
+            entries.forEach(([label, value]) => {
+                const line = element("div", "text-break");
+                line.append(element("strong", "me-2", label + ":"), document.createTextNode(value));
+                panel.append(line);
+            });
+            container.append(panel);
+        };
         const updatePreview = () => {
             const blocks = renderedBlocks();
             const header = addTitleAndMessage();
@@ -627,6 +665,7 @@
             if (activePreview === 'email') {
                 const email = element('div', 'bg-white border rounded shadow-sm overflow-hidden');
                 email.style.color = '#1f2937';
+                appendPreviewMetadata(email, "EMAIL");
                 const subject = element('div', 'border-bottom px-3 py-2 small text-muted');
                 subject.append(element('strong', 'me-2', 'Subject:'), document.createTextNode(header.title));
                 const banner = element('div', 'p-3 text-white');
@@ -643,6 +682,7 @@
             } else if (activePreview === 'teams') {
                 const card = element('div', 'bg-white border rounded overflow-hidden shadow-sm');
                 card.style.color = '#1f2937';
+                appendPreviewMetadata(card, "TEAMS");
                 const accent = element('div', 'p-3 text-white');
                 accent.style.background = sample.severity === 'CRITICAL' ? '#b42318' : sample.severity === 'WARNING' ? '#b54708' : '#175cd3';
                 accent.append(element('div', 'small fw-bold', sample.severity + ' ALERT'),
@@ -657,6 +697,7 @@
                 chat.style.maxWidth = '360px';
                 chat.style.color = '#1f2937';
                 chat.style.background = '#d9fdd3';
+                appendPreviewMetadata(chat, "WHATSAPP");
                 const bubble = element('div', 'bg-white rounded-3 p-3 shadow-sm');
                 bubble.style.color = '#1f2937';
                 bubble.append(element('div', 'small fw-bold mb-2', header.title));
