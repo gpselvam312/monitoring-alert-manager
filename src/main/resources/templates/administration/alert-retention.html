@@ -13,8 +13,8 @@
 </tbody></table></div>
 <div class="p-3 border-top"><h3 class="h6 mb-3">Create Retention Policy</h3><form th:action="@{/administration/alert-retention/policies}" method="post"><div class="row g-3">
 <div class="col-12 col-lg-4"><label class="form-label">Data Type</label><select class="form-select" name="dataType" required><option value="">Select data type</option><option th:each="type : ${dataTypes}" th:value="${type.name()}" th:text="${type.name()}"></option></select></div>
-<div class="col-12 col-lg-4"><label class="form-label">Application</label><select class="form-select" name="applicationId"><option value="">All applications</option><option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}"></option></select></div>
-<div class="col-12 col-lg-4"><label class="form-label">Environment</label><select class="form-select" name="environmentId"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:text="${env.application.name + ' / ' + env.name}"></option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Application</label><select class="form-select" id="retentionApplication" name="applicationId" onchange="filterRetentionEnvironments()"><option value="">All applications</option><option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}"></option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Environment</label><select class="form-select" id="retentionEnvironment" name="environmentId"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:attr="data-application-id=${env.application.id}" th:text="${env.application.name + ' / ' + env.name}"></option></select></div>
 <div class="col-12 col-lg-3"><label class="form-label">Alert Type</label><select class="form-select" name="alertType"><option value="ALL">All alert types</option><option th:each="type : ${alertTypes}" th:value="${type.code}" th:text="${type.name}"></option></select></div>
 <div class="col-12 col-lg-2"><label class="form-label">Retention (days)</label><input class="form-control" type="number" name="retentionDays" min="1" max="36500" placeholder="e.g. 90" required></div>
 <div class="col-12 col-lg-5"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div>
@@ -22,6 +22,20 @@
 <div class="col-12"><button type="submit" class="btn btn-primary">Save Policy</button></div>
 </div></form></div>
 </div></div>
+
+<script>
+function filterRetentionEnvironments() {
+    const applicationId = document.getElementById('retentionApplication').value;
+    const environmentSelect = document.getElementById('retentionEnvironment');
+    Array.from(environmentSelect.options).forEach(function (option) {
+        if (!option.value) return;
+        const visible = applicationId !== '' && option.dataset.applicationId === applicationId;
+        option.hidden = !visible;
+        if (!visible && option.selected) environmentSelect.value = '';
+    });
+}
+document.addEventListener('DOMContentLoaded', filterRetentionEnvironments);
+</script>
 
 <div class="app-card mb-3" th:if="${preview != null}"><div class="app-card-header"><h2 class="h6 mb-0">Cleanup Preview</h2></div><div class="app-card-body">
 <div class="row g-3 mb-3"><div class="col-12 col-md-3"><div class="text-muted small">Data Type</div><div class="fw-semibold" th:text="${preview.dataType}">Data type</div></div><div class="col-12 col-md-3"><div class="text-muted small">Scope</div><div class="fw-semibold" th:text="${preview.scope}">Scope</div></div><div class="col-12 col-md-2"><div class="text-muted small">Retention Window</div><div class="fw-semibold" th:text="${preview.retentionDays + ' days'}">90 days</div></div><div class="col-12 col-md-4"><div class="text-muted small">Eligible Primary Records</div><div class="fs-4 fw-semibold" th:text="${preview.candidateCount}">0</div></div></div>
