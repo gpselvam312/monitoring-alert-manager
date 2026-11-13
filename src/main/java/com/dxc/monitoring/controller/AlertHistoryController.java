@@ -72,7 +72,7 @@ public class AlertHistoryController {
                 "createdAt", allowedSorts());
         long total = applicationIds.isEmpty() || invalidApplication ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
-                        statusFilter, severityFilter, term.repositorySearch());
+                        null, severityFilter, term.repositorySearch());
         long active = applicationIds.isEmpty() || invalidApplication ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
                         Alert.AlertStatus.ACTIVE, severityFilter, term.repositorySearch());
