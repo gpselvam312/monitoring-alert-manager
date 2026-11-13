@@ -175,7 +175,7 @@
                 text.textContent = option.textContent.trim();
                 item.append(checkbox, text);
                 item.dataset.searchText = (option.textContent || '').toLocaleLowerCase();
-                item.hidden = !item.dataset.searchText.includes(search.value.trim().toLocaleLowerCase());
+                item.hidden = option.hidden || !item.dataset.searchText.includes(search.value.trim().toLocaleLowerCase());
                 list.appendChild(item);
             });
         };
@@ -219,6 +219,22 @@
         if (isTeams) {
             row.querySelector('.route-recipients').selectedIndex = -1;
             row.querySelector('.route-groups').selectedIndex = -1;
+        } else {
+            const expectedGroupType = isEmail ? 'EMAIL' : 'WHATSAPP';
+            const groupSelect = row.querySelector('.route-groups');
+            Array.from(groupSelect.options).forEach(option => {
+                const eligible = option.dataset.groupChannel === expectedGroupType;
+                option.hidden = !eligible;
+                if (!eligible) option.selected = false;
+            });
+            groupSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            const recipientSelect = row.querySelector('.route-recipients');
+            Array.from(recipientSelect.options).forEach(option => {
+                const hasDestination = isEmail ? Boolean(option.dataset.email) : Boolean(option.dataset.phone);
+                option.hidden = !hasDestination;
+                if (!hasDestination) option.selected = false;
+            });
+            recipientSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
         if (!isEmail) row.querySelector('.route-cc').value = '';
         validateRouteTargets(row);
