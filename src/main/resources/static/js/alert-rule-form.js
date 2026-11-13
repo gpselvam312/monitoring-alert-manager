@@ -26,6 +26,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const countFieldThresholdContainer = document.getElementById('countFieldThresholdContainer');
     const treeInput = document.getElementById('conditionTreeJson');
     const form = treeInput.closest('form');
+
+    const sortDropdownAlphabetically = select => {
+        if (!select || select.options.length < 2) return;
+        const options = Array.from(select.options);
+        const placeholders = options.filter(option => option.value === '');
+        const choices = options.filter(option => option.value !== '');
+        choices.sort((left, right) => left.textContent.trim().localeCompare(
+            right.textContent.trim(), undefined, { sensitivity: 'base', numeric: true }
+        ));
+        const sorted = [...placeholders, ...choices];
+        if (options.every((option, index) => option === sorted[index])) return;
+        const selectedValues = new Set(options.filter(option => option.selected).map(option => option.value));
+        select.replaceChildren(...sorted);
+        Array.from(select.options).forEach(option => { option.selected = selectedValues.has(option.value); });
+    };
+
+    const sortAlertRuleDropdowns = root => {
+        root.querySelectorAll('select').forEach(sortDropdownAlphabetically);
+    };
+
+    sortAlertRuleDropdowns(form);
+    const dropdownSortObserver = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            if (mutation.target instanceof HTMLSelectElement) {
+                sortDropdownAlphabetically(mutation.target);
+            } else {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType !== Node.ELEMENT_NODE) return;
+                    if (node.matches('select')) sortDropdownAlphabetically(node);
+                    sortAlertRuleDropdowns(node);
+                });
+            }
+        });
+    });
+    dropdownSortObserver.observe(form, { childList: true, subtree: true });
+
     const showMessage = (text, kind) => {
         message.textContent = text;
         message.className = 'alert alert-' + kind + ' mb-3';
