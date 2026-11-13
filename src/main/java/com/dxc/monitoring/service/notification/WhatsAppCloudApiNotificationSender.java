@@ -104,7 +104,7 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
                         StringBuilder lines = new StringBuilder();
                         for (Object rawField : fields.stream().limit(50).toList()) {
                             if (rawField instanceof Map<?, ?> field) {
-                                if (!lines.isEmpty()) lines.append("\n");
+                                if (lines.length() > 0) lines.append("\n");
                                 lines.append(string(field, "label", "")).append(": ")
                                         .append(string(field, "value", ""));
                             }
