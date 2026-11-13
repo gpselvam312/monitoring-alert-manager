@@ -70,9 +70,11 @@ public class AlertRetentionService {
                 || !environment.getApplication().getId().equals(applicationId))) {
             throw new IllegalArgumentException("The selected environment does not belong to the selected application.");
         }
-        if (policyRepository.existsForScope(
-                dataType, applicationId, environmentId, alertType)) {
+        if (policyRepository.existsForScope(dataType, applicationId, environmentId, alertType)) {
             throw new IllegalArgumentException("A retention policy already exists for this exact scope.");
+        }
+        if (enabled) {
+            assertNoOverlappingEnabledPolicy(dataType, applicationId, environmentId, alertType, null);
         }
 
         AlertRetentionPolicy policy = new AlertRetentionPolicy();
@@ -105,6 +107,12 @@ public class AlertRetentionService {
     public void togglePolicy(Long policyId, Long userId) {
         AlertRetentionPolicy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
+        if (!policy.isEnabled()) {
+            Long applicationId = policy.getApplication() == null ? null : policy.getApplication().getId();
+            Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
+            assertNoOverlappingEnabledPolicy(policy.getDataType(), applicationId, environmentId,
+                    policy.getAlertType(), policy.getId());
+        }
         policy.setEnabled(!policy.isEnabled());
         policy.setUpdatedBy(userId);
         policyRepository.save(policy);
@@ -128,6 +136,30 @@ public class AlertRetentionService {
         } catch (RuntimeException exception) {
             auditService.failed(run.getId(), exception.getMessage());
             throw new IllegalStateException("Retention cleanup failed. Review the cleanup audit record.", exception);
+        }
+    }
+
+
+    private void assertNoOverlappingEnabledPolicy(AlertRetentionPolicy.DataType dataType,
+            Long applicationId, Long environmentId, String alertType, Long excludedPolicyId) {
+        boolean overlaps = policyRepository.findAll().stream()
+                .filter(AlertRetentionPolicy::isEnabled)
+                .filter(existing -> !existing.getId().equals(excludedPolicyId))
+                .filter(existing -> existing.getDataType() == dataType)
+                .anyMatch(existing -> {
+                    Long existingApplicationId = existing.getApplication() == null ? null : existing.getApplication().getId();
+                    Long existingEnvironmentId = existing.getEnvironment() == null ? null : existing.getEnvironment().getId();
+                    boolean applicationOverlap = existingApplicationId == null || applicationId == null
+                            || existingApplicationId.equals(applicationId);
+                    boolean environmentOverlap = existingEnvironmentId == null || environmentId == null
+                            || existingEnvironmentId.equals(environmentId);
+                    boolean typeOverlap = "ALL".equals(existing.getAlertType()) || "ALL".equals(alertType)
+                            || existing.getAlertType().equals(alertType);
+                    return applicationOverlap && environmentOverlap && typeOverlap;
+                });
+        if (overlaps) {
+            throw new IllegalArgumentException(
+                    "This policy overlaps an enabled policy. Disable or adjust the broader policy before enabling this scope.");
         }
     }
 
