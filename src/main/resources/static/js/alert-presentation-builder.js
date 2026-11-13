@@ -241,7 +241,7 @@
                 const maxLength = $('input', 'form-control');
                 maxLength.type = 'number'; maxLength.min = '100'; maxLength.max = '10000'; maxLength.value = section.maxLength || 4000;
                 maxLength.addEventListener('input', () => { section.maxLength = Number(maxLength.value); sync(); });
-                body.append(control('Object / response field', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); }, 'Or enter a path such as data.cluster'), control('Maximum characters', maxLength));
+                body.append(control('Object / response field', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); }, 'Or enter a path such as data.cluster')), control('Maximum characters', maxLength));
             }
             if (section.type !== 'TEXT') {
                 const emptyText = input(section.emptyText, 'Message shown when no data is available', 300);
