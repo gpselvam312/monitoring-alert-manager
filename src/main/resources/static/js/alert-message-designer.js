@@ -127,6 +127,7 @@
                 else updatePreview();
             });
             manual.addEventListener('input', () => { onChange(manual.value.trim()); updatePreview(); });
+            if (onSelection) manual.addEventListener('change', () => onSelection(manual.value.trim()));
             wrapper.append(select, manual);
             return wrapper;
         };
@@ -343,8 +344,7 @@
                         render();
                     }), 'Select an array or object. For arrays, the first object defines the available attributes; a selected child object can be used as the list source.'));
                 const loadFields = button('Load attributes from selected element', 'btn btn-sm btn-outline-primary', () => {
-                    const available = relativeDiscoveredPaths(section.sourcePath)
-                        .filter(field => !['array', 'object'].includes(String(field.type || '').toLowerCase()));
+                    const available = relativeDiscoveredPaths(section.sourcePath);
                     if (!available.length) {
                         setStatus('No child attributes were discovered for this element. Load the latest saved result or use a sample response first.', 'warning');
                         return;
