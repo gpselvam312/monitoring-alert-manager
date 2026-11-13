@@ -76,7 +76,7 @@ public class AlertPresentationService {
             String message = renderedSections.isEmpty() ? text(notificationPayload.get("body")) : "";
             return new Presentation(title, message, renderedSections);
         } catch (Exception exception) {
-            log.warn("Alert presentation configuration could not be rendered for alertId={}; using legacy message content",
+            log.warn("Alert presentation configuration could not be rendered for alertId={}",
                     alert == null ? null : alert.getId(), exception);
             return null;
         }
