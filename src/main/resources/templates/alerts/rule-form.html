@@ -41,7 +41,6 @@
 </div>
 </div>
 <div id="notificationRoutesEmpty" class="alert alert-light border small mt-3 mb-0 d-none">No notification routes configured for this rule.</div>
-<div id="notificationRoutesContainer" class="d-none"></div>
 <template id="notificationRouteTemplate">
 <div class="border rounded p-3 notification-route-row">
 <div class="d-flex align-items-center justify-content-between mb-3"><strong class="route-heading">Notification route</strong><button type="button" class="btn btn-sm btn-outline-danger remove-notification-route"><i class="bi bi-trash me-1"></i>Remove</button></div>
@@ -214,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const moveRouteToChannel = row => {
         const destination = panelFor(channelTypeFor(row));
         if (destination && row.parentElement !== destination) destination.appendChild(row);
-        else if (!destination) document.getElementById('notificationRoutesContainer')?.appendChild(row);
+        else if (!destination) panelFor('EMAIL')?.appendChild(row);
     };
     const syncNotificationRoutes = () => {
         const rows = routeRows();
@@ -288,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (matchingOption) channelSelect.value = matchingOption.value;
         }
         const type = channelTypeFor(row);
-        (panelFor(type) || document.getElementById('notificationRoutesContainer')).appendChild(row);
+        (panelFor(type) || panelFor('EMAIL')).appendChild(row);
         row.querySelector('.route-target-type').addEventListener('change', () => setTargetType(row));
         channelSelect.addEventListener('change', () => setTargetType(row));
         row.querySelector('.remove-notification-route').addEventListener('click', () => { row.remove(); syncNotificationRoutes(); });
