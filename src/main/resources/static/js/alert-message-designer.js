@@ -193,7 +193,7 @@
             card.dataset.blockId = section.id;
             const header = element('div', 'app-card-header d-flex align-items-center justify-content-between gap-2 flex-wrap');
             const title = section.type === 'TEXT' ? 'Text Block' : section.type === 'KEY_VALUE' ? 'Key-Value List Block'
-                : section.type === 'LIST' ? 'Data List Block'
+                : section.type === 'LIST' ? 'List Block'
                 : section.type === 'TABLE' ? 'Data Table Block' : 'Legacy ' + section.type + ' Block';
             const collapseId = 'presentation-block-collapse-' + index;
             const expanded = expandedBlockId ? expandedBlockId === section.id : index === 0;
