@@ -5458,19 +5458,24 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .presentation-block {
     min-width: 0;
 }
-.presentation-block-dragging {
-    opacity: .55;
-    border-style: dashed;
-    border-color: var(--theme-primary);
+/* Compact message-presentation block accordion headers. */
+.presentation-block {
+    padding: .65rem .85rem;
 }
-.presentation-block-chevron {
-    transition: transform .15s ease;
+.presentation-block > .app-card-header {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-bottom: 0;
+    text-decoration: none;
 }
-.presentation-block [aria-expanded="true"] .presentation-block-chevron {
-    transform: rotate(180deg);
+.presentation-block > .app-card-header::before,
+.presentation-block > .app-card-header::after {
+    content: none;
 }
-.presentation-block-list .app-card-header {
-    min-height: 3.25rem;
+.presentation-block .app-card-body {
+    padding-top: .65rem;
 }
 @media (min-width: 1200px) {
     .presentation-builder-pane,
