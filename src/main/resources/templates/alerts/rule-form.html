@@ -17,12 +17,31 @@
 <div class="col-12 col-md-3 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="enabled" th:field="*{enabled}"><label class="form-check-label" for="enabled">Rule enabled</label></div></div>
 </div></div></div>
 <div class="app-card mb-3">
-<div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0"><i class="bi bi-bell me-2"></i>Rule-specific Notifications</h2><button type="button" class="btn btn-sm btn-outline-primary" id="addNotificationRoute"><i class="bi bi-plus-lg me-1"></i>Add Route</button></div>
+<div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0"><i class="bi bi-bell me-2"></i>Notification Channels &amp; Routing</h2><span class="badge bg-secondary-subtle text-secondary-emphasis" id="activeChannelCount">0 Active</span></div>
 <div class="app-card-body">
-<p class="small text-muted">Only destinations explicitly assigned here receive notifications for this rule. If no dedicated Recurring alert route exists for a severity, its Alert created route is reused for recurrence notifications. Recurrence and reminder events respect the minimum interval to prevent notification spam. Existing routes were copied from the previous policy configuration.</p>
+<p class="small text-muted">Choose a channel to configure its destinations and delivery rules. Only routes enabled here receive notifications for this alert rule. Recurrence and reminder events respect the configured minimum interval.</p>
 <input type="hidden" th:field="*{notificationRoutesJson}" id="notificationRoutesJson">
-<div id="notificationRoutesEmpty" class="alert alert-light border small mb-3">No notification routes configured for this rule.</div>
-<div id="notificationRoutesContainer" class="d-grid gap-3"></div>
+<div class="row g-2 mb-3" role="group" aria-label="Notification channels">
+<div class="col-4"><button type="button" class="notification-channel-pill active w-100" data-channel-selector="EMAIL" aria-controls="routingPanelEmail" aria-expanded="true"><span class="d-flex align-items-center gap-2"><i class="bi bi-envelope-fill text-primary fs-5"></i><span class="text-start"><strong>Email</strong><small>Mail delivery</small></span></span><span class="channel-route-count" data-channel-count="EMAIL">0</span></button></div>
+<div class="col-4"><button type="button" class="notification-channel-pill w-100" data-channel-selector="TEAMS" aria-controls="routingPanelTeams" aria-expanded="false"><span class="d-flex align-items-center gap-2"><i class="bi bi-microsoft-teams text-info fs-5"></i><span class="text-start"><strong>Teams</strong><small>Adaptive Card</small></span></span><span class="channel-route-count" data-channel-count="TEAMS">0</span></button></div>
+<div class="col-4"><button type="button" class="notification-channel-pill w-100" data-channel-selector="WHATSAPP" aria-controls="routingPanelWhatsapp" aria-expanded="false"><span class="d-flex align-items-center gap-2"><i class="bi bi-whatsapp text-success fs-5"></i><span class="text-start"><strong>WhatsApp</strong><small>Message delivery</small></span></span><span class="channel-route-count" data-channel-count="WHATSAPP">0</span></button></div>
+</div>
+<div class="accordion notification-routing-accordion" id="notificationRoutingAccordion">
+<div class="accordion-item">
+<h3 class="accordion-header"><button class="accordion-button py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelEmail" aria-expanded="true"><i class="bi bi-envelope text-primary me-2"></i>Email Routing</button></h3>
+<div id="routingPanelEmail" class="accordion-collapse collapse show" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Configure email recipients, severity and alert events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="EMAIL"><i class="bi bi-plus-lg me-1"></i>Add Email Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="EMAIL"></div><div class="small text-muted channel-routes-empty" data-channel-empty="EMAIL">No email routes configured.</div></div></div>
+</div>
+<div class="accordion-item">
+<h3 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelTeams" aria-expanded="false"><i class="bi bi-microsoft-teams text-info me-2"></i>Microsoft Teams Routing</button></h3>
+<div id="routingPanelTeams" class="accordion-collapse collapse" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Choose the configured Teams destination and delivery events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="TEAMS"><i class="bi bi-plus-lg me-1"></i>Add Teams Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="TEAMS"></div><div class="small text-muted channel-routes-empty" data-channel-empty="TEAMS">No Teams routes configured.</div></div></div>
+</div>
+<div class="accordion-item">
+<h3 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelWhatsapp" aria-expanded="false"><i class="bi bi-whatsapp text-success me-2"></i>WhatsApp Routing</button></h3>
+<div id="routingPanelWhatsapp" class="accordion-collapse collapse" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Configure WhatsApp recipient groups and delivery events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="WHATSAPP"><i class="bi bi-plus-lg me-1"></i>Add WhatsApp Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="WHATSAPP"></div><div class="small text-muted channel-routes-empty" data-channel-empty="WHATSAPP">No WhatsApp routes configured.</div></div></div>
+</div>
+</div>
+<div id="notificationRoutesEmpty" class="alert alert-light border small mt-3 mb-0 d-none">No notification routes configured for this rule.</div>
+<div id="notificationRoutesContainer" class="d-none"></div>
 <template id="notificationRouteTemplate">
 <div class="border rounded p-3 notification-route-row">
 <div class="d-flex align-items-center justify-content-between mb-3"><strong class="route-heading">Notification route</strong><button type="button" class="btn btn-sm btn-outline-danger remove-notification-route"><i class="bi bi-trash me-1"></i>Remove</button></div>
