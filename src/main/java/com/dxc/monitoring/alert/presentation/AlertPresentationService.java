@@ -246,13 +246,35 @@ public class AlertPresentationService {
             case "LIST" -> {
                 Object source = sourceValue(document, text(section.get("sourcePath")));
                 List<?> items = collectionItems(source);
+                if (items == null && source instanceof Map<?, ?>) items = List.of(source);
                 if (items == null || items.isEmpty()) return emptyText(section, title);
                 int maxItems = integer(section.get("maxItems"), 20);
-                String valuePath = text(section.get("valuePath"));
+                String legacyValuePath = text(section.get("valuePath"));
+                Object rawFields = section.get("fields");
+                List<Map<String, String>> fields = new ArrayList<>();
+                if (rawFields instanceof List<?> configuredFields) {
+                    for (Object rawField : configuredFields) {
+                        if (rawField instanceof Map<?, ?> field) {
+                            String key = text(field.get("key"));
+                            if (!key.isBlank()) fields.add(Map.of(
+                                    "key", key,
+                                    "label", text(field.get("label")).isBlank() ? key : text(field.get("label"))));
+                        }
+                    }
+                }
                 List<String> values = new ArrayList<>();
                 for (Object item : items.stream().limit(maxItems).toList()) {
-                    Object value = valuePath.isBlank() ? item : resolveRelative(item, valuePath);
-                    values.add(displayValue(value));
+                    if (!fields.isEmpty() && item instanceof Map<?, ?>) {
+                        List<String> attributes = new ArrayList<>();
+                        for (Map<String, String> field : fields) {
+                            Object value = resolveRelative(item, field.get("key"));
+                            if (value != null) attributes.add(field.get("label") + ": " + displayValue(value));
+                        }
+                        values.add(String.join(" | ", attributes));
+                    } else {
+                        Object value = legacyValuePath.isBlank() ? item : resolveRelative(item, legacyValuePath);
+                        values.add(displayValue(value));
+                    }
                 }
                 result.put("items", values);
                 result.put("truncated", items.size() > maxItems);
