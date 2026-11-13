@@ -23,7 +23,7 @@
                     <select class="form-select" id="severity" name="severity"><option value="">All severities</option>
                         <option th:each="item : ${T(com.dxc.monitoring.entity.AlertRule.Severity).values()}" th:value="${item.name()}" th:text="${item.name()}" th:selected="${severity == item.name()}"></option></select></div>
                 <div class="col-6 col-lg-2"><label class="form-label small" for="applicationId">Application</label>
-                    <select class="form-select" id="applicationId" name="applicationId"><option value="">All applications</option>
+                    <select class="form-select" id="applicationId" name="applicationId" onchange="document.getElementById('environmentId').value = '';"><option value="">All applications</option>
                         <option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}" th:selected="${applicationId == app.id}"></option></select></div>
                 <div class="col-6 col-lg-2"><label class="form-label small" for="environmentId">Environment</label>
                     <select class="form-select" id="environmentId" name="environmentId"><option value="">All environments</option>
