@@ -224,7 +224,7 @@ public class AlertEvaluationService {
         alert.setSeverity(rule.getSeverity());
         Map<String, Object> condition = readConfig(rule.getConditionConfig(), "condition");
         String subjectTemplate = rule.getAlertSubject();
-        if (subjectTemplate == null || subjectTemplate.isBlank()) subjectTemplate = "[{severity}] {ruleName}";
+        if (subjectTemplate == null || subjectTemplate.isBlank()) subjectTemplate = "{severity} — {ruleName}";
         String messageTemplate = rule.getAlertMessage();
         if (messageTemplate == null || messageTemplate.isBlank()) {
             messageTemplate = "Job {jobName} in application {applicationName}, environment {environment}: "
