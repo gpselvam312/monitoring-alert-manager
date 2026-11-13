@@ -130,22 +130,23 @@
             return wrapper;
         };
         const relativePathControl = (sourcePath, value, onChange, includeWholeItem) => {
-            const wrapper = element('div', 'd-grid gap-2');
-            const select = element('select', 'form-select');
-            select.add(new Option(includeWholeItem ? 'Use each item as-is' : 'Choose a discovered item field…', ''));
-            relativeDiscoveredPaths(sourcePath).forEach(field =>
-                select.add(new Option(field.relativePath + ' (' + field.type + ')', field.relativePath)));
-            if (value && !Array.from(select.options).some(option => option.value === value))
-                select.add(new Option(value + ' (saved path)', value));
-            select.value = value || '';
-            const manual = textInput(value, 'Or enter a field within each item', 512);
-            select.addEventListener('change', () => {
-                manual.value = select.value;
-                onChange(select.value);
-                updatePreview();
+            const wrapper = element('div');
+            const input = element('input', 'form-control form-control-sm');
+            const list = element('datalist');
+            list.id = 'presentation-field-options-' + newId();
+            if (includeWholeItem) list.append(new Option('Use each item as-is', ''));
+            relativeDiscoveredPaths(sourcePath).forEach(field => {
+                const option = element('option');
+                option.value = field.relativePath;
+                option.label = field.relativePath + ' (' + field.type + ')';
+                list.append(option);
             });
-            manual.addEventListener('input', () => { onChange(manual.value.trim()); updatePreview(); });
-            wrapper.append(select, manual);
+            input.setAttribute('list', list.id);
+            input.maxLength = 512;
+            input.value = value || '';
+            input.placeholder = includeWholeItem ? 'Optional field within each item' : 'Select or enter row field';
+            input.addEventListener('input', () => { onChange(input.value.trim()); updatePreview(); });
+            wrapper.append(input, list);
             return wrapper;
         };
         const insertVariable = (textarea, variable) => {
