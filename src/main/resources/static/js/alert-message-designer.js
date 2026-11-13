@@ -371,6 +371,7 @@
             config.messageTemplate = messageInput.value;
             jsonInput.value = JSON.stringify(config, null, 2);
             jsonEdited = false;
+            updatePreview();
         };
         const addBlock = type => {
             if (config.sections.length >= 20) { setStatus('A message can contain at most 20 blocks.', 'warning'); return; }
