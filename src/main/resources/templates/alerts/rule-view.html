@@ -21,7 +21,7 @@
                 <dt class="col-sm-3">Monitoring Job</dt><dd class="col-sm-9" th:text="${rule.monitoringJob.name}">Job</dd>
                 <dt class="col-sm-3">Application</dt><dd class="col-sm-9" th:text="${rule.monitoringJob.application.name}">Application</dd>
                 <dt class="col-sm-3">Environment</dt><dd class="col-sm-9" th:text="${rule.monitoringJob.environment != null ? rule.monitoringJob.environment.name : '—'}">Environment</dd>
-                <dt class="col-sm-3">Severity</dt><dd class="col-sm-9" th:text="${rule.severity}">CRITICAL</dd>
+                <dt class="col-sm-3">Severity</dt><dd class="col-sm-9"><span class="badge text-bg-danger" th:if="${rule.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${rule.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${rule.severity.name() == 'INFO'}">Info</span><span class="badge text-bg-success" th:if="${rule.severity.name() == 'SUCCESS'}">Success</span></dd>
                 <dt class="col-sm-3">Execution Source</dt><dd class="col-sm-9" th:text="${rule.executionSourcePolicy}">SCHEDULED_ONLY</dd>
                 <dt class="col-sm-3">Status</dt><dd class="col-sm-9"><span class="badge text-bg-success" th:if="${rule.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${rule.enabled}">Disabled</span></dd>
                 <dt class="col-sm-3">Created</dt><dd class="col-sm-9" th:text="${rule.createdAt != null ? #temporals.format(rule.createdAt, 'yyyy-MM-dd HH:mm:ss') : '—'}">—</dd>
