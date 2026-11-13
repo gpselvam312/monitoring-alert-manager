@@ -125,6 +125,17 @@
         select.parentElement.insertBefore(wrapper, select);
         wrapper.appendChild(select);
 
+        selectedContent.addEventListener('click', event => {
+            const remove = event.target.closest('.route-multiselect-remove');
+            if (!remove || !selectedContent.contains(remove)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const option = Array.from(select.options).find(candidate => candidate.value === remove.dataset.optionValue);
+            if (!option || !option.selected) return;
+            option.selected = false;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
         const render = () => {
             selectedContent.replaceChildren();
             const selected = Array.from(select.selectedOptions);
@@ -139,22 +150,12 @@
                     chip.className = 'route-multiselect-chip';
                     const label = document.createElement('span');
                     label.textContent = option.textContent.trim();
-                    const remove = document.createElement('span');
+                    const remove = document.createElement('button');
+                    remove.type = 'button';
                     remove.className = 'route-multiselect-remove';
-                    remove.setAttribute('role', 'button');
-                    remove.setAttribute('tabindex', '0');
+                    remove.dataset.optionValue = option.value;
                     remove.setAttribute('aria-label', 'Remove ' + option.textContent.trim());
-                    remove.innerHTML = '&times;';
-                    const deselect = event => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        option.selected = false;
-                        select.dispatchEvent(new Event('change', { bubbles: true }));
-                    };
-                    remove.addEventListener('click', deselect);
-                    remove.addEventListener('keydown', event => {
-                        if (event.key === 'Enter' || event.key === ' ') deselect(event);
-                    });
+                    remove.textContent = '×';
                     chip.append(label, remove);
                     selectedContent.appendChild(chip);
                 });
