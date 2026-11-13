@@ -122,6 +122,7 @@
             row.append(control('Column label', label), control('Response field', withManualPath(path, section.fields[index]?.path || '', value => { section.fields[index].path = value; sync(); })));
             const remove = $('button', 'btn btn-sm btn-outline-danger', 'Remove');
             remove.type = 'button';
+            remove.disabled = section.fields.length <= 1;
             remove.addEventListener('click', () => { section.fields.splice(index, 1); rerender(); });
             const actions = $('div', 'col-12 d-flex gap-2 flex-wrap');
             actions.append(remove);
@@ -142,6 +143,7 @@
             actions.append(toolbar);
             const remove = $('button', 'btn btn-sm btn-outline-danger', 'Remove column');
             remove.type = 'button';
+            remove.disabled = section.columns.length <= 1;
             remove.addEventListener('click', () => { section.columns.splice(index, 1); rerender(); });
             actions.append(remove);
             row.append(actions);
@@ -226,9 +228,9 @@
             } else if (section.type === 'LIST') {
                 const source = selectPath(section.sourcePath, field => field.type === 'array' && documentPath(field));
                 source.addEventListener('change', () => { section.sourcePath = source.value; render(); });
-                const valuePath = relativeSelect(section.sourcePath, section.valuePath || 'value');
+                const valuePath = relativeSelect(section.sourcePath, section.valuePath || '');
                 valuePath.addEventListener('change', () => { section.valuePath = valuePath.value; sync(); });
-                body.append(control('Items from response collection', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); }, 'Or enter an array path')), control('Display field for each item', withManualPath(valuePath, section.valuePath || 'value', value => { section.valuePath = value; sync(); }, 'Or enter a field relative to each item')));
+                body.append(control('Items from response collection', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); }, 'Or enter an array path')), control('Display field for each item', withManualPath(valuePath, section.valuePath || '', value => { section.valuePath = value; sync(); }, 'Or enter a field relative to each item')));
                 const maxItems = $('input', 'form-control');
                 maxItems.type = 'number'; maxItems.min = '1'; maxItems.max = '100'; maxItems.value = section.maxItems || 20;
                 maxItems.addEventListener('input', () => { section.maxItems = Number(maxItems.value); sync(); });
@@ -270,7 +272,7 @@
             if (type === 'TEXT') section.text = '';
             if (type === 'KEY_VALUE') section.fields = [{ label: '', path: '' }];
             if (type === 'TABLE') section.columns = [{ key: '', label: '' }], section.maxRows = 20, section.sourcePath = '';
-            if (type === 'LIST') section.maxItems = 20, section.sourcePath = '', section.valuePath = 'value';
+            if (type === 'LIST') section.maxItems = 20, section.sourcePath = '', section.valuePath = '';
             if (type === 'JSON') section.maxLength = 4000, section.sourcePath = '';
             config.sections.push(section);
             render();
