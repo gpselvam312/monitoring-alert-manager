@@ -92,6 +92,7 @@
                 if (!['TEXT', 'KEY_VALUE', 'TABLE', 'LIST', 'JSON'].includes(normalized.type)) throw new Error('Unsupported block type: ' + normalized.type);
                 if (normalized.type === 'KEY_VALUE' && !Array.isArray(normalized.fields)) normalized.fields = [];
                 if (normalized.type === 'TABLE' && !Array.isArray(normalized.columns)) normalized.columns = [];
+                if (normalized.type === 'LIST' && !Array.isArray(normalized.fields)) normalized.fields = [];
                 return normalized;
             });
             if (sections.length > 20) throw new Error('A presentation can contain at most 20 blocks.');
@@ -334,30 +335,91 @@
                 const blockTitle = textInput(section.title, 'Optional list heading', 150);
                 blockTitle.addEventListener('input', () => { section.title = blockTitle.value; sync(); });
                 body.append(control('Block heading', blockTitle));
-                body.append(control('Items from response array', pathControl(section.sourcePath,
+                body.append(control('List data from response element', pathControl(section.sourcePath,
                     value => { section.sourcePath = value; sync(); },
-                    field => field.type === 'array', () => render()), 'Choose an array from discovered response fields.'));
-                const listFieldWrapper = element('div', 'table-responsive border rounded mb-3');
-                const listFieldTable = element('table', 'table table-sm align-middle mb-0');
-                const listFieldHead = element('thead', 'table-light');
-                const listFieldHeader = element('tr');
-                listFieldHeader.append(element('th', '', 'Field to display for each item'));
-                listFieldHead.append(listFieldHeader);
-                const listFieldBody = element('tbody');
-                const listFieldRow = element('tr');
-                const listFieldCell = element('td');
-                listFieldCell.append(relativePathControl(section.sourcePath,
-                    section.valuePath, value => { section.valuePath = value; sync(); }, true));
-                listFieldRow.append(listFieldCell);
-                listFieldBody.append(listFieldRow);
-                listFieldTable.append(listFieldHead, listFieldBody);
-                listFieldWrapper.append(listFieldTable);
-                body.append(control('List item field', listFieldWrapper,
-                    'A list displays one selected field per array item. Leave it blank to display each item as-is.'));
+                    field => ['array', 'object'].includes(String(field.type || '').toLowerCase()), () => {
+                        section.fields = [];
+                        section.valuePath = '';
+                        render();
+                    }), 'Select an array or object. For arrays, the first object defines the available attributes; a selected child object can be used as the list source.'));
+                const loadFields = button('Load attributes from selected element', 'btn btn-sm btn-outline-primary', () => {
+                    const available = relativeDiscoveredPaths(section.sourcePath)
+                        .filter(field => !['array', 'object'].includes(String(field.type || '').toLowerCase()));
+                    if (!available.length) {
+                        setStatus('No child attributes were discovered for this element. Load the latest saved result or use a sample response first.', 'warning');
+                        return;
+                    }
+                    const existing = new Set(section.fields.map(field => field.key));
+                    const added = available.filter(field => !existing.has(field.relativePath))
+                        .map(field => ({ key: field.relativePath, label: field.relativePath.split('.').pop() }));
+                    section.fields.push(...added);
+                    render();
+                    setStatus(added.length ? added.length + ' attributes loaded from the selected element.'
+                        : 'All discovered attributes are already configured.', 'success');
+                }, 'bi bi-list-ul');
+                loadFields.disabled = !section.sourcePath;
+                body.append(element('div', 'd-flex flex-wrap align-items-center gap-2 mb-3')).lastChild?.append(loadFields);
+                if (section.fields.length) {
+                    const fieldsWrapper = element('div', 'table-responsive border rounded mb-3');
+                    const fieldsTable = element('table', 'table table-sm align-middle mb-0');
+                    const fieldsHead = element('thead', 'table-light');
+                    const fieldsHeader = element('tr');
+                    ['Display label', 'Child attribute', 'Order'].forEach(text => fieldsHeader.append(element('th', '', text)));
+                    fieldsHead.append(fieldsHeader);
+                    const fieldsBody = element('tbody');
+                    section.fields.forEach((field, fieldIndex) => {
+                        const row = element('tr');
+                        const labelCell = element('td', 'w-25');
+                        const label = textInput(field.label, 'Display label', 100);
+                        label.classList.add('form-control-sm');
+                        label.addEventListener('input', () => { field.label = label.value; sync(); });
+                        labelCell.append(label);
+                        const keyCell = element('td');
+                        keyCell.append(relativePathControl(section.sourcePath, field.key,
+                            value => { field.key = value; sync(); }, false));
+                        const actionCell = element('td', 'text-end text-nowrap');
+                        const moveUp = button('', 'btn btn-sm btn-outline-secondary me-1',
+                            () => {
+                                if (fieldIndex === 0) return;
+                                [section.fields[fieldIndex - 1], section.fields[fieldIndex]] =
+                                    [section.fields[fieldIndex], section.fields[fieldIndex - 1]];
+                                render();
+                            }, 'bi bi-arrow-up');
+                        moveUp.title = 'Move attribute up';
+                        moveUp.setAttribute('aria-label', 'Move attribute up');
+                        moveUp.disabled = fieldIndex === 0;
+                        const moveDown = button('', 'btn btn-sm btn-outline-secondary me-1',
+                            () => {
+                                if (fieldIndex >= section.fields.length - 1) return;
+                                [section.fields[fieldIndex], section.fields[fieldIndex + 1]] =
+                                    [section.fields[fieldIndex + 1], section.fields[fieldIndex]];
+                                render();
+                            }, 'bi bi-arrow-down');
+                        moveDown.title = 'Move attribute down';
+                        moveDown.setAttribute('aria-label', 'Move attribute down');
+                        moveDown.disabled = fieldIndex === section.fields.length - 1;
+                        const removeField = button('', 'btn btn-sm btn-outline-danger',
+                            () => { section.fields.splice(fieldIndex, 1); render(); }, 'bi bi-trash');
+                        removeField.title = 'Remove attribute';
+                        removeField.setAttribute('aria-label', 'Remove attribute');
+                        actionCell.append(moveUp, moveDown, removeField);
+                        row.append(labelCell, keyCell, actionCell);
+                        fieldsBody.append(row);
+                    });
+                    fieldsTable.append(fieldsHead, fieldsBody);
+                    fieldsWrapper.append(fieldsTable);
+                    body.append(fieldsWrapper);
+                } else {
+                    body.append(element('div', 'small text-muted border rounded p-3 mb-3',
+                        'No attributes configured. Load the discovered attributes or add one manually.'));
+                }
+                body.append(button('Add attribute manually', 'btn btn-sm btn-outline-secondary', () => {
+                    section.fields.push({ key: '', label: '' }); render();
+                }, 'bi bi-plus-lg'));
                 const maxItems = textInput(String(section.maxItems || 10), '10', 3);
                 maxItems.type = 'number'; maxItems.min = '1'; maxItems.max = '100';
                 maxItems.addEventListener('input', () => { section.maxItems = Math.min(100, Math.max(1, Number(maxItems.value) || 1)); sync(); });
-                body.append(control('Maximum items', maxItems));
+                body.append(control('Maximum list items', maxItems));
                 const emptyText = textInput(section.emptyText, 'No items available', 250);
                 emptyText.addEventListener('input', () => { section.emptyText = emptyText.value; sync(); });
                 body.append(control('Empty-state text', emptyText));
@@ -451,12 +513,19 @@
                 };
             }
             if (section.type === 'LIST') {
-                const items = resolvePath(section.sourcePath, sample);
+                const source = resolvePath(section.sourcePath, sample);
+                const items = Array.isArray(source) ? source : source && typeof source === 'object' ? [source] : [];
                 return {
                     type: 'list', title,
-                    items: (Array.isArray(items) ? items : []).slice(0, Number(section.maxItems || 10))
-                        .map(item => display(section.valuePath ? resolvePath(section.valuePath, item) : item))
-                        .filter(value => value !== '')
+                    items: items.slice(0, Number(section.maxItems || 10)).map(item => {
+                        if (Array.isArray(section.fields) && section.fields.length) {
+                            return section.fields.map(field => {
+                                const value = resolvePath(field.key, item);
+                                return value === undefined || value === null ? '' : (field.label || field.key) + ': ' + display(value);
+                            }).filter(Boolean).join(' | ');
+                        }
+                        return display(section.valuePath ? resolvePath(section.valuePath, item) : item);
+                    }).filter(value => value !== '')
                 };
             }
             return { type: section.type.toLowerCase(), title, text: '[Legacy block preview]' };
@@ -598,7 +667,7 @@
             if (type === 'TEXT') section.text = '';
             if (type === 'KEY_VALUE') section.fields = [{ label: '', path: '' }];
             if (type === 'TABLE') { section.sourcePath = ''; section.columns = []; section.maxRows = 20; }
-            if (type === 'LIST') { section.sourcePath = ''; section.valuePath = ''; section.maxItems = 10; section.emptyText = 'No items available'; }
+            if (type === 'LIST') { section.sourcePath = ''; section.fields = []; section.maxItems = 10; section.emptyText = 'No items available'; }
             config.sections.push(section);
             expandedBlockId = section.id;
             render();
