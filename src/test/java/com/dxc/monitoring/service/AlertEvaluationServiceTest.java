@@ -102,11 +102,43 @@ class AlertEvaluationServiceTest {
         org.mockito.ArgumentCaptor<Alert> alertCaptor = org.mockito.ArgumentCaptor.forClass(Alert.class);
         verify(alertRepository).save(alertCaptor.capture());
         assertEquals("CRITICAL — CPU usage high", alertCaptor.getValue().getTitle());
-        assertEquals("", alertCaptor.getValue().getSummary());
+        org.junit.jupiter.api.Assertions.assertFalse(alertCaptor.getValue().getSummary().isBlank());
         verify(historyRepository).save(any(AlertHistory.class));
         verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
     }
 
+
+    @Test
+    void doesNotCarryConsecutiveMatchesAcrossDifferentCorrelationKeys() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {"fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85,
+                 "consecutiveMatches":2,"correlationFieldPath":"data.host"}
+                """);
+        AlertRuleEvaluation previous = mock(AlertRuleEvaluation.class);
+        when(previous.getDetails()).thenReturn("""
+                {"phase":"CONDITION","conditionMatched":true,"consecutiveMatches":1,
+                 "correlationKey":"host-a"}
+                """);
+        when(evaluationRepository.findTopByAlertRule_IdOrderByEvaluatedAtDescIdDesc(7L))
+                .thenReturn(Optional.of(previous));
+
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getResultData()).thenReturn("""
+                {"schemaVersion":1,"status":"SUCCESS","data":{"host":"host-b","cpu":{"usage":92}}}
+                """);
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L))
+                .thenReturn(Optional.of(result));
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository, never()).save(any(Alert.class));
+        org.mockito.ArgumentCaptor<AlertRuleEvaluation> evaluationCaptor =
+                org.mockito.ArgumentCaptor.forClass(AlertRuleEvaluation.class);
+        verify(evaluationRepository).save(evaluationCaptor.capture());
+        assertEquals("host-b", new ObjectMapper().readTree(evaluationCaptor.getValue().getDetails())
+                .get("correlationKey").asText());
+    }
 
     @Test
     void evaluatesOrOfNestedAndConditionGroups() {
