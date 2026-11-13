@@ -57,12 +57,14 @@
             return;
         }
         const headers = [
-            ['alertKey', 'Alert ID'], ['title', 'Alert'], ['severity', 'Severity'],
-            ['applicationName', 'Application / Environment'], ['status', 'Status'],
-            ['occurrenceCount', 'Occurrences'], ['createdAt', 'Created'],
-            ['lastOccurredAt', 'Last Occurred'], ['resolvedAt', 'Resolved']
+            ['alertKey', 'Alert ID', null], ['title', 'Alert', 'title'], ['severity', 'Severity', 'severity'],
+            ['applicationName', 'Application / Environment', null], ['status', 'Status', 'status'],
+            ['occurrenceCount', 'Occurrences', null], ['createdAt', 'Created', 'createdAt'],
+            ['lastOccurredAt', 'Last Occurred', 'lastOccurredAt'], ['resolvedAt', 'Resolved', 'resolvedAt']
         ];
-        const head = headers.map(([key, label]) => '<th scope="col"><button type="button" class="table-sort" data-sort="' + key + '" aria-label="Sort by ' + label + '">' + label + '<i class="bi table-sort-icon ms-1"></i></button></th>').join('');
+        const head = headers.map(([, label, sortField]) => '<th scope="col">' +
+            (sortField ? '<button type="button" class="table-sort" data-sort="' + sortField + '" aria-label="Sort by ' + label + '">' + label + '<i class="bi table-sort-icon ms-1"></i></button>' : label) +
+            '</th>').join('');
         const rows = visible.map(item => {
             const severityClass = item.severity === 'CRITICAL' ? 'text-bg-danger' : item.severity === 'WARNING' ? 'text-bg-warning' : item.severity === 'SUCCESS' ? 'text-bg-success' : 'text-bg-info';
             const statusClass = item.status === 'ACTIVE' ? 'text-bg-danger' : 'text-bg-success';
@@ -143,15 +145,23 @@
     const clearSearch = byId('clear-' + config.searchId);
     if (clearSearch) clearSearch.addEventListener('click', () => { searchInput.value = ''; clearSearch.classList.add('d-none'); resetAndLoad(); });
     if (pageSizeSelect) pageSizeSelect.addEventListener('change', resetAndLoad);
-    Object.values(config.filters || {}).forEach(id => {
+    Object.entries(config.filters || {}).forEach(([name, id]) => {
+        if (name === 'applicationId') return;
         const field = byId(id);
-        if (field) field.addEventListener('change', () => {
-            if (id === config.filters.applicationId) {
-                const environment = byId(config.filters.environmentId);
-                if (environment) environment.value = '';
-            }
-            resetAndLoad();
+        if (field) field.addEventListener('change', resetAndLoad);
+    });
+    const applicationFilter = byId(config.filters.applicationId);
+    if (applicationFilter) applicationFilter.addEventListener('change', () => {
+        const query = new URLSearchParams();
+        const currentSearch = searchInput ? searchInput.value.trim() : '';
+        if (currentSearch) query.set('search', currentSearch);
+        Object.entries(config.filters || {}).forEach(([name, id]) => {
+            const field = byId(id);
+            if (field && field.value && name !== 'environmentId') query.set(name, field.value);
         });
+        query.set('sort', config.sort || 'createdAt');
+        query.set('direction', config.direction || 'desc');
+        window.location.assign(window.location.pathname + '?' + query.toString());
     });
     const clearFilters = byId('alertHistoryClearFilters');
     if (clearFilters) clearFilters.addEventListener('click', () => {
