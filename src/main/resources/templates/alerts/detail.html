@@ -25,7 +25,7 @@
         <div th:if="${comments.isEmpty()}" class="text-muted small">No comments have been added to this alert.</div>
         <div th:each="comment : ${comments}" class="border-top py-3">
             <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
-                <strong th:text="${comment.author != null and comment.author.fullName != null ? comment.author.fullName : 'Former user'}">Author</strong>
+                <strong th:text="${comment.authorName}">Author</strong>
                 <span class="small text-muted" th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm:ss')}">Time</span>
             </div>
             <p class="mb-0 text-break" style="white-space: pre-wrap" th:text="${comment.commentText}">Comment</p>
