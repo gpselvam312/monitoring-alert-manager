@@ -56,4 +56,8 @@ public class AlertCommentController {
         }
         return "redirect:/alerts/" + id + "?from=" + safeSource(from);
     }
+    private String safeSource(String from) {
+        return "history".equalsIgnoreCase(from) ? "history" : "active";
+    }
+
 }
