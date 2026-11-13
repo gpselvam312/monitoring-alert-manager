@@ -2,7 +2,6 @@ package com.dxc.monitoring.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,7 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.dxc.monitoring.alert.condition.ConditionEvaluator;
-import com.dxc.monitoring.alert.presentation.AlertPresentationService;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
@@ -41,7 +39,6 @@ class AlertEvaluationServiceTest {
     private AlertHistoryRepository historyRepository;
     private AlertRuleEvaluationRepository evaluationRepository;
     private AlertEvaluationService service;
-    private AlertPresentationService presentationService;
     private MonitoringExecution execution;
     private AlertRule rule;
     private MonitoringJob job;
@@ -54,10 +51,9 @@ class AlertEvaluationServiceTest {
         alertRepository = mock(AlertRepository.class);
         historyRepository = mock(AlertHistoryRepository.class);
         evaluationRepository = mock(AlertRuleEvaluationRepository.class);
-        presentationService = mock(AlertPresentationService.class);
         service = new AlertEvaluationService(executionRepository, resultRepository, ruleRepository,
                 alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), new ConditionEvaluator(),
-                mock(NotificationRoutingService.class), presentationService);
+                mock(NotificationRoutingService.class));
 
         execution = mock(MonitoringExecution.class);
         rule = mock(AlertRule.class);
@@ -71,7 +67,7 @@ class AlertEvaluationServiceTest {
         when(rule.getExecutionSourcePolicy()).thenReturn(AlertRule.ExecutionSourcePolicy.SCHEDULED_ONLY);
         when(rule.getSeverity()).thenReturn(AlertRule.Severity.CRITICAL);
         when(rule.getName()).thenReturn("CPU usage high");
-        when(rule.getAlertSubject()).thenReturn("[{severity}] {ruleName} — {jobName}");
+        when(rule.getAlertSubject()).thenReturn("{severity} — {ruleName}");
         when(rule.getAlertMessage()).thenReturn("{fieldPath}: {actualValue} > {threshold} (execution {executionId})");
         when(job.getName()).thenReturn("API CPU");
         when(rule.getConditionConfig()).thenReturn("""
@@ -106,25 +102,12 @@ class AlertEvaluationServiceTest {
 
         org.mockito.ArgumentCaptor<Alert> alertCaptor = org.mockito.ArgumentCaptor.forClass(Alert.class);
         verify(alertRepository).save(alertCaptor.capture());
-        assertEquals("[CRITICAL] CPU usage high — API CPU", alertCaptor.getValue().getTitle());
+        assertEquals("CRITICAL — CPU usage high", alertCaptor.getValue().getTitle());
         assertEquals("data.cpu.usage: 92 > 85 (execution 101)", alertCaptor.getValue().getSummary());
         verify(historyRepository).save(any(AlertHistory.class));
         verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
     }
 
-
-    @Test
-    void appliesConfiguredPresentationTemplatesToTheStoredAlert() {
-        when(presentationService.buildTemplates(any(AlertHistory.class), anyMap()))
-                .thenReturn(new AlertPresentationService.Presentation("Configured title", "Configured summary", List.of()));
-
-        service.evaluateExecution(101L);
-
-        org.mockito.ArgumentCaptor<Alert> alertCaptor = org.mockito.ArgumentCaptor.forClass(Alert.class);
-        verify(alertRepository).save(alertCaptor.capture());
-        assertEquals("Configured title", alertCaptor.getValue().getTitle());
-        assertEquals("Configured summary", alertCaptor.getValue().getSummary());
-    }
 
     @Test
     void evaluatesOrOfNestedAndConditionGroups() {
