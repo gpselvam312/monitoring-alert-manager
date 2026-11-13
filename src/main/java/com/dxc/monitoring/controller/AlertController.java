@@ -331,6 +331,7 @@ public class AlertController {
         model.addAttribute("severities", AlertRule.Severity.values());
         model.addAttribute("sourcePolicies", AlertRule.ExecutionSourcePolicy.values());
         model.addAttribute("notificationChannels", notificationRouteService.enabledChannels());
+        model.addAttribute("emailSenderAddresses", notificationRouteService.emailSenderAddresses());
         model.addAttribute("notificationRecipients", notificationRouteService.enabledRecipients());
         model.addAttribute("notificationGroups", notificationRouteService.enabledGroups());
     }
