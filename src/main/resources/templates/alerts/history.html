@@ -58,14 +58,14 @@
         </div>
         <div th:if="${alerts.totalElements == 0}" class="empty-state"><div class="empty-state-icon"><i class="bi bi-clock-history"></i></div><h6>No alerts found</h6><p>Try changing the selected filters.</p></div>
         <div th:if="${alerts.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0">
-            <thead><tr><th>Alert ID</th><th>Alert</th><th>Severity</th><th>Application / Environment</th><th>Status</th><th>Occurrences</th><th>Last Occurred</th><th>Resolved</th></tr></thead>
+            <thead><tr><th>Alert ID</th><th>Alert</th><th>Severity</th><th>Application / Environment</th><th>Status</th><th>Occurrences</th><th>Created</th><th>Last Occurred</th><th>Resolved</th></tr></thead>
             <tbody><tr th:each="alert : ${alerts.content}">
                 <td><a class="fw-semibold text-decoration-none" th:href="@{/alerts/{id}(id=${alert.id})}" th:text="${alert.alertKey}">ALT-2026-00000001</a></td>
                 <td><a class="fw-semibold text-decoration-none" th:href="@{/alerts/{id}(id=${alert.id})}" th:text="${alert.title}">Alert title</a><div class="small text-muted" th:text="${alert.monitoringJob.name}">Monitoring job</div></td>
                 <td><span class="badge text-bg-danger" th:if="${alert.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${alert.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${alert.severity.name() == 'INFO'}">Info</span><span class="badge text-bg-success" th:if="${alert.severity.name() == 'SUCCESS'}">Success</span></td>
                 <td><div th:text="${alert.monitoringJob.application.name}">Application</div><div class="small text-muted" th:text="${alert.monitoringJob.environment != null ? alert.monitoringJob.environment.name : '—'}">Environment</div></td>
                 <td><span class="badge text-bg-danger" th:if="${alert.status.name() == 'ACTIVE'}">Active</span><span class="badge text-bg-success" th:if="${alert.status.name() == 'RESOLVED'}">Recovered</span></td>
-                <td th:text="${alert.occurrenceCount}">1</td><td th:text="${#temporals.format(alert.lastOccurredAt, 'yyyy-MM-dd HH:mm:ss')}">Time</td>
+                <td th:text="${alert.occurrenceCount}">1</td><td th:text="${#temporals.format(alert.createdAt, 'yyyy-MM-dd HH:mm:ss')}">Created</td><td th:text="${#temporals.format(alert.lastOccurredAt, 'yyyy-MM-dd HH:mm:ss')}">Time</td>
                 <td th:text="${alert.resolvedAt != null ? #temporals.format(alert.resolvedAt, 'yyyy-MM-dd HH:mm:ss') : '—'}">Time</td>
             </tr></tbody></table></div>
         <div th:if="${alerts.totalPages > 1}" class="d-flex justify-content-between align-items-center p-3 border-top">
