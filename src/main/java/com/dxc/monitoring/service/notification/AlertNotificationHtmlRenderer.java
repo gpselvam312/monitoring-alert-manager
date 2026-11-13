@@ -102,18 +102,32 @@ public class AlertNotificationHtmlRenderer {
 
         StringBuilder html = new StringBuilder(
                 "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" "
-                + "style=\"margin-top:8px;border:1px solid #EAECF0;border-collapse:collapse;background-color:#FFFFFF;color:#101828;font-size:13px;\">");
+                + "style=\"margin-top:8px;border:1px solid #EAECF0;border-collapse:collapse;background-color:#FFFFFF;color:#101828;font-size:13px;\">"
+                + "<thead><tr>"
+                + "<th align=\"left\" bgcolor=\"#F2F4F7\" style=\"padding:9px 11px;background-color:#F2F4F7;color:#344054;border-bottom:1px solid #EAECF0;font-weight:700;width:38%;\">Attribute</th>"
+                + "<th align=\"left\" bgcolor=\"#F2F4F7\" style=\"padding:9px 11px;background-color:#F2F4F7;color:#344054;border-bottom:1px solid #EAECF0;font-weight:700;\">Value</th>"
+                + "</tr></thead><tbody>");
         int rowIndex = 0;
         for (Object item : items.stream().limit(100).toList()) {
-            String background = rowIndex++ % 2 == 0 ? "#FFFFFF" : "#F8FAFC";
-            html.append("<tr bgcolor=\"").append(background).append("\">")
-                    .append("<td bgcolor=\"").append(background)
-                    .append("\" style=\"padding:9px 11px;border-bottom:1px solid #EAECF0;background-color:")
-                    .append(background).append(";color:#101828;font-size:13px;line-height:1.5;\">")
-                    .append(escape(display(item)))
-                    .append("</td></tr>");
+            String renderedItem = display(item);
+            String[] attributes = renderedItem.split("\\s+\\|\\s+");
+            for (String attribute : attributes) {
+                int separator = attribute.indexOf(':');
+                String label = separator > 0 ? attribute.substring(0, separator).trim() : "Value";
+                String value = separator > 0 ? attribute.substring(separator + 1).trim() : attribute.trim();
+                String background = rowIndex++ % 2 == 0 ? "#FFFFFF" : "#F8FAFC";
+                html.append("<tr>")
+                        .append("<td bgcolor=\"").append(background)
+                        .append("\" style=\"padding:9px 11px;border-bottom:1px solid #EAECF0;background-color:")
+                        .append(background).append(";color:#475467;font-weight:600;font-size:13px;vertical-align:top;\">")
+                        .append(escape(label)).append("</td>")
+                        .append("<td bgcolor=\"").append(background)
+                        .append("\" style=\"padding:9px 11px;border-bottom:1px solid #EAECF0;background-color:")
+                        .append(background).append(";color:#101828;font-size:13px;line-height:1.5;vertical-align:top;\">")
+                        .append(escape(value)).append("</td></tr>");
+            }
         }
-        html.append("</table>");
+        html.append("</tbody></table>");
         return html.toString();
     }
 
