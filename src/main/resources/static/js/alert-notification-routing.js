@@ -50,9 +50,8 @@
                 channelId: row.querySelector('.route-channel').value || null,
                 severity: row.querySelector('.route-severity').value,
                 eventType: row.querySelector('.route-event').value,
-                targetType,
-                recipientId: targetType === 'RECIPIENT' ? (row.querySelector('.route-recipient').value || null) : null,
-                groupId: targetType === 'GROUP' ? (row.querySelector('.route-group').value || null) : null,
+                recipientIds: Array.from(row.querySelector('.route-recipients').selectedOptions).map(option => option.value),
+                groupIds: Array.from(row.querySelector('.route-groups').selectedOptions).map(option => option.value),
                 ccRecipients: channelTypeFor(row) === 'EMAIL' ? row.querySelector('.route-cc').value.trim() : '',
                 minimumIntervalSeconds: row.querySelector('.route-interval').value || '300',
                 enabled: row.querySelector('.route-enabled').checked
@@ -76,25 +75,29 @@
             row.querySelector('.route-heading').textContent = (type || 'Notification') + ' route ' + channelIndex;
         });
     };
-    const setTargetType = row => {
-        const selectedChannel = row.querySelector('.route-channel').selectedOptions[0];
-        const isTeams = selectedChannel?.dataset.channelType === 'TEAMS';
-        const targetType = row.querySelector('.route-target-type');
-        if (isTeams) {
-            targetType.value = 'NONE';
-            row.querySelector('.route-recipient').value = '';
-            row.querySelector('.route-group').value = '';
-        } else if (targetType.value === 'NONE') targetType.value = 'RECIPIENT';
-        const isGroup = !isTeams && targetType.value === 'GROUP';
-        row.querySelector('.route-target-type-container').classList.toggle('d-none', isTeams);
+    const validateRouteTargets = row => {
+        const isTeams = channelTypeFor(row) === 'TEAMS';
+        const hasRecipients = row.querySelector('.route-recipients').selectedOptions.length > 0;
+        const hasGroups = row.querySelector('.route-groups').selectedOptions.length > 0;
+        const message = !isTeams && row.querySelector('.route-enabled').checked && !hasRecipients && !hasGroups
+            ? 'Select at least one recipient or recipient group for this enabled route.' : '';
+        row.querySelector('.route-recipients').setCustomValidity(message);
+        row.querySelector('.route-groups').setCustomValidity(message);
+        return !message;
+    };
+    const setRouteChannelOptions = row => {
+        const isTeams = channelTypeFor(row) === 'TEAMS';
+        const isEmail = channelTypeFor(row) === 'EMAIL';
         row.querySelector('.route-teams-hint').classList.toggle('d-none', !isTeams);
-        row.querySelector('.route-recipient-container').classList.toggle('d-none', isTeams || isGroup);
-        row.querySelector('.route-group-container').classList.toggle('d-none', isTeams || !isGroup);
-        const isEmail = selectedChannel?.dataset.channelType === 'EMAIL';
+        row.querySelector('.route-recipient-container').classList.toggle('d-none', isTeams);
+        row.querySelector('.route-group-container').classList.toggle('d-none', isTeams);
         row.querySelector('.route-cc-container').classList.toggle('d-none', !isEmail);
+        if (isTeams) {
+            row.querySelector('.route-recipients').selectedIndex = -1;
+            row.querySelector('.route-groups').selectedIndex = -1;
+        }
         if (!isEmail) row.querySelector('.route-cc').value = '';
-        row.querySelector('.route-recipient').required = !isTeams && !isGroup;
-        row.querySelector('.route-group').required = !isTeams && isGroup;
+        validateRouteTargets(row);
         moveRouteToChannel(row);
         syncNotificationRoutes();
     };
@@ -106,9 +109,16 @@
             channelSelect.value = route.channelId == null ? '' : String(route.channelId);
             row.querySelector('.route-severity').value = route.severity || 'CRITICAL';
             row.querySelector('.route-event').value = route.eventType || 'CREATED';
-            row.querySelector('.route-target-type').value = route.targetType || (route.groupId ? 'GROUP' : 'RECIPIENT');
-            row.querySelector('.route-recipient').value = route.recipientId == null ? '' : String(route.recipientId);
-            row.querySelector('.route-group').value = route.groupId == null ? '' : String(route.groupId);
+            const recipientIds = Array.isArray(route.recipientIds) ? route.recipientIds
+                : route.recipientId == null ? [] : [route.recipientId];
+            const groupIds = Array.isArray(route.groupIds) ? route.groupIds
+                : route.groupId == null ? [] : [route.groupId];
+            Array.from(row.querySelector('.route-recipients').options).forEach(option => {
+                option.selected = recipientIds.map(String).includes(option.value);
+            });
+            Array.from(row.querySelector('.route-groups').options).forEach(option => {
+                option.selected = groupIds.map(String).includes(option.value);
+            });
             row.querySelector('.route-cc').value = route.ccRecipients || '';
             row.querySelector('.route-interval').value = route.minimumIntervalSeconds == null ? '300' : String(route.minimumIntervalSeconds);
             row.querySelector('.route-enabled').checked = route.enabled !== false;
@@ -118,12 +128,15 @@
         }
         const type = channelTypeFor(row);
         (panelFor(type) || panelFor('EMAIL')).appendChild(row);
-        row.querySelector('.route-target-type').addEventListener('change', () => setTargetType(row));
-        channelSelect.addEventListener('change', () => setTargetType(row));
+        channelSelect.addEventListener('change', () => setRouteChannelOptions(row));
         row.querySelector('.remove-notification-route').addEventListener('click', () => { row.remove(); syncNotificationRoutes(); });
-        row.querySelectorAll('select,input').forEach(input => input.addEventListener('change', syncNotificationRoutes));
+        row.querySelectorAll('select,input').forEach(input => input.addEventListener('change', () => {
+            validateRouteTargets(row);
+            syncNotificationRoutes();
+        }));
         row.querySelectorAll('input').forEach(input => input.addEventListener('input', syncNotificationRoutes));
-        setTargetType(row);
+        setRouteChannelOptions(row);
+        validateRouteTargets(row);
         syncNotificationRoutes();
     };
     document.querySelectorAll('[data-channel-toggle]').forEach(toggle => toggle.addEventListener('change', () => setChannelEnabled(toggle.dataset.channelToggle, toggle.checked, toggle.checked)));
@@ -140,6 +153,14 @@
         const hasEnabledRoute = routeRows().some(row => channelTypeFor(row) === type && row.querySelector('.route-enabled').checked);
         setChannelEnabled(type, hasEnabledRoute, false);
     });
-    document.querySelector('form')?.addEventListener('submit', syncNotificationRoutes);
+    document.querySelector('form')?.addEventListener('submit', event => {
+        const invalidRoute = routeRows().find(row => !validateRouteTargets(row));
+        if (invalidRoute) {
+            event.preventDefault();
+            invalidRoute.querySelector('.route-recipients').reportValidity();
+            return;
+        }
+        syncNotificationRoutes();
+    });
     });
 })();
