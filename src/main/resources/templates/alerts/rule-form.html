@@ -73,8 +73,8 @@
 <div class="app-card mb-3"><div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0">Alert Condition</h2><button type="button" class="btn btn-sm btn-outline-primary" id="discoverAlertFields" th:attr="data-discovery-url=@{/alerts/rules/discovery/}" th:disabled="${ruleForm.monitoringJobId == null}"><i class="bi bi-search me-1"></i>Load Latest Saved Result</button></div><div class="app-card-body"><p class="small text-muted">Discover selectable fields from the latest successful saved result. This does not run the monitoring job. You can also enter a field path manually if needed.</p><div class="row g-3 mb-3"><div class="col-12 col-lg-5"><label class="form-label" for="conditionType">Condition Mode</label><select class="form-select" id="conditionType" th:field="*{conditionType}"><option value="CONDITION">Field conditions and AND / OR groups</option><option value="COUNT_TOTAL">Total records in a collection</option><option value="COUNT_MATCHING">Count records matching a condition</option></select><div class="form-text">Use count mode for JSON arrays such as data.servers.</div></div></div><div id="fieldDiscoveryMessage" class="alert d-none mb-3" role="status" aria-live="polite"></div><div class="row g-3 mb-3"><div class="col-12 col-lg-6"><label class="form-label" for="discoveredFieldPath">Discovered Fields</label><select class="form-select" id="discoveredFieldPath" disabled><option value="">Load a saved result to discover fields</option></select><div id="discoveredFieldSample" class="form-text">Field type and sample value will appear here.</div></div><div class="col-12 col-lg-6 d-flex align-items-end"><div id="fieldDiscoveryExecution" class="small text-muted"></div></div></div><details class="mb-3"><summary class="small fw-semibold">Use a sample response instead</summary><div class="pt-3"><label class="form-label" for="sampleResponseForDiscovery">Sample response</label><textarea class="form-control font-monospace" id="sampleResponseForDiscovery" rows="5"></textarea><div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="discoverSampleFields" th:attr="data-sample-url=@{/alerts/rules/discovery/sample}"><i class="bi bi-braces me-1"></i>Discover from Sample</button></div><div class="form-text">Supports JSON, key-value lines, and comma-delimited header/value rows. A sample is used only for field discovery; it is not saved or executed.</div></div></details><p class="small text-muted">You can also use <code>executionStatus</code> and other execution metadata fields.</p><input type="hidden" th:field="*{conditionTreeJson}" id="conditionTreeJson">
 <div class="mb-3">
     <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-2">
-        <div><h3 class="h6 mb-1">Condition expression</h3><p class="small text-muted mb-0">Build conditions with nested AND / OR groups. Each group has its own operator.</p></div>
-        <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" id="addRootCondition"><i class="bi bi-plus-lg me-1"></i>Add condition</button><button type="button" class="btn btn-sm btn-outline-primary" id="addRootGroup"><i class="bi bi-diagram-3 me-1"></i>Add group</button></div>
+        <div><h3 class="h6 mb-1">Condition expression</h3><p class="small text-muted mb-0">Array field paths use ANY-match by default. Add a collection rule to choose ANY, ALL or NONE and evaluate nested conditions against the same record.</p></div>
+        <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" id="addRootCondition"><i class="bi bi-plus-lg me-1"></i>Add condition</button><button type="button" class="btn btn-sm btn-outline-primary" id="addRootGroup"><i class="bi bi-diagram-3 me-1"></i>Add group</button><button type="button" class="btn btn-sm btn-outline-primary" id="addRootCollection"><i class="bi bi-collection me-1"></i>Add collection rule</button></div>
     </div>
     <div id="conditionTreeEditor" aria-live="polite"></div>
     <details id="advancedConditionEditor" class="mt-3">
@@ -373,6 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const treeEditor = document.getElementById('conditionTreeEditor');
     const addRootCondition = document.getElementById('addRootCondition');
     const addRootGroup = document.getElementById('addRootGroup');
+    const addRootCollection = document.getElementById('addRootCollection');
     const form = treeInput.closest('form');
     const conditionOperators = [
         ['GREATER_THAN','Greater than'],['GREATER_THAN_OR_EQUAL','Greater than or equal'],
@@ -383,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     const defaultCondition = () => ({type:'CONDITION',fieldPath:'',operator:'GREATER_THAN',threshold:''});
     const defaultGroup = (operator='AND') => ({type:'GROUP',operator,children:[defaultCondition(),defaultCondition()]});
+    const defaultCollection = () => ({type:'COLLECTION',collectionPath:'data.items',quantifier:'ANY',condition:defaultGroup('AND')});
     const recoveryTreeInput = document.getElementById('recoveryTreeJson');
     const advancedRecoveryEditor = document.getElementById('advancedRecoveryEditor');
     const advancedRecoveryJson = document.getElementById('advancedRecoveryJson');
@@ -423,7 +425,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyAdvancedJson = document.getElementById('applyAdvancedConditionJson');
     const useVisualBuilder = document.getElementById('useVisualConditionBuilder');
     const isVisualConditionNode = node => node && (node.type === 'CONDITION'
-        || (node.type === 'GROUP' && Array.isArray(node.children) && node.children.every(isVisualConditionNode)));
+        || (node.type === 'GROUP' && Array.isArray(node.children) && node.children.every(isVisualConditionNode))
+        || (node.type === 'COLLECTION' && node.condition && isVisualConditionNode(node.condition)));
     let tree;
     try { tree = JSON.parse(treeInput.value); } catch (_) { tree = defaultCondition(); }
     let advancedMode = !isVisualConditionNode(tree);
@@ -475,8 +478,8 @@ document.addEventListener('DOMContentLoaded', () => {
         treeInput.value = advancedMode && advancedJsonInput
             ? advancedJsonInput.value : JSON.stringify(tree);
     };
-    const countNodes = node => 1 + (node.type === 'GROUP' ? node.children.reduce((sum, child) => sum + countNodes(child), 0) : 0);
-    const firstCondition = node => node.type === 'CONDITION' ? node : node.children.map(firstCondition).find(Boolean);
+    const countNodes = node => 1 + (node.type === 'GROUP' ? node.children.reduce((sum, child) => sum + countNodes(child), 0) : node.type === 'COLLECTION' ? countNodes(node.condition) : 0);
+    const firstCondition = node => node.type === 'CONDITION' ? node : node.type === 'COLLECTION' ? firstCondition(node.condition) : node.children.map(firstCondition).find(Boolean);
     const updateConditionInputs = () => {
         const conditionMode = conditionType.value === 'CONDITION';
         treeEditor.querySelectorAll('.tree-field-path').forEach(input => input.required = conditionMode);
@@ -508,6 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return button;
     };
     const normalizeTree = node => {
+        if (node.type === 'COLLECTION') { node.condition = normalizeTree(node.condition); return node; }
         if (node.type !== 'GROUP') return node;
         node.children = node.children.map(normalizeTree);
         return node.children.length === 1 ? node.children[0] : node;
@@ -519,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
         heading.className = 'd-flex align-items-center justify-content-between gap-2 mb-3';
         const title = document.createElement('strong');
         title.className = 'small';
-        title.textContent = node.type === 'GROUP' ? 'Condition group' : 'Field condition';
+        title.textContent = node.type === 'GROUP' ? 'Condition group' : node.type === 'COLLECTION' ? 'Array collection rule' : 'Field condition';
         heading.appendChild(title);
         if (!isRoot) {
             const removeButton = makeButton('Remove', 'btn btn-sm btn-outline-danger', () => {
@@ -532,7 +536,21 @@ document.addEventListener('DOMContentLoaded', () => {
             heading.appendChild(removeButton);
         }
         card.appendChild(heading);
-        if (node.type === 'GROUP') {
+        if (node.type === 'COLLECTION') {
+            const configRow = document.createElement('div'); configRow.className = 'row g-3 mb-3';
+            const pathCol = document.createElement('div'); pathCol.className = 'col-12 col-lg-7';
+            const pathLabel = document.createElement('label'); pathLabel.className = 'form-label'; pathLabel.textContent = 'Array path';
+            const pathInput = document.createElement('input'); pathInput.type = 'text'; pathInput.className = 'form-control tree-collection-path'; pathInput.maxLength = 255; pathInput.value = node.collectionPath || ''; pathInput.setAttribute('list', fieldDatalist.id); pathInput.setAttribute('autocomplete','off');
+            pathInput.addEventListener('input', () => { node.collectionPath = pathInput.value; syncTree(); }); pathCol.append(pathLabel,pathInput);
+            const quantifierCol = document.createElement('div'); quantifierCol.className = 'col-12 col-lg-5';
+            const quantifierLabel = document.createElement('label'); quantifierLabel.className = 'form-label'; quantifierLabel.textContent = 'Record matching';
+            const quantifier = document.createElement('select'); quantifier.className = 'form-select';
+            [['ANY','At least one record (ANY)'],['ALL','Every record (ALL)'],['NONE','No records (NONE)']].forEach(([value,label]) => { const option = new Option(label,value); option.selected = (node.quantifier || 'ANY') === value; quantifier.add(option); });
+            quantifier.addEventListener('change', () => { node.quantifier = quantifier.value; syncTree(); }); quantifierCol.append(quantifierLabel,quantifier);
+            configRow.append(pathCol,quantifierCol); card.appendChild(configRow);
+            const hint = document.createElement('div'); hint.className = 'small text-muted mb-2'; hint.textContent = 'The nested conditions below are evaluated against each individual array record. AND means all predicates must match that same record.'; card.appendChild(hint);
+            card.appendChild(renderNode(node.condition, null, 0, true));
+        } else if (node.type === 'GROUP') {
             const operatorRow = document.createElement('div');
             operatorRow.className = 'row g-2 align-items-end mb-3';
             const operatorCol = document.createElement('div');
@@ -635,9 +653,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     addRootGroup.addEventListener('click', () => {
         if (countNodes(tree) + 3 > 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
-        ensureGroup();
-        tree.children.push(defaultGroup('OR'));
-        renderTree();
+        ensureGroup(); tree.children.push(defaultGroup('OR')); renderTree();
+    });
+    addRootCollection?.addEventListener('click', () => {
+        if (countNodes(tree) + 4 > 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
+        ensureGroup(); tree.children.push(defaultCollection()); renderTree();
     });
     conditionType.addEventListener('change', updateConditionInputs);
     countFieldOperator.addEventListener('change', updateConditionInputs);
@@ -662,7 +682,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const parsed = JSON.parse(advancedJsonInput.value);
             const isVisualNode = node => node && (node.type === 'CONDITION'
-                || (node.type === 'GROUP' && Array.isArray(node.children) && node.children.every(isVisualNode)));
+                || (node.type === 'GROUP' && Array.isArray(node.children) && node.children.every(isVisualNode))
+                || (node.type === 'COLLECTION' && node.condition && isVisualNode(node.condition)));
             if (!isVisualNode(parsed)) throw new Error('This condition uses advanced node types that the visual builder cannot edit.');
             tree = parsed;
             advancedMode = false;
