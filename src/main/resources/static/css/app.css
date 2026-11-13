@@ -5966,3 +5966,17 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 }
 .route-email-feedback { display: none; flex-basis: 100%; }
 .route-email-multiselect.is-invalid .route-email-feedback { display: block; }
+
+
+/* Alert History status cards reuse dashboard widget presentation. */
+.alert-history-status-cards > [class*="col"] > a {
+    display: block;
+    height: 100%;
+}
+.alert-history-status-cards .dashboard-widget {
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.alert-history-status-cards > [class*="col"] > a:hover .dashboard-widget {
+    border-color: color-mix(in srgb, var(--theme-primary) 45%, var(--border-color));
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .07);
+}
