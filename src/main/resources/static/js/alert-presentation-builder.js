@@ -82,11 +82,20 @@
             if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Presentation configuration must be a JSON object.');
             if (parsed.version != null && String(parsed.version) !== '1') throw new Error('Only presentation version 1 is supported.');
             if (parsed.sections != null && !Array.isArray(parsed.sections)) throw new Error('Sections must be an array.');
-            const sections = (parsed.sections || []).map(section => ({
-                ...section,
-                id: section.id || newId(),
-                type: String(section.type || '').toUpperCase()
-            }));
+            const sections = (parsed.sections || []).map(section => {
+                if (!section || typeof section !== 'object' || Array.isArray(section)) {
+                    throw new Error('Each presentation section must be an object.');
+                }
+                const normalized = {
+                    ...section,
+                    id: section.id || newId(),
+                    type: String(section.type || '').toUpperCase()
+                };
+                if (!['TEXT', 'KEY_VALUE', 'TABLE', 'LIST', 'JSON'].includes(normalized.type)) {
+                    throw new Error('Unsupported section type: ' + normalized.type);
+                }
+                return normalized;
+            });
             if (sections.length > 20) throw new Error('A presentation can contain at most 20 sections.');
             return { version: 1, titleTemplate: parsed.titleTemplate || '', messageTemplate: parsed.messageTemplate || '', sections };
         };
@@ -110,6 +119,9 @@
             });
         };
         const sync = () => {
+            config.sections.forEach(section => {
+                if (section.type === 'LIST' && !section.valuePath) delete section.valuePath;
+            });
             jsonInput.value = JSON.stringify(config, null, 2);
             jsonEdited = false;
         };
