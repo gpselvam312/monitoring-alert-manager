@@ -14,6 +14,10 @@ public interface AlertRetentionPolicyRepository extends JpaRepository<AlertReten
     List<AlertRetentionPolicy> findAllByOrderByDataTypeAsc();
 
     @EntityGraph(attributePaths = {"application", "environment"})
+    @Query("select p from AlertRetentionPolicy p where p.id = :id")
+    java.util.Optional<AlertRetentionPolicy> findByIdWithScope(@Param("id") Long id);
+
+    @EntityGraph(attributePaths = {"application", "environment"})
     @Query("select p from AlertRetentionPolicy p")
     List<AlertRetentionPolicy> findAllWithScope();
 
