@@ -659,6 +659,7 @@
             container.append(panel);
         };
         const updatePreview = () => {
+            sample.severity = currentPreviewSeverity();
             const blocks = renderedBlocks();
             const header = addTitleAndMessage();
             preview.replaceChildren();
