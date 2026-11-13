@@ -7,8 +7,9 @@
 <div class="app-card"><div class="app-card-body p-0">
 <div th:if="${alerts.totalElements == 0}" class="empty-state"><div class="empty-state-icon"><i class="bi bi-check2-circle"></i></div><h6>No active alerts</h6><p>No active alert conditions were found in the applications available to you.</p></div>
 <div th:if="${alerts.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0">
-<thead><tr><th>Severity</th><th>Alert</th><th>Monitoring Job</th><th>Application / Environment</th><th>Occurrences</th><th>Last Occurred</th><th></th></tr></thead>
+<thead><tr><th>Alert ID</th><th>Severity</th><th>Alert</th><th>Monitoring Job</th><th>Application / Environment</th><th>Occurrences</th><th>Last Occurred</th><th></th></tr></thead>
 <tbody><tr th:each="alert : ${alerts.content}">
+<td><a class="fw-semibold text-decoration-none" th:href="@{/alerts/{id}(id=${alert.id})}" th:text="${alert.alertKey}">ALT-2026-00000001</a></td>
 <td><span class="badge text-bg-danger" th:if="${alert.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${alert.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${alert.severity.name() == 'INFO'}">Info</span><span class="badge text-bg-success" th:if="${alert.severity.name() == 'SUCCESS'}">Success</span></td>
 <td><a class="fw-semibold text-decoration-none" th:href="@{/alerts/{id}(id=${alert.id})}" th:text="${alert.title}">Alert title</a><div class="small text-muted" th:text="${alert.summary}">Summary</div></td>
 <td th:text="${alert.monitoringJob.name}">Job</td><td><div th:text="${alert.monitoringJob.application.name}">Application</div><div class="small text-muted" th:text="${alert.monitoringJob.environment != null ? alert.monitoringJob.environment.name : '—'}">Environment</div></td>
