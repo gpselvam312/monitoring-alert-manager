@@ -5912,3 +5912,48 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
         font-size: .72rem;
     }
 }
+
+
+/* Email CC chip editor mirrors the searchable recipient multi-select. */
+.route-email-multiselect {
+    display: flex;
+    min-height: 2.65rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .35rem;
+    padding: .35rem .55rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--bs-border-radius);
+    background: var(--input-bg);
+    cursor: text;
+}
+.route-email-multiselect:focus-within {
+    border-color: var(--theme-primary);
+    box-shadow: 0 0 0 .15rem color-mix(in srgb, var(--theme-primary) 20%, transparent);
+}
+.route-email-multiselect.is-invalid {
+    border-color: var(--danger, #dc3545);
+}
+.route-email-chips {
+    display: contents;
+}
+.route-email-editor {
+    min-width: 13rem;
+    flex: 1 1 13rem;
+    padding: .2rem .1rem;
+    border: 0;
+    outline: 0;
+    color: var(--text-primary);
+    background: transparent;
+    font: inherit;
+    font-size: .875rem;
+}
+.route-email-editor::placeholder { color: var(--text-secondary); }
+.route-email-multiselect .route-multiselect-chip { max-width: 100%; }
+.route-email-multiselect .route-multiselect-remove {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.route-email-feedback { display: none; flex-basis: 100%; }
+.route-email-multiselect.is-invalid .route-email-feedback { display: block; }
