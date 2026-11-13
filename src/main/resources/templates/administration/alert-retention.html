@@ -13,11 +13,11 @@
 </tbody></table></div>
 <div class="p-3 border-top"><h3 class="h6 mb-3">Create Retention Policy</h3><form th:action="@{/administration/alert-retention/policies}" method="post"><div class="row g-3">
 <div class="col-12 col-lg-4"><label class="form-label">Data Type</label><select class="form-select" name="dataType" required><option value="">Select data type</option><option th:each="type : ${dataTypes}" th:value="${type.name()}" th:text="${type.name()}"></option></select></div>
-<div class="col-12 col-lg-3"><label class="form-label">Application</label><select class="form-select" name="applicationId"><option value="">All applications</option><option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}"></option></select></div>
-<div class="col-12 col-lg-3"><label class="form-label">Environment</label><select class="form-select" name="environmentId"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:text="${env.application.name + ' / ' + env.name}"></option></select></div>
-<div class="col-12 col-lg-2"><label class="form-label">Alert Type</label><select class="form-select" name="alertType"><option th:each="type : ${alertTypes}" th:value="${type}" th:text="${type == 'ALL' ? 'All alert types' : type}"></option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Application</label><select class="form-select" name="applicationId"><option value="">All applications</option><option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}"></option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Environment</label><select class="form-select" name="environmentId"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:text="${env.application.name + ' / ' + env.name}"></option></select></div>
+<div class="col-12 col-lg-3"><label class="form-label">Alert Type</label><select class="form-select" name="alertType"><option th:each="type : ${alertTypes}" th:value="${type}" th:text="${type == 'ALL' ? 'All alert types' : type}"></option></select></div>
 <div class="col-12 col-lg-2"><label class="form-label">Retention (days)</label><input class="form-control" type="number" name="retentionDays" min="1" max="36500" placeholder="e.g. 90" required></div>
-<div class="col-12 col-lg-4"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div>
+<div class="col-12 col-lg-5"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div>
 <div class="col-12 col-lg-2 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="enabled" value="true" id="policyEnabled"><label class="form-check-label" for="policyEnabled">Enable policy</label></div></div>
 <div class="col-12"><button type="submit" class="btn btn-primary">Save Policy</button></div>
 </div></form></div>
