@@ -115,6 +115,8 @@ class AlertEvaluationServiceTest {
                  "consecutiveMatches":2,"correlationFieldPath":"data.host"}
                 """);
         AlertRuleEvaluation previous = mock(AlertRuleEvaluation.class);
+        MonitoringExecution previousExecution = mock(MonitoringExecution.class);
+        when(previous.getExecution()).thenReturn(previousExecution);
         when(previous.getDetails()).thenReturn("""
                 {"phase":"CONDITION","conditionMatched":true,"consecutiveMatches":1,
                  "correlationKey":"host-a"}
