@@ -94,6 +94,19 @@ class AlertRuleManagementServiceTest {
     }
 
     @Test
+    void savesSuccessSeverityForHealthyMonitoringRules() {
+        stubJobLookup();
+        when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        AlertRuleForm form = validForm();
+        form.setSeverity("SUCCESS");
+
+        AlertRule saved = service.save(form, 5L);
+
+        assertEquals(AlertRule.Severity.SUCCESS, saved.getSeverity());
+        assertEquals("SUCCESS", service.toForm(saved).getSeverity());
+    }
+
+    @Test
     void rejectsGroupsWithFewerThanTwoChildren() {
         stubJobLookup();
         AlertRuleForm form = validForm();
