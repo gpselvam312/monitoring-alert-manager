@@ -41,31 +41,9 @@ public class AlertPresentationService {
         this.resultRepository = resultRepository;
     }
 
+    /** Legacy title/message templates are no longer used; the rule subject is the single source of truth. */
     public Presentation buildTemplates(AlertHistory history, Map<String, Object> notificationPayload) {
-        Alert alert = history == null ? null : history.getAlert();
-        AlertRule rule = alert == null ? null : alert.getAlertRule();
-        if (rule == null || rule.getPresentationConfig() == null || rule.getPresentationConfig().isBlank()) return null;
-        try {
-            Map<String, Object> config = objectMapper.readValue(rule.getPresentationConfig(), Map.class);
-            if (config == null || config.isEmpty() || !supportedVersion(config)) return null;
-            String titleTemplate = text(config.get("titleTemplate"));
-            String messageTemplate = text(config.get("messageTemplate"));
-            if (titleTemplate.isBlank() && messageTemplate.isBlank()) return null;
-            Map<String, Object> values = templateValues(alert, history, notificationPayload);
-            JsonDocument document = hasJsonPathPlaceholder(titleTemplate) || hasJsonPathPlaceholder(messageTemplate)
-                    ? responseDocument(history) : JsonDocument.from(Map.of());
-            String title = titleTemplate.isBlank()
-                    ? text(notificationPayload.get("title")) : renderTemplate(titleTemplate, values, document);
-            String message = messageTemplate.isBlank()
-                    ? text(notificationPayload.get("body")) : renderTemplate(messageTemplate, values, document);
-            if (title.isBlank()) title = text(notificationPayload.get("title"));
-            if (message.isBlank()) message = text(notificationPayload.get("body"));
-            return new Presentation(title, message, List.of());
-        } catch (Exception exception) {
-            log.warn("Alert title/message presentation could not be rendered for alertId={}; using legacy templates",
-                    alert == null ? null : alert.getId(), exception);
-            return null;
-        }
+        return null;
     }
 
     private boolean hasJsonPathPlaceholder(String template) {
@@ -87,12 +65,9 @@ public class AlertPresentationService {
             if (config == null || config.isEmpty() || !supportedVersion(config)) return null;
             Object rawSections = config.get("sections");
             List<?> sections = rawSections instanceof List<?> list ? list : List.of();
-            String titleTemplate = text(config.get("titleTemplate"));
-            String messageTemplate = text(config.get("messageTemplate"));
-            if (sections.isEmpty() && titleTemplate.isBlank() && messageTemplate.isBlank()) return null;
-
+            if (sections.isEmpty()) return null;
             Map<String, Object> templateValues = templateValues(alert, history, notificationPayload);
-            JsonDocument document = sections.isEmpty() ? JsonDocument.from(Map.of()) : responseDocument(history);
+            JsonDocument document = responseDocument(history);
             List<Map<String, Object>> renderedSections = new ArrayList<>();
             int renderedSize = 0;
             for (Object rawSection : sections) {
@@ -112,12 +87,8 @@ public class AlertPresentationService {
                             section.get("id"), sectionException);
                 }
             }
-            String title = titleTemplate.isBlank()
-                    ? text(notificationPayload.get("title")) : renderTemplate(titleTemplate, templateValues, document);
-            String message = messageTemplate.isBlank()
-                    ? text(notificationPayload.get("body")) : renderTemplate(messageTemplate, templateValues, document);
-            if (title.isBlank()) title = text(notificationPayload.get("title"));
-            if (message.isBlank()) message = text(notificationPayload.get("body"));
+            String title = text(notificationPayload.get("title"));
+            String message = renderedSections.isEmpty() ? text(notificationPayload.get("body")) : "";
             return new Presentation(title, message, renderedSections);
         } catch (Exception exception) {
             log.warn("Alert presentation configuration could not be rendered for alertId={}; using legacy message content",
