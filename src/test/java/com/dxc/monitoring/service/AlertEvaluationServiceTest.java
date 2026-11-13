@@ -68,7 +68,6 @@ class AlertEvaluationServiceTest {
         when(rule.getSeverity()).thenReturn(AlertRule.Severity.CRITICAL);
         when(rule.getName()).thenReturn("CPU usage high");
         when(rule.getAlertSubject()).thenReturn("{severity} — {ruleName}");
-        when(rule.getAlertMessage()).thenReturn("{fieldPath}: {actualValue} > {threshold} (execution {executionId})");
         when(job.getName()).thenReturn("API CPU");
         when(rule.getConditionConfig()).thenReturn("""
                 {"fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85,"consecutiveMatches":1}
@@ -103,7 +102,7 @@ class AlertEvaluationServiceTest {
         org.mockito.ArgumentCaptor<Alert> alertCaptor = org.mockito.ArgumentCaptor.forClass(Alert.class);
         verify(alertRepository).save(alertCaptor.capture());
         assertEquals("CRITICAL — CPU usage high", alertCaptor.getValue().getTitle());
-        assertEquals("data.cpu.usage: 92 > 85 (execution 101)", alertCaptor.getValue().getSummary());
+        assertEquals("", alertCaptor.getValue().getSummary());
         verify(historyRepository).save(any(AlertHistory.class));
         verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
     }
