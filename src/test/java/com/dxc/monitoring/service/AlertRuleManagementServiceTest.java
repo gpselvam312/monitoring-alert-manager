@@ -295,10 +295,10 @@ class AlertRuleManagementServiceTest {
 
     @Test
     void supportsEveryConfiguredSeverityAndExecutionSourcePolicy() {
+        stubJobLookup();
+        when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
         for (AlertRule.Severity severity : AlertRule.Severity.values()) {
             for (AlertRule.ExecutionSourcePolicy source : AlertRule.ExecutionSourcePolicy.values()) {
-                stubJobLookup();
-                when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
                 AlertRuleForm form = validForm();
                 form.setSeverity(severity.name());
                 form.setExecutionSourcePolicy(source.name());
