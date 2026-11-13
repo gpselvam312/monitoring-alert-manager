@@ -132,7 +132,10 @@ public class AlertHistoryController {
         SearchTerm term = searchTerm(normalizeSearch(search));
         Page<Alert> page = alertRepository.searchHistory(applicationIds, applicationId, environmentId,
                 term.exactAlertId(), parseStatus(status), parseSeverity(severity), term.repositorySearch(), pageable);
-        List<HistoryRow> rows = page.getContent().stream().map(this::toHistoryRow).toList();
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(
+                systemSettingService.getDateTimeFormat(), Locale.ENGLISH);
+        List<HistoryRow> rows = page.getContent().stream()
+                .map(alert -> toHistoryRow(alert, dateTimeFormatter)).toList();
         return new HistoryBatch(rows, page.getTotalElements(), safeBatch, page.hasNext(), fetchSize);
     }
 
@@ -151,17 +154,17 @@ public class AlertHistoryController {
         }
     }
 
-    private HistoryRow toHistoryRow(Alert alert) {
+    private HistoryRow toHistoryRow(Alert alert, DateTimeFormatter dateTimeFormatter) {
         return new HistoryRow(alert.getId(), alert.getAlertKey(), alert.getTitle(),
                 alert.getMonitoringJob().getName(), alert.getSeverity().name(),
                 alert.getMonitoringJob().getApplication().getName(),
                 alert.getMonitoringJob().getEnvironment() == null ? "—" : alert.getMonitoringJob().getEnvironment().getName(),
-                alert.getStatus().name(), alert.getOccurrenceCount(), format(alert.getCreatedAt()),
-                format(alert.getLastOccurredAt()), format(alert.getResolvedAt()));
+                alert.getStatus().name(), alert.getOccurrenceCount(), format(alert.getCreatedAt(), dateTimeFormatter),
+                format(alert.getLastOccurredAt(), dateTimeFormatter), format(alert.getResolvedAt(), dateTimeFormatter));
     }
 
-    private String format(java.time.OffsetDateTime value) {
-        return value == null ? "—" : DateTimeFormatter.ofPattern(systemSettingService.getDateTimeFormat(), Locale.ENGLISH).format(value);
+    private String format(java.time.OffsetDateTime value, DateTimeFormatter dateTimeFormatter) {
+        return value == null ? "—" : dateTimeFormatter.format(value);
     }
 
     private Map<String, String> allowedSorts() {
