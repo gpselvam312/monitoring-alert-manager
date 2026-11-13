@@ -5378,6 +5378,35 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 }
 
 
+/* Alert rule navigation tabs — use the active application theme in every theme mode. */
+#alertRuleTabs {
+    gap: .2rem;
+    border-bottom-color: var(--border-color);
+}
+#alertRuleTabs .nav-link {
+    color: var(--text-secondary) !important;
+    background: color-mix(in srgb, var(--text-primary) 3%, var(--card-bg)) !important;
+    border-color: transparent transparent var(--border-color) !important;
+    white-space: nowrap;
+}
+#alertRuleTabs .nav-link:hover,
+#alertRuleTabs .nav-link:focus-visible {
+    color: var(--theme-primary) !important;
+    border-color: var(--border-color) var(--border-color) var(--border-color) !important;
+}
+#alertRuleTabs .nav-link.active,
+#alertRuleTabs .nav-item.show .nav-link {
+    color: var(--theme-primary) !important;
+    background: var(--card-bg) !important;
+    border-color: var(--border-color) var(--border-color) var(--card-bg) !important;
+    font-weight: 650;
+}
+#alertRuleTabs .nav-link:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
 /* Alert rule workspace and compact message presentation designer */
 .alert-rule-workspace .nav-tabs {
     flex-wrap: wrap;
