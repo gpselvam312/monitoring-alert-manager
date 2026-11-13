@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,11 +98,13 @@ public class NotificationRoutingService {
                         route.getId(), history.getId());
                 continue;
             }
-            log.debug("Processing notification route id={} channelId={} channelType={} recipientId={} groupId={}",
+            log.debug("Processing notification route id={} channelId={} channelType={} recipientCount={} groupCount={}",
                     route.getId(), channel.getId(), channel.getChannelType(),
-                    route.getRecipient() == null ? null : route.getRecipient().getId(),
-                    route.getGroup() == null ? null : route.getGroup().getId());
-            RouteTarget target = new RouteTarget(route.getId(), channel, route.getRecipient(), route.getGroup(),
+                    route.getRecipients().size() + (route.getRecipient() == null ? 0 : 1),
+                    route.getGroups().size() + (route.getGroup() == null ? 0 : 1));
+            RouteTarget target = new RouteTarget(route.getId(), channel,
+                    List.copyOf(route.getRecipients()), List.copyOf(route.getGroups()),
+                    route.getRecipient(), route.getGroup(),
                     usingCreatedRouteForRecurrence ? eventType : route.getEventType(),
                     route.getMinimumIntervalSeconds(), route.getCcRecipients());
             if (channel.getChannelType() == NotificationChannel.ChannelType.TEAMS) {
@@ -115,16 +118,6 @@ public class NotificationRoutingService {
     }
 
     private void queueTeamsDelivery(AlertHistory history, RouteTarget route, String messagePayload) {
-        if (route.recipient() != null && !route.recipient().isEnabled()) return;
-        if (route.group() != null) {
-            if (!route.group().isEnabled()) return;
-            boolean hasEnabledMembers = !groupMemberRepository
-                    .findByGroup_IdAndRecipient_EnabledTrue(route.group().getId()).isEmpty();
-            if (!hasEnabledMembers) {
-                queueSkipped(history, route, null, "Notification group has no enabled members.", messagePayload);
-                return;
-            }
-        }
         String key = history.getId() + ":" + route.channel().getId() + ":TEAMS";
         if (deliveryRepository.existsByIdempotencyKey(key)) return;
         OptionalRecent recent = recentDelivery(history.getAlert(), route.channel(), null);
@@ -158,12 +151,22 @@ public class NotificationRoutingService {
     }
 
     private List<NotificationRecipient> recipientsFor(RouteTarget route) {
-        if (route.recipient() != null) {
-            return route.recipient().isEnabled() ? List.of(route.recipient()) : List.of();
+        Map<Long, NotificationRecipient> recipients = new LinkedHashMap<>();
+        for (NotificationRecipient recipient : route.recipients()) {
+            if (recipient != null && recipient.isEnabled()) recipients.put(recipient.getId(), recipient);
         }
-        if (route.group() == null || !route.group().isEnabled()) return List.of();
-        return groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(route.group().getId())
-                .stream().map(NotificationGroupMember::getRecipient).filter(NotificationRecipient::isEnabled).toList();
+        // Legacy singular targets are retained as a fallback for routes created before V58.
+        if (route.legacyRecipient() != null && route.legacyRecipient().isEnabled()) {
+            recipients.put(route.legacyRecipient().getId(), route.legacyRecipient());
+        }
+        java.util.stream.Stream.concat(route.groups().stream(),
+                route.legacyGroup() == null ? java.util.stream.Stream.empty() : java.util.stream.Stream.of(route.legacyGroup()))
+                .filter(group -> group != null && group.isEnabled())
+                .forEach(group -> groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(group.getId())
+                        .stream().map(NotificationGroupMember::getRecipient)
+                        .filter(NotificationRecipient::isEnabled)
+                        .forEach(recipient -> recipients.putIfAbsent(recipient.getId(), recipient)));
+        return List.copyOf(recipients.values());
     }
 
     private void queueSkipped(AlertHistory history, RouteTarget route,
@@ -345,7 +348,9 @@ public class NotificationRoutingService {
                 && delivery.getCreatedAt().isAfter(OffsetDateTime.now().minusSeconds(intervalSeconds));
     }
 
-    private record RouteTarget(Long id, NotificationChannel channel, NotificationRecipient recipient,
-            NotificationGroup group, NotificationRoute.EventType eventType, Integer minimumIntervalSeconds, String ccRecipients) {}
+    private record RouteTarget(Long id, NotificationChannel channel,
+            List<NotificationRecipient> recipients, List<NotificationGroup> groups,
+            NotificationRecipient legacyRecipient, NotificationGroup legacyGroup,
+            NotificationRoute.EventType eventType, Integer minimumIntervalSeconds, String ccRecipients) {}
     private record OptionalRecent(NotificationDelivery delivery) {}
 }
