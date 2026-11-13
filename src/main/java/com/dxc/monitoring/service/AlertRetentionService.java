@@ -14,6 +14,7 @@ import com.dxc.monitoring.repository.AlertCleanupRunRepository;
 import com.dxc.monitoring.repository.AlertRetentionPolicyRepository;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 @Service
 public class AlertRetentionService {
@@ -23,17 +24,19 @@ public class AlertRetentionService {
     private final AlertCleanupAuditService auditService;
     private final ApplicationRepository applicationRepository;
     private final EnvironmentRepository environmentRepository;
+    private final DashboardAccessService accessService;
 
     public AlertRetentionService(AlertRetentionPolicyRepository policyRepository,
             AlertCleanupRunRepository runRepository, AlertRetentionCleanupExecutor cleanupExecutor,
             AlertCleanupAuditService auditService, ApplicationRepository applicationRepository,
-            EnvironmentRepository environmentRepository) {
+            EnvironmentRepository environmentRepository, DashboardAccessService accessService) {
         this.policyRepository = policyRepository;
         this.runRepository = runRepository;
         this.cleanupExecutor = cleanupExecutor;
         this.auditService = auditService;
         this.applicationRepository = applicationRepository;
         this.environmentRepository = environmentRepository;
+        this.accessService = accessService;
     }
 
     @Transactional
@@ -62,6 +65,8 @@ public class AlertRetentionService {
         if (environmentId != null && applicationId == null) {
             throw new IllegalArgumentException("Select an application before selecting an environment.");
         }
+        if (applicationId != null) accessService.assertCanAccessApplication(applicationId, "DATA_EXPUNGE");
+        if (environmentId != null) accessService.assertCanAccessEnvironment(applicationId, environmentId, "DATA_EXPUNGE");
         Application application = applicationId == null ? null : applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new IllegalArgumentException("Selected application was not found."));
         Environment environment = environmentId == null ? null : environmentRepository.findById(environmentId)
