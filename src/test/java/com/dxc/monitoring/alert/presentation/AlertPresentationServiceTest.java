@@ -41,8 +41,8 @@ class AlertPresentationServiceTest {
         rule.setPresentationConfig("""
                 {
                   "version":1,
-                  "titleTemplate":"{severity} - {ruleName}",
-                  "messageTemplate":"{jobName} observed {actualValue} on {data.cluster.version}",
+                  "titleTemplate":"{{severity}} - {{ruleName}}",
+                  "messageTemplate":"{{jobName}} observed {{actualValue}} on {{data.cluster.version}} / {{cluster_name}}",
                   "sections":[
                     {"id":"cluster","type":"KEY_VALUE","title":"Cluster details","fields":[
                       {"label":"Cluster","path":"data.cluster.name"},
@@ -93,7 +93,7 @@ class AlertPresentationServiceTest {
                 "ruleName", "Kafka Health", "observedValue", "55", "fieldPath", "data.lag"));
 
         assertEquals("CRITICAL - Kafka Health", presentation.title());
-        assertEquals("Batch Processing observed 55 on 3.8", presentation.message());
+        assertEquals("Batch Processing observed 55 on 3.8 / kafka-sit", presentation.message());
         assertEquals(List.of("details", "table", "list", "json"),
                 presentation.sections().stream().map(section -> section.get("type")).toList());
         assertEquals(1, ((List<?>) presentation.sections().get(1).get("rows")).size());
