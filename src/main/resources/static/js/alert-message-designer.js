@@ -516,15 +516,24 @@
             }
             if (section.type === 'LIST') {
                 const source = resolvePath(section.sourcePath, sample);
-                const items = Array.isArray(source) ? source : source && typeof source === 'object' ? [source] : [];
+                let items = Array.isArray(source) ? source : source && typeof source === 'object' ? [source] : [];
+                const configuredFields = Array.isArray(section.fields) ? section.fields.filter(field => field && field.key) : [];
+                // The preview uses a representative sample, not the live execution payload.
+                // If the selected path is not present in that sample, synthesize one row
+                // from the configured fields so the designer still shows the chosen layout.
+                const usingRepresentativeRow = items.length === 0 && configuredFields.length > 0;
+                if (usingRepresentativeRow) items = [{}];
                 return {
                     type: 'list', title,
+                    emptyText: section.emptyText || 'No items available',
                     items: items.slice(0, Number(section.maxItems || 10)).map(item => {
-                        if (Array.isArray(section.fields) && section.fields.length) {
-                            return section.fields.map(field => {
+                        if (configuredFields.length) {
+                            return configuredFields.map(field => {
                                 const value = resolvePath(field.key, item);
-                                return value === undefined || value === null ? '' : (field.label || field.key) + ': ' + display(value);
-                            }).filter(Boolean).join(' | ');
+                                const renderedValue = value === undefined || value === null
+                                    ? (usingRepresentativeRow ? 'Example value' : '—') : display(value);
+                                return (field.label || field.key) + ': ' + renderedValue;
+                            }).join(' | ');
                         }
                         return display(section.valuePath ? resolvePath(section.valuePath, item) : item);
                     }).filter(value => value !== '')
@@ -554,7 +563,9 @@
                     }
                 }
                 if (block.type === 'list') {
-                    if (channel === 'whatsapp') {
+                    if (!block.items.length) {
+                        container.append(element('div', 'small text-muted mb-2', block.emptyText || 'No items available'));
+                    } else if (channel === 'whatsapp') {
                         block.items.forEach((item, index) => container.append(element('div', 'font-monospace small', (index + 1) + '. ' + item)));
                     } else {
                         const list = element('ul', 'mb-2 ps-3');
