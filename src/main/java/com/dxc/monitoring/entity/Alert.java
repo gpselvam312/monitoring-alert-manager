@@ -94,6 +94,10 @@ public class Alert {
     public enum AlertStatus { ACTIVE, RESOLVED }
 
     public Long getId() { return id; }
+    public String getAlertKey() {
+        if (id == null || createdAt == null) return null;
+        return "ALT-%d-%08d".formatted(createdAt.getYear(), id);
+    }
     public void setId(Long id) { this.id = id; }
     public AlertRule getAlertRule() { return alertRule; }
     public void setAlertRule(AlertRule alertRule) { this.alertRule = alertRule; }
