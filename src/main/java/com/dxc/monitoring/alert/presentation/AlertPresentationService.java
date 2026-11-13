@@ -41,21 +41,6 @@ public class AlertPresentationService {
         this.resultRepository = resultRepository;
     }
 
-    /** Legacy title/message templates are no longer used; the rule subject is the single source of truth. */
-    public Presentation buildTemplates(AlertHistory history, Map<String, Object> notificationPayload) {
-        return null;
-    }
-
-    private boolean hasJsonPathPlaceholder(String template) {
-        Matcher matcher = PLACEHOLDER.matcher(template);
-        while (matcher.find()) {
-            String token = matcher.group(1);
-            if (token.equals("data") || token.equals("response")
-                    || token.startsWith("data.") || token.startsWith("response.")) return true;
-        }
-        return false;
-    }
-
     public Presentation build(AlertHistory history, Map<String, Object> notificationPayload) {
         Alert alert = history == null ? null : history.getAlert();
         AlertRule rule = alert == null ? null : alert.getAlertRule();
