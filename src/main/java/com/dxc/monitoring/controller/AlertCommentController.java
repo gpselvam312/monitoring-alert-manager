@@ -35,7 +35,7 @@ public class AlertCommentController {
     @PostMapping("/{id}/comments")
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
     public String addComment(@PathVariable Long id, @RequestParam String comment,
-            Authentication authentication, RedirectAttributes redirect) {
+            @RequestParam(defaultValue = "active") String from, Authentication authentication, RedirectAttributes redirect) {
         List<Long> allowedApplicationIds = accessService.getApplicationsWithPermission("ALERT_VIEW")
                 .stream().map(Application::getId).toList();
         Alert alert = allowedApplicationIds.isEmpty() ? null
@@ -46,7 +46,7 @@ public class AlertCommentController {
         }
         if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails user)) {
             redirect.addFlashAttribute("errorMessage", "Your signed-in user could not be identified.");
-            return "redirect:/alerts/" + id;
+            return "redirect:/alerts/" + id + "?from=" + safeSource(from);
         }
         try {
             commentService.addComment(id, user.getUserId(), comment);
@@ -54,6 +54,6 @@ public class AlertCommentController {
         } catch (IllegalArgumentException exception) {
             redirect.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/alerts/" + id;
+        return "redirect:/alerts/" + id + "?from=" + safeSource(from);
     }
 }
