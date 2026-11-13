@@ -80,7 +80,7 @@ public class AlertHistoryController {
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId,
                         Alert.AlertStatus.RESOLVED, severityFilter, safeSearch);
 
-        List<Environment> environments = applicationId == null ? List.of()
+        List<Environment> environments = applicationId == null || invalidApplication ? List.of()
                 : accessService.getEnvironmentsForApplication(applicationId);
         model.addAttribute("alerts", alerts);
         model.addAttribute("pageSize", safeSize);
