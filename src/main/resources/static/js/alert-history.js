@@ -155,11 +155,18 @@
         state.searchTimer = setTimeout(navigateWithFilters, 450);
     });
     const clearSearch = byId('clear-' + config.searchId);
-    if (clearSearch) clearSearch.addEventListener('click', () => { searchInput.value = ''; clearSearch.classList.add('d-none'); navigateWithFilters(); });
+    if (clearSearch) clearSearch.addEventListener('click', () => { clearTimeout(state.searchTimer); searchInput.value = ''; clearSearch.classList.add('d-none'); navigateWithFilters(); });
     if (pageSizeSelect) pageSizeSelect.addEventListener('change', resetAndLoad);
-    Object.values(config.filters || {}).forEach(id => {
+    Object.entries(config.filters || {}).forEach(([name, id]) => {
+        if (name === 'applicationId') return;
         const field = byId(id);
         if (field) field.addEventListener('change', navigateWithFilters);
+    });
+    const applicationFilter = byId(config.filters.applicationId);
+    if (applicationFilter) applicationFilter.addEventListener('change', () => {
+        const environmentFilter = byId(config.filters.environmentId);
+        if (environmentFilter) environmentFilter.value = '';
+        navigateWithFilters();
     });
     const clearFilters = byId('alertHistoryClearFilters');
     if (clearFilters) clearFilters.addEventListener('click', () => {
