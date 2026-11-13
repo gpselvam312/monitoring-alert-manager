@@ -133,6 +133,18 @@
     }
 
     function resetAndLoad() { state.batch = 0; state.localPage = 0; loadBatch(0, 0); }
+    function navigateWithFilters() {
+        const query = new URLSearchParams();
+        const currentSearch = searchInput ? searchInput.value.trim() : '';
+        if (currentSearch) query.set('search', currentSearch);
+        Object.entries(config.filters || {}).forEach(([name, id]) => {
+            const field = byId(id);
+            if (field && field.value) query.set(name, field.value);
+        });
+        query.set('sort', config.sort || 'createdAt');
+        query.set('direction', config.direction || 'desc');
+        window.location.assign(window.location.pathname + (query.toString() ? '?' + query.toString() : ''));
+    }
     Object.entries({ alertHistoryFirst: 'first', alertHistoryPrevious: 'previous', alertHistoryNext: 'next', alertHistoryLast: 'last' })
         .forEach(([id, action]) => byId(id).addEventListener('click', () => changePage(action)));
 
@@ -140,28 +152,14 @@
         const clear = byId('clear-' + config.searchId);
         if (clear) clear.classList.toggle('d-none', searchInput.value.trim() === '');
         clearTimeout(state.searchTimer);
-        state.searchTimer = setTimeout(resetAndLoad, 450);
+        state.searchTimer = setTimeout(navigateWithFilters, 450);
     });
     const clearSearch = byId('clear-' + config.searchId);
     if (clearSearch) clearSearch.addEventListener('click', () => { searchInput.value = ''; clearSearch.classList.add('d-none'); resetAndLoad(); });
     if (pageSizeSelect) pageSizeSelect.addEventListener('change', resetAndLoad);
-    Object.entries(config.filters || {}).forEach(([name, id]) => {
-        if (name === 'applicationId') return;
+    Object.values(config.filters || {}).forEach(id => {
         const field = byId(id);
-        if (field) field.addEventListener('change', resetAndLoad);
-    });
-    const applicationFilter = byId(config.filters.applicationId);
-    if (applicationFilter) applicationFilter.addEventListener('change', () => {
-        const query = new URLSearchParams();
-        const currentSearch = searchInput ? searchInput.value.trim() : '';
-        if (currentSearch) query.set('search', currentSearch);
-        Object.entries(config.filters || {}).forEach(([name, id]) => {
-            const field = byId(id);
-            if (field && field.value && name !== 'environmentId') query.set(name, field.value);
-        });
-        query.set('sort', config.sort || 'createdAt');
-        query.set('direction', config.direction || 'desc');
-        window.location.assign(window.location.pathname + '?' + query.toString());
+        if (field) field.addEventListener('change', navigateWithFilters);
     });
     const clearFilters = byId('alertHistoryClearFilters');
     if (clearFilters) clearFilters.addEventListener('click', () => {
@@ -169,7 +167,7 @@
         Object.values(config.filters || {}).forEach(id => { const field = byId(id); if (field) field.value = ''; });
         if (pageSizeSelect) pageSizeSelect.value = '10';
         config.sort = 'createdAt'; config.direction = 'desc';
-        resetAndLoad();
+        navigateWithFilters();
     });
 
     if (searchInput && searchInput.value.trim()) {
