@@ -309,10 +309,20 @@
             status.className = 'alert alert-warning mb-3';
         }
         render();
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', event => {
             if (jsonEdited) {
-                try { config = normalize(JSON.parse(jsonInput.value || '{}')); }
-                catch (_) { /* Server validation returns the authoritative error. */ }
+                try {
+                    config = normalize(JSON.parse(jsonInput.value || '{}'));
+                    if (titleTemplate) titleTemplate.value = config.titleTemplate;
+                    if (messageTemplate) messageTemplate.value = config.messageTemplate;
+                } catch (error) {
+                    event.preventDefault();
+                    const status = document.getElementById('presentationBuilderMessage');
+                    status.textContent = 'Correct the advanced presentation JSON before saving: ' + error.message;
+                    status.className = 'alert alert-danger mb-3';
+                    status.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
             }
             sync();
         });
