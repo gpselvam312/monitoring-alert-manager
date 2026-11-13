@@ -100,34 +100,50 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
                 case "text" -> text.append("\n").append(string(section, "text", ""));
                 case "details" -> {
                     Object rawFields = section.get("fields");
-                    if (rawFields instanceof List<?> fields) {
-                        for (Object rawField : fields) {
-                            if (rawField instanceof Map<?, ?> field) text.append("\n")
-                                    .append(string(field, "label", "")).append(": ")
-                                    .append(string(field, "value", ""));
+                    if (rawFields instanceof List<?> fields && !fields.isEmpty()) {
+                        StringBuilder lines = new StringBuilder();
+                        for (Object rawField : fields.stream().limit(50).toList()) {
+                            if (rawField instanceof Map<?, ?> field) {
+                                if (!lines.isEmpty()) lines.append("\n");
+                                lines.append(string(field, "label", "")).append(": ")
+                                        .append(string(field, "value", ""));
+                            }
                         }
+                        if (!lines.isEmpty()) text.append("\n\u0060\u0060\u0060\n").append(lines).append("\n\u0060\u0060\u0060");
                     }
                 }
                 case "list" -> {
                     Object rawItems = section.get("items");
-                    if (rawItems instanceof List<?> items) {
-                        for (Object item : items.stream().limit(50).toList()) text.append("\n• ").append(String.valueOf(item));
+                    if (rawItems instanceof List<?> items && !items.isEmpty()) {
+                        StringBuilder lines = new StringBuilder();
+                        int index = 0;
+                        for (Object item : items.stream().limit(50).toList()) {
+                            if (!lines.isEmpty()) lines.append("\n");
+                            lines.append(++index).append(". ").append(String.valueOf(item));
+                        }
+                        text.append("\n\u0060\u0060\u0060\n").append(lines).append("\n\u0060\u0060\u0060");
                     }
                 }
                 case "json" -> text.append("\n").append(string(section, "value", ""));
                 case "table" -> {
                     Object rawRows = section.get("rows");
                     Object rawColumns = section.get("columns");
-                    if (rawRows instanceof List<?> rows && rawColumns instanceof List<?> columns) {
+                    if (rawRows instanceof List<?> rows && rawColumns instanceof List<?> columns && !rows.isEmpty()) {
+                        StringBuilder lines = new StringBuilder();
+                        int rowNumber = 0;
                         for (Object rawRow : rows.stream().limit(20).toList()) {
-                            text.append("\n");
-                            if (rawRow instanceof Map<?, ?> row) {
-                                for (Object rawColumn : columns) {
-                                    String key = rawColumn instanceof Map<?, ?> column ? string(column, "key", "") : String.valueOf(rawColumn);
-                                    text.append(key).append(": ").append(String.valueOf(row.get(key))).append("  ");
-                                }
+                            if (!(rawRow instanceof Map<?, ?> row)) continue;
+                            if (!lines.isEmpty()) lines.append("\n");
+                            lines.append(++rowNumber).append(". ");
+                            for (int columnIndex = 0; columnIndex < columns.size(); columnIndex++) {
+                                Object rawColumn = columns.get(columnIndex);
+                                String key = rawColumn instanceof Map<?, ?> column ? string(column, "key", "") : String.valueOf(rawColumn);
+                                String label = rawColumn instanceof Map<?, ?> column ? string(column, "label", key) : key;
+                                if (columnIndex > 0) lines.append(" | ");
+                                lines.append(label).append(": ").append(String.valueOf(row.getOrDefault(key, "")));
                             }
                         }
+                        if (!lines.isEmpty()) text.append("\n\u0060\u0060\u0060\n").append(lines).append("\n\u0060\u0060\u0060");
                     }
                 }
                 default -> { }
