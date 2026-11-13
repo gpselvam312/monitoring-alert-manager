@@ -5,7 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
     form.classList.add('alert-rule-readonly');
     form.setAttribute('aria-readonly', 'true');
 
+    // Navigation and disclosure controls remain usable in read-only mode.
+    const isNavigationButton = button => button.matches(
+        '#alertRuleTabs [data-bs-toggle="tab"], ' +
+        '#presentationPreviewTabs [data-preview-channel], ' +
+        '.accordion-button[data-bs-toggle="collapse]'
+    );
+
     const lockControl = control => {
+        if (control instanceof HTMLButtonElement && isNavigationButton(control)) return;
         control.disabled = true;
         control.setAttribute('aria-disabled', 'true');
         control.setAttribute('aria-readonly', 'true');
@@ -16,29 +24,32 @@ document.addEventListener('DOMContentLoaded', () => {
         root.querySelectorAll('input, select, textarea, button').forEach(lockControl);
     };
 
-    // Lock the complete form, including controls added later by the routing
-    // and condition editors. The only navigation actions are outside the form.
+    // Lock all editable fields and actions, while preserving tab switching
+    // and accordion expand/collapse for reviewing the saved configuration.
     lockFormContent(form);
 
     const observer = new MutationObserver(mutations => {
         mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
                 if (!(node instanceof Element)) return;
-                if (node.matches('input, select, textarea, button')) lockControl(node);
+                lockControl(node);
                 lockFormContent(node);
             });
         });
     });
     observer.observe(form, {childList: true, subtree: true});
 
-    // Guard against delegated handlers or scripted controls that might still
-    // attempt to open a lookup or mutate the read-only form.
     form.addEventListener('click', event => {
-        if (event.target.closest('button, input, select, textarea')) {
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target) return;
+        const button = target.closest('button');
+        if (button && isNavigationButton(button)) return;
+        if (target.closest('button, input, select, textarea')) {
             event.preventDefault();
             event.stopImmediatePropagation();
         }
     }, true);
+
     form.addEventListener('submit', event => {
         event.preventDefault();
         event.stopImmediatePropagation();
