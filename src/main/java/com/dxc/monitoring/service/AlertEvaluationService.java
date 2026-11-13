@@ -246,26 +246,6 @@ public class AlertEvaluationService {
         alert.setCreatedAt(now);
         alert.setUpdatedAt(now);
 
-        AlertHistory presentationHistory = new AlertHistory();
-        presentationHistory.setAlert(alert);
-        presentationHistory.setExecution(execution);
-        presentationHistory.setNewSeverity(alert.getSeverity());
-        presentationHistory.setOccurredAt(now);
-        Map<String, Object> presentationValues = new LinkedHashMap<>();
-        presentationValues.put("title", alert.getTitle());
-        presentationValues.put("body", alert.getSummary());
-        presentationValues.put("observedValue", result.value());
-        presentationValues.put("fieldPath", findConfiguredValue(condition,
-                "fieldPath", "collectionPath", "leftPath", "valuePath"));
-        presentationValues.put("threshold", findConfiguredValue(condition,
-                "threshold", "value", "countThreshold"));
-        AlertPresentationService.Presentation presentation =
-                presentationService.buildTemplates(presentationHistory, presentationValues);
-        if (presentation != null) {
-            alert.setTitle(truncate(presentation.title(), 500));
-            alert.setSummary(presentation.message());
-        }
-
         alert = alertRepository.save(alert);
         log.info("Created active alert id={} ruleId={} jobId={} severity={} executionId={}",
                 alert.getId(), rule.getId(), execution.getMonitoringJob().getId(), alert.getSeverity(), execution.getId());
