@@ -55,7 +55,7 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
 
         String title = string(payload, "title", "Monitoring alert");
         String severity = string(payload, "severity", "INFO").toUpperCase(Locale.ROOT);
-        String bodyText = ("SUCCESS".equals(severity) ? "🟢 SUCCESS · " : "")
+        String bodyText = ("SUCCESS".equals(severity) ? "🟢 " : "")
                 + title + "\n" + string(payload, "body", "") + renderContent(payload.get("content"));
         if (bodyText.length() > 4000) bodyText = bodyText.substring(0, 3980) + "\n… (truncated)";
 
