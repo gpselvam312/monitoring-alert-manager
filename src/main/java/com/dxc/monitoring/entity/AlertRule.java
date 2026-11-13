@@ -63,7 +63,7 @@ public class AlertRule {
     private Integer configVersion = 1;
 
     @Column(name = "alert_subject", nullable = false, length = 500)
-    private String alertSubject = "[{severity}] {ruleName}";
+    private String alertSubject = "{severity} — {ruleName}";
 
     @Column(name = "alert_message", nullable = false, columnDefinition = "text")
     private String alertMessage = "Job {jobName} in application {applicationName}, environment {environment}: {fieldPath} evaluated to {actualValue} (threshold: {threshold}).";
