@@ -206,6 +206,11 @@ public class NotificationConfigurationService {
             if (groupId == null || recipientId != null) throw new IllegalArgumentException("Select exactly one recipient or group.");
             NotificationGroup group = groupRepository.findById(groupId).filter(NotificationGroup::isEnabled)
                     .orElseThrow(() -> new IllegalArgumentException("Select an enabled recipient group."));
+            NotificationGroup.ChannelType expectedType = channel.getChannelType() == NotificationChannel.ChannelType.WHATSAPP
+                    ? NotificationGroup.ChannelType.WHATSAPP : NotificationGroup.ChannelType.EMAIL;
+            if (group.getChannelType() != expectedType) {
+                throw new IllegalArgumentException("The selected group is not configured for " + channel.getChannelType() + ".");
+            }
             List<NotificationGroupMember> members = groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(group.getId());
             boolean hasDestination = members.stream().map(NotificationGroupMember::getRecipient)
                     .anyMatch(recipient -> hasDestination(channel, recipient));
