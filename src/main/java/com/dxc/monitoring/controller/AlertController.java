@@ -34,6 +34,7 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertHistoryRepository;
+import com.dxc.monitoring.repository.AlertCommentRepository;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleRepository;
 import com.dxc.monitoring.repository.AlertRuleEvaluationRepository;
@@ -56,6 +57,7 @@ public class AlertController {
     private static final Logger log = LoggerFactory.getLogger(AlertController.class);
     private final AlertRepository alertRepository;
     private final AlertHistoryRepository historyRepository;
+    private final AlertCommentRepository commentRepository;
     private final AlertRuleRepository ruleRepository;
     private final AlertRuleEvaluationRepository ruleEvaluationRepository;
     private final MonitoringJobRepository jobRepository;
@@ -68,7 +70,7 @@ public class AlertController {
     private final AlertRuleNotificationRouteService notificationRouteService;
 
     public AlertController(AlertRepository alertRepository, AlertHistoryRepository historyRepository,
-            AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
+            AlertCommentRepository commentRepository, AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
             MonitoringJobRepository jobRepository,
             AlertRuleManagementService ruleManagementService, AlertRuleConfigurationService ruleConfigurationService,
             DashboardAccessService accessService,
@@ -78,6 +80,7 @@ public class AlertController {
             AlertRuleNotificationRouteService notificationRouteService) {
         this.alertRepository = alertRepository;
         this.historyRepository = historyRepository;
+        this.commentRepository = commentRepository;
         this.ruleRepository = ruleRepository;
         this.ruleEvaluationRepository = ruleEvaluationRepository;
         this.jobRepository = jobRepository;
@@ -121,6 +124,7 @@ public class AlertController {
         Page<AlertHistory> history = historyRepository.findByAlertIdOrderByOccurredAtDescIdDesc(id, historyPageable);
         model.addAttribute("alert", alert);
         model.addAttribute("history", history);
+        model.addAttribute("comments", commentRepository.findByAlertIdOrderByCreatedAtDescIdDesc(id));
         model.addAttribute("pageSize", pageable.getPageSize());
         model.addAttribute("currentPage", "active-alerts");
         return "alerts/detail";
