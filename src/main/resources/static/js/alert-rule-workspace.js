@@ -38,6 +38,10 @@
         const content = document.createElement('div');
         content.className = 'tab-content';
 
+        // Insert the workspace before moving the cards out of the form.
+        // The original first card is no longer a child of the form afterwards.
+        form.insertBefore(workspace, cards[0]);
+
         const activate = (group, pane, button) => {
             navigation.querySelectorAll('[role="tab"]').forEach(tab => {
                 const active = tab === button;
@@ -133,8 +137,6 @@
             });
         });
 
-        const firstCard = cards[0];
-        form.insertBefore(workspace, firstCard);
         workspace.append(navigation, content);
 
         const revealInvalidControl = () => {
