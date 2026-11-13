@@ -68,6 +68,7 @@ public class AlertRuleNotificationRouteService {
             row.put("targetType", route.getRecipient() != null ? "RECIPIENT" : "GROUP");
             row.put("recipientId", route.getRecipient() == null ? null : route.getRecipient().getId());
             row.put("groupId", route.getGroup() == null ? null : route.getGroup().getId());
+            row.put("ccRecipients", route.getCcRecipients() == null ? "" : route.getCcRecipients());
             row.put("severity", route.getSeverity().name());
             row.put("eventType", route.getEventType().name());
             row.put("enabled", route.isEnabled());
@@ -130,6 +131,11 @@ public class AlertRuleNotificationRouteService {
             route.setChannel(channel);
             route.setRecipient(recipient);
             route.setGroup(group);
+            String ccRecipients = normalizeCcRecipients(row.get("ccRecipients"));
+            if (!ccRecipients.isBlank() && channel.getChannelType() != NotificationChannel.ChannelType.EMAIL) {
+                throw new IllegalArgumentException("CC recipients can be configured only for Email routes.");
+            }
+            route.setCcRecipients(ccRecipients.isBlank() ? null : ccRecipients);
             try {
                 route.setSeverity(AlertRule.Severity.valueOf(stringValue(row.get("severity"))));
                 route.setEventType(NotificationRoute.EventType.valueOf(stringValue(row.get("eventType"))));
@@ -149,6 +155,22 @@ public class AlertRuleNotificationRouteService {
         routeRepository.deleteByAlertRule_Id(ruleId);
         routeRepository.flush();
         routeRepository.saveAll(replacements);
+    }
+
+    private String normalizeCcRecipients(Object value) {
+        if (value == null || String.valueOf(value).isBlank()) return "";
+        String[] addresses = String.valueOf(value).split("[,;\\s]+");
+        if (addresses.length > 20) throw new IllegalArgumentException("An Email route can have at most 20 CC addresses.");
+        java.util.LinkedHashSet<String> unique = new java.util.LinkedHashSet<>();
+        for (String address : addresses) {
+            String candidate = address.trim();
+            if (candidate.isEmpty()) continue;
+            if (candidate.length() > 254 || !candidate.matches("(?i)[A-Z0-9.!#$%&*+/=?^_{|}~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+")) {
+                throw new IllegalArgumentException("Enter valid CC email addresses separated by commas.");
+            }
+            unique.add(candidate);
+        }
+        return String.join(",", unique);
     }
 
     private Long longValue(Object value) {
