@@ -299,7 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
         row.querySelectorAll('input').forEach(input => input.addEventListener('input', syncNotificationRoutes));
         setTargetType(row);
         syncNotificationRoutes();
-        if (type) selectChannel(type);
     };
     document.querySelectorAll('[data-channel-toggle]').forEach(toggle => toggle.addEventListener('change', () => setChannelEnabled(toggle.dataset.channelToggle, toggle.checked, toggle.checked)));
     document.querySelectorAll('[data-add-channel-route]').forEach(button => button.addEventListener('click', () => addRoute(null, button.dataset.addChannelRoute)));
