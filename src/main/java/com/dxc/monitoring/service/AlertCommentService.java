@@ -35,7 +35,10 @@ public class AlertCommentService {
                 .orElseThrow(() -> new IllegalArgumentException("The signed-in user was not found."));
         AlertComment comment = new AlertComment();
         comment.setAlert(alert);
-        comment.setAuthor(author);
+        comment.setAuthorUserId(author.getId());
+        String authorName = author.getFullName();
+        if (authorName == null || authorName.isBlank()) authorName = author.getUsername();
+        comment.setAuthorName(authorName == null || authorName.isBlank() ? "Former user" : authorName.trim());
         comment.setCommentText(text);
         commentRepository.save(comment);
     }
