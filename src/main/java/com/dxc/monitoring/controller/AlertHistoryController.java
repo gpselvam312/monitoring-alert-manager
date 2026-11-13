@@ -1,6 +1,8 @@
 package com.dxc.monitoring.controller;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +50,15 @@ public class AlertHistoryController {
         boolean invalidApplication = applicationId != null && !applicationIds.contains(applicationId);
         String safeSearch = search == null ? "" : search.trim();
         if (safeSearch.length() > 150) safeSearch = safeSearch.substring(0, 150);
+        String repositorySearch = safeSearch;
+        Matcher alertKeyMatcher = Pattern.compile("(?i)^ALT-\\d{4}-(\\d{8,})$").matcher(safeSearch);
+        if (alertKeyMatcher.matches()) {
+            try {
+                repositorySearch = Long.toString(Long.parseLong(alertKeyMatcher.group(1)));
+            } catch (NumberFormatException ignored) {
+                repositorySearch = safeSearch;
+            }
+        }
 
         Alert.AlertStatus statusFilter = parseStatus(status);
         AlertRule.Severity severityFilter = parseSeverity(severity);
@@ -69,16 +80,16 @@ public class AlertHistoryController {
         Page<Alert> alerts = applicationIds.isEmpty() || invalidApplication
                 ? Page.empty(pageable)
                 : alertRepository.searchHistory(applicationIds, applicationId, environmentId,
-                        statusFilter, severityFilter, safeSearch, pageable);
+                        statusFilter, severityFilter, repositorySearch, pageable);
         long total = applicationIds.isEmpty() || invalidApplication ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId,
-                        null, severityFilter, safeSearch);
+                        null, severityFilter, repositorySearch);
         long active = applicationIds.isEmpty() || invalidApplication ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId,
-                        Alert.AlertStatus.ACTIVE, severityFilter, safeSearch);
+                        Alert.AlertStatus.ACTIVE, severityFilter, repositorySearch);
         long resolved = applicationIds.isEmpty() || invalidApplication ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId,
-                        Alert.AlertStatus.RESOLVED, severityFilter, safeSearch);
+                        Alert.AlertStatus.RESOLVED, severityFilter, repositorySearch);
 
         List<Environment> environments = applicationId == null || invalidApplication ? List.of()
                 : accessService.getEnvironmentsForApplication(applicationId);
