@@ -314,6 +314,7 @@ public class NotificationRoutingService {
     private int severityRank(AlertRule.Severity severity) {
         if (severity == null) return 0;
         return switch (severity) {
+            case SUCCESS -> 0;
             case INFO -> 1;
             case WARNING -> 2;
             case CRITICAL -> 3;
