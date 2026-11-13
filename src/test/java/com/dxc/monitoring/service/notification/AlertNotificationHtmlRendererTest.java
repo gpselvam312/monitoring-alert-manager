@@ -73,6 +73,14 @@ class AlertNotificationHtmlRendererTest {
     }
 
     @Test
+    void successAlertUsesGreenHeader() {
+        String html = renderer.render(Map.of("title", "Service healthy", "severity", "SUCCESS"));
+
+        assertTrue(html.contains("background:#067647"));
+        assertTrue(html.contains("SUCCESS"));
+    }
+
+    @Test
     void recoveryEventUsesGreenHeaderRegardlessOfPreviousSeverity() {
         String html = renderer.render(Map.of(
                 "title", "Payment service recovered",
