@@ -178,6 +178,7 @@ public class AlertNotificationHtmlRenderer {
         return switch (severity) {
             case "CRITICAL" -> new Palette("CRITICAL ALERT", "#7A271A", "#B42318", "#FFFFFF");
             case "WARNING" -> new Palette("WARNING ALERT", "#7A2E0E", "#B54708", "#FFFFFF");
+            case "SUCCESS" -> new Palette("SUCCESS", "#05603A", "#067647", "#FFFFFF");
             default -> new Palette("INFORMATIONAL ALERT", "#1849A9", "#175CD3", "#FFFFFF");
         };
     }
