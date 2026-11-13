@@ -69,10 +69,132 @@
             if (addButton) addButton.disabled = !Array.from(routeTemplate.content.querySelectorAll('.route-channel option')).some(option => option.dataset.channelType === type);
         });
         rows.forEach((row, index) => {
-            const type = channelTypeFor(row);
+            initializeSearchableMultiSelect(row.querySelector('.route-recipients'), 'Select recipients...');
+        initializeSearchableMultiSelect(row.querySelector('.route-groups'), 'Select recipient groups...');
+        const type = channelTypeFor(row);
             const channelIndex = rows.filter((candidate, candidateIndex) => candidateIndex <= index && channelTypeFor(candidate) === type).length;
             row.querySelector('.route-heading').textContent = (type || 'Notification') + ' route ' + channelIndex;
         });
+    };
+    const initializeSearchableMultiSelect = (select, placeholder) => {
+        if (!select || select.dataset.searchableReady === 'true') return;
+        select.dataset.searchableReady = 'true';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'route-multiselect dropdown';
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'btn btn-outline-secondary route-multiselect-toggle dropdown-toggle w-100';
+        toggle.dataset.bsToggle = 'dropdown';
+        toggle.dataset.bsAutoClose = 'outside';
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', placeholder);
+        const selectedContent = document.createElement('span');
+        selectedContent.className = 'route-multiselect-selection';
+        toggle.appendChild(selectedContent);
+
+        const menu = document.createElement('div');
+        menu.className = 'dropdown-menu route-multiselect-menu p-2 shadow';
+        const searchWrap = document.createElement('div');
+        searchWrap.className = 'input-group input-group-sm mb-2';
+        const searchIcon = document.createElement('span');
+        searchIcon.className = 'input-group-text';
+        searchIcon.innerHTML = '<i class="bi bi-search" aria-hidden="true"></i>';
+        const search = document.createElement('input');
+        search.type = 'search';
+        search.className = 'form-control route-multiselect-search';
+        search.placeholder = 'Search ' + placeholder.toLowerCase() + '...';
+        search.autocomplete = 'off';
+        search.setAttribute('aria-label', 'Search ' + placeholder.toLowerCase());
+        searchWrap.append(searchIcon, search);
+        const actions = document.createElement('div');
+        actions.className = 'd-flex justify-content-between align-items-center small border-bottom pb-2 mb-2';
+        const selectAll = document.createElement('button');
+        selectAll.type = 'button';
+        selectAll.className = 'btn btn-link btn-sm p-0 text-decoration-none';
+        selectAll.textContent = 'Select all';
+        const clearAll = document.createElement('button');
+        clearAll.type = 'button';
+        clearAll.className = 'btn btn-link btn-sm p-0 text-decoration-none text-secondary';
+        clearAll.textContent = 'Clear all';
+        actions.append(selectAll, clearAll);
+        const list = document.createElement('div');
+        list.className = 'route-multiselect-options';
+        menu.append(searchWrap, actions, list);
+        wrapper.append(toggle, menu);
+        select.parentElement.insertBefore(wrapper, select);
+        wrapper.appendChild(select);
+
+        const render = () => {
+            selectedContent.replaceChildren();
+            const selected = Array.from(select.selectedOptions);
+            if (!selected.length) {
+                const hint = document.createElement('span');
+                hint.className = 'route-multiselect-placeholder';
+                hint.textContent = placeholder;
+                selectedContent.appendChild(hint);
+            } else {
+                selected.forEach(option => {
+                    const chip = document.createElement('span');
+                    chip.className = 'route-multiselect-chip';
+                    const label = document.createElement('span');
+                    label.textContent = option.textContent.trim();
+                    const remove = document.createElement('span');
+                    remove.className = 'route-multiselect-remove';
+                    remove.setAttribute('role', 'button');
+                    remove.setAttribute('tabindex', '0');
+                    remove.setAttribute('aria-label', 'Remove ' + option.textContent.trim());
+                    remove.innerHTML = '&times;';
+                    const deselect = event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        option.selected = false;
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                    };
+                    remove.addEventListener('click', deselect);
+                    remove.addEventListener('keydown', event => {
+                        if (event.key === 'Enter' || event.key === ' ') deselect(event);
+                    });
+                    chip.append(label, remove);
+                    selectedContent.appendChild(chip);
+                });
+            }
+            list.replaceChildren();
+            Array.from(select.options).forEach((option, index) => {
+                const item = document.createElement('label');
+                item.className = 'route-multiselect-option';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input';
+                checkbox.checked = option.selected;
+                checkbox.addEventListener('change', () => {
+                    option.selected = checkbox.checked;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                const text = document.createElement('span');
+                text.textContent = option.textContent.trim();
+                item.append(checkbox, text);
+                item.dataset.searchText = (option.textContent || '').toLocaleLowerCase();
+                item.hidden = !item.dataset.searchText.includes(search.value.trim().toLocaleLowerCase());
+                list.appendChild(item);
+            });
+        };
+
+        search.addEventListener('input', render);
+        search.addEventListener('click', event => event.stopPropagation());
+        search.addEventListener('keydown', event => event.stopPropagation());
+        selectAll.addEventListener('click', () => {
+            Array.from(list.children).forEach((item, index) => {
+                if (!item.hidden) select.options[index].selected = true;
+            });
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        clearAll.addEventListener('click', () => {
+            Array.from(select.options).forEach(option => { option.selected = false; });
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        select.addEventListener('change', render);
+        render();
     };
     const validateRouteTargets = row => {
         const isTeams = channelTypeFor(row) === 'TEAMS';
