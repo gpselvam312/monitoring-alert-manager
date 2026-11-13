@@ -633,14 +633,14 @@
                 const group = row.querySelector(".route-group")?.selectedOptions[0];
                 if (channel === "EMAIL") {
                     if (channelOption?.dataset.from) entries.push(["From", channelOption.dataset.from]);
-                    const to = targetType === "GROUP" ? (group?.textContent || "") : (recipient?.dataset.email || recipient?.textContent || "");
+                    const to = targetType === "GROUP" ? (group?.value ? group.textContent : "") : (recipient?.value ? (recipient.dataset.email || recipient.textContent || "") : "");
                     if (to) entries.push(["To", to]);
                     const cc = row.querySelector(".route-cc")?.value?.trim();
                     if (cc) entries.push(["CC", cc]);
                 } else if (channel === "TEAMS") {
                     if (channelOption?.dataset.channelName) entries.push(["Destination", channelOption.dataset.channelName]);
                 } else {
-                    const to = targetType === "GROUP" ? (group?.textContent || "") : (recipient?.dataset.phone || recipient?.textContent || "");
+                    const to = targetType === "GROUP" ? (group?.value ? group.textContent : "") : (recipient?.value ? (recipient.dataset.phone || recipient.textContent || "") : "");
                     if (to) entries.push(["To", to]);
                 }
             });
