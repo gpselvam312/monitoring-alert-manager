@@ -7,4 +7,5 @@ import com.dxc.monitoring.entity.NotificationGroup;
 public interface NotificationGroupRepository extends JpaRepository<NotificationGroup, Long> {
     List<NotificationGroup> findAllByOrderByNameAsc();
     List<NotificationGroup> findByEnabledTrueOrderByNameAsc();
+    List<NotificationGroup> findByEnabledTrueAndChannelTypeOrderByNameAsc(NotificationGroup.ChannelType channelType);
 }
