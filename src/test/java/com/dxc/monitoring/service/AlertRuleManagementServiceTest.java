@@ -83,7 +83,6 @@ class AlertRuleManagementServiceTest {
         List<?> groups = (List<?>) root.get("children");
 
         assertEquals("[{severity}] {ruleName}", saved.getAlertSubject());
-        assertEquals("Job {jobName} in application {applicationName}, environment {environment}: {fieldPath} evaluated to {actualValue} (threshold: {threshold}).", saved.getAlertMessage());
         assertEquals("GROUP", root.get("type"));
         assertEquals("OR", root.get("operator"));
         assertEquals(1, root.get("consecutiveMatches"));
@@ -121,7 +120,6 @@ class AlertRuleManagementServiceTest {
         rule.setName("Nested CPU rule");
         rule.setDescription("Nested rule test");
         rule.setAlertSubject("[{severity}] {ruleName}");
-        rule.setAlertMessage("{jobName}: {fieldPath} = {actualValue}");
         rule.setConditionConfig("""
                 {
                   "type":"GROUP",
@@ -148,7 +146,6 @@ class AlertRuleManagementServiceTest {
         List<?> groups = (List<?>) root.get("children");
 
         assertEquals("[{severity}] {ruleName}", form.getAlertSubject());
-        assertEquals("{jobName}: {fieldPath} = {actualValue}", form.getAlertMessage());
         assertEquals("CONDITION", form.getConditionType());
         assertEquals(2, form.getConsecutiveMatches());
         assertEquals("OR", root.get("operator"));
@@ -200,7 +197,6 @@ class AlertRuleManagementServiceTest {
         rule.setMonitoringJob(job);
         rule.setName("Advanced collection rule");
         rule.setAlertSubject("[{severity}] {ruleName}");
-        rule.setAlertMessage("{jobName}: {fieldPath}");
         rule.setConditionConfig("""
                 {"type":"GROUP","operator":"AND","consecutiveMatches":1,
                  "children":[
