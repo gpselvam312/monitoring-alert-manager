@@ -142,14 +142,14 @@ public class AlertRetentionService {
 
     @Transactional(readOnly = true)
     public AlertRetentionCleanupExecutor.Preview preview(Long policyId) {
-        AlertRetentionPolicy policy = policyRepository.findById(policyId)
+        AlertRetentionPolicy policy = policyRepository.findByIdWithScope(policyId)
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
         assertPolicyScopeAccess(policy);
         return cleanupExecutor.preview(policyId);
     }
 
     public AlertCleanupRun runCleanup(Long policyId, Long userId) {
-        AlertRetentionPolicy policy = policyRepository.findById(policyId)
+        AlertRetentionPolicy policy = policyRepository.findByIdWithScope(policyId)
                 .filter(AlertRetentionPolicy::isEnabled)
                 .orElseThrow(() -> new IllegalArgumentException("Only an enabled retention policy can be run."));
         assertPolicyScopeAccess(policy);
