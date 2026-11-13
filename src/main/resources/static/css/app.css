@@ -5381,17 +5381,14 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 /* Alert rule navigation tabs — use the active application theme in every theme mode. */
 .alert-rule-form #alertRuleTabs {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: stretch;
-    gap: .25rem;
-    overflow-x: auto;
-    overflow-y: hidden;
+    gap: .35rem;
     border-bottom-color: var(--border-color);
-    scrollbar-width: thin;
-    overscroll-behavior-x: contain;
 }
 .alert-rule-form #alertRuleTabs .nav-item {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 .alert-rule-form #alertRuleTabs .nav-link {
     display: inline-flex;
@@ -5399,16 +5396,39 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     align-items: center;
     justify-content: center;
     padding: .65rem .9rem;
+    white-space: normal;
+    text-align: center;
 }
 .alert-rule-form #alertRuleTabContent,
 .alert-rule-form #alertRuleTabContent > .tab-pane {
     min-width: 0;
 }
+/* On phones, show the five sections as a two-column tab grid instead of
+   forcing a horizontally scrolling strip. Labels may wrap within each tab. */
 @media (max-width: 767.98px) {
+    .alert-rule-form #alertRuleTabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .4rem;
+        padding-bottom: .5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .alert-rule-form #alertRuleTabs .nav-item {
+        min-width: 0;
+        width: 100%;
+    }
     .alert-rule-form #alertRuleTabs .nav-link {
-        min-height: 2.5rem;
-        padding: .55rem .75rem;
-        font-size: .875rem;
+        display: flex;
+        width: 100%;
+        min-height: 2.75rem;
+        height: 100%;
+        justify-content: flex-start;
+        gap: .35rem;
+        padding: .55rem .65rem;
+        font-size: .82rem;
+        line-height: 1.25;
+        text-align: left;
+        overflow-wrap: anywhere;
     }
 }
 .alert-rule-form #alertRuleTabs .nav-link {
