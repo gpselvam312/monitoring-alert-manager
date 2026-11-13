@@ -100,7 +100,18 @@
         const newId = () => 'block-' + (window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 10));
         const discoveredPaths = () => fields().filter(field => field && typeof field.path === 'string'
             && (field.path.startsWith('data.') || field.path.startsWith('response.')));
-        const pathControl = (value, onChange, predicate) => {
+        const relativeDiscoveredPaths = sourcePath => {
+            if (!sourcePath) return [];
+            const prefix = sourcePath.endsWith('[]') ? sourcePath.slice(0, -2) : sourcePath;
+            return discoveredPaths().map(field => {
+                const dottedPrefix = prefix + '.';
+                const arrayPrefix = prefix + '[].';
+                const relative = field.path.startsWith(dottedPrefix) ? field.path.slice(dottedPrefix.length)
+                    : field.path.startsWith(arrayPrefix) ? field.path.slice(arrayPrefix.length) : '';
+                return relative ? { ...field, relativePath: relative } : null;
+            }).filter(field => field && field.relativePath && !field.relativePath.includes('[]'));
+        };
+        const pathControl = (value, onChange, predicate, onSelection) => {
             const wrapper = element('div', 'd-grid gap-2');
             const select = element('select', 'form-select');
             select.add(new Option('Choose a discovered response field…', ''));
@@ -108,7 +119,31 @@
             if (value && !Array.from(select.options).some(option => option.value === value)) select.add(new Option(value + ' (saved path)', value));
             select.value = value || '';
             const manual = textInput(value, 'Or enter a response path', 512);
-            select.addEventListener('change', () => { manual.value = select.value; onChange(select.value); updatePreview(); });
+            select.addEventListener('change', () => {
+                manual.value = select.value;
+                onChange(select.value);
+                if (onSelection) onSelection(select.value);
+                else updatePreview();
+            });
+            manual.addEventListener('input', () => { onChange(manual.value.trim()); updatePreview(); });
+            wrapper.append(select, manual);
+            return wrapper;
+        };
+        const relativePathControl = (sourcePath, value, onChange, includeWholeItem) => {
+            const wrapper = element('div', 'd-grid gap-2');
+            const select = element('select', 'form-select');
+            select.add(new Option(includeWholeItem ? 'Use each item as-is' : 'Choose a discovered item field…', ''));
+            relativeDiscoveredPaths(sourcePath).forEach(field =>
+                select.add(new Option(field.relativePath + ' (' + field.type + ')', field.relativePath)));
+            if (value && !Array.from(select.options).some(option => option.value === value))
+                select.add(new Option(value + ' (saved path)', value));
+            select.value = value || '';
+            const manual = textInput(value, 'Or enter a field within each item', 512);
+            select.addEventListener('change', () => {
+                manual.value = select.value;
+                onChange(select.value);
+                updatePreview();
+            });
             manual.addEventListener('input', () => { onChange(manual.value.trim()); updatePreview(); });
             wrapper.append(select, manual);
             return wrapper;
@@ -212,26 +247,61 @@
                 body.append(control('Block heading', blockTitle));
                 body.append(control('Rows from response array', pathControl(section.sourcePath,
                     value => { section.sourcePath = value; sync(); },
-                    field => field.type === 'array'), 'Select an array field, for example data.consumers.'));
+                    field => field.type === 'array', () => render()), 'Choose an array from discovered response fields.'));
+                const loadColumns = button('Load columns from array', 'btn btn-sm btn-outline-primary', () => {
+                    const available = relativeDiscoveredPaths(section.sourcePath);
+                    if (!available.length) {
+                        setStatus('No item fields were discovered for this array. Load the latest saved result or use a sample response first.', 'warning');
+                        return;
+                    }
+                    const existing = new Set(section.columns.map(column => column.key));
+                    const added = available.filter(field => !existing.has(field.relativePath))
+                        .map(field => ({ key: field.relativePath, label: field.relativePath.split('.').pop() }));
+                    section.columns.push(...added);
+                    render();
+                    setStatus(added.length ? added.length + ' columns loaded from the selected array.'
+                        : 'All discovered columns are already configured.', 'success');
+                }, 'bi bi-list-columns');
+                loadColumns.disabled = !section.sourcePath;
+                const loadRow = element('div', 'd-flex flex-wrap align-items-center gap-2 mb-3');
+                loadRow.append(loadColumns);
+                body.append(loadRow);
                 section.columns.forEach((column, columnIndex) => {
                     const row = element('div', 'border rounded p-2 mb-2');
                     const grid = element('div', 'row g-2 align-items-end');
                     const label = textInput(column.label, 'Column header', 100);
                     label.addEventListener('input', () => { column.label = label.value; sync(); });
-                    const key = textInput(column.key, 'Field name within each row', 150);
-                    key.addEventListener('input', () => { column.key = key.value; sync(); });
-                    grid.append(control('Column header', label), control('Row field binding', key));
+                    const key = relativePathControl(section.sourcePath, column.key,
+                        value => { column.key = value; sync(); }, false);
+                    grid.append(control('Column header', label), control('Row field', key));
                     row.append(grid, button('Remove column', 'btn btn-sm btn-outline-danger mt-2',
                         () => { section.columns.splice(columnIndex, 1); render(); }, 'bi bi-trash'));
                     body.append(row);
                 });
-                body.append(button('Add table column', 'btn btn-sm btn-outline-secondary', () => {
+                body.append(button('Add column manually', 'btn btn-sm btn-outline-secondary', () => {
                     section.columns.push({ key: '', label: '' }); render();
                 }, 'bi bi-plus-lg'));
                 const maxRows = textInput(String(section.maxRows || 20), '20', 3);
                 maxRows.type = 'number'; maxRows.min = '1'; maxRows.max = '100';
                 maxRows.addEventListener('input', () => { section.maxRows = Math.min(100, Math.max(1, Number(maxRows.value) || 1)); sync(); });
                 body.append(control('Maximum rows', maxRows));
+            } else if (section.type === 'LIST') {
+                const blockTitle = textInput(section.title, 'Optional list heading', 150);
+                blockTitle.addEventListener('input', () => { section.title = blockTitle.value; sync(); });
+                body.append(control('Block heading', blockTitle));
+                body.append(control('Items from response array', pathControl(section.sourcePath,
+                    value => { section.sourcePath = value; sync(); },
+                    field => field.type === 'array', () => render()), 'Choose an array from discovered response fields.'));
+                body.append(control('Field to display for each item', relativePathControl(section.sourcePath,
+                    section.valuePath, value => { section.valuePath = value; sync(); }, true),
+                    'Choose a discovered field or display each item as-is.'));
+                const maxItems = textInput(String(section.maxItems || 10), '10', 3);
+                maxItems.type = 'number'; maxItems.min = '1'; maxItems.max = '100';
+                maxItems.addEventListener('input', () => { section.maxItems = Math.min(100, Math.max(1, Number(maxItems.value) || 1)); sync(); });
+                body.append(control('Maximum items', maxItems));
+                const emptyText = textInput(section.emptyText, 'No items available', 250);
+                emptyText.addEventListener('input', () => { section.emptyText = emptyText.value; sync(); });
+                body.append(control('Empty-state text', emptyText));
             } else {
                 const note = element('div', 'alert alert-warning mb-0',
                     'This block type was saved by an earlier version. It is retained for backward compatibility and can be reordered or deleted. New blocks use Text, Key-Value List or Data Table.');
@@ -321,6 +391,15 @@
                         .map(row => Object.fromEntries((section.columns || []).map(column => [column.key, display(resolvePath(column.key, row))])))
                 };
             }
+            if (section.type === 'LIST') {
+                const items = resolvePath(section.sourcePath, sample);
+                return {
+                    type: 'list', title,
+                    items: (Array.isArray(items) ? items : []).slice(0, Number(section.maxItems || 10))
+                        .map(item => display(section.valuePath ? resolvePath(section.valuePath, item) : item))
+                        .filter(value => value !== '')
+                };
+            }
             return { type: section.type.toLowerCase(), title, text: '[Legacy block preview]' };
         });
         const addTitleAndMessage = () => ({
@@ -341,6 +420,15 @@
                             row.append(element('span', 'text-muted', field.label), element('strong', 'text-end text-break', field.value));
                             list.append(row);
                         });
+                        container.append(list);
+                    }
+                }
+                if (block.type === 'list') {
+                    if (channel === 'whatsapp') {
+                        block.items.forEach((item, index) => container.append(element('div', 'font-monospace small', (index + 1) + '. ' + item)));
+                    } else {
+                        const list = element('ul', 'mb-2 ps-3');
+                        block.items.forEach(item => list.append(element('li', 'mb-1', item)));
                         container.append(list);
                     }
                 }
@@ -426,6 +514,9 @@
                     block.fields.forEach(field => lines.push(field.label + ': ' + field.value));
                     lines.push('```');
                 }
+                if (block.type === 'list' && block.items.length) {
+                    block.items.forEach((item, index) => lines.push((index + 1) + '. ' + item));
+                }
                 if (block.type === 'table' && block.rows.length) {
                     lines.push('```');
                     block.rows.forEach((row, index) =>
@@ -447,7 +538,8 @@
             const section = { id: newId(), type, title: '' };
             if (type === 'TEXT') section.text = '';
             if (type === 'KEY_VALUE') section.fields = [{ label: '', path: '' }];
-            if (type === 'TABLE') { section.sourcePath = ''; section.columns = [{ key: '', label: '' }]; section.maxRows = 20; }
+            if (type === 'TABLE') { section.sourcePath = ''; section.columns = []; section.maxRows = 20; }
+            if (type === 'LIST') { section.sourcePath = ''; section.valuePath = ''; section.maxItems = 10; section.emptyText = 'No items available'; }
             config.sections.push(section);
             expandedBlockId = section.id;
             render();
@@ -483,6 +575,7 @@
             config = { version: 1, titleTemplate: '', messageTemplate: '', sections: [] };
             setStatus('Saved presentation JSON could not be loaded: ' + error.message, 'warning');
         }
+        window.refreshAlertPresentationDesigner = () => render();
         render();
         jsonInput.addEventListener('input', () => { jsonEdited = true; });
         form.addEventListener('submit', event => {
