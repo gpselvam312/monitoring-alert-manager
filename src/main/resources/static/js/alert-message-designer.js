@@ -49,7 +49,6 @@
         const currentPreviewSeverity = () => previewSeverity?.value || ruleSeverityInput?.value || 'CRITICAL';
         if (previewSeverity && ruleSeverityInput?.value) previewSeverity.value = ruleSeverityInput.value;
         let expandedBlockId = null;
-        let draggedBlockId = null;
 
         const element = (tag, className, text) => {
             const node = document.createElement(tag);
@@ -206,11 +205,7 @@
                 : section.type === 'TABLE' ? 'Data Table Block' : 'Legacy ' + section.type + ' Block';
             const collapseId = 'presentation-block-collapse-' + index;
             const expanded = expandedBlockId ? expandedBlockId === section.id : index === 0;
-            const heading = element('div', 'd-flex align-items-center gap-2 flex-grow-1 min-w-0');
-            const dragHandle = element('span', 'presentation-block-drag-handle text-muted flex-shrink-0');
-            dragHandle.draggable = true;
-            dragHandle.append(element('i', 'bi bi-grip-vertical'));
-            dragHandle.setAttribute('title', 'Drag to reorder');
+            const heading = element('div', 'd-flex align-items-center flex-grow-1 min-w-0');
             const collapseButton = element('button', 'btn btn-sm btn-outline-secondary flex-shrink-0');
             collapseButton.type = 'button';
             collapseButton.dataset.bsToggle = 'collapse';
@@ -221,7 +216,7 @@
             const headingText = element('div', 'd-flex align-items-baseline gap-2 min-w-0 flex-nowrap');
             headingText.append(element('span', 'fw-semibold text-nowrap', (index + 1) + '. ' + title));
             headingText.append(element('span', 'small text-muted text-nowrap', 'Block ' + (index + 1) + ' of ' + config.sections.length));
-            heading.append(dragHandle, headingText);
+            heading.append(headingText);
             header.append(heading, rowActions(index, config.sections.length), collapseButton);
             card.append(header);
             const collapse = element('div', 'collapse' + (expanded ? ' show' : ''));
@@ -447,29 +442,6 @@
             collapse.addEventListener('hidden.bs.collapse', () => {
                 if (expandedBlockId === section.id) expandedBlockId = null;
                 collapseButton.textContent = 'Expand'; collapseButton.setAttribute('aria-expanded', 'false');
-            });
-            dragHandle.addEventListener('dragstart', event => {
-                draggedBlockId = section.id;
-                card.classList.add('presentation-block-dragging');
-                event.dataTransfer.effectAllowed = 'move';
-                event.dataTransfer.setData('text/plain', section.id);
-            });
-            card.addEventListener('dragend', () => {
-                draggedBlockId = null;
-                card.classList.remove('presentation-block-dragging');
-            });
-            card.addEventListener('dragover', event => event.preventDefault());
-            card.addEventListener('drop', event => {
-                event.preventDefault();
-                const sourceId = draggedBlockId || event.dataTransfer.getData('text/plain');
-                if (!sourceId || sourceId === section.id) return;
-                const from = config.sections.findIndex(item => item.id === sourceId);
-                const to = config.sections.findIndex(item => item.id === section.id);
-                if (from < 0 || to < 0) return;
-                const [moved] = config.sections.splice(from, 1);
-                config.sections.splice(to, 0, moved);
-                expandedBlockId = moved.id;
-                render();
             });
             return card;
         };
