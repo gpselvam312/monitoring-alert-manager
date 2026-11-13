@@ -53,6 +53,44 @@ class ConditionEvaluatorTest {
     }
 
     @Test
+    void scalarConditionOnArrayPathUsesAnyMatchSemantics() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("consumerGroups", Map.of("items", java.util.List.of(
+                Map.of("status", "UP"), Map.of("status", "DOWN"))))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+
+        assertTrue(evaluator.evaluate(condition("data.consumerGroups.items.status", "EQ", "DOWN"), context).matched());
+        assertFalse(evaluator.evaluate(condition("data.consumerGroups.items.status", "EQ", "FAILED"), context).matched());
+    }
+
+    @Test
+    void collectionNestedAndRequiresBothPredicatesOnTheSameRecord() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("consumerGroups", Map.of("items", java.util.List.of(
+                Map.of("status", "DOWN", "lag", 10),
+                Map.of("status", "UP", "lag", 500))))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> sameRecord = Map.of("type", "COLLECTION",
+                "collectionPath", "data.consumerGroups.items", "quantifier", "ANY",
+                "condition", Map.of("type", "GROUP", "operator", "AND", "children", java.util.List.of(
+                        condition("status", "EQ", "DOWN"), condition("lag", "GT", 100))));
+
+        assertFalse(evaluator.evaluate(sameRecord, context).matched());
+    }
+
+    @Test
+    void collectionNestedAndMatchesWhenBothPredicatesBelongToOneRecord() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("consumerGroups", Map.of("items", java.util.List.of(
+                Map.of("status", "DOWN", "lag", 250),
+                Map.of("status", "UP", "lag", 500))))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> sameRecord = Map.of("type", "COLLECTION",
+                "collectionPath", "data.consumerGroups.items", "quantifier", "ANY",
+                "condition", Map.of("type", "GROUP", "operator", "AND", "children", java.util.List.of(
+                        condition("status", "EQ", "DOWN"), condition("lag", "GT", 100))));
+
+        assertTrue(evaluator.evaluate(sameRecord, context).matched());
+    }
+
+    @Test
     void allOverEmptyCollectionIsFalseByDefault() {
         JsonDocument document = JsonDocument.from(Map.of("data", Map.of("nodes", java.util.List.of())));
         ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
