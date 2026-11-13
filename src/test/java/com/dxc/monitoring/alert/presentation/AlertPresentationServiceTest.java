@@ -2,6 +2,7 @@ package com.dxc.monitoring.alert.presentation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -92,8 +93,8 @@ class AlertPresentationServiceTest {
                 "title", "Legacy title", "body", "Legacy message", "severity", "CRITICAL",
                 "ruleName", "Kafka Health", "observedValue", "55", "fieldPath", "data.lag"));
 
-        assertEquals("CRITICAL - Kafka Health", presentation.title());
-        assertEquals("Batch Processing observed 55 on 3.8 / kafka-sit", presentation.message());
+        assertEquals("Legacy title", presentation.title());
+        assertEquals("", presentation.message());
         assertEquals(List.of("details", "table", "list", "json"),
                 presentation.sections().stream().map(section -> section.get("type")).toList());
         assertEquals(1, ((List<?>) presentation.sections().get(1).get("rows")).size());
@@ -177,7 +178,7 @@ class AlertPresentationServiceTest {
     }
 
     @Test
-    void rendersAlertRecordTemplatesWithoutLoadingResultDataWhenNoJsonPathIsUsed() {
+    void ignoresDeprecatedPresentationTitleAndIntroductoryMessageTemplates() {
         AlertRule rule = new AlertRule();
         rule.setName("API latency");
         rule.setPresentationConfig("""
@@ -196,11 +197,9 @@ class AlertPresentationServiceTest {
         history.setOccurredAt(OffsetDateTime.parse("2026-11-12T10:00:00+05:30"));
 
         AlertPresentationService.Presentation presentation = service.buildTemplates(history,
-                Map.of("title", "Legacy title", "body", "Legacy body", "observedValue", "245"));
+                Map.of("title", "Rule subject", "body", "Fallback message", "observedValue", "245"));
 
-        assertEquals("WARNING - API latency", presentation.title());
-        assertEquals("API monitor: 245 ms", presentation.message());
-        assertTrue(presentation.sections().isEmpty());
+        assertNull(presentation);
         verifyNoInteractions(resultRepository);
     }
 
