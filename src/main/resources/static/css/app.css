@@ -5376,3 +5376,72 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     .common-lookup-modal .modal-footer > .d-flex { width: 100%; }
     .common-lookup-modal .modal-footer > .d-flex { justify-content: flex-end; flex-wrap: wrap; }
 }
+
+
+/* Alert rule workspace and compact message presentation designer */
+.alert-rule-workspace .nav-tabs {
+    flex-wrap: wrap;
+    gap: .2rem;
+}
+.alert-rule-workspace .tab-content > .tab-pane {
+    min-width: 0;
+}
+.presentation-message-header {
+    background: var(--card-bg);
+    border-color: var(--border-color) !important;
+}
+.presentation-message-header > summary {
+    cursor: pointer;
+    color: var(--text-primary);
+    list-style-position: inside;
+}
+.presentation-message-header[open] > summary {
+    border-bottom: 1px solid var(--border-color);
+}
+.presentation-designer-grid {
+    align-items: stretch;
+}
+.presentation-builder-pane,
+.presentation-preview-pane {
+    min-width: 0;
+}
+.presentation-block {
+    min-width: 0;
+}
+.presentation-block-dragging {
+    opacity: .55;
+    border-style: dashed;
+    border-color: var(--theme-primary);
+}
+.presentation-block-chevron {
+    transition: transform .15s ease;
+}
+.presentation-block [aria-expanded="true"] .presentation-block-chevron {
+    transform: rotate(180deg);
+}
+.presentation-block-list .app-card-header {
+    min-height: 3.25rem;
+}
+@media (min-width: 1200px) {
+    .presentation-builder-pane,
+    .presentation-preview-pane {
+        max-height: min(68vh, 760px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-right: .35rem;
+    }
+    .presentation-preview-heading {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        padding: .35rem 0 .6rem;
+        background: var(--card-bg);
+    }
+}
+@media (max-width: 1199.98px) {
+    .presentation-builder-pane,
+    .presentation-preview-pane {
+        max-height: none;
+        overflow: visible;
+    }
+}
