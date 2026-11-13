@@ -684,8 +684,8 @@
                 card.style.color = '#1f2937';
                 appendPreviewMetadata(card, "TEAMS");
                 const accent = element('div', 'p-3 text-white');
-                accent.style.background = sample.severity === 'CRITICAL' ? '#b42318' : sample.severity === 'WARNING' ? '#b54708' : '#175cd3';
-                accent.append(element('div', 'small fw-bold', sample.severity + ' ALERT'),
+                accent.style.background = currentPreviewSeverity() === 'CRITICAL' ? '#b42318' : currentPreviewSeverity() === 'WARNING' ? '#b54708' : '#175cd3';
+                accent.append(element('div', 'small fw-bold', currentPreviewSeverity() + ' ALERT'),
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
                 if (header.message) body.append(element('p', 'mb-2', header.message));
@@ -767,6 +767,12 @@
         }));
         document.getElementById('refreshPresentationPreview')?.addEventListener('click', updatePreview);
         previewSeverity?.addEventListener('change', updatePreview);
+        document.addEventListener('change', event => {
+            if (event.target.closest('.notification-route-row')) updatePreview();
+        });
+        document.addEventListener('input', event => {
+            if (event.target.closest('.notification-route-row')) updatePreview();
+        });
         document.getElementById('applyPresentationJson')?.addEventListener('click', () => {
             try {
                 config = normalize(JSON.parse(jsonInput.value || '{}'));
