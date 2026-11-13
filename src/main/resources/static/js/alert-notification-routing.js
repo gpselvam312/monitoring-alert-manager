@@ -202,12 +202,11 @@
         const hasGroups = row.querySelector('.route-groups').selectedOptions.length > 0;
         const message = !isTeams && row.querySelector('.route-enabled').checked && !hasRecipients && !hasGroups
             ? 'Select at least one recipient or recipient group for this enabled route.' : '';
-        row.querySelector('.route-recipients').setCustomValidity(message);
-        row.querySelector('.route-groups').setCustomValidity(message);
         row.querySelectorAll('.route-multiselect-toggle').forEach(toggle => {
             toggle.classList.toggle('is-invalid', Boolean(message));
             toggle.setAttribute('aria-invalid', message ? 'true' : 'false');
         });
+        if (!message) row.querySelector('.route-target-validation-message')?.remove();
         return !message;
     };
     const setRouteChannelOptions = row => {
