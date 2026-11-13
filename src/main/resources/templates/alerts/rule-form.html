@@ -5,7 +5,7 @@
 <div class="page-header"><div><h1 class="page-title" th:text="${ruleForm.id == null ? 'Create Alert Rule' : 'Edit Alert Rule'}">Alert Rule</h1><p class="page-subtitle">Define the condition that opens an alert and the criteria that resolve it.</p></div><div class="page-header-actions"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Rules</a></div></div>
 <div class="alert alert-danger" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></div>
 <div class="alert alert-info" role="alert" th:if="${!hasMonitoringJobs}">No standard monitoring jobs are available in applications where you have alert-configuration access.</div>
-<form th:action="@{/alerts/rules/save}" th:object="${ruleForm}" method="post">
+<form class="alert-rule-form" th:action="@{/alerts/rules/save}" th:object="${ruleForm}" method="post">
 <input type="hidden" th:field="*{id}">
 <ul class="nav nav-tabs flex-nowrap overflow-auto mb-3" id="alertRuleTabs" role="tablist">
 <li class="nav-item" role="presentation"><button class="nav-link active" id="rule-details-tab" data-bs-toggle="tab" data-bs-target="#rule-details-pane" type="button" role="tab" aria-controls="rule-details-pane" aria-selected="true"><i class="bi bi-sliders me-1"></i>Rule Details</button></li>
@@ -198,51 +198,7 @@
     </div>
 </div>
 </div></div>
-<script>
-/* Keep the rule editor tabs usable even if the Bootstrap tab plugin is unavailable. */
-document.addEventListener('DOMContentLoaded', function () {
-    const tabList = document.getElementById('alertRuleTabs');
-    const tabContent = document.getElementById('alertRuleTabContent');
-    if (!tabList || !tabContent) return;
-    const tabs = Array.from(tabList.querySelectorAll('[data-bs-toggle="tab"]'));
-    const activate = function (tab) {
-        const targetSelector = tab.getAttribute('data-bs-target');
-        const pane = targetSelector ? tabContent.querySelector(targetSelector) : null;
-        if (!pane) return;
-        tabs.forEach(function (item) {
-            const selected = item === tab;
-            item.classList.toggle('active', selected);
-            item.setAttribute('aria-selected', selected ? 'true' : 'false');
-            item.setAttribute('tabindex', selected ? '0' : '-1');
-        });
-        tabContent.querySelectorAll(':scope > .tab-pane').forEach(function (item) {
-            const selected = item === pane;
-            item.classList.toggle('active', selected);
-            item.classList.toggle('show', selected);
-            item.setAttribute('aria-hidden', selected ? 'false' : 'true');
-        });
-        if (window.bootstrap && window.bootstrap.Tab) {
-            try { window.bootstrap.Tab.getOrCreateInstance(tab).show(); } catch (ignored) { /* Manual activation above remains available. */ }
-        }
-    };
-    tabs.forEach(function (tab) {
-        tab.addEventListener('click', function (event) {
-            event.preventDefault();
-            activate(tab);
-        });
-        tab.addEventListener('keydown', function (event) {
-            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-            event.preventDefault();
-            const current = tabs.indexOf(tab);
-            const next = tabs[(current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
-            activate(next);
-            next.focus();
-        });
-    });
-    const initiallyActive = tabs.find(function (tab) { return tab.classList.contains('active'); }) || tabs[0];
-    if (initiallyActive) activate(initiallyActive);
-});
-</script>
+
 <div class="d-flex justify-content-end gap-2"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
 </form><script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -894,4 +850,4 @@ document.addEventListener('DOMContentLoaded', () => {
     if (jobIdInput.value) discoverButton.disabled = false;
     syncPresentationDiscoverButton();
 });
-</script><script th:src="@{/js/alert-message-designer.js}" defer></script><script th:src="@{/js/alert-rule-workspace.js}" defer></script></div></body></html>
+</script><script th:src="@{/js/alert-message-designer.js}" defer></script></div></body></html>
