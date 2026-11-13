@@ -104,6 +104,79 @@ class AlertPresentationServiceTest {
 
 
     @Test
+    void rendersListItemsWithAllConfiguredAttributesAndSupportsASelectedChildObject() {
+        AlertRule rule = new AlertRule();
+        rule.setName("Consumer health");
+        rule.setPresentationConfig("""
+                {"version":1,"sections":[
+                  {"type":"LIST","title":"Consumers","sourcePath":"data.consumers",
+                   "fields":[
+                     {"key":"groupId","label":"Consumer group"},
+                     {"key":"lag","label":"Lag"},
+                     {"key":"details.state","label":"State"}
+                   ],"maxItems":5}
+                ]}
+                """);
+        Alert alert = new Alert();
+        alert.setAlertRule(rule);
+        alert.setSeverity(AlertRule.Severity.WARNING);
+        MonitoringExecution execution = mock(MonitoringExecution.class);
+        when(execution.getId()).thenReturn(202L);
+        AlertHistory history = new AlertHistory();
+        history.setAlert(alert);
+        history.setExecution(execution);
+        history.setNewSeverity(AlertRule.Severity.WARNING);
+        MonitoringResult result = new MonitoringResult();
+        result.setResultData("""
+                {"data":{"consumers":[
+                  {"groupId":"orders","lag":120,"details":{"state":"CRITICAL"}},
+                  {"groupId":"payments","lag":35,"details":{"state":"WARNING"}}
+                ]}}
+                """);
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(202L))
+                .thenReturn(Optional.of(result));
+
+        AlertPresentationService.Presentation presentation = service.build(history,
+                Map.of("title", "Consumer alert", "body", "Consumer details"));
+
+        assertEquals(List.of("Consumer group: orders | Lag: 120 | State: CRITICAL",
+                        "Consumer group: payments | Lag: 35 | State: WARNING"),
+                presentation.sections().get(0).get("items"));
+    }
+
+    @Test
+    void rendersLegacyListValuePathAndASelectedObjectAsASingleListItem() {
+        AlertRule rule = new AlertRule();
+        rule.setName("Object health");
+        rule.setPresentationConfig("""
+                {"version":1,"sections":[
+                  {"type":"LIST","title":"Object","sourcePath":"data.consumer",
+                   "fields":[{"key":"groupId","label":"Group"},{"key":"lag","label":"Lag"}]}
+                ]}
+                """);
+        Alert alert = new Alert();
+        alert.setAlertRule(rule);
+        alert.setSeverity(AlertRule.Severity.WARNING);
+        MonitoringExecution execution = mock(MonitoringExecution.class);
+        when(execution.getId()).thenReturn(203L);
+        AlertHistory history = new AlertHistory();
+        history.setAlert(alert);
+        history.setExecution(execution);
+        history.setNewSeverity(AlertRule.Severity.WARNING);
+        MonitoringResult result = new MonitoringResult();
+        result.setResultData("""
+                {"data":{"consumer":{"groupId":"orders","lag":120}}}
+                """);
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(203L))
+                .thenReturn(Optional.of(result));
+
+        AlertPresentationService.Presentation presentation = service.build(history,
+                Map.of("title", "Object alert", "body", "Object details"));
+
+        assertEquals(List.of("Group: orders | Lag: 120"), presentation.sections().get(0).get("items"));
+    }
+
+    @Test
     void rendersAlertRecordTemplatesWithoutLoadingResultDataWhenNoJsonPathIsUsed() {
         AlertRule rule = new AlertRule();
         rule.setName("API latency");
