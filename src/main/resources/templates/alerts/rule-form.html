@@ -198,6 +198,51 @@
     </div>
 </div>
 </div></div>
+<script>
+/* Keep the rule editor tabs usable even if the Bootstrap tab plugin is unavailable. */
+document.addEventListener('DOMContentLoaded', function () {
+    const tabList = document.getElementById('alertRuleTabs');
+    const tabContent = document.getElementById('alertRuleTabContent');
+    if (!tabList || !tabContent) return;
+    const tabs = Array.from(tabList.querySelectorAll('[data-bs-toggle="tab"]'));
+    const activate = function (tab) {
+        const targetSelector = tab.getAttribute('data-bs-target');
+        const pane = targetSelector ? tabContent.querySelector(targetSelector) : null;
+        if (!pane) return;
+        tabs.forEach(function (item) {
+            const selected = item === tab;
+            item.classList.toggle('active', selected);
+            item.setAttribute('aria-selected', selected ? 'true' : 'false');
+            item.setAttribute('tabindex', selected ? '0' : '-1');
+        });
+        tabContent.querySelectorAll(':scope > .tab-pane').forEach(function (item) {
+            const selected = item === pane;
+            item.classList.toggle('active', selected);
+            item.classList.toggle('show', selected);
+            item.setAttribute('aria-hidden', selected ? 'false' : 'true');
+        });
+        if (window.bootstrap && window.bootstrap.Tab) {
+            try { window.bootstrap.Tab.getOrCreateInstance(tab).show(); } catch (ignored) { /* Manual activation above remains available. */ }
+        }
+    };
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function (event) {
+            event.preventDefault();
+            activate(tab);
+        });
+        tab.addEventListener('keydown', function (event) {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+            event.preventDefault();
+            const current = tabs.indexOf(tab);
+            const next = tabs[(current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+            activate(next);
+            next.focus();
+        });
+    });
+    const initiallyActive = tabs.find(function (tab) { return tab.classList.contains('active'); }) || tabs[0];
+    if (initiallyActive) activate(initiallyActive);
+});
+</script>
 <div class="d-flex justify-content-end gap-2"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
 </form><script>
 document.addEventListener('DOMContentLoaded', () => {
