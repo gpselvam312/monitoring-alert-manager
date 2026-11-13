@@ -35,7 +35,7 @@
                     { instance: 'payment-api-06', status: 'WARNING', errorRate: 4.1 }
                 ]
             }
-        };;
+        };
 
         let config = { version: 1, sections: [] };
         let jsonEdited = false;
@@ -786,7 +786,7 @@
         });
         try {
             config = normalize(JSON.parse(jsonInput.value || '{}'));
-            } catch (error) {
+        } catch (error) {
             config = { version: 1, sections: [] };
             setStatus('Saved presentation JSON could not be loaded: ' + error.message, 'warning');
         }
@@ -797,7 +797,7 @@
             if (jsonEdited) {
                 try {
                     config = normalize(JSON.parse(jsonInput.value || '{}'));
-                    } catch (error) {
+                } catch (error) {
                     event.preventDefault();
                     setStatus('Correct the advanced presentation JSON before saving: ' + error.message, 'danger');
                     return;
