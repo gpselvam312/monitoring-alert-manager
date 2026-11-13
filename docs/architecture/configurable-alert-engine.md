@@ -204,7 +204,11 @@ No Kafka-specific code belongs in the core evaluator. Kafka is one fixture/test 
       "type": "LIST",
       "title": "Affected topics",
       "sourcePath": "data.topics",
-      "valuePath": "name",
+      "fields": [
+        { "key": "name", "label": "Topic" },
+        { "key": "status", "label": "Status" },
+        { "key": "totalLag", "label": "Total lag" }
+      ],
       "maxItems": 20
     },
     {
@@ -218,7 +222,7 @@ No Kafka-specific code belongs in the core evaluator. Kafka is one fixture/test 
 }
 \`\`\`
 
-Presentation section types are TEXT, KEY_VALUE, TABLE, LIST, and JSON. Document source paths must explicitly use response.* or data.*; table column keys and list valuePath values are relative to each selected record. This prevents a presentation from silently switching between platform metadata and monitoring payload fields.
+Presentation section types are TEXT, KEY_VALUE, TABLE, LIST, and JSON. Document source paths must explicitly use response.* or data.*; table column keys and list field keys are relative to each selected record. A LIST source may be an array or a single object (treated as one item). Its configured fields are rendered in order for every item; legacy valuePath remains supported when fields are not configured. This prevents a presentation from silently switching between platform metadata and monitoring payload fields.
 
 AlertPresentationService creates one channel-neutral presentation snapshot for the triggering history event and stores the rendered result in each queued delivery payload. Email HTML/plain text, Teams Adaptive Cards, and WhatsApp text render those same sections with channel-appropriate layouts. Existing alert_subject and alert_message remain the fallback when presentation_config is empty or has no presentation overrides. Title, message, and TEXT templates support the built-in alert placeholders plus direct namespaced JSON placeholders such as {data.cluster.name} and {response.status}.
 
