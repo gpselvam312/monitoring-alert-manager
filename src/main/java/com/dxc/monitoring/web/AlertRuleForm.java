@@ -21,7 +21,7 @@ public class AlertRuleForm {
     private String correlationFieldPath = "";
 
     private String presentationConfigJson = "{}";
-    private String alertSubject = "[{severity}] {ruleName}";
+    private String alertSubject = "{severity} — {ruleName}";
     private String alertMessage = "Job {jobName} in application {applicationName}, environment {environment}: {fieldPath} evaluated to {actualValue} (threshold: {threshold}).";
     private Long notificationPolicyId;
     private String notificationRoutesJson = "[]";
