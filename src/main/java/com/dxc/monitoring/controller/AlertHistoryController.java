@@ -156,7 +156,7 @@ public class AlertHistoryController {
                 format(alert.getLastOccurredAt()), format(alert.getResolvedAt()));
     }
 
-    private String format(java.time.LocalDateTime value) {
+    private String format(java.time.OffsetDateTime value) {
         return value == null ? "—" : DATE_FORMAT.format(value);
     }
 
@@ -198,7 +198,7 @@ public class AlertHistoryController {
 
     private record SearchTerm(Long exactAlertId, String repositorySearch) {}
     public record HistoryRow(Long id, String alertKey, String title, String jobName, String severity,
-            String applicationName, String environmentName, String status, int occurrenceCount,
+            String applicationName, String environmentName, String status, Long occurrenceCount,
             String createdAt, String lastOccurredAt, String resolvedAt) {}
     public record HistoryBatch(List<HistoryRow> items, long totalElements, int batch,
             boolean hasNext, int fetchSize) {}
