@@ -64,7 +64,7 @@
 <div class="col-12 col-md-5 route-group-container d-none"><label class="form-label">Recipient group</label><select class="form-select route-group"><option value="">Select group</option><option th:each="group : ${notificationGroups}" th:value="${group.id}" th:text="${group.name}"></option></select></div>
 <div class="col-12 route-cc-container d-none"><label class="form-label">CC email addresses</label><input class="form-control route-cc" type="text" maxlength="5200" placeholder="team@example.com, oncall@example.com"><div class="form-text">Optional. Enter up to 20 email addresses separated by commas. Applies only to this Email route.</div></div>
 <div class="col-6 col-md-3"><label class="form-label">Minimum interval (seconds)</label><input class="form-control route-interval" type="number" min="0" max="2147483647" value="300" required><div class="form-text">Used for recurrence/reminder</div></div>
-<div class="col-6 col-md-3 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input route-enabled" type="checkbox" checked><label class="form-check-label">Route enabled</label></div></div>
+<div class="col-6 col-md-3 d-flex align-items-end"><div class="form-check mb-2"><input class="form-check-input route-enabled" type="checkbox" checked><label class="form-check-label">Route enabled</label></div></div>
 </div></div>
 </template>
 </div></div>
