@@ -45,7 +45,6 @@
     const syncNotificationRoutes = () => {
         const rows = routeRows();
         routesInput.value = JSON.stringify(rows.map(row => {
-            const targetType = row.querySelector('.route-target-type').value;
             return {
                 channelId: row.querySelector('.route-channel').value || null,
                 severity: row.querySelector('.route-severity').value,
