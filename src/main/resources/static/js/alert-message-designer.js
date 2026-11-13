@@ -199,30 +199,30 @@
         };
         const makeBlock = (section, index) => {
             const card = element('section', 'app-card mb-0 presentation-block');
-            card.draggable = true;
             card.dataset.blockId = section.id;
-            const header = element('div', 'app-card-header d-flex align-items-center justify-content-between gap-2 flex-wrap');
+            const header = element('div', 'app-card-header d-flex align-items-center gap-2 flex-nowrap');
             const title = section.type === 'TEXT' ? 'Text Block' : section.type === 'KEY_VALUE' ? 'Key-Value List Block'
                 : section.type === 'LIST' ? 'List Block'
                 : section.type === 'TABLE' ? 'Data Table Block' : 'Legacy ' + section.type + ' Block';
             const collapseId = 'presentation-block-collapse-' + index;
             const expanded = expandedBlockId ? expandedBlockId === section.id : index === 0;
-            const heading = element('div', 'd-flex align-items-center gap-2 min-w-0');
-            const dragHandle = element('span', 'presentation-block-drag-handle text-muted');
+            const heading = element('div', 'd-flex align-items-center gap-2 flex-grow-1 min-w-0');
+            const dragHandle = element('span', 'presentation-block-drag-handle text-muted flex-shrink-0');
+            dragHandle.draggable = true;
             dragHandle.append(element('i', 'bi bi-grip-vertical'));
             dragHandle.setAttribute('title', 'Drag to reorder');
-            const collapseButton = element('button', 'btn btn-link text-decoration-none text-reset p-0 d-flex align-items-center gap-2 text-start');
+            const collapseButton = element('button', 'btn btn-sm btn-outline-secondary flex-shrink-0');
             collapseButton.type = 'button';
             collapseButton.dataset.bsToggle = 'collapse';
             collapseButton.dataset.bsTarget = '#' + collapseId;
             collapseButton.setAttribute('aria-expanded', String(expanded));
             collapseButton.setAttribute('aria-controls', collapseId);
-            const headingText = element('span', 'd-flex flex-column');
-            headingText.append(element('span', 'fw-semibold', (index + 1) + '. ' + title));
-            headingText.append(element('span', 'small text-muted', 'Block ' + (index + 1) + ' of ' + config.sections.length));
-            collapseButton.append(headingText, element('i', 'bi bi-chevron-down small presentation-block-chevron'));
-            heading.append(dragHandle, collapseButton);
-            header.append(heading, rowActions(index, config.sections.length));
+            collapseButton.textContent = expanded ? 'Collapse' : 'Expand';
+            const headingText = element('div', 'd-flex align-items-baseline gap-2 min-w-0 flex-nowrap');
+            headingText.append(element('span', 'fw-semibold text-nowrap', (index + 1) + '. ' + title));
+            headingText.append(element('span', 'small text-muted text-nowrap', 'Block ' + (index + 1) + ' of ' + config.sections.length));
+            heading.append(dragHandle, headingText);
+            header.append(heading, rowActions(index, config.sections.length), collapseButton);
             card.append(header);
             const collapse = element('div', 'collapse' + (expanded ? ' show' : ''));
             collapse.id = collapseId;
@@ -443,15 +443,12 @@
             collapseButton.addEventListener('click', () => {
                 expandedBlockId = expanded ? null : section.id;
             });
-            collapse.addEventListener('shown.bs.collapse', () => { expandedBlockId = section.id; });
+            collapse.addEventListener('shown.bs.collapse', () => { expandedBlockId = section.id; collapseButton.textContent = 'Collapse'; collapseButton.setAttribute('aria-expanded', 'true'); });
             collapse.addEventListener('hidden.bs.collapse', () => {
                 if (expandedBlockId === section.id) expandedBlockId = null;
+                collapseButton.textContent = 'Expand'; collapseButton.setAttribute('aria-expanded', 'false');
             });
-            card.addEventListener('dragstart', event => {
-                if (!event.target.closest('.presentation-block-drag-handle')) {
-                    event.preventDefault();
-                    return;
-                }
+            dragHandle.addEventListener('dragstart', event => {
                 draggedBlockId = section.id;
                 card.classList.add('presentation-block-dragging');
                 event.dataTransfer.effectAllowed = 'move';
