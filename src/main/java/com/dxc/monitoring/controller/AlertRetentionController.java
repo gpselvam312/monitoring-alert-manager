@@ -1,6 +1,8 @@
 package com.dxc.monitoring.controller;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -18,10 +20,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.AlertCleanupRun;
 import com.dxc.monitoring.entity.AlertRetentionPolicy;
+import com.dxc.monitoring.entity.AlertType;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertCleanupRunRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.repository.AlertTypeRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.AlertRetentionCleanupExecutor;
@@ -34,14 +38,16 @@ public class AlertRetentionController {
     private final AlertCleanupRunRepository runRepository;
     private final EnvironmentRepository environmentRepository;
     private final DashboardAccessService accessService;
+    private final AlertTypeRepository alertTypeRepository;
 
     public AlertRetentionController(AlertRetentionService retentionService,
             AlertCleanupRunRepository runRepository, EnvironmentRepository environmentRepository,
-            DashboardAccessService accessService) {
+            DashboardAccessService accessService, AlertTypeRepository alertTypeRepository) {
         this.retentionService = retentionService;
         this.runRepository = runRepository;
         this.environmentRepository = environmentRepository;
         this.accessService = accessService;
+        this.alertTypeRepository = alertTypeRepository;
     }
 
     @GetMapping
@@ -57,7 +63,11 @@ public class AlertRetentionController {
                 : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds);
         model.addAttribute("applications", applications);
         model.addAttribute("environments", environments);
-        model.addAttribute("alertTypes", List.of("ALL", "MONITORING_JOB"));
+        List<AlertType> alertTypes = alertTypeRepository.findByEnabledTrueOrderBySortOrderAscNameAsc();
+        model.addAttribute("alertTypes", alertTypes);
+        Map<String, String> alertTypeLabels = alertTypes.stream()
+                .collect(Collectors.toMap(AlertType::getCode, AlertType::getName));
+        model.addAttribute("alertTypeLabels", alertTypeLabels);
         model.addAttribute("currentPage", "alert-retention");
         if (previewPolicyId != null) {
             try {
