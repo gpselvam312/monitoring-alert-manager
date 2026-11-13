@@ -8,7 +8,6 @@
 <div class="col-12 col-md-4"><a class="text-decoration-none" th:href="@{/alerts/history(status='RESOLVED',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId})}"><section class="dashboard-widget h-100"><div class="dashboard-widget-header"><div class="dashboard-widget-title-group"><div class="dashboard-widget-icon"><i class="bi bi-check2-circle"></i></div><div class="dashboard-widget-title-line min-w-0"><h5 class="dashboard-widget-title">Recovered</h5><span class="dashboard-widget-description">Alerts that have recovered</span></div></div><div class="dashboard-widget-actions"><span class="dashboard-status dashboard-status-green"><i class="bi bi-check-circle-fill"></i><span>Recovered</span></span></div></div><div class="dashboard-widget-body"><div class="dashboard-widget-value" th:text="${resolvedAlerts}">0</div></div></section></a></div>
 </div>
 <div class="app-card">
-<div class="border-bottom" th:replace="~{fragments/data-table :: controls('alertHistorySearch','alertHistoryPageSize','Alert ID, title, job or application',${pageSize},${search})}"></div>
 <div class="row g-2 p-3 align-items-end">
 <div class="col-6 col-lg-3"><label class="form-label small" for="alertHistoryStatus">Status</label><select class="form-select form-select-sm" id="alertHistoryStatus"><option value="">All statuses</option><option value="ACTIVE" th:selected="${status == 'ACTIVE'}">Active</option><option value="RESOLVED" th:selected="${status == 'RESOLVED'}">Recovered</option></select></div>
 <div class="col-6 col-lg-3"><label class="form-label small" for="alertHistorySeverity">Severity</label><select class="form-select form-select-sm" id="alertHistorySeverity"><option value="">All severities</option><option th:each="item : ${T(com.dxc.monitoring.entity.AlertRule.Severity).values()}" th:value="${item.name()}" th:text="${item.name()}" th:selected="${severity == item.name()}"></option></select></div>
@@ -16,6 +15,7 @@
 <div class="col-6 col-lg-3"><label class="form-label small" for="alertHistoryEnvironment">Environment</label><select class="form-select form-select-sm" id="alertHistoryEnvironment"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:text="${env.name}" th:selected="${environmentId == env.id}"></option></select></div>
 <div class="col-12 d-flex justify-content-end"><button type="button" class="btn btn-sm btn-outline-secondary" id="alertHistoryClearFilters"><i class="bi bi-arrow-counterclockwise me-1"></i>Clear filters</button></div>
 </div>
+<div class="border-bottom" th:replace="~{fragments/data-table :: controls('alertHistorySearch','alertHistoryPageSize','Alert ID, title, job or application',${pageSize},${search})}"></div>
 <div id="alertHistoryTableContainer" class="table-responsive"><div class="p-4 text-muted text-center">Loading alert history...</div></div>
 <div th:replace="~{fragments/data-table :: clientPagination('alertHistoryPagination','alertHistoryPaginationSummary','alertHistoryFirst','alertHistoryPrevious','alertHistoryNext','alertHistoryLast')}"></div>
 </div>
