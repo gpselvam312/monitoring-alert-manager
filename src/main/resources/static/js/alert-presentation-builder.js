@@ -207,7 +207,7 @@
                     section.columns = (section.columns || []).map(column => ({ ...column }));
                     render();
                 });
-                body.append(control('Rows from response collection', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); render(); }, 'Or enter an array path such as data.consumerGroups'), 'Choose a discovered array or enter its path.'));
+                body.append(control('Rows from response collection', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); }, 'Or enter an array path such as data.consumerGroups'), 'Choose a discovered array or enter its path.'));
                 section.columns = Array.isArray(section.columns) ? section.columns : [];
                 const columns = $('div', 'col-12');
                 columns.append($('div', 'd-flex align-items-center justify-content-between gap-2 mb-2',
@@ -228,7 +228,7 @@
                 source.addEventListener('change', () => { section.sourcePath = source.value; render(); });
                 const valuePath = relativeSelect(section.sourcePath, section.valuePath || 'value');
                 valuePath.addEventListener('change', () => { section.valuePath = valuePath.value; sync(); });
-                body.append(control('Items from response collection', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); render(); }, 'Or enter an array path')), control('Display field for each item', withManualPath(valuePath, section.valuePath || 'value', value => { section.valuePath = value; sync(); }, 'Or enter a field relative to each item')));
+                body.append(control('Items from response collection', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); }, 'Or enter an array path')), control('Display field for each item', withManualPath(valuePath, section.valuePath || 'value', value => { section.valuePath = value; sync(); }, 'Or enter a field relative to each item')));
                 const maxItems = $('input', 'form-control');
                 maxItems.type = 'number'; maxItems.min = '1'; maxItems.max = '100'; maxItems.value = section.maxItems || 20;
                 maxItems.addEventListener('input', () => { section.maxItems = Number(maxItems.value); sync(); });
