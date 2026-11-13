@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.dxc.monitoring.alert.condition.ConditionEvaluator;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
@@ -51,7 +52,8 @@ class AlertEvaluationServiceTest {
         historyRepository = mock(AlertHistoryRepository.class);
         evaluationRepository = mock(AlertRuleEvaluationRepository.class);
         service = new AlertEvaluationService(executionRepository, resultRepository, ruleRepository,
-                alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), mock(NotificationRoutingService.class));
+                alertRepository, historyRepository, evaluationRepository, new ObjectMapper(), new ConditionEvaluator(),
+                mock(NotificationRoutingService.class));
 
         execution = mock(MonitoringExecution.class);
         rule = mock(AlertRule.class);
@@ -65,8 +67,7 @@ class AlertEvaluationServiceTest {
         when(rule.getExecutionSourcePolicy()).thenReturn(AlertRule.ExecutionSourcePolicy.SCHEDULED_ONLY);
         when(rule.getSeverity()).thenReturn(AlertRule.Severity.CRITICAL);
         when(rule.getName()).thenReturn("CPU usage high");
-        when(rule.getAlertSubject()).thenReturn("[{severity}] {ruleName} — {jobName}");
-        when(rule.getAlertMessage()).thenReturn("{fieldPath}: {actualValue} > {threshold} (execution {executionId})");
+        when(rule.getAlertSubject()).thenReturn("{severity} — {ruleName}");
         when(job.getName()).thenReturn("API CPU");
         when(rule.getConditionConfig()).thenReturn("""
                 {"fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85,"consecutiveMatches":1}
@@ -91,7 +92,7 @@ class AlertEvaluationServiceTest {
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
         when(result.getValue()).thenReturn("92");
         when(result.getUnit()).thenReturn("%");
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
     }
 
     @Test
@@ -100,10 +101,45 @@ class AlertEvaluationServiceTest {
 
         org.mockito.ArgumentCaptor<Alert> alertCaptor = org.mockito.ArgumentCaptor.forClass(Alert.class);
         verify(alertRepository).save(alertCaptor.capture());
-        assertEquals("[CRITICAL] CPU usage high — API CPU", alertCaptor.getValue().getTitle());
-        assertEquals("data.cpu.usage: 92 > 85 (execution 101)", alertCaptor.getValue().getSummary());
+        assertEquals("CRITICAL — CPU usage high", alertCaptor.getValue().getTitle());
+        org.junit.jupiter.api.Assertions.assertFalse(alertCaptor.getValue().getSummary().isBlank());
         verify(historyRepository).save(any(AlertHistory.class));
         verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+
+    @Test
+    void doesNotCarryConsecutiveMatchesAcrossDifferentCorrelationKeys() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {"fieldPath":"data.cpu.usage","operator":"GREATER_THAN","threshold":85,
+                 "consecutiveMatches":2,"correlationFieldPath":"data.host"}
+                """);
+        AlertRuleEvaluation previous = mock(AlertRuleEvaluation.class);
+        MonitoringExecution previousExecution = mock(MonitoringExecution.class);
+        when(previous.getExecution()).thenReturn(previousExecution);
+        when(previous.getDetails()).thenReturn("""
+                {"phase":"CONDITION","conditionMatched":true,"consecutiveMatches":1,
+                 "correlationKey":"host-a"}
+                """);
+        when(evaluationRepository.findTopByAlertRule_IdOrderByEvaluatedAtDescIdDesc(7L))
+                .thenReturn(Optional.of(previous));
+
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getResultData()).thenReturn("""
+                {"schemaVersion":1,"status":"SUCCESS","data":{"host":"host-b","cpu":{"usage":92}}}
+                """);
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L))
+                .thenReturn(Optional.of(result));
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository, never()).save(any(Alert.class));
+        org.mockito.ArgumentCaptor<AlertRuleEvaluation> evaluationCaptor =
+                org.mockito.ArgumentCaptor.forClass(AlertRuleEvaluation.class);
+        verify(evaluationRepository).save(evaluationCaptor.capture());
+        assertEquals("host-b", new ObjectMapper().readTree(evaluationCaptor.getValue().getDetails())
+                .get("correlationKey").asText());
     }
 
     @Test
@@ -162,7 +198,7 @@ class AlertEvaluationServiceTest {
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
         when(result.getValue()).thenReturn("3");
         when(result.getUnit()).thenReturn("servers");
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         service.evaluateExecution(101L);
 
@@ -189,7 +225,7 @@ class AlertEvaluationServiceTest {
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
         when(result.getValue()).thenReturn("3");
         when(result.getUnit()).thenReturn("servers");
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         service.evaluateExecution(101L);
 
@@ -218,13 +254,47 @@ class AlertEvaluationServiceTest {
                 """);
         when(result.getMessage()).thenReturn("Script completed successfully.");
         when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
-        when(resultRepository.findAllByExecutionId(101L)).thenReturn(List.of(result));
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         service.evaluateExecution(101L);
 
         verify(alertRepository).save(any(Alert.class));
         verify(historyRepository).save(any(AlertHistory.class));
         verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+
+    @Test
+    void evaluatesAdvancedCollectionConditionThroughAlertLifecycle() {
+        when(rule.getConditionConfig()).thenReturn("""
+                {
+                  "type":"COLLECTION",
+                  "collectionPath":"data.nodes",
+                  "quantifier":"ALL",
+                  "condition":{"fieldPath":"state","operator":"EQUALS","threshold":"DOWN"},
+                  "consecutiveMatches":1
+                }
+                """);
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getResultData()).thenReturn("""
+                {"schemaVersion":1,"status":"SUCCESS","data":{"nodes":[
+                  {"name":"node-a","state":"DOWN"},
+                  {"name":"node-b","state":"DOWN"}
+                ]}}
+                """);
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository).save(any(Alert.class));
+        verify(historyRepository).save(any(AlertHistory.class));
+        org.mockito.ArgumentCaptor<AlertRuleEvaluation> evaluationCaptor =
+                org.mockito.ArgumentCaptor.forClass(AlertRuleEvaluation.class);
+        verify(evaluationRepository).save(evaluationCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals(AlertRuleEvaluation.Outcome.MATCHED,
+                evaluationCaptor.getValue().getOutcome());
+        org.junit.jupiter.api.Assertions.assertTrue(evaluationCaptor.getValue().getDetails().contains("COLLECTION"));
     }
 
     @Test
@@ -256,6 +326,78 @@ class AlertEvaluationServiceTest {
 
         verify(alertRepository, never()).save(any(Alert.class));
         verify(evaluationRepository, never()).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
+    void resolvesActiveAlertWhenRecoveryConditionMatches() {
+        Alert activeAlert = new Alert();
+        activeAlert.setSeverity(AlertRule.Severity.CRITICAL);
+        activeAlert.setOccurrenceCount(1L);
+        when(rule.getRecoveryConfig()).thenReturn("""
+                {"enabled":true,"fieldPath":"data.cpu.usage","operator":"LESS_THAN_OR_EQUAL",
+                 "threshold":75,"consecutiveMatches":1}
+                """);
+        when(alertRepository.findByAlertRuleIdAndCorrelationKeyAndStatus(
+                7L, "DEFAULT", Alert.AlertStatus.ACTIVE)).thenReturn(Optional.of(activeAlert));
+
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getResultData()).thenReturn("""
+                {"schemaVersion":1,"status":"SUCCESS","data":{"cpu":{"usage":70}}}
+                """);
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
+
+        service.evaluateExecution(101L);
+
+        org.mockito.ArgumentCaptor<Alert> alertCaptor = org.mockito.ArgumentCaptor.forClass(Alert.class);
+        verify(alertRepository).save(alertCaptor.capture());
+        assertEquals(Alert.AlertStatus.RESOLVED, alertCaptor.getValue().getStatus());
+        org.mockito.ArgumentCaptor<AlertHistory> historyCaptor =
+                org.mockito.ArgumentCaptor.forClass(AlertHistory.class);
+        verify(historyRepository).save(historyCaptor.capture());
+        assertEquals(AlertHistory.EventType.RESOLVED, historyCaptor.getValue().getEventType());
+    }
+
+    @Test
+    void ignoresManualExecutionForManualOnlyPolicyWhenExecutionIsScheduled() {
+        when(rule.getExecutionSourcePolicy()).thenReturn(AlertRule.ExecutionSourcePolicy.MANUAL_ONLY);
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository, never()).save(any(Alert.class));
+        verify(evaluationRepository, never()).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
+    void allNonStreamingPolicyAcceptsManualExecution() {
+        when(rule.getExecutionSourcePolicy()).thenReturn(AlertRule.ExecutionSourcePolicy.ALL_NON_STREAMING);
+        when(execution.getTriggerSource()).thenReturn(MonitoringExecution.TriggerSource.MANUAL);
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository).save(any(Alert.class));
+        verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
+    void skipsAnExecutionThatHasAlreadyBeenEvaluatedForTheRule() {
+        when(evaluationRepository.existsByAlertRuleIdAndExecutionId(7L, 101L)).thenReturn(true);
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository, never()).save(any(Alert.class));
+        verify(evaluationRepository, never()).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
+    void doesNotEvaluateAnExecutionThatIsStillRunning() {
+        when(execution.getStatus()).thenReturn(MonitoringExecution.ExecutionStatus.RUNNING);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> service.evaluateExecution(101L));
+
+        verify(ruleRepository, never()).findEnabledForJobForUpdate(5L);
+        verify(alertRepository, never()).save(any(Alert.class));
     }
 
     @Test

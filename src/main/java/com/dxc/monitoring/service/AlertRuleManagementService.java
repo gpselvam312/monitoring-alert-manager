@@ -11,6 +11,8 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.dxc.monitoring.alert.condition.ConditionConfigurationValidator;
+import com.dxc.monitoring.alert.presentation.PresentationConfigurationValidator;
 import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertRuleRepository;
@@ -24,15 +26,19 @@ import tools.jackson.databind.ObjectMapper;
 public class AlertRuleManagementService {
     private static final Set<String> OPERATORS = Set.of(
             "GREATER_THAN", "GREATER_THAN_OR_EQUAL", "LESS_THAN", "LESS_THAN_OR_EQUAL",
-            "EQUALS", "NOT_EQUALS", "EQUALS_IGNORE_CASE", "CONTAINS", "REGEX",
-            "EXISTS", "NOT_EXISTS", "IS_TRUE", "IS_FALSE");
-    private static final Set<String> THRESHOLD_FREE_OPERATORS = Set.of("EXISTS", "NOT_EXISTS", "IS_TRUE", "IS_FALSE");
+            "EQUALS", "NOT_EQUALS", "EQUALS_IGNORE_CASE", "CONTAINS", "NOT_CONTAINS",
+            "STARTS_WITH", "ENDS_WITH", "REGEX", "EXISTS", "NOT_EXISTS",
+            "IS_TRUE", "IS_FALSE", "IS_NULL", "IS_NOT_NULL");
+    private static final Set<String> THRESHOLD_FREE_OPERATORS = Set.of(
+            "EXISTS", "NOT_EXISTS", "IS_TRUE", "IS_FALSE", "IS_NULL", "IS_NOT_NULL");
     private static final Pattern FIELD_PATH = Pattern.compile("[A-Za-z0-9_\\-]+(\\.[A-Za-z0-9_\\-]+)*");
 
     private final AlertRuleRepository ruleRepository;
     private final MonitoringJobRepository jobRepository;
     private final ObjectMapper objectMapper;
     private final NotificationPolicyRepository notificationPolicyRepository;
+    private final ConditionConfigurationValidator conditionConfigurationValidator = new ConditionConfigurationValidator();
+    private final PresentationConfigurationValidator presentationConfigurationValidator = new PresentationConfigurationValidator();
 
     public AlertRuleManagementService(AlertRuleRepository ruleRepository,
             MonitoringJobRepository jobRepository, ObjectMapper objectMapper,
@@ -83,15 +89,12 @@ public class AlertRuleManagementService {
         rule.setName(name);
         rule.setDescription(trimToNull(form.getDescription()));
         String alertSubject = trimToNull(form.getAlertSubject());
-        String alertMessage = trimToNull(form.getAlertMessage());
         if (alertSubject == null || alertSubject.length() > 500) {
             throw new IllegalArgumentException("Alert subject is required and must not exceed 500 characters.");
         }
-        if (alertMessage == null || alertMessage.length() > 10000) {
-            throw new IllegalArgumentException("Alert message is required and must not exceed 10,000 characters.");
-        }
         rule.setAlertSubject(alertSubject);
-        rule.setAlertMessage(alertMessage);
+        rule.setPresentationConfig(toJson(parsePresentationConfig(form.getPresentationConfigJson())));
+        rule.setConfigVersion(1);
         if (form.getNotificationPolicyId() != null) {
             notificationPolicyRepository.findById(form.getNotificationPolicyId()).filter(com.dxc.monitoring.entity.NotificationPolicy::isEnabled)
                     .orElseThrow(() -> new IllegalArgumentException("Selected notification policy was not found."));
@@ -107,14 +110,17 @@ public class AlertRuleManagementService {
 
         Map<String, Object> condition = buildConfiguredCondition(form);
         Map<String, Object> recovery;
-        if (form.getRecoveryFieldPath() == null || form.getRecoveryFieldPath().isBlank()) {
+        if (form.getRecoveryTreeJson() != null && !form.getRecoveryTreeJson().isBlank()) {
+            recovery = parseRecoveryTree(form.getRecoveryTreeJson());
+        } else if (form.getRecoveryFieldPath() == null || form.getRecoveryFieldPath().isBlank()) {
             recovery = existingGroupedRecovery(rule);
         } else {
             recovery = new LinkedHashMap<>();
-            recovery.put("enabled", true);
             recovery.putAll(buildCondition(form.getRecoveryFieldPath(), form.getRecoveryOperator(),
                     form.getRecoveryThreshold(), form.getRecoveryConsecutiveMatches(), null, "recovery"));
         }
+        recovery.put("enabled", form.isRecoveryEnabled());
+        recovery.put("consecutiveMatches", form.getRecoveryConsecutiveMatches());
         rule.setConditionConfig(toJson(condition));
         rule.setRecoveryConfig(toJson(recovery));
         rule.setUpdatedBy(userId);
@@ -128,8 +134,10 @@ public class AlertRuleManagementService {
         form.setMonitoringJobId(rule.getMonitoringJob().getId());
         form.setName(rule.getName());
         form.setDescription(rule.getDescription());
-        form.setAlertSubject(rule.getAlertSubject());
-        form.setAlertMessage(rule.getAlertMessage());
+        form.setAlertSubject("[{severity}] {ruleName}".equals(rule.getAlertSubject())
+                ? "{severity} — {ruleName}" : rule.getAlertSubject());
+        form.setPresentationConfigJson(rule.getPresentationConfig() == null || rule.getPresentationConfig().isBlank()
+                ? "{}" : rule.getPresentationConfig());
         form.setEnabled(rule.isEnabled());
         form.setSeverity(rule.getSeverity().name());
         form.setExecutionSourcePolicy(rule.getExecutionSourcePolicy().name());
@@ -138,7 +146,8 @@ public class AlertRuleManagementService {
             Map<String, Object> condition = objectMapper.readValue(rule.getConditionConfig(), Map.class);
             form.setConditionTreeJson(toJson(editableConditionNode(condition)));
             String storedConditionType = stringValue(condition.get("type"), "CONDITION");
-            form.setConditionType("GROUP".equalsIgnoreCase(storedConditionType) ? "CONDITION" : storedConditionType);
+            form.setConditionType(Set.of("COUNT_TOTAL", "COUNT_MATCHING").contains(storedConditionType.toUpperCase(Locale.ROOT))
+                    ? storedConditionType.toUpperCase(Locale.ROOT) : "CONDITION");
             form.setCollectionPath(stringValue(condition.get("collectionPath"), ""));
             form.setCountFieldPath(stringValue(condition.get("fieldPath"), ""));
             form.setCountFieldOperator(stringValue(condition.get("operator"), "EQUALS"));
@@ -149,6 +158,10 @@ public class AlertRuleManagementService {
             form.setCorrelationFieldPath(stringValue(condition.get("correlationFieldPath"), ""));
             Map<String, Object> recovery = objectMapper.readValue(rule.getRecoveryConfig(), Map.class);
             form.setRecoveryEnabled(!Boolean.FALSE.equals(recovery.get("enabled")));
+            String recoveryType = stringValue(recovery.get("type"), "CONDITION");
+            if (!"CONDITION".equalsIgnoreCase(recoveryType)) {
+                form.setRecoveryTreeJson(toJson(recovery));
+            }
             form.setRecoveryFieldPath(stringValue(recovery.get("fieldPath"), ""));
             form.setRecoveryOperator(stringValue(recovery.get("operator"), "LESS_THAN_OR_EQUAL"));
             form.setRecoveryThreshold(stringValue(recovery.get("threshold"), stringValue(recovery.get("value"), "")));
@@ -235,18 +248,43 @@ public class AlertRuleManagementService {
         return config;
     }
 
+    private Map<String, Object> parsePresentationConfig(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        if (json.length() > 100_000) throw new IllegalArgumentException("Presentation configuration cannot exceed 100 KB.");
+        try {
+            Object parsed = objectMapper.readValue(json, Object.class);
+            return presentationConfigurationValidator.normalize(parsed);
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("The alert presentation configuration is invalid JSON.");
+        }
+    }
+
+    private Map<String, Object> parseRecoveryTree(String json) {
+        if (json == null || json.isBlank() || json.length() > 100_000) {
+            throw new IllegalArgumentException("Recovery condition configuration must contain valid JSON smaller than 100 KB.");
+        }
+        try {
+            Object parsed = objectMapper.readValue(json, Object.class);
+            return conditionConfigurationValidator.normalize(parsed);
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalArgumentException("The recovery condition tree is invalid.");
+        }
+    }
+
     private Map<String, Object> parseConditionTree(String json) {
         if (json == null || json.isBlank()) {
             throw new IllegalArgumentException("Configure at least one alert condition.");
         }
+        if (json.length() > 100_000) {
+            throw new IllegalArgumentException("Alert condition configuration cannot exceed 100 KB.");
+        }
         try {
             Object parsed = objectMapper.readValue(json, Object.class);
-            int[] nodeCount = {0};
-            Map<String, Object> root = normalizeConditionNode(parsed, 0, nodeCount);
-            if (nodeCount[0] > 100) {
-                throw new IllegalArgumentException("An alert condition tree cannot contain more than 100 nodes.");
-            }
-            return root;
+            return conditionConfigurationValidator.normalize(parsed);
         } catch (IllegalArgumentException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -275,57 +313,16 @@ public class AlertRuleManagementService {
             node.put("children", children);
             return node;
         }
+        if (!"CONDITION".equals(type)) {
+            storedNode.forEach(node::put);
+            return node;
+        }
         node.put("type", "CONDITION");
         node.put("fieldPath", stringValue(storedNode.get("fieldPath"), ""));
         node.put("operator", stringValue(storedNode.get("operator"), "GREATER_THAN"));
         if (storedNode.containsKey("threshold")) node.put("threshold", storedNode.get("threshold"));
         else if (storedNode.containsKey("value")) node.put("threshold", storedNode.get("value"));
         return node;
-    }
-
-    private Map<String, Object> normalizeConditionNode(Object rawNode, int depth, int[] nodeCount) {
-        if (depth > 8) {
-            throw new IllegalArgumentException("Condition groups cannot be nested more than 8 levels deep.");
-        }
-        if (!(rawNode instanceof Map<?, ?> rawMap)) {
-            throw new IllegalArgumentException("Each condition must be a valid condition or group.");
-        }
-        nodeCount[0]++;
-        if (nodeCount[0] > 100) {
-            throw new IllegalArgumentException("An alert condition tree cannot contain more than 100 nodes.");
-        }
-        Map<String, Object> node = new LinkedHashMap<>();
-        rawMap.forEach((key, value) -> node.put(String.valueOf(key), value));
-        String nodeType = stringValue(node.get("type"), "CONDITION").toUpperCase(Locale.ROOT);
-        if ("GROUP".equals(nodeType)) {
-            String operator = stringValue(node.get("operator"), "").toUpperCase(Locale.ROOT);
-            if (!Set.of("AND", "OR").contains(operator)) {
-                throw new IllegalArgumentException("Choose AND or OR for each condition group.");
-            }
-            Object rawChildren = node.get("children");
-            if (!(rawChildren instanceof java.util.List<?> children) || children.size() < 2) {
-                throw new IllegalArgumentException("Each condition group must contain at least two children.");
-            }
-            List<Map<String, Object>> normalizedChildren = new java.util.ArrayList<>();
-            for (Object child : children) {
-                normalizedChildren.add(normalizeConditionNode(child, depth + 1, nodeCount));
-            }
-            Map<String, Object> group = new LinkedHashMap<>();
-            group.put("type", "GROUP");
-            group.put("operator", operator);
-            group.put("children", normalizedChildren);
-            return group;
-        }
-        if (!"CONDITION".equals(nodeType)) {
-            throw new IllegalArgumentException("Only field conditions and AND / OR groups can be used in the condition tree.");
-        }
-        Map<String, Object> condition = buildCondition(stringValue(node.get("fieldPath"), ""),
-                stringValue(node.get("operator"), "GREATER_THAN"),
-                stringValue(node.get("threshold"), stringValue(node.get("value"), "")),
-                1, null, "condition");
-        condition.remove("consecutiveMatches");
-        condition.put("type", "CONDITION");
-        return condition;
     }
 
     private Map<String, Object> buildCondition(String fieldPath, String operator, String threshold,

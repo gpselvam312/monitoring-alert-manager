@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.AlertEvaluationRequest;
@@ -18,7 +19,7 @@ public class AlertEvaluationQueueService {
         this.repository = repository;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void enqueue(MonitoringExecution execution) {
         if (execution == null || execution.getId() == null) {
             return;
@@ -31,7 +32,7 @@ public class AlertEvaluationQueueService {
         repository.save(request);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<ClaimedRequest> claimDueRequests(int batchSize, int maxAttempts) {
         List<AlertEvaluationRequest> requests = repository.lockDueRequests(batchSize, maxAttempts);
         OffsetDateTime now = OffsetDateTime.now();
@@ -43,7 +44,7 @@ public class AlertEvaluationQueueService {
         }).toList();
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markCompleted(Long requestId) {
         AlertEvaluationRequest request = repository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Alert evaluation request not found."));
@@ -53,7 +54,7 @@ public class AlertEvaluationQueueService {
         request.setLastError(null);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(Long requestId, int attemptCount, int maxAttempts, String errorMessage) {
         AlertEvaluationRequest request = repository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Alert evaluation request not found."));

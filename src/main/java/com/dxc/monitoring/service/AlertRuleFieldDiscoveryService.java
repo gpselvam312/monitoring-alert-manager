@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.MonitoringResult;
+import com.dxc.monitoring.alert.json.JsonDocument;
 import com.dxc.monitoring.repository.MonitoringExecutionRepository;
 import com.dxc.monitoring.repository.MonitoringResultRepository;
 
@@ -61,26 +62,28 @@ public class AlertRuleFieldDiscoveryService {
         // such as executionStatus, triggerSource, or the normalized result message.
         // Normalized resultData is preferred because it preserves structured data;
         // rawOutput and then a structured message are fallbacks for older result types.
-        Object payload = extractPayload(parseStructured(result.getResultData()));
-        if (payload == null) payload = parseStructured(result.getRawOutput());
-        if (payload == null) payload = parseStructured(result.getMessage());
+        Object response = parseStructured(result.getResultData());
+        if (response == null) response = parseStructured(result.getRawOutput());
+        if (response == null) response = parseStructured(result.getMessage());
 
-        Map<String, Object> root = new LinkedHashMap<>();
-        if (payload instanceof Map<?, ?> map) {
-            map.forEach((key, value) -> root.put(String.valueOf(key), value));
-        } else if (payload != null) {
-            root.put("data", payload);
-        } else {
+        if (response == null) {
             // Support plain text key-value responses when no structured payload is stored.
             String textPayload = firstNonBlank(result.getRawOutput(), result.getMessage());
             if (textPayload != null) {
-                root.putAll(parseKeyValueLines(textPayload));
-                if (root.isEmpty()) root.put("message", textPayload);
+                Map<String, Object> textFields = parseKeyValueLines(textPayload);
+                response = textFields.isEmpty() ? Map.of("message", textPayload) : textFields;
             }
         }
 
+        if (response == null) {
+            throw new IllegalArgumentException("The latest successful execution does not contain a discoverable response.");
+        }
+
+        JsonDocument document = JsonDocument.from(response);
         List<Field> fields = new ArrayList<>();
-        flatten(root, "", fields);
+        // Prioritize payload fields when the discovery cap is reached.
+        flatten(document.data(), "data", fields);
+        flatten(document.response(), "response", fields);
         fields.sort(Comparator.comparing(Field::path, String.CASE_INSENSITIVE_ORDER));
         return new Discovery(execution.getId(), execution.getStartedAt() == null ? "" : execution.getStartedAt().toString(),
                 execution.getTriggerSource().name(), fields);
@@ -90,15 +93,10 @@ public class AlertRuleFieldDiscoveryService {
         if (sample == null || sample.isBlank()) {
             throw new IllegalArgumentException("Paste a sample response before discovering fields.");
         }
-        Object parsed = parseStructured(sample);
-        Map<String, Object> root = new LinkedHashMap<>();
-        if (parsed instanceof Map<?, ?> map) {
-            map.forEach((key, value) -> root.put(String.valueOf(key), value));
-        } else if (parsed != null) {
-            root.put("data", parsed);
-        } else {
-            root.putAll(parseKeyValueLines(sample));
-            if (root.isEmpty()) {
+        Object response = parseStructured(sample);
+        if (response == null) {
+            Map<String, Object> textFields = parseKeyValueLines(sample);
+            if (textFields.isEmpty()) {
                 String[] lines = sample.strip().split("\\R");
                 if (lines.length >= 2 && lines[0].contains(",")) {
                     String[] headers = lines[0].split(",", -1);
@@ -106,32 +104,21 @@ public class AlertRuleFieldDiscoveryService {
                     for (int i = 0; i < Math.min(headers.length, values.length); i++) {
                         String key = headers[i].trim();
                         if (key.matches("[A-Za-z_][A-Za-z0-9_.-]{0,254}")) {
-                            root.put(key, coerce(values[i].trim()));
+                            textFields.put(key, coerce(values[i].trim()));
                         }
                     }
                 }
             }
+            if (textFields.isEmpty()) textFields.put("message", sample);
+            response = textFields;
         }
-        if (root.isEmpty()) {
-            throw new IllegalArgumentException("No fields could be discovered. Use JSON, key-value lines, or comma-delimited header/value rows.");
-        }
+
+        JsonDocument document = JsonDocument.from(response);
         List<Field> fields = new ArrayList<>();
-        flatten(root, "", fields);
+        flatten(document.response(), "response", fields);
+        flatten(document.data(), "data", fields);
         fields.sort(Comparator.comparing(Field::path, String.CASE_INSENSITIVE_ORDER));
         return new Discovery(null, "Sample response (not saved)", "SAMPLE", fields);
-    }
-
-    /**
-     * Unwrap the normalized result envelope while preserving ordinary response
-     * objects that happen to contain a property named "data".
-     */
-    private Object extractPayload(Object parsed) {
-        if (parsed instanceof Map<?, ?> map
-                && map.containsKey("schemaVersion")
-                && map.containsKey("data")) {
-            return map.get("data");
-        }
-        return parsed;
     }
 
     private String firstNonBlank(String... values) {
@@ -188,11 +175,13 @@ public class AlertRuleFieldDiscoveryService {
             return;
         }
         if (value instanceof List<?> list) {
-            if (list.isEmpty()) {
-                addField(path, "array", "[]", fields);
-                return;
-            }
-            // Reuse the same path for every item. Repeated fields are merged below.
+            addField(path, "array", "[" + list.size() + " items]", fields);
+            if (list.isEmpty()) return;
+            // Arrays are exposed as selectable collection sources. Object members are
+            // discovered using reusable paths without numeric indexes.
+            boolean primitiveItems = list.stream().allMatch(item ->
+                    item == null || (!(item instanceof Map<?, ?>) && !(item instanceof List<?>)));
+            if (primitiveItems) return;
             for (Object item : list) {
                 if (fields.size() >= MAX_FIELDS) return;
                 flatten(item, path, fields);

@@ -54,8 +54,10 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
         }
 
         String title = string(payload, "title", "Monitoring alert");
-        String bodyText = title + "\n" + string(payload, "body", "");
-        if (bodyText.length() > 4000) bodyText = bodyText.substring(0, 4000);
+        String severity = string(payload, "severity", "INFO").toUpperCase(Locale.ROOT);
+        String bodyText = ("SUCCESS".equals(severity) ? "🟢 " : "")
+                + title + "\n" + string(payload, "body", "") + renderContent(payload.get("content"));
+        if (bodyText.length() > 4000) bodyText = bodyText.substring(0, 3980) + "\n… (truncated)";
 
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("messaging_product", "whatsapp");
@@ -88,6 +90,71 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
         return providerMessageId(response);
     }
 
+    private String renderContent(Object rawContent) {
+        if (!(rawContent instanceof List<?> sections)) return "";
+        StringBuilder text = new StringBuilder();
+        for (Object rawSection : sections) {
+            if (!(rawSection instanceof Map<?, ?> section)) continue;
+            String type = string(section, "type", "").toLowerCase(Locale.ROOT);
+            String title = string(section, "title", "");
+            if (!title.isBlank()) text.append("\n\n").append(title);
+            switch (type) {
+                case "text" -> text.append("\n").append(string(section, "text", ""));
+                case "details" -> {
+                    Object rawFields = section.get("fields");
+                    if (rawFields instanceof List<?> fields && !fields.isEmpty()) {
+                        StringBuilder lines = new StringBuilder();
+                        for (Object rawField : fields.stream().limit(50).toList()) {
+                            if (rawField instanceof Map<?, ?> field) {
+                                if (lines.length() > 0) lines.append("\n");
+                                lines.append(string(field, "label", "")).append(": ")
+                                        .append(string(field, "value", ""));
+                            }
+                        }
+                        if (!lines.isEmpty()) text.append("\n\u0060\u0060\u0060\n").append(lines).append("\n\u0060\u0060\u0060");
+                    }
+                }
+                case "list" -> {
+                    Object rawItems = section.get("items");
+                    if (rawItems instanceof List<?> items && !items.isEmpty()) {
+                        StringBuilder lines = new StringBuilder();
+                        int index = 0;
+                        for (Object item : items.stream().limit(50).toList()) {
+                            if (!lines.isEmpty()) lines.append("\n");
+                            lines.append(++index).append(". ").append(String.valueOf(item));
+                        }
+                        text.append("\n\u0060\u0060\u0060\n").append(lines).append("\n\u0060\u0060\u0060");
+                    }
+                }
+                case "json" -> text.append("\n").append(string(section, "value", ""));
+                case "table" -> {
+                    Object rawRows = section.get("rows");
+                    Object rawColumns = section.get("columns");
+                    if (rawRows instanceof List<?> rows && rawColumns instanceof List<?> columns && !rows.isEmpty()) {
+                        StringBuilder lines = new StringBuilder();
+                        int rowNumber = 0;
+                        for (Object rawRow : rows.stream().limit(20).toList()) {
+                            if (!(rawRow instanceof Map<?, ?> row)) continue;
+                            if (!lines.isEmpty()) lines.append("\n");
+                            lines.append(++rowNumber).append(". ");
+                            for (int columnIndex = 0; columnIndex < columns.size(); columnIndex++) {
+                                Object rawColumn = columns.get(columnIndex);
+                                String key = rawColumn instanceof Map<?, ?> column ? string(column, "key", "") : String.valueOf(rawColumn);
+                                String label = rawColumn instanceof Map<?, ?> column ? string(column, "label", key) : key;
+                                if (columnIndex > 0) lines.append(" | ");
+                                Object cell = row.get(key);
+                                lines.append(label).append(": ").append(cell == null ? "" : String.valueOf(cell));
+                            }
+                        }
+                        if (!lines.isEmpty()) text.append("\n\u0060\u0060\u0060\n").append(lines).append("\n\u0060\u0060\u0060");
+                    }
+                }
+                default -> { }
+            }
+        }
+        return text.toString();
+    }
+
     private String providerMessageId(String response) {
         if (response == null || response.isBlank()) return null;
         try {
@@ -108,7 +175,7 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
         catch (Exception exception) { throw new IllegalArgumentException("WhatsApp channel configuration is invalid."); }
     }
 
-    private String string(Map<String, Object> map, String key, String fallback) {
+    private String string(Map<?, ?> map, String key, String fallback) {
         Object value = map.get(key);
         return value == null ? fallback : String.valueOf(value);
     }

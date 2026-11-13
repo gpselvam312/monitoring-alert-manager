@@ -10,7 +10,7 @@ import com.dxc.monitoring.entity.AlertRuleNotificationRoute;
 import com.dxc.monitoring.entity.NotificationRoute;
 
 public interface AlertRuleNotificationRouteRepository extends JpaRepository<AlertRuleNotificationRoute, Long> {
-    @EntityGraph(attributePaths = {"channel", "recipient", "group"})
+    @EntityGraph(attributePaths = {"channel", "recipient", "group", "recipients", "groups"})
     List<AlertRuleNotificationRoute> findByAlertRule_IdAndSeverityAndEventTypeAndEnabledTrue(
             Long alertRuleId, AlertRule.Severity severity, NotificationRoute.EventType eventType);
 

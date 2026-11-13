@@ -6,6 +6,7 @@ on:
       - feature/monitoring-execution-scheduling
       - feature/iframe-widget-configuration
       - feature/alert-rule-discovery-retention-scope
+      - feature/configurable-alert-engine
   pull_request:
     branches:
       - feature/monitoring-execution-scheduling

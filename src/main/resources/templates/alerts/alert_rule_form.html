@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(${viewMode ? 'View Alert Rule' : (ruleForm.id == null ? 'Create Alert Rule' : 'Edit Alert Rule')}, ~{::content})}">
+<body><div th:fragment="content">
+<div class="page-header"><div><h1 class="page-title" th:text="${viewMode ? 'View Alert Rule' : (ruleForm.id == null ? 'Create Alert Rule' : 'Edit Alert Rule')}">Alert Rule</h1><p class="page-subtitle" th:text="${viewMode ? 'Review the complete alert rule configuration.' : 'Define the condition that opens an alert and the criteria that resolve it.'}">Define the condition that opens an alert and the criteria that resolve it.</p></div><div class="page-header-actions"><a th:if="${viewMode}" th:href="@{/alerts/rules/{id}/edit(id=${ruleForm.id})}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit Rule</a><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Alert Rules</a></div></div>
+<div class="alert alert-danger" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+<div class="alert alert-info" role="alert" th:if="${!hasMonitoringJobs}">No standard monitoring jobs are available in applications where you have alert-configuration access.</div>
+<form class="alert-rule-form" th:action="@{/alerts/rules/save}" th:object="${ruleForm}" method="post" th:attr="data-readonly=${viewMode}">
+<input type="hidden" th:field="*{id}">
+<ul class="nav nav-tabs mb-3" id="alertRuleTabs" role="tablist">
+<li class="nav-item" role="presentation"><button class="nav-link active" id="rule-details-tab" data-bs-toggle="tab" data-bs-target="#rule-details-pane" type="button" role="tab" aria-controls="rule-details-pane" aria-selected="true"><i class="bi bi-sliders me-1"></i>Rule Details</button></li>
+<li class="nav-item" role="presentation"><button class="nav-link" id="notification-routing-tab" data-bs-toggle="tab" data-bs-target="#notification-routing-pane" type="button" role="tab" aria-controls="notification-routing-pane" aria-selected="false"><i class="bi bi-bell me-1"></i>Notification Channels &amp; Routing</button></li>
+<li class="nav-item" role="presentation"><button class="nav-link" id="alert-condition-tab" data-bs-toggle="tab" data-bs-target="#alert-condition-pane" type="button" role="tab" aria-controls="alert-condition-pane" aria-selected="false"><i class="bi bi-diagram-3 me-1"></i>Alert Condition</button></li>
+<li class="nav-item" role="presentation"><button class="nav-link" id="recovery-criteria-tab" data-bs-toggle="tab" data-bs-target="#recovery-criteria-pane" type="button" role="tab" aria-controls="recovery-criteria-pane" aria-selected="false"><i class="bi bi-arrow-counterclockwise me-1"></i>Recovery Criteria</button></li>
+<li class="nav-item" role="presentation"><button class="nav-link" id="message-presentation-tab" data-bs-toggle="tab" data-bs-target="#message-presentation-pane" type="button" role="tab" aria-controls="message-presentation-pane" aria-selected="false"><i class="bi bi-card-text me-1"></i>Message Presentation</button></li>
+</ul>
+<div class="tab-content" id="alertRuleTabContent">
+<div class="tab-pane fade show active" id="rule-details-pane" role="tabpanel" aria-labelledby="rule-details-tab" tabindex="0">
+<div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Rule Details</h2></div><div class="app-card-body"><div class="row g-3">
+<div class="col-12 col-lg-6"><label class="form-label" for="monitoringJobLabel">Monitoring Job <span class="text-danger">*</span></label><div class="input-group"><input type="hidden" id="monitoringJobId" th:field="*{monitoringJobId}"><input class="form-control" id="monitoringJobLabel" type="text" th:value="${selectedMonitoringJobLabel}" readonly required><button type="button" class="btn btn-outline-primary" data-common-lookup th:attr="data-lookup-endpoint=@{/api/lookups/monitoring-jobs}" data-lookup-title="Select Monitoring Job" data-selection-mode="SINGLE" data-lookup-label-key="displayName" data-lookup-filters="application,environment" data-lookup-columns='[{"key":"name","label":"Monitoring Job","sort":"name","primary":true},{"key":"applicationName","label":"Application","sort":"application"},{"key":"environmentName","label":"Environment","sort":"environment"},{"key":"type","label":"Type","format":"badge"},{"key":"enabled","label":"Status","format":"status"}]' data-target-id="monitoringJobId" data-label-id="monitoringJobLabel" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-search me-1"></i>Browse</button></div><div class="form-text">Search and filter authorized standard monitoring jobs. Streaming jobs are not eligible for alert evaluation.</div></div>
+<div class="col-12 col-lg-6"><label class="form-label" for="name">Rule Name <span class="text-danger">*</span></label><input class="form-control" id="name" th:field="*{name}" maxlength="150" required></div>
+<div class="col-12"><label class="form-label" for="description">Description</label><textarea class="form-control" id="description" th:field="*{description}" rows="2" maxlength="1000"></textarea></div>
+<div class="col-12 col-md-4"><label class="form-label" for="severity">Severity</label><select class="form-select" id="severity" th:field="*{severity}"><option th:each="severity : ${severities}" th:value="${severity.name()}" th:text="${severity.name()}"></option></select></div>
+<div class="col-12 col-md-5"><label class="form-label" for="executionSourcePolicy">Execution Source</label><select class="form-select" id="executionSourcePolicy" th:field="*{executionSourcePolicy}"><option value="SCHEDULED_ONLY">Scheduled only (recommended)</option><option value="MANUAL_ONLY">Manual only</option><option value="ALL_NON_STREAMING">Scheduled and manual</option></select><div class="form-text">Historical executions with unknown source are never evaluated.</div></div>
+<div class="col-12"><div class="form-text">Notification destinations are assigned to this alert rule only. Shared channels, recipients and groups are managed under Notification Configuration.</div></div>
+<div class="col-12 col-md-4"><div class="machine-enabled-option rule-enabled-option"><span class="machine-enabled-icon" aria-hidden="true"><i class="bi bi-bell-fill"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="enabled">Rule enabled</label></span><span class="machine-enabled-switch"><input class="form-check-input" type="checkbox" role="switch" id="enabled" th:field="*{enabled}" aria-label="Enable alert rule"></span></div></div>
+</div></div></div>
+</div>
+<div class="tab-pane fade" id="notification-routing-pane" role="tabpanel" aria-labelledby="notification-routing-tab" tabindex="0">
+<div class="app-card mb-3">
+<div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0"><i class="bi bi-bell me-2"></i>Notification Channels &amp; Routing</h2><span class="badge bg-secondary-subtle text-secondary-emphasis" id="activeChannelCount">0 Active</span></div>
+<div class="app-card-body">
+<p class="small text-muted">Choose a channel to configure its destinations and delivery rules. Only routes enabled here receive notifications for this alert rule. Recurrence and reminder events respect the configured minimum interval.</p>
+<input type="hidden" th:field="*{notificationRoutesJson}" id="notificationRoutesJson">
+<div class="row g-3 mb-4" role="group" aria-label="Notification channels">
+<div class="col-12 col-md-4"><div class="machine-enabled-option notification-channel-option" data-channel-option="EMAIL"><span class="machine-enabled-icon notification-channel-icon email"><i class="bi bi-envelope-fill" aria-hidden="true"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="channelEmailEnabled">Email</label><span class="machine-enabled-description">Deliver alerts to configured email recipients.</span></span><span class="machine-enabled-switch"><input type="checkbox" class="form-check-input" id="channelEmailEnabled" data-channel-toggle="EMAIL" role="switch" aria-label="Enable Email notifications" aria-controls="routingPanelEmail"></span></div></div>
+<div class="col-12 col-md-4"><div class="machine-enabled-option notification-channel-option" data-channel-option="TEAMS"><span class="machine-enabled-icon notification-channel-icon teams"><i class="bi bi-microsoft-teams" aria-hidden="true"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="channelTeamsEnabled">Microsoft Teams</label><span class="machine-enabled-description">Post alert cards to configured Teams channels.</span></span><span class="machine-enabled-switch"><input type="checkbox" class="form-check-input" id="channelTeamsEnabled" data-channel-toggle="TEAMS" role="switch" aria-label="Enable Microsoft Teams notifications" aria-controls="routingPanelTeams"></span></div></div>
+<div class="col-12 col-md-4"><div class="machine-enabled-option notification-channel-option" data-channel-option="WHATSAPP"><span class="machine-enabled-icon notification-channel-icon whatsapp"><i class="bi bi-whatsapp" aria-hidden="true"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="channelWhatsappEnabled">WhatsApp</label><span class="machine-enabled-description">Send concise alerts to configured recipients.</span></span><span class="machine-enabled-switch"><input type="checkbox" class="form-check-input" id="channelWhatsappEnabled" data-channel-toggle="WHATSAPP" role="switch" aria-label="Enable WhatsApp notifications" aria-controls="routingPanelWhatsapp"></span></div></div>
+</div>
+<div class="accordion notification-routing-accordion" id="notificationRoutingAccordion">
+<div class="accordion-item d-none" data-channel-accordion-item="EMAIL">
+<h3 class="accordion-header"><button class="accordion-button py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelEmail" aria-expanded="true"><i class="bi bi-envelope text-primary me-2"></i>Email Routing</button></h3>
+<div id="routingPanelEmail" class="accordion-collapse collapse show" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Configure email recipients, severity and alert events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="EMAIL"><i class="bi bi-plus-lg me-1"></i>Add Email Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="EMAIL"></div><div class="small text-muted channel-routes-empty" data-channel-empty="EMAIL">No email routes configured.</div></div></div>
+</div>
+<div class="accordion-item d-none" data-channel-accordion-item="TEAMS">
+<h3 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelTeams" aria-expanded="false"><i class="bi bi-microsoft-teams text-info me-2"></i>Microsoft Teams Routing</button></h3>
+<div id="routingPanelTeams" class="accordion-collapse collapse" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Choose the configured Teams destination and delivery events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="TEAMS"><i class="bi bi-plus-lg me-1"></i>Add Teams Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="TEAMS"></div><div class="small text-muted channel-routes-empty" data-channel-empty="TEAMS">No Teams routes configured.</div></div></div>
+</div>
+<div class="accordion-item d-none" data-channel-accordion-item="WHATSAPP">
+<h3 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelWhatsapp" aria-expanded="false"><i class="bi bi-whatsapp text-success me-2"></i>WhatsApp Routing</button></h3>
+<div id="routingPanelWhatsapp" class="accordion-collapse collapse" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Configure WhatsApp recipient groups and delivery events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="WHATSAPP"><i class="bi bi-plus-lg me-1"></i>Add WhatsApp Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="WHATSAPP"></div><div class="small text-muted channel-routes-empty" data-channel-empty="WHATSAPP">No WhatsApp routes configured.</div></div></div>
+</div>
+</div>
+<div id="notificationRoutesEmpty" class="alert alert-light border small mt-3 mb-0 d-none">No notification routes configured for this rule.</div>
+<template id="notificationRouteTemplate">
+<div class="border rounded p-3 notification-route-row">
+<div class="d-flex align-items-center justify-content-between mb-3"><strong class="route-heading">Notification route</strong><button type="button" class="btn btn-sm btn-outline-danger remove-notification-route"><i class="bi bi-trash me-1"></i>Remove</button></div>
+<div class="row g-3">
+<div class="col-12 col-md-6"><label class="form-label">Channel</label><select class="form-select route-channel" required><option value="">Select channel</option><option th:each="channel : ${notificationChannels}" th:value="${channel.id}" th:attr="data-channel-type=${channel.channelType},data-channel-name=${channel.name},data-from=${emailSenderAddresses[channel.id]}" th:text="${channel.name + ' (' + channel.channelType + ')'}"></option></select><div class="form-text route-teams-hint d-none">Uses the destination configured on this Teams channel. No recipient or group is needed.</div></div>
+<div class="col-6 col-md-3"><label class="form-label">Severity</label><select class="form-select route-severity" required><option value="INFO">Info</option><option value="WARNING">Warning</option><option value="CRITICAL">Critical</option><option value="SUCCESS">Success</option></select></div>
+<div class="col-6 col-md-3"><label class="form-label">Event</label><select class="form-select route-event" required><option value="CREATED">Alert created</option><option value="RECURRENCE">Recurring alert</option><option value="ESCALATED">Severity escalated</option><option value="RECOVERED">Alert recovered</option><option value="REMINDER">Reminder</option></select></div>
+<div class="col-12 col-lg-6 route-recipient-container"><label class="form-label">Recipients</label><select class="form-select route-recipients visually-hidden" multiple tabindex="-1" aria-hidden="true" aria-label="Selected recipients"><option th:each="recipient : ${notificationRecipients}" th:value="${recipient.id}" th:attr="data-email=${recipient.email},data-phone=${recipient.phoneNumber}" th:text="${recipient.name}"></option></select><div class="form-text">Optional. Select multiple individual recipients. You can also select groups below.</div></div>
+<div class="col-12 col-lg-6 route-group-container"><label class="form-label">Recipient groups</label><select class="form-select route-groups visually-hidden" multiple tabindex="-1" aria-hidden="true" aria-label="Selected recipient groups"><option th:each="group : ${notificationGroups}" th:value="${group.id}" th:attr="data-group-channel=${group.channelType}" th:text="${group.name}"></option></select><div class="form-text">Optional. Group members are expanded automatically; duplicate recipients are notified only once.</div></div>
+<div class="col-12 route-cc-container d-none"><label class="form-label">CC email addresses</label><input class="form-control route-cc" type="text" maxlength="5200" aria-label="CC email addresses"><div class="form-text">Optional. Type each email address and press Enter, comma or semicolon to add it. Select the × on a chip to remove it. Up to 20 addresses. Applies only to this Email route.</div></div>
+<div class="col-6 col-md-3"><label class="form-label">Minimum interval (seconds)</label><input class="form-control route-interval" type="number" min="0" max="2147483647" value="300" required><div class="form-text">Used for recurrence/reminder</div></div>
+<div class="col-12 col-md-3"><div class="machine-enabled-option route-enabled-option"><span class="machine-enabled-icon" aria-hidden="true"><i class="bi bi-bell-fill"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title mb-0">Route enabled</label></span><span class="machine-enabled-switch"><input class="form-check-input route-enabled" type="checkbox" checked aria-label="Enable notification route"></span></div></div>
+</div></div>
+</template>
+</div></div>
+</div>
+<div class="tab-pane fade" id="alert-condition-pane" role="tabpanel" aria-labelledby="alert-condition-tab" tabindex="0">
+<div class="app-card mb-3"><div class="app-card-header d-flex align-items-center justify-content-between gap-2"><h2 class="h6 mb-0">Alert Condition</h2><button type="button" class="btn btn-sm btn-outline-primary" id="discoverAlertFields" th:attr="data-discovery-url=@{/alerts/rules/discovery/}" th:disabled="${ruleForm.monitoringJobId == null}"><i class="bi bi-search me-1"></i>Load Latest Saved Result</button></div><div class="app-card-body"><p class="small text-muted">Discover selectable fields from the latest successful saved result. This does not run the monitoring job. You can also enter a field path manually if needed.</p><div class="row g-3 mb-3"><div class="col-12 col-lg-5"><label class="form-label" for="conditionType">Condition Mode</label><select class="form-select" id="conditionType" th:field="*{conditionType}"><option value="CONDITION">Field conditions and AND / OR groups</option><option value="COUNT_TOTAL">Total records in a collection</option><option value="COUNT_MATCHING">Count records matching a condition</option></select><div class="form-text">Use count mode for JSON arrays such as data.servers.</div></div></div><div id="fieldDiscoveryMessage" class="alert d-none mb-3" role="status" aria-live="polite"></div><div class="row g-3 mb-3"><div class="col-12 col-lg-6"><label class="form-label" for="discoveredFieldPath">Discovered Fields</label><select class="form-select" id="discoveredFieldPath" disabled><option value="">Load a saved result to discover fields</option></select><div id="discoveredFieldSample" class="form-text">Field type and sample value will appear here.</div></div><div class="col-12 col-lg-6 d-flex align-items-end"><div id="fieldDiscoveryExecution" class="small text-muted"></div></div></div><details class="mb-3"><summary class="small fw-semibold">Use a sample response instead</summary><div class="pt-3"><label class="form-label" for="sampleResponseForDiscovery">Sample response</label><textarea class="form-control font-monospace" id="sampleResponseForDiscovery" rows="5"></textarea><div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="discoverSampleFields" th:attr="data-sample-url=@{/alerts/rules/discovery/sample}"><i class="bi bi-braces me-1"></i>Discover from Sample</button></div><div class="form-text">Supports JSON, key-value lines, and comma-delimited header/value rows for discovery. Condition testing requires valid JSON. The sample is never saved, executed or used to create an alert.</div><div class="d-flex align-items-center gap-2 flex-wrap mt-3"><button type="button" class="btn btn-sm btn-outline-success" id="previewAlertCondition" th:attr="data-preview-url=@{/alerts/rules/conditions/preview}"><i class="bi bi-play-circle me-1"></i>Test condition against sample</button><span class="small text-muted">Tests the current unsaved condition only; no alert or notification is created.</span></div><div id="conditionPreviewResult" class="mt-3 d-none" role="status" aria-live="polite"></div></div></details><p class="small text-muted">You can also use <code>executionStatus</code> and other execution metadata fields.</p><input type="hidden" th:field="*{conditionTreeJson}" id="conditionTreeJson">
+<div class="mb-3">
+    <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-2">
+        <div><h3 class="h6 mb-1">Condition expression</h3><p class="small text-muted mb-0">Array field paths use ANY-match by default. Add a collection rule to choose ANY, ALL or NONE and evaluate nested conditions against the same record.</p></div>
+        <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" id="addRootCondition"><i class="bi bi-plus-lg me-1"></i>Add condition</button><button type="button" class="btn btn-sm btn-outline-primary" id="addRootGroup"><i class="bi bi-diagram-3 me-1"></i>Add group</button><button type="button" class="btn btn-sm btn-outline-primary" id="addRootCollection"><i class="bi bi-collection me-1"></i>Add collection rule</button></div>
+    </div>
+    <div id="conditionTreeEditor" aria-live="polite"></div>
+    <details id="advancedConditionEditor" class="mt-3">
+        <summary class="small fw-semibold">Advanced condition JSON (collections, field comparisons and aggregations)</summary>
+        <div class="pt-3">
+            <label class="form-label" for="advancedConditionJson">Condition configuration</label>
+            <textarea class="form-control font-monospace" id="advancedConditionJson" rows="12" spellcheck="false"></textarea>
+            <div class="form-text">Supports GROUP, CONDITION, FIELD_COMPARISON, COLLECTION (ANY / ALL / NONE), AGGREGATE (COUNT / SUM / MIN / MAX), COUNT_TOTAL and COUNT_MATCHING. Paths use response.* or data.*. Collection predicates use fields relative to each record.</div>
+            <div class="d-flex gap-2 justify-content-end mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="useVisualConditionBuilder">Use visual builder</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="applyAdvancedConditionJson">Use advanced JSON</button>
+            </div>
+        </div>
+    </details>
+    <div class="form-text">Example: (CPU &gt; 80 AND memory &gt; 85) OR (status = DOWN AND retries &gt; 3).</div>
+</div>
+<div class="row g-3">
+<div class="col-12 col-lg-3"><label class="form-label" for="consecutiveMatches">Consecutive Matches</label><input type="number" class="form-control" id="consecutiveMatches" th:field="*{consecutiveMatches}" min="1" max="100" required></div>
+<div class="col-12 col-lg-6"><label class="form-label" for="correlationFieldPath">Optional Grouping Field</label><input class="form-control" id="correlationFieldPath" th:field="*{correlationFieldPath}" maxlength="255"><div class="form-text">Leave blank to keep one active alert per rule.</div></div>
+</div>
+<div id="countConditionFields" class="row g-3 mt-1 d-none">
+<div class="col-12 col-lg-4"><label class="form-label" for="collectionPath">Collection Field Path</label><input class="form-control" id="collectionPath" th:field="*{collectionPath}" maxlength="255"><div class="form-text">Path must resolve to an array in the result.</div></div>
+<div class="col-12 col-lg-4" id="countFieldPathContainer"><label class="form-label" for="countFieldPath">Record Field Path</label><input class="form-control" id="countFieldPath" th:field="*{countFieldPath}" maxlength="255"></div>
+<div class="col-12 col-lg-4" id="countFieldOperatorContainer"><label class="form-label" for="countFieldOperator">Record Operator</label><select class="form-select" id="countFieldOperator" th:field="*{countFieldOperator}"><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option><option value="GREATER_THAN">Greater than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="LESS_THAN">Less than</option><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="CONTAINS">Contains</option><option value="NOT_CONTAINS">Does not contain</option><option value="STARTS_WITH">Starts with</option><option value="ENDS_WITH">Ends with</option><option value="EXISTS">Exists</option><option value="NOT_EXISTS">Does not exist</option><option value="IS_NULL">Is null</option><option value="IS_NOT_NULL">Is not null</option></select></div>
+<div class="col-12 col-lg-4" id="countFieldThresholdContainer"><label class="form-label" for="countFieldThreshold">Record Value</label><input class="form-control" id="countFieldThreshold" th:field="*{countFieldThreshold}" maxlength="500"></div>
+<div class="col-12 col-lg-4"><label class="form-label" for="countOperator">Count Comparison</label><select class="form-select" id="countOperator" th:field="*{countOperator}"><option value="GREATER_THAN">Greater than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="LESS_THAN">Less than</option><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label" for="countThreshold">Count Threshold</label><input type="number" class="form-control" id="countThreshold" th:field="*{countThreshold}" min="0" step="1" required></div>
+</div>
+</div></div>
+</div>
+<div class="tab-pane fade" id="recovery-criteria-pane" role="tabpanel" aria-labelledby="recovery-criteria-tab" tabindex="0">
+<div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Recovery Criteria</h2></div><div class="app-card-body">
+<div class="alert alert-info mb-3">Automatic recovery is enabled for every rule. Configure the recovery condition below so alerts can resolve safely after the required consecutive matches.</div>
+<input type="hidden" th:field="*{recoveryEnabled}" id="recoveryEnabled">
+<input type="hidden" th:field="*{recoveryTreeJson}" id="recoveryTreeJson">
+<div id="standardRecoveryFields" class="row g-3"><div class="col-12 col-lg-4"><label class="form-label" for="recoveryFieldPath">Recovery Field Path</label><input class="form-control" id="recoveryFieldPath" th:field="*{recoveryFieldPath}" maxlength="255"></div>
+<div class="col-12 col-lg-4"><label class="form-label" for="recoveryOperator">Recovery Operator</label><select class="form-select" id="recoveryOperator" th:field="*{recoveryOperator}"><option value="LESS_THAN_OR_EQUAL">Less than or equal</option><option value="LESS_THAN">Less than</option><option value="GREATER_THAN_OR_EQUAL">Greater than or equal</option><option value="GREATER_THAN">Greater than</option><option value="EQUALS">Equals</option><option value="NOT_EQUALS">Not equals</option><option value="EQUALS_IGNORE_CASE">Equals (ignore case)</option><option value="CONTAINS">Contains</option><option value="NOT_CONTAINS">Does not contain</option><option value="STARTS_WITH">Starts with</option><option value="ENDS_WITH">Ends with</option><option value="REGEX">Regular expression</option><option value="EXISTS">Exists</option><option value="NOT_EXISTS">Does not exist</option><option value="IS_TRUE">Is true</option><option value="IS_FALSE">Is false</option><option value="IS_NULL">Is null</option><option value="IS_NOT_NULL">Is not null</option></select></div>
+<div class="col-12 col-lg-2"><label class="form-label" for="recoveryThreshold">Recovery Threshold</label><input class="form-control" id="recoveryThreshold" th:field="*{recoveryThreshold}" maxlength="500"></div></div>
+<div class="row g-3 mt-1"><div class="col-12 col-lg-3"><label class="form-label" for="recoveryConsecutiveMatches">Consecutive Recoveries</label><input type="number" class="form-control" id="recoveryConsecutiveMatches" th:field="*{recoveryConsecutiveMatches}" min="1" max="100"></div></div>
+<details id="advancedRecoveryEditor" class="mt-3">
+    <summary class="small fw-semibold">Advanced recovery JSON (groups, collections and aggregations)</summary>
+    <div class="pt-3">
+        <label class="form-label" for="advancedRecoveryJson">Recovery condition configuration</label>
+        <textarea class="form-control font-monospace" id="advancedRecoveryJson" rows="10" spellcheck="false"></textarea>
+        <div class="form-text">Uses the same condition nodes and operators as alert detection. Collection predicates are evaluated against each record.</div>
+        <div class="d-flex gap-2 justify-content-end mt-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="useStandardRecoveryFields">Use standard fields</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="applyAdvancedRecoveryJson">Use advanced recovery JSON</button>
+        </div>
+    </div>
+</details>
+<div class="form-text mt-3">Missing values and execution/parser errors do not count as healthy results. Recovery uses this configured criterion.</div></div></div>
+</div>
+<div class="tab-pane fade" id="message-presentation-pane" role="tabpanel" aria-labelledby="message-presentation-tab" tabindex="0">
+
+<div class="app-card mb-3" id="alertPresentationDesigner">
+    <div class="app-card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
+        <div><h2 class="h6 mb-0"><i class="bi bi-layout-text-window-reverse me-2"></i>Message Presentation Designer</h2>
+            <div class="small text-muted mt-1">Build reusable message blocks and preview how each notification channel adapts them.</div></div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary d-none" id="discoverAlertFieldsForPresentation">
+                <i class="bi bi-search me-1"></i>Load Latest Saved Result
+            </button>
+            <span class="badge text-bg-light">Visual designer</span>
+        </div>
+    </div>
+    <div class="app-card-body">
+        <div class="mb-3">
+            <label class="form-label" for="alertSubject">Subject <span class="text-danger">*</span></label>
+            <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required>
+            <div class="form-text">Automatically populated from this rule’s severity and name. It updates when either changes until you edit the subject. You can also enter supported placeholders such as <code>{jobName}</code> or <code>{environment}</code>.</div>
+        </div>
+        <div class="row g-3 align-items-stretch presentation-designer-grid">
+            <div class="col-12 col-xl-6 presentation-builder-pane">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                    <div>
+                        <span class="text-uppercase fw-bold text-secondary d-block" style="font-size: 0.75rem; letter-spacing: 0.06em;">2. Message Payload Sections</span>
+                        <span class="text-secondary small">Compose structured blocks rendered across the selected notification channels.</span>
+                    </div>
+                    <span class="badge text-bg-secondary" id="presentationBlockCount">0 blocks</span>
+                </div>
+                <div id="presentationSections" class="d-grid gap-2 presentation-block-list" aria-live="polite"></div>
+                <div class="border rounded p-3 mt-3 text-center">
+                    <div class="small text-muted mb-2">Append a new content block to the alert payload:</div>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" data-add-presentation-section="TEXT"><i class="bi bi-text-paragraph"></i>+ Add Text Block</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" data-add-presentation-section="LIST"><i class="bi bi-list-ul"></i>+ Add List Block</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" data-add-presentation-section="TABLE"><i class="bi bi-table"></i>+ Add Table Block</button>
+                    </div>
+                </div>
+                <div class="form-text mt-2">Variables can be inserted into text and labels. Use double braces, for example <code>{{severity}}</code>, <code>{{timestamp}}</code> or <code>{{data.cluster.name}}</code>.</div>
+            </div>
+            <div class="col-12 col-xl-6 presentation-preview-pane">
+                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2 presentation-preview-heading">
+                    <div><h3 class="h6 mb-0">Live Preview</h3><div class="small text-muted">Preview uses sample values and adapts the same blocks for each channel.</div></div>
+                    <div class="d-flex align-items-center gap-2"><label class="small text-muted mb-0" for="presentationPreviewSeverity">Preview severity (test only)</label><select class="form-select form-select-sm" id="presentationPreviewSeverity" style="width:auto"><option value="CRITICAL">Critical</option><option value="WARNING">Warning</option><option value="INFO">Informational</option><option value="SUCCESS">Success</option></select>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshPresentationPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button></div>
+                </div>
+                <ul class="nav nav-tabs mb-3" id="presentationPreviewTabs" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" aria-selected="true" data-preview-channel="email"><i class="bi bi-envelope me-1"></i>Email</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" aria-selected="false" data-preview-channel="teams"><i class="bi bi-microsoft-teams me-1"></i>Teams</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" aria-selected="false" data-preview-channel="whatsapp"><i class="bi bi-whatsapp me-1"></i>WhatsApp</button></li>
+                </ul>
+                <div id="presentationPreview" class="border rounded p-3 bg-body-tertiary" aria-live="polite"></div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <span class="small text-muted" id="whatsAppCharacterCount">WhatsApp: 0 / 1,024 characters</span>
+                    <span class="small text-muted" id="whatsAppLimitWarning" role="status"></span>
+                </div>
+            </div>
+        </div>
+        <details class="mt-4">
+            <summary class="small fw-semibold">Advanced JSON (optional)</summary>
+            <div class="pt-3">
+                <p class="small text-muted">Import or edit the same versioned presentation configuration used by the visual builder.</p>
+                <label class="form-label" for="presentationConfigJson">Presentation configuration</label>
+                <textarea class="form-control font-monospace" id="presentationConfigJson" th:field="*{presentationConfigJson}" rows="10" spellcheck="false"></textarea>
+                <div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-outline-primary" id="applyPresentationJson">Load JSON into block builder</button></div>
+            </div>
+        </details>
+        <div id="presentationBuilderMessage" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
+    </div>
+</div>
+</div></div>
+
+<div class="d-flex justify-content-end gap-2" th:unless="${viewMode}"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
+</form><script th:src="@{/js/alert-notification-routing.js}" defer></script><script th:src="@{/js/alert-condition-builder.js}" defer></script><script th:src="@{/js/alert-rule-form.js}" defer></script><script th:src="@{/js/alert-message-designer.js}" defer></script><script th:src="@{/js/alert-rule-readonly.js}" defer></script></div></body></html>

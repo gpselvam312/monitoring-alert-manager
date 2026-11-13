@@ -4,12 +4,14 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.dxc.monitoring.alert.presentation.AlertPresentationService;
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
 import com.dxc.monitoring.entity.AlertRule;
@@ -33,14 +35,17 @@ public class NotificationRoutingService {
     private final NotificationGroupMemberRepository groupMemberRepository;
     private final NotificationDeliveryRepository deliveryRepository;
     private final ObjectMapper objectMapper;
+    private final AlertPresentationService presentationService;
 
     public NotificationRoutingService(AlertRuleNotificationRouteRepository routeRepository,
             NotificationGroupMemberRepository groupMemberRepository,
-            NotificationDeliveryRepository deliveryRepository, ObjectMapper objectMapper) {
+            NotificationDeliveryRepository deliveryRepository, ObjectMapper objectMapper,
+            AlertPresentationService presentationService) {
         this.routeRepository = routeRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.deliveryRepository = deliveryRepository;
         this.objectMapper = objectMapper;
+        this.presentationService = presentationService;
     }
 
     @Transactional
@@ -83,7 +88,9 @@ public class NotificationRoutingService {
         if (routes.isEmpty()) {
             log.warn("No enabled notification route matches alertHistoryId={} ruleId={} severity={} event={}",
                     history.getId(), rule.getId(), severity, eventType);
+            return;
         }
+        String messagePayload = buildPayload(history);
         for (AlertRuleNotificationRoute route : routes) {
             NotificationChannel channel = route.getChannel();
             if (channel == null || !channel.isEnabled()) {
@@ -91,45 +98,37 @@ public class NotificationRoutingService {
                         route.getId(), history.getId());
                 continue;
             }
-            log.debug("Processing notification route id={} channelId={} channelType={} recipientId={} groupId={}",
+            log.debug("Processing notification route id={} channelId={} channelType={} recipientCount={} groupCount={}",
                     route.getId(), channel.getId(), channel.getChannelType(),
-                    route.getRecipient() == null ? null : route.getRecipient().getId(),
-                    route.getGroup() == null ? null : route.getGroup().getId());
-            RouteTarget target = new RouteTarget(route.getId(), channel, route.getRecipient(), route.getGroup(),
+                    route.getRecipients().size() + (route.getRecipient() == null ? 0 : 1),
+                    route.getGroups().size() + (route.getGroup() == null ? 0 : 1));
+            RouteTarget target = new RouteTarget(route.getId(), channel,
+                    List.copyOf(route.getRecipients()), List.copyOf(route.getGroups()),
+                    route.getRecipient(), route.getGroup(),
                     usingCreatedRouteForRecurrence ? eventType : route.getEventType(),
-                    route.getMinimumIntervalSeconds());
+                    route.getMinimumIntervalSeconds(), route.getCcRecipients());
             if (channel.getChannelType() == NotificationChannel.ChannelType.TEAMS) {
-                queueTeamsDelivery(history, target);
+                queueTeamsDelivery(history, target, messagePayload);
             } else {
                 for (NotificationRecipient recipient : recipientsFor(target)) {
-                    queuePersonDelivery(history, target, recipient);
+                    queuePersonDelivery(history, target, recipient, messagePayload);
                 }
             }
         }
     }
 
-    private void queueTeamsDelivery(AlertHistory history, RouteTarget route) {
-        if (route.recipient() != null && !route.recipient().isEnabled()) return;
-        if (route.group() != null) {
-            if (!route.group().isEnabled()) return;
-            boolean hasEnabledMembers = !groupMemberRepository
-                    .findByGroup_IdAndRecipient_EnabledTrue(route.group().getId()).isEmpty();
-            if (!hasEnabledMembers) {
-                queueSkipped(history, route, null, "Notification group has no enabled members.");
-                return;
-            }
-        }
+    private void queueTeamsDelivery(AlertHistory history, RouteTarget route, String messagePayload) {
         String key = history.getId() + ":" + route.channel().getId() + ":TEAMS";
         if (deliveryRepository.existsByIdempotencyKey(key)) return;
         OptionalRecent recent = recentDelivery(history.getAlert(), route.channel(), null);
         if (cooldownApplies(route) && withinCooldown(recent, route.minimumIntervalSeconds())) {
-            queueSkipped(history, route, null, "Suppressed by the route's minimum notification interval.");
+            queueSkipped(history, route, null, "Suppressed by the route's minimum notification interval.", messagePayload);
             return;
         }
-        queueDelivery(history, route, null, route.channel().getName(), key, false, null);
+        queueDelivery(history, route, null, route.channel().getName(), key, false, null, messagePayload, route.ccRecipients());
     }
 
-    private void queuePersonDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient) {
+    private void queuePersonDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient, String messagePayload) {
         if (recipient == null || !recipient.isEnabled()) return;
         String destination = switch (route.channel().getChannelType()) {
             case EMAIL -> recipient.getEmail();
@@ -140,49 +139,62 @@ public class NotificationRoutingService {
         if (deliveryRepository.existsByIdempotencyKey(key)) return;
         if (destination == null || destination.isBlank()) {
             queueSkipped(history, route, recipient, "Recipient has no destination configured for "
-                    + route.channel().getChannelType() + ".");
+                    + route.channel().getChannelType() + ".", messagePayload);
             return;
         }
         OptionalRecent recent = recentDelivery(history.getAlert(), route.channel(), recipient.getId());
         if (cooldownApplies(route) && withinCooldown(recent, route.minimumIntervalSeconds())) {
-            queueSkipped(history, route, recipient, "Suppressed by the route's minimum notification interval.");
+            queueSkipped(history, route, recipient, "Suppressed by the route's minimum notification interval.", messagePayload);
             return;
         }
-        queueDelivery(history, route, recipient, destination, key, false, null);
+        queueDelivery(history, route, recipient, destination, key, false, null, messagePayload, route.ccRecipients());
     }
 
     private List<NotificationRecipient> recipientsFor(RouteTarget route) {
-        if (route.recipient() != null) {
-            return route.recipient().isEnabled() ? List.of(route.recipient()) : List.of();
+        Map<Long, NotificationRecipient> recipients = new LinkedHashMap<>();
+        for (NotificationRecipient recipient : route.recipients()) {
+            if (recipient != null && recipient.isEnabled()) recipients.put(recipient.getId(), recipient);
         }
-        if (route.group() == null || !route.group().isEnabled()) return List.of();
-        return groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(route.group().getId())
-                .stream().map(NotificationGroupMember::getRecipient).filter(NotificationRecipient::isEnabled).toList();
+        // Legacy singular targets are retained as a fallback for routes created before V58.
+        if (route.legacyRecipient() != null && route.legacyRecipient().isEnabled()) {
+            recipients.put(route.legacyRecipient().getId(), route.legacyRecipient());
+        }
+        NotificationGroup.ChannelType expectedGroupType = route.channel().getChannelType() == NotificationChannel.ChannelType.WHATSAPP
+                ? NotificationGroup.ChannelType.WHATSAPP : NotificationGroup.ChannelType.EMAIL;
+        java.util.stream.Stream.concat(route.groups().stream(),
+                route.legacyGroup() == null ? java.util.stream.Stream.empty() : java.util.stream.Stream.of(route.legacyGroup()))
+                .filter(group -> group != null && group.isEnabled() && group.getChannelType() == expectedGroupType)
+                .forEach(group -> groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(group.getId())
+                        .stream().map(NotificationGroupMember::getRecipient)
+                        .filter(NotificationRecipient::isEnabled)
+                        .forEach(recipient -> recipients.putIfAbsent(recipient.getId(), recipient)));
+        return List.copyOf(recipients.values());
     }
 
     private void queueSkipped(AlertHistory history, RouteTarget route,
-            NotificationRecipient recipient, String reason) {
+            NotificationRecipient recipient, String reason, String messagePayload) {
         String target = recipient == null ? "route-" + route.id() : "recipient-" + recipient.getId();
         String key = history.getId() + ":" + route.channel().getId() + ":" + target + ":SKIPPED";
         if (deliveryRepository.existsByIdempotencyKey(key)) return;
         queueDelivery(history, route, recipient,
-                recipient == null ? route.channel().getName() : recipient.getName(), key, true, reason);
+                recipient == null ? route.channel().getName() : recipient.getName(), key, true, reason, messagePayload, route.ccRecipients());
     }
 
     private void queueDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient,
-            String destination, String key, boolean skipped, String reason) {
+            String destination, String key, boolean skipped, String reason, String messagePayload, String ccRecipients) {
         NotificationDelivery delivery = new NotificationDelivery();
         delivery.setAlert(history.getAlert());
         delivery.setAlertHistory(history);
         delivery.setChannel(route.channel());
         delivery.setRecipient(recipient);
         delivery.setDestinationSnapshot(destination == null || destination.isBlank() ? "Unconfigured destination" : destination);
+        delivery.setCcRecipientsSnapshot(route.channel().getChannelType() == NotificationChannel.ChannelType.EMAIL ? ccRecipients : null);
         delivery.setIdempotencyKey(key);
         delivery.setStatus(skipped ? NotificationDelivery.DeliveryStatus.SKIPPED : NotificationDelivery.DeliveryStatus.PENDING);
         delivery.setAttemptCount(0);
         delivery.setNextAttemptAt(OffsetDateTime.now());
         delivery.setLastError(reason);
-        delivery.setMessagePayload(buildPayload(history));
+        delivery.setMessagePayload(messagePayload);
         deliveryRepository.save(delivery);
         if (skipped) {
             log.warn("Notification delivery queued as SKIPPED alertHistoryId={} alertId={} routeId={} channelId={} recipientId={} reason={}",
@@ -218,13 +230,20 @@ public class NotificationRoutingService {
             payload.put("observedValue", formatObservedValue(alert.getCurrentValue()));
         }
         addConditionDetails(payload, rule);
-        payload.put("content", buildNotificationContent(payload, summary));
         payload.put("monitoringJob", alert.getMonitoringJob().getName());
         if (alert.getMonitoringJob().getApplication() != null) {
             payload.put("application", alert.getMonitoringJob().getApplication().getName());
         }
         if (alert.getMonitoringJob().getEnvironment() != null) {
             payload.put("environment", alert.getMonitoringJob().getEnvironment().getName());
+        }
+        if (rule != null) {
+            AlertPresentationService.Presentation presentation = presentationService.build(history, payload);
+            if (presentation != null) {
+                payload.put("title", presentation.title());
+                payload.put("body", presentation.message());
+                payload.put("content", presentation.sections());
+            }
         }
         try {
             return objectMapper.writeValueAsString(payload);
@@ -233,31 +252,6 @@ public class NotificationRoutingService {
         }
     }
 
-
-    private List<Map<String, Object>> buildNotificationContent(Map<String, Object> payload, String summary) {
-        List<Map<String, Object>> sections = new java.util.ArrayList<>();
-        List<Map<String, String>> fields = new java.util.ArrayList<>();
-        addContentField(fields, "Rule", payload.get("ruleName"));
-        addContentField(fields, "Field", payload.get("fieldPath"));
-        addContentField(fields, "Observed value", payload.get("observedValue"));
-        addContentField(fields, "Threshold", payload.get("threshold"));
-        if (!fields.isEmpty()) {
-            Map<String, Object> details = new LinkedHashMap<>();
-            details.put("type", "details");
-            details.put("title", "Alert details");
-            details.put("fields", fields);
-            sections.add(details);
-        } else if (summary != null && !summary.isBlank()) {
-            sections.add(Map.of("type", "text", "text", summary));
-        }
-        return sections;
-    }
-
-    private void addContentField(List<Map<String, String>> fields, String label, Object value) {
-        if (value != null && !String.valueOf(value).isBlank()) {
-            fields.add(Map.of("label", label, "value", String.valueOf(value)));
-        }
-    }
 
     private String formatObservedValue(String currentValue) {
         try {
@@ -283,7 +277,7 @@ public class NotificationRoutingService {
     }
 
     private void addConditionDetails(Map<String, Object> payload, Map<?, ?> condition) {
-        for (String key : List.of("fieldPath", "collectionPath")) {
+        for (String key : List.of("fieldPath", "collectionPath", "leftPath", "valuePath")) {
             Object value = condition.get(key);
             if (value != null && !String.valueOf(value).isBlank()) {
                 payload.putIfAbsent("fieldPath", value);
@@ -297,14 +291,16 @@ public class NotificationRoutingService {
                 break;
             }
         }
-        Object children = condition.get("children");
-        if (children instanceof List<?> list) {
-            for (Object child : list) {
-                if (child instanceof Map<?, ?> childMap) {
-                    addConditionDetails(payload, childMap);
-                    if (payload.containsKey("threshold") && payload.containsKey("fieldPath")) return;
+        for (String nestedKey : List.of("children", "condition", "filter")) {
+            Object nested = condition.get(nestedKey);
+            if (nested instanceof List<?> list) {
+                for (Object child : list) {
+                    if (child instanceof Map<?, ?> childMap) addConditionDetails(payload, childMap);
                 }
+            } else if (nested instanceof Map<?, ?> nestedMap) {
+                addConditionDetails(payload, nestedMap);
             }
+            if (payload.containsKey("threshold") && payload.containsKey("fieldPath")) return;
         }
     }
 
@@ -323,6 +319,7 @@ public class NotificationRoutingService {
     private int severityRank(AlertRule.Severity severity) {
         if (severity == null) return 0;
         return switch (severity) {
+            case SUCCESS -> 0;
             case INFO -> 1;
             case WARNING -> 2;
             case CRITICAL -> 3;
@@ -353,7 +350,9 @@ public class NotificationRoutingService {
                 && delivery.getCreatedAt().isAfter(OffsetDateTime.now().minusSeconds(intervalSeconds));
     }
 
-    private record RouteTarget(Long id, NotificationChannel channel, NotificationRecipient recipient,
-            NotificationGroup group, NotificationRoute.EventType eventType, Integer minimumIntervalSeconds) {}
+    private record RouteTarget(Long id, NotificationChannel channel,
+            List<NotificationRecipient> recipients, List<NotificationGroup> groups,
+            NotificationRecipient legacyRecipient, NotificationGroup legacyGroup,
+            NotificationRoute.EventType eventType, Integer minimumIntervalSeconds, String ccRecipients) {}
     private record OptionalRecent(NotificationDelivery delivery) {}
 }

@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.MonitoringExecution;
@@ -33,25 +34,25 @@ public class MonitoringExecutionManager
         this.alertEvaluationQueueService = alertEvaluationQueueService;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public MonitoringExecution execute(MonitoringJob job)
     {
         return execute(job, Map.of(), MonitoringExecution.TriggerSource.MANUAL);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public MonitoringExecution execute(MonitoringJob job, MonitoringExecution.TriggerSource triggerSource)
     {
         return execute(job, Map.of(), triggerSource);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public MonitoringExecution execute(MonitoringJob job, Map<String, String> runtimeParameters)
     {
         return execute(job, runtimeParameters, MonitoringExecution.TriggerSource.MANUAL);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public MonitoringExecution execute(MonitoringJob job, Map<String, String> runtimeParameters,
             MonitoringExecution.TriggerSource triggerSource)
     {

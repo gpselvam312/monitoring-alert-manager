@@ -170,9 +170,13 @@ public class AlertController {
         AlertRule rule = ruleRepository.findByIdWithJob(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert rule was not found."));
         assertRuleAccess(rule, "ALERT_CONFIG");
+        AlertRuleForm form = ruleManagementService.toForm(rule);
+        form.setNotificationRoutesJson(notificationRouteService.routesAsJson(rule.getId()));
+        addRuleFormModel(model, form);
         model.addAttribute("rule", rule);
+        model.addAttribute("viewMode", true);
         model.addAttribute("currentPage", "alert-rules");
-        return "alerts/rule-view";
+        return "alerts/alert_rule_form";
     }
 
     @PostMapping("/rules/{id}/delete")
@@ -224,7 +228,7 @@ public class AlertController {
         AlertRuleForm form = new AlertRuleForm();
         addRuleFormModel(model, form);
         model.addAttribute("currentPage", "alert-rules");
-        return "alerts/rule-form";
+        return "alerts/alert_rule_form";
     }
 
     @GetMapping("/rules/{id}/edit")
@@ -237,7 +241,7 @@ public class AlertController {
         form.setNotificationRoutesJson(notificationRouteService.routesAsJson(rule.getId()));
         addRuleFormModel(model, form);
         model.addAttribute("currentPage", "alert-rules");
-        return "alerts/rule-form";
+        return "alerts/alert_rule_form";
     }
 
     @PostMapping("/rules/discovery/sample")
@@ -292,7 +296,7 @@ public class AlertController {
                     ? "Unable to save the alert rule or its notification routes because of a data constraint. Review the configured values and try again."
                     : safeMessage(exception.getMessage()));
             model.addAttribute("currentPage", "alert-rules");
-            return "alerts/rule-form";
+            return "alerts/alert_rule_form";
         }
     }
 
@@ -326,11 +330,13 @@ public class AlertController {
                 : selectedJob.getName() + " — " + selectedJob.getApplication().getName()
                         + (selectedJob.getEnvironment() != null ? " / " + selectedJob.getEnvironment().getName() : "");
         model.addAttribute("ruleForm", form);
+        model.addAttribute("viewMode", false);
         model.addAttribute("hasMonitoringJobs", hasMonitoringJobs);
         model.addAttribute("selectedMonitoringJobLabel", selectedMonitoringJobLabel);
         model.addAttribute("severities", AlertRule.Severity.values());
         model.addAttribute("sourcePolicies", AlertRule.ExecutionSourcePolicy.values());
         model.addAttribute("notificationChannels", notificationRouteService.enabledChannels());
+        model.addAttribute("emailSenderAddresses", notificationRouteService.emailSenderAddresses());
         model.addAttribute("notificationRecipients", notificationRouteService.enabledRecipients());
         model.addAttribute("notificationGroups", notificationRouteService.enabledGroups());
     }

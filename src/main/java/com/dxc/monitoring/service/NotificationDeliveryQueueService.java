@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.NotificationDelivery;
@@ -17,7 +18,7 @@ public class NotificationDeliveryQueueService {
         this.repository = repository;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public List<ClaimedDelivery> claimDueDeliveries(int batchSize, int maxAttempts) {
         List<NotificationDelivery> deliveries = repository.lockDueDeliveries(batchSize, maxAttempts);
         OffsetDateTime now = OffsetDateTime.now();
@@ -30,13 +31,13 @@ public class NotificationDeliveryQueueService {
         }).toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public NotificationDelivery loadForDelivery(Long id) {
         return repository.findByIdWithDetails(id)
                 .orElseThrow(() -> new IllegalArgumentException("Notification delivery was not found."));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markSent(Long id, String providerMessageId) {
         NotificationDelivery delivery = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Notification delivery was not found."));
@@ -47,7 +48,7 @@ public class NotificationDeliveryQueueService {
         delivery.setLastError(null);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markSkipped(Long id, String reason) {
         NotificationDelivery delivery = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Notification delivery was not found."));
@@ -56,7 +57,7 @@ public class NotificationDeliveryQueueService {
         delivery.setLastError(sanitize(reason));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(Long id, int attemptCount, int maxAttempts, String error) {
         NotificationDelivery delivery = repository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Notification delivery was not found."));

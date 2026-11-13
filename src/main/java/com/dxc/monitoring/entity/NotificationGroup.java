@@ -12,6 +12,11 @@ public class NotificationGroup {
     private String name;
     @Column(length = 1000)
     private String description;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "channel_type", nullable = false, length = 20)
+    private ChannelType channelType = ChannelType.EMAIL;
+
+    public enum ChannelType { EMAIL, WHATSAPP }
     @Column(nullable = false)
     private boolean enabled = true;
     @Column(name = "created_at", nullable = false)
@@ -27,6 +32,7 @@ public class NotificationGroup {
     public Long getId(){return id;} public void setId(Long v){id=v;}
     public String getName(){return name;} public void setName(String v){name=v;}
     public String getDescription(){return description;} public void setDescription(String v){description=v;}
+    public ChannelType getChannelType(){return channelType;} public void setChannelType(ChannelType v){channelType=v;}
     public boolean isEnabled(){return enabled;} public void setEnabled(boolean v){enabled=v;}
     public OffsetDateTime getCreatedAt(){return createdAt;} public void setCreatedAt(OffsetDateTime v){createdAt=v;}
     public OffsetDateTime getUpdatedAt(){return updatedAt;} public void setUpdatedAt(OffsetDateTime v){updatedAt=v;}
