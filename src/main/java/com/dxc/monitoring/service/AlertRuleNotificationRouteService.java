@@ -136,10 +136,11 @@ public class AlertRuleNotificationRouteService {
                     .filter(NotificationChannel::isEnabled)
                     .orElseThrow(() -> new IllegalArgumentException("Choose an enabled notification channel."));
             boolean teamsChannel = channel.getChannelType() == NotificationChannel.ChannelType.TEAMS;
+            boolean routeEnabled = !Boolean.FALSE.equals(row.get("enabled"));
             if (teamsChannel && (!recipientIds.isEmpty() || !groupIds.isEmpty())) {
                 throw new IllegalArgumentException("Teams routes use the destination configured on the Teams channel; no recipient or group is required.");
             }
-            if (!teamsChannel && recipientIds.isEmpty() && groupIds.isEmpty()) {
+            if (routeEnabled && !teamsChannel && recipientIds.isEmpty() && groupIds.isEmpty()) {
                 throw new IllegalArgumentException("Select at least one recipient or recipient group for every enabled Email or WhatsApp route.");
             }
 
@@ -174,7 +175,7 @@ public class AlertRuleNotificationRouteService {
             } catch (RuntimeException exception) {
                 throw new IllegalArgumentException("Choose a valid severity and notification event for every route.");
             }
-            route.setEnabled(!Boolean.FALSE.equals(row.get("enabled")));
+            route.setEnabled(routeEnabled);
             Long interval = longValue(row.get("minimumIntervalSeconds"));
             if (interval == null) interval = 300L;
             if (interval < 0 || interval > 2_147_483_647L) {
