@@ -40,6 +40,11 @@
         let config = { version: 1, sections: [] };
         let jsonEdited = false;
         let activePreview = 'email';
+        const defaultSubjectTemplate = '{severity} — {ruleName}';
+        const defaultSubject = () => (ruleSeverityInput?.value || 'CRITICAL') + ' — ' + (ruleNameInput?.value?.trim() || 'Alert Rule');
+        let subjectManuallyEdited = !!subjectInput?.value?.trim()
+            && ![defaultSubjectTemplate, '[{severity}] {ruleName}', defaultSubject()].includes(subjectInput.value.trim());
+        if (subjectInput && !subjectManuallyEdited) subjectInput.value = defaultSubject();
         const previewSeverity = document.getElementById('presentationPreviewSeverity');
         const currentPreviewSeverity = () => previewSeverity?.value || ruleSeverityInput?.value || 'CRITICAL';
         if (previewSeverity && ruleSeverityInput?.value) previewSeverity.value = ruleSeverityInput.value;
@@ -544,7 +549,7 @@
             }
             return { type: section.type.toLowerCase(), title, text: '[Legacy block preview]' };
         });
-        const addSubject = () => template(subjectInput.value || '{severity} — {ruleName}');
+        const addSubject = () => subjectManuallyEdited ? subjectInput.value.trim() : (currentPreviewSeverity() + ' — ' + (ruleNameInput?.value?.trim() || 'Alert Rule'));
         const appendBlocks = (container, blocks, channel) => {
             blocks.forEach(block => {
                 if (block.title) container.append(element('h6', 'fw-semibold mt-3 mb-2', block.title));
@@ -755,9 +760,17 @@
             render();
         };
         document.querySelectorAll('[data-add-presentation-section]').forEach(add => add.addEventListener('click', () => addBlock(add.dataset.addPresentationSection)));
-        subjectInput?.addEventListener('input', updatePreview);
-        ruleNameInput?.addEventListener('input', () => { sample.ruleName = ruleNameInput.value.trim() || 'Alert Rule'; updatePreview(); });
-        ruleSeverityInput?.addEventListener('change', () => { if (previewSeverity) previewSeverity.value = ruleSeverityInput.value; updatePreview(); });
+        subjectInput?.addEventListener('input', () => { subjectManuallyEdited = true; updatePreview(); });
+        ruleNameInput?.addEventListener('input', () => {
+            sample.ruleName = ruleNameInput.value.trim() || 'Alert Rule';
+            if (!subjectManuallyEdited && subjectInput) subjectInput.value = defaultSubject();
+            updatePreview();
+        });
+        ruleSeverityInput?.addEventListener('change', () => {
+            if (previewSeverity) previewSeverity.value = ruleSeverityInput.value;
+            if (!subjectManuallyEdited && subjectInput) subjectInput.value = defaultSubject();
+            updatePreview();
+        });
         document.querySelectorAll('[data-preview-channel]').forEach(tab => tab.addEventListener('click', () => {
             activePreview = tab.dataset.previewChannel;
             document.querySelectorAll('[data-preview-channel]').forEach(item => {
