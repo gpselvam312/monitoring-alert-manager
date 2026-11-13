@@ -29,6 +29,7 @@ import com.dxc.monitoring.service.AlertRuleConfigurationService;
 import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
 import com.dxc.monitoring.service.AlertRuleManagementService;
 import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
+import com.dxc.monitoring.service.SystemSettingService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 class AlertControllerRuleCrudTest {
@@ -54,11 +55,12 @@ class AlertControllerRuleCrudTest {
         NotificationPolicyRepository notificationPolicyRepository = mock(NotificationPolicyRepository.class);
         AlertRuleFieldDiscoveryService fieldDiscoveryService = mock(AlertRuleFieldDiscoveryService.class);
         AlertRuleNotificationRouteService routeService = mock(AlertRuleNotificationRouteService.class);
+        SystemSettingService systemSettingService = mock(SystemSettingService.class);
 
         controller = new AlertController(alertRepository, historyRepository, commentRepository, ruleRepository,
                 evaluationRepository, jobRepository, managementService, configurationService,
                 accessService, userAlertStateRepository, notificationPolicyRepository,
-                fieldDiscoveryService, routeService);
+                fieldDiscoveryService, routeService, systemSettingService);
 
         rule = mock(AlertRule.class);
         MonitoringJob job = mock(MonitoringJob.class);
