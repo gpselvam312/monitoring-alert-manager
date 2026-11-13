@@ -295,6 +295,77 @@ class AlertEvaluationServiceTest {
     }
 
     @Test
+    void resolvesActiveAlertWhenRecoveryConditionMatches() {
+        Alert activeAlert = mock(Alert.class);
+        when(activeAlert.getSeverity()).thenReturn(AlertRule.Severity.CRITICAL);
+        when(rule.getRecoveryConfig()).thenReturn("""
+                {"enabled":true,"fieldPath":"data.cpu.usage","operator":"LESS_THAN_OR_EQUAL",
+                 "threshold":75,"consecutiveMatches":1}
+                """);
+        when(alertRepository.findByAlertRuleIdAndCorrelationKeyAndStatus(
+                7L, "DEFAULT", Alert.AlertStatus.ACTIVE)).thenReturn(Optional.of(activeAlert));
+
+        MonitoringResult result = mock(MonitoringResult.class);
+        when(result.getResultData()).thenReturn("""
+                {"schemaVersion":1,"status":"SUCCESS","data":{"cpu":{"usage":70}}}
+                """);
+        when(result.getStatus()).thenReturn(MonitoringResult.ResultStatus.OK);
+        when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
+
+        service.evaluateExecution(101L);
+
+        org.mockito.ArgumentCaptor<Alert> alertCaptor = org.mockito.ArgumentCaptor.forClass(Alert.class);
+        verify(alertRepository).save(alertCaptor.capture());
+        assertEquals(Alert.AlertStatus.RESOLVED, alertCaptor.getValue().getStatus());
+        org.mockito.ArgumentCaptor<AlertHistory> historyCaptor =
+                org.mockito.ArgumentCaptor.forClass(AlertHistory.class);
+        verify(historyRepository).save(historyCaptor.capture());
+        assertEquals(AlertHistory.EventType.RESOLVED, historyCaptor.getValue().getEventType());
+    }
+
+    @Test
+    void ignoresManualExecutionForManualOnlyPolicyWhenExecutionIsScheduled() {
+        when(rule.getExecutionSourcePolicy()).thenReturn(AlertRule.ExecutionSourcePolicy.MANUAL_ONLY);
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository, never()).save(any(Alert.class));
+        verify(evaluationRepository, never()).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
+    void allNonStreamingPolicyAcceptsManualExecution() {
+        when(rule.getExecutionSourcePolicy()).thenReturn(AlertRule.ExecutionSourcePolicy.ALL_NON_STREAMING);
+        when(execution.getTriggerSource()).thenReturn(MonitoringExecution.TriggerSource.MANUAL);
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository).save(any(Alert.class));
+        verify(evaluationRepository).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
+    void skipsAnExecutionThatHasAlreadyBeenEvaluatedForTheRule() {
+        when(evaluationRepository.existsByAlertRuleIdAndExecutionId(7L, 101L)).thenReturn(true);
+
+        service.evaluateExecution(101L);
+
+        verify(alertRepository, never()).save(any(Alert.class));
+        verify(evaluationRepository, never()).save(any(AlertRuleEvaluation.class));
+    }
+
+    @Test
+    void doesNotEvaluateAnExecutionThatIsStillRunning() {
+        when(execution.getStatus()).thenReturn(MonitoringExecution.ExecutionStatus.RUNNING);
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> service.evaluateExecution(101L));
+
+        verify(ruleRepository, never()).findEnabledForJobForUpdate(5L);
+        verify(alertRepository, never()).save(any(Alert.class));
+    }
+
+    @Test
     void recordsEvaluationErrorInsteadOfTreatingMissingFieldAsHealthy() {
         when(rule.getConditionConfig()).thenReturn("""
                 {"fieldPath":"data.memory.usage","operator":"GREATER_THAN","threshold":80}
