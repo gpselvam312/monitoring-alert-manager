@@ -225,7 +225,7 @@
         const parse = () => input.value.split(',').map(value => value.trim()).filter(Boolean);
         const render = () => {
             chips.replaceChildren();
-            parse().forEach(address => {
+            parse().forEach((address, addressIndex) => {
                 const chip = document.createElement('span');
                 chip.className = 'route-multiselect-chip';
                 const label = document.createElement('span');
@@ -235,10 +235,14 @@
                 remove.className = 'route-multiselect-remove';
                 remove.textContent = '×';
                 remove.setAttribute('aria-label', 'Remove ' + address);
-                remove.addEventListener('click', () => {
-                    input.value = parse().filter(item => item.toLocaleLowerCase() !== address.toLocaleLowerCase()).join(', ');
+                remove.addEventListener('click', event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const addresses = parse();
+                    if (addressIndex >= addresses.length) return;
+                    addresses.splice(addressIndex, 1);
+                    input.value = addresses.join(', ');
                     input.dispatchEvent(new Event('change', { bubbles: true }));
-                    render();
                 });
                 chip.append(label, remove);
                 chips.appendChild(chip);
