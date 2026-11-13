@@ -37,9 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ));
         const sorted = [...placeholders, ...choices];
         if (options.every((option, index) => option === sorted[index])) return;
-        const selectedValues = new Set(options.filter(option => option.selected).map(option => option.value));
+        const selectedOptions = new Set(options.filter(option => option.selected));
         select.replaceChildren(...sorted);
-        Array.from(select.options).forEach(option => { option.selected = selectedValues.has(option.value); });
+        Array.from(select.options).forEach(option => { option.selected = selectedOptions.has(option); });
     };
 
     const sortAlertRuleDropdowns = root => {
