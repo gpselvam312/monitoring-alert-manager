@@ -349,8 +349,12 @@ public class NotificationConfigurationService {
                 .orElseThrow(() -> new IllegalArgumentException("Recipient group was not found."));
         String cleanName = required(name, "Group name");
         if (cleanName.length() > 150) throw new IllegalArgumentException("Group name must not exceed 150 characters.");
+        NotificationGroup.ChannelType requestedChannelType = parseGroupChannelType(channelTypeValue);
+        if (group.getChannelType() != requestedChannelType && groupRepository.existsReferencedByAnyRoute(id)) {
+            throw new IllegalArgumentException("This group is assigned to one or more notification routes. Reassign those routes before changing its channel type.");
+        }
         group.setName(cleanName); group.setDescription(trimToNull(description));
-        group.setChannelType(parseGroupChannelType(channelTypeValue)); group.setUpdatedBy(userId);
+        group.setChannelType(requestedChannelType); group.setUpdatedBy(userId);
         groupRepository.save(group);
         groupMemberRepository.deleteByGroup_Id(id);
         if (recipientIds != null) {
@@ -405,6 +409,11 @@ public class NotificationConfigurationService {
             if (groupId == null || recipientId != null) throw new IllegalArgumentException("Select exactly one recipient or group.");
             NotificationGroup group = groupRepository.findById(groupId)
                     .orElseThrow(() -> new IllegalArgumentException("Select a recipient group."));
+            NotificationGroup.ChannelType expectedType = channel.getChannelType() == NotificationChannel.ChannelType.WHATSAPP
+                    ? NotificationGroup.ChannelType.WHATSAPP : NotificationGroup.ChannelType.EMAIL;
+            if (group.getChannelType() != expectedType) {
+                throw new IllegalArgumentException("The selected group is not configured for " + channel.getChannelType() + ".");
+            }
             boolean hasDestination = groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(groupId)
                     .stream().map(NotificationGroupMember::getRecipient).anyMatch(recipient -> hasDestination(channel, recipient));
             if (!hasDestination) throw new IllegalArgumentException("The selected group has no enabled member with a destination for this channel.");
