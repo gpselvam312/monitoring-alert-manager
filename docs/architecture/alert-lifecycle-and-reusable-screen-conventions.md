@@ -16,7 +16,7 @@ Every alert list, summary count, detail lookup and comment write must be constra
 ## Retention
 
 - `RESOLVED_ALERTS` and `ALERT_HISTORY` policies support application, environment and alert-type scope.
-- `ALL` means all current alert types; `MONITORING_JOB` identifies the current monitoring-job alert source.
+- Alert source types are stored in the `alert_types` lookup table and ordered by database sort order. `ALL` is the retention wildcard; `MONITORING_JOB` is the initial configured source type.
 - Other retention data types remain global until their own scoped cleanup queries are designed.
 - Enabled policies with overlapping scopes are rejected to prevent competing cleanup windows.
 - Resolved-alert retention cannot be shorter than overlapping lifecycle-history retention because deleting an alert also removes its lifecycle history, comments and per-user state.
