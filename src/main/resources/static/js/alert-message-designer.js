@@ -549,7 +549,11 @@
         const appendBlocks = (container, blocks, channel) => {
             blocks.forEach(block => {
                 if (block.title) container.append(element('h6', 'fw-semibold mt-3 mb-2', block.title));
-                if (block.type === 'text') container.append(element('p', 'mb-2 text-break', block.text));
+                if (block.type === 'text') {
+                    const textContent = element('p', 'mb-2 text-break', block.text);
+                    textContent.style.whiteSpace = 'pre-wrap';
+                    container.append(textContent);
+                }
                 if (block.type === 'details') {
                     if (channel === 'whatsapp') {
                         block.fields.forEach(field => container.append(element('div', 'font-monospace small', field.label + ': ' + field.value)));
@@ -675,7 +679,11 @@
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
                 body.style.color = '#1f2937';
-                if (header.message) body.append(element('p', 'mb-2', header.message));
+                if (header.message) {
+                    const message = element('p', 'mb-2', header.message);
+                    message.style.whiteSpace = 'pre-wrap';
+                    body.append(message);
+                }
                 appendBlocks(body, blocks, 'email');
                 body.append(element('div', 'border-top mt-3 pt-2 small text-muted', 'Monitoring Alert Manager'));
                 email.append(subject, banner, body);
@@ -689,7 +697,11 @@
                 accent.append(element('div', 'small fw-bold', currentPreviewSeverity() + ' ALERT'),
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
-                if (header.message) body.append(element('p', 'mb-2', header.message));
+                if (header.message) {
+                    const message = element('p', 'mb-2', header.message);
+                    message.style.whiteSpace = 'pre-wrap';
+                    body.append(message);
+                }
                 appendBlocks(body, blocks, 'teams');
                 card.append(accent, body);
                 preview.append(card);
@@ -702,7 +714,11 @@
                 const bubble = element('div', 'bg-white rounded-3 p-3 shadow-sm');
                 bubble.style.color = '#1f2937';
                 bubble.append(element('div', 'small fw-bold mb-2', header.title));
-                if (header.message) bubble.append(element('div', 'small mb-2', header.message));
+                if (header.message) {
+                    const message = element('div', 'small mb-2', header.message);
+                    message.style.whiteSpace = 'pre-wrap';
+                    bubble.append(message);
+                }
                 appendBlocks(bubble, blocks, 'whatsapp');
                 chat.append(bubble, element('div', 'text-end small text-muted mt-2', '09:30 ✓✓'));
                 preview.append(chat);
