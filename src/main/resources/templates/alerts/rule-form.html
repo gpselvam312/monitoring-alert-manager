@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{fragments/layout :: layout(${ruleForm.id == null ? 'Create Alert Rule' : 'Edit Alert Rule'}, ~{::content})}">
+      th:replace="~{fragments/layout :: layout(${viewMode ? 'View Alert Rule' : (ruleForm.id == null ? 'Create Alert Rule' : 'Edit Alert Rule')}, ~{::content})}">
 <body><div th:fragment="content">
-<div class="page-header"><div><h1 class="page-title" th:text="${ruleForm.id == null ? 'Create Alert Rule' : 'Edit Alert Rule'}">Alert Rule</h1><p class="page-subtitle">Define the condition that opens an alert and the criteria that resolve it.</p></div><div class="page-header-actions"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Rules</a></div></div>
+<div class="page-header"><div><h1 class="page-title" th:text="${viewMode ? 'View Alert Rule' : (ruleForm.id == null ? 'Create Alert Rule' : 'Edit Alert Rule')}">Alert Rule</h1><p class="page-subtitle" th:text="${viewMode ? 'Review the complete alert rule configuration.' : 'Define the condition that opens an alert and the criteria that resolve it.'}">Define the condition that opens an alert and the criteria that resolve it.</p></div><div class="page-header-actions"><a th:if="${viewMode}" th:href="@{/alerts/rules/{id}/edit(id=${ruleForm.id})}" class="btn btn-primary"><i class="bi bi-pencil me-1"></i>Edit Rule</a><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Rules</a></div></div>
 <div class="alert alert-danger" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></div>
 <div class="alert alert-info" role="alert" th:if="${!hasMonitoringJobs}">No standard monitoring jobs are available in applications where you have alert-configuration access.</div>
-<form class="alert-rule-form" th:action="@{/alerts/rules/save}" th:object="${ruleForm}" method="post">
+<form class="alert-rule-form" th:action="@{/alerts/rules/save}" th:object="${ruleForm}" method="post" th:attr="data-readonly=${viewMode}">
 <input type="hidden" th:field="*{id}">
 <ul class="nav nav-tabs mb-3" id="alertRuleTabs" role="tablist">
 <li class="nav-item" role="presentation"><button class="nav-link active" id="rule-details-tab" data-bs-toggle="tab" data-bs-target="#rule-details-pane" type="button" role="tab" aria-controls="rule-details-pane" aria-selected="true"><i class="bi bi-sliders me-1"></i>Rule Details</button></li>
@@ -199,7 +199,7 @@
 </div>
 </div></div>
 
-<div class="d-flex justify-content-end gap-2"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
+<div class="d-flex justify-content-end gap-2" th:unless="${viewMode}"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
 </form><script>
 document.addEventListener('DOMContentLoaded', () => {
     const routesInput = document.getElementById('notificationRoutesJson');
@@ -850,4 +850,4 @@ document.addEventListener('DOMContentLoaded', () => {
     if (jobIdInput.value) discoverButton.disabled = false;
     syncPresentationDiscoverButton();
 });
-</script><script th:src="@{/js/alert-message-designer.js}" defer></script></div></body></html>
+</script><script th:src="@{/js/alert-message-designer.js}" defer></script><script th:src="@{/js/alert-rule-readonly.js}" defer></script></div></body></html>
