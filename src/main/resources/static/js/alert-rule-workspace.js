@@ -90,12 +90,15 @@
                 }
                 const collapseId = paneId + '-panel-' + cardIndex;
                 const title = header.querySelector('h2');
+                const expandedByDefault = group.id === 'presentation'
+                    ? (title?.textContent || '').toLowerCase().includes('message presentation designer')
+                    : index === 0 && cardIndex === 0;
                 const toggle = document.createElement('button');
                 toggle.type = 'button';
                 toggle.className = 'btn btn-link text-decoration-none text-reset p-0 d-flex align-items-center gap-2';
                 toggle.dataset.bsToggle = 'collapse';
                 toggle.dataset.bsTarget = '#' + collapseId;
-                toggle.setAttribute('aria-expanded', String(index === 0 && cardIndex === 0));
+                toggle.setAttribute('aria-expanded', String(expandedByDefault));
                 toggle.setAttribute('aria-controls', collapseId);
                 const chevron = document.createElement('i');
                 chevron.className = 'bi bi-chevron-down small';
@@ -111,7 +114,7 @@
                 }
                 const collapse = document.createElement('div');
                 collapse.id = collapseId;
-                collapse.className = 'collapse' + (index === 0 && cardIndex === 0 ? ' show' : '');
+                collapse.className = 'collapse' + (expandedByDefault ? ' show' : '');
                 body.parentNode.insertBefore(collapse, body);
                 collapse.appendChild(body);
                 toggle.appendChild(chevron);
