@@ -103,12 +103,12 @@
             && (field.path.startsWith('data.') || field.path.startsWith('response.')));
         const relativeDiscoveredPaths = sourcePath => {
             if (!sourcePath) return [];
-            const prefix = sourcePath.endsWith('[]') ? sourcePath.slice(0, -2) : sourcePath;
+            const prefixes = sourcePath.includes('[]')
+                ? [sourcePath.replace(/\\[\\]$/, '') + '.']
+                : [sourcePath + '.', sourcePath + '[].'];
             return discoveredPaths().map(field => {
-                const dottedPrefix = prefix + '.';
-                const arrayPrefix = prefix + '[].';
-                const relative = field.path.startsWith(dottedPrefix) ? field.path.slice(dottedPrefix.length)
-                    : field.path.startsWith(arrayPrefix) ? field.path.slice(arrayPrefix.length) : '';
+                const matchedPrefix = prefixes.find(prefix => field.path.startsWith(prefix));
+                const relative = matchedPrefix ? field.path.slice(matchedPrefix.length) : '';
                 return relative ? { ...field, relativePath: relative } : null;
             }).filter(field => field && field.relativePath && !field.relativePath.includes('[]'));
         };
@@ -358,7 +358,9 @@
                         : 'All discovered attributes are already configured.', 'success');
                 }, 'bi bi-list-ul');
                 loadFields.disabled = !section.sourcePath;
-                body.append(element('div', 'd-flex flex-wrap align-items-center gap-2 mb-3')).lastChild?.append(loadFields);
+                const loadFieldsRow = element('div', 'd-flex flex-wrap align-items-center gap-2 mb-3');
+                loadFieldsRow.append(loadFields);
+                body.append(loadFieldsRow);
                 if (section.fields.length) {
                     const fieldsWrapper = element('div', 'table-responsive border rounded mb-3');
                     const fieldsTable = element('table', 'table table-sm align-middle mb-0');
