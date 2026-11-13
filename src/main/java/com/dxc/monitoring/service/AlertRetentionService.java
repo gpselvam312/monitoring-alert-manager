@@ -81,7 +81,7 @@ public class AlertRetentionService {
                 || !environment.getApplication().getId().equals(applicationId))) {
             throw new IllegalArgumentException("The selected environment does not belong to the selected application.");
         }
-        if (policyRepository.existsForScope(dataType, applicationId, environmentId, alertType)) {
+        if (policyRepository.existsForScope(dataType.name(), applicationId, environmentId, alertType)) {
             throw new IllegalArgumentException("A retention policy already exists for this exact scope.");
         }
         if (enabled) {
