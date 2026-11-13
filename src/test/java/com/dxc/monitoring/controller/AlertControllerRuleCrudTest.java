@@ -18,6 +18,7 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertHistoryRepository;
+import com.dxc.monitoring.repository.AlertCommentRepository;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleEvaluationRepository;
 import com.dxc.monitoring.repository.AlertRuleRepository;
@@ -42,6 +43,7 @@ class AlertControllerRuleCrudTest {
     void setUp() {
         alertRepository = mock(AlertRepository.class);
         AlertHistoryRepository historyRepository = mock(AlertHistoryRepository.class);
+        AlertCommentRepository commentRepository = mock(AlertCommentRepository.class);
         ruleRepository = mock(AlertRuleRepository.class);
         evaluationRepository = mock(AlertRuleEvaluationRepository.class);
         MonitoringJobRepository jobRepository = mock(MonitoringJobRepository.class);
@@ -53,7 +55,7 @@ class AlertControllerRuleCrudTest {
         AlertRuleFieldDiscoveryService fieldDiscoveryService = mock(AlertRuleFieldDiscoveryService.class);
         AlertRuleNotificationRouteService routeService = mock(AlertRuleNotificationRouteService.class);
 
-        controller = new AlertController(alertRepository, historyRepository, ruleRepository,
+        controller = new AlertController(alertRepository, historyRepository, commentRepository, ruleRepository,
                 evaluationRepository, jobRepository, managementService, configurationService,
                 accessService, userAlertStateRepository, notificationPolicyRepository,
                 fieldDiscoveryService, routeService);
