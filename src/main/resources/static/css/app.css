@@ -5379,7 +5379,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 
 
 /* Alert rule navigation tabs: one responsive, theme-aware definition. */
-.alert-rule-form #alertRuleTabs {
+.responsive-tab-nav {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     width: 100%;
@@ -5389,13 +5389,13 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     overflow: visible;
     border-bottom-color: var(--border-color);
 }
-.alert-rule-form #alertRuleTabs > .nav-item {
+.responsive-tab-nav > .nav-item {
     display: flex;
     width: 100%;
     min-width: 0;
     max-width: 100%;
 }
-.alert-rule-form #alertRuleTabs > .nav-item > .nav-link {
+.responsive-tab-nav > .nav-item > .nav-link {
     display: flex;
     flex: 1 1 auto;
     width: 100%;
@@ -5414,40 +5414,42 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     text-align: center;
     line-height: 1.25;
 }
-.alert-rule-form #alertRuleTabs .nav-link:hover,
-.alert-rule-form #alertRuleTabs .nav-link:focus-visible {
+.responsive-tab-nav .nav-link:hover,
+.responsive-tab-nav .nav-link:focus-visible {
     color: var(--theme-primary) !important;
     border-color: var(--border-color) var(--border-color) var(--border-color) !important;
 }
-.alert-rule-form #alertRuleTabs .nav-link.active,
-.alert-rule-form #alertRuleTabs .nav-item.show .nav-link {
+.responsive-tab-nav .nav-link.active,
+.responsive-tab-nav .nav-item.show .nav-link {
     color: var(--theme-primary) !important;
     background: var(--card-bg) !important;
     border-color: var(--border-color) var(--border-color) var(--card-bg) !important;
     font-weight: 650;
 }
-.alert-rule-form #alertRuleTabs .nav-link:focus-visible {
+.responsive-tab-nav .nav-link:focus-visible {
     outline: 2px solid var(--theme-primary);
     outline-offset: 2px;
     box-shadow: none;
 }
-.alert-rule-form #alertRuleTabContent,
-.alert-rule-form #alertRuleTabContent > .tab-pane {
+.responsive-tab-content,
+.responsive-tab-content > .tab-pane {
     min-width: 0;
 }
 @media (max-width: 767.98px) {
-    .alert-rule-form #alertRuleTabs {
+    .responsive-tab-nav {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: .4rem;
         padding-bottom: .5rem;
     }
-    .alert-rule-form #alertRuleTabs > .nav-item > .nav-link {
+    .responsive-tab-nav > .nav-item > .nav-link {
         justify-content: flex-start;
         padding: .55rem .6rem;
         font-size: .82rem;
         text-align: left;
     }
 }
+
+.responsive-tab-nav-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* Message presentation channel preview tabs share the alert-rule tab theme. */
 .alert-rule-form #presentationPreviewTabs {
@@ -5968,7 +5970,30 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .route-email-multiselect.is-invalid .route-email-feedback { display: block; }
 
 
-/* Alert History status cards reuse dashboard widget presentation. */
+/* Alert History status cards use the same dashboard widget structure and sizing. */
+.alert-history-status-cards > [class*="col"] > a {
+    display: block;
+    height: 100%;
+    color: inherit;
+}
+.alert-history-status-cards .dashboard-widget {
+    height: 100%;
+    min-height: 100%;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.alert-history-status-cards .dashboard-widget-main {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+}
+.alert-history-status-cards .dashboard-widget-value {
+    margin-bottom: 0;
+}
+.alert-history-status-cards > [class*="col"] > a:hover .dashboard-widget {
+    border-color: color-mix(in srgb, var(--theme-primary) 45%, var(--border-color));
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .07);
+}
+
 .alert-history-status-cards > [class*="col"] > a {
     display: block;
     height: 100%;
