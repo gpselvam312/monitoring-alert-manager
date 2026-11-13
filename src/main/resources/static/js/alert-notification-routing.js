@@ -204,6 +204,10 @@
             ? 'Select at least one recipient or recipient group for this enabled route.' : '';
         row.querySelector('.route-recipients').setCustomValidity(message);
         row.querySelector('.route-groups').setCustomValidity(message);
+        row.querySelectorAll('.route-multiselect-toggle').forEach(toggle => {
+            toggle.classList.toggle('is-invalid', Boolean(message));
+            toggle.setAttribute('aria-invalid', message ? 'true' : 'false');
+        });
         return !message;
     };
     const setRouteChannelOptions = row => {
@@ -278,7 +282,17 @@
         const invalidRoute = routeRows().find(row => !validateRouteTargets(row));
         if (invalidRoute) {
             event.preventDefault();
-            invalidRoute.querySelector('.route-recipients').reportValidity();
+            const invalidSelector = invalidRoute.querySelector('.route-multiselect-toggle');
+            invalidSelector?.focus();
+            invalidSelector?.setAttribute('aria-describedby', 'notificationRouteTargetError');
+            let error = invalidRoute.querySelector('.route-target-validation-message');
+            if (!error) {
+                error = document.createElement('div');
+                error.id = 'notificationRouteTargetError';
+                error.className = 'invalid-feedback d-block route-target-validation-message';
+                error.textContent = 'Select at least one recipient or recipient group for this enabled route.';
+                invalidRoute.querySelector('.route-recipient-container')?.appendChild(error);
+            }
             return;
         }
         syncNotificationRoutes();
