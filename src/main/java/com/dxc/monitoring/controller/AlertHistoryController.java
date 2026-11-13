@@ -19,6 +19,7 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.PageRequestSupport;
 
@@ -27,10 +28,13 @@ import com.dxc.monitoring.web.PageRequestSupport;
 public class AlertHistoryController {
     private final AlertRepository alertRepository;
     private final DashboardAccessService accessService;
+    private final EnvironmentRepository environmentRepository;
 
-    public AlertHistoryController(AlertRepository alertRepository, DashboardAccessService accessService) {
+    public AlertHistoryController(AlertRepository alertRepository, DashboardAccessService accessService,
+            EnvironmentRepository environmentRepository) {
         this.alertRepository = alertRepository;
         this.accessService = accessService;
+        this.environmentRepository = environmentRepository;
     }
 
     @GetMapping
@@ -92,7 +96,7 @@ public class AlertHistoryController {
                         Alert.AlertStatus.RESOLVED, severityFilter, repositorySearch);
 
         List<Environment> environments = applicationId == null || invalidApplication ? List.of()
-                : accessService.getEnvironmentsForApplication(applicationId);
+                : environmentRepository.findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(applicationId);
         model.addAttribute("alerts", alerts);
         model.addAttribute("pageSize", safeSize);
         model.addAttribute("search", safeSearch);
