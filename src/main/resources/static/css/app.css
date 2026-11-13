@@ -5445,3 +5445,13 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
         overflow: visible;
     }
 }
+
+.presentation-block-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .2rem;
+    cursor: grab;
+    user-select: none;
+}
+.presentation-block-drag-handle:active { cursor: grabbing; }
