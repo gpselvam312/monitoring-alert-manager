@@ -83,7 +83,7 @@ class AlertRuleManagementServiceTest {
         Map<?, ?> root = new ObjectMapper().readValue(saved.getConditionConfig(), Map.class);
         List<?> groups = (List<?>) root.get("children");
 
-        assertEquals("[{severity}] {ruleName}", saved.getAlertSubject());
+        assertEquals("{severity} — {ruleName}", saved.getAlertSubject());
         assertEquals("GROUP", root.get("type"));
         assertEquals("OR", root.get("operator"));
         assertEquals(1, root.get("consecutiveMatches"));
@@ -159,7 +159,7 @@ class AlertRuleManagementServiceTest {
         Map<?, ?> root = new ObjectMapper().readValue(form.getConditionTreeJson(), Map.class);
         List<?> groups = (List<?>) root.get("children");
 
-        assertEquals("[{severity}] {ruleName}", form.getAlertSubject());
+        assertEquals("{severity} — {ruleName}", form.getAlertSubject());
         assertEquals("CONDITION", form.getConditionType());
         assertEquals(2, form.getConsecutiveMatches());
         assertEquals("OR", root.get("operator"));
@@ -374,6 +374,9 @@ class AlertRuleManagementServiceTest {
         form.setSeverity("CRITICAL");
         form.setExecutionSourcePolicy("SCHEDULED_ONLY");
         form.setConditionType("CONDITION");
+        form.setConditionTreeJson("""
+                {"type":"CONDITION","fieldPath":"data.cpu","operator":"GREATER_THAN","threshold":80}
+                """);
         form.setConsecutiveMatches(1);
         form.setRecoveryFieldPath("data.cpu");
         form.setRecoveryOperator("LESS_THAN_OR_EQUAL");
