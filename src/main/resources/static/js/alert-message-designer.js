@@ -40,6 +40,8 @@
         let config = { version: 1, titleTemplate: '{{severity}} — {{ruleName}}', messageTemplate: '', sections: [] };
         let jsonEdited = false;
         let activePreview = 'email';
+        let expandedBlockId = null;
+        let draggedBlockId = null;
 
         const element = (tag, className, text) => {
             const node = document.createElement(tag);
@@ -135,7 +137,7 @@
             config.sections.splice(target, 0, block);
             render();
         };
-        const removeBlock = index => { config.sections.splice(index, 1); render(); };
+        const removeBlock = index => { config.sections.splice(index, 1); if (expandedBlockId === config.sections[index]?.id) expandedBlockId = null; render(); };
         const rowActions = (index, length) => {
             const actions = element('div', 'd-flex gap-1');
             actions.append(button('Up', 'btn btn-sm btn-outline-secondary', () => moveBlock(index, -1), 'bi bi-arrow-up'));
@@ -146,15 +148,30 @@
             return actions;
         };
         const makeBlock = (section, index) => {
-            const card = element('section', 'app-card mb-0');
+            const card = element('section', 'app-card mb-0 presentation-block');
+            card.draggable = true;
+            card.dataset.blockId = section.id;
             const header = element('div', 'app-card-header d-flex align-items-center justify-content-between gap-2 flex-wrap');
-            const heading = element('div');
             const title = section.type === 'TEXT' ? 'Text Block' : section.type === 'KEY_VALUE' ? 'Key-Value List Block'
                 : section.type === 'TABLE' ? 'Data Table Block' : 'Legacy ' + section.type + ' Block';
-            heading.append(element('div', 'fw-semibold', (index + 1) + '. ' + title));
-            heading.append(element('div', 'small text-muted', 'Block ' + (index + 1) + ' of ' + config.sections.length));
+            const collapseId = 'presentation-block-collapse-' + index;
+            const expanded = expandedBlockId ? expandedBlockId === section.id : index === 0;
+            const heading = element('button', 'btn btn-link text-decoration-none text-reset p-0 d-flex align-items-center gap-2 text-start');
+            heading.type = 'button';
+            heading.dataset.bsToggle = 'collapse';
+            heading.dataset.bsTarget = '#' + collapseId;
+            heading.setAttribute('aria-expanded', String(expanded));
+            heading.setAttribute('aria-controls', collapseId);
+            heading.append(element('i', 'bi bi-grip-vertical text-muted', ''));
+            const headingText = element('span', 'd-flex flex-column');
+            headingText.append(element('span', 'fw-semibold', (index + 1) + '. ' + title));
+            headingText.append(element('span', 'small text-muted', 'Block ' + (index + 1) + ' of ' + config.sections.length));
+            heading.append(headingText, element('i', 'bi bi-chevron-down small presentation-block-chevron'));
             header.append(heading, rowActions(index, config.sections.length));
             card.append(header);
+            const collapse = element('div', 'collapse' + (expanded ? ' show' : ''));
+            collapse.id = collapseId;
+            collapse.dataset.bsParent = '#presentationSections';
             const body = element('div', 'app-card-body');
             if (section.type === 'TEXT') {
                 const blockTitle = textInput(section.title, 'Optional block heading', 150);
@@ -212,7 +229,42 @@
                     'This block type was saved by an earlier version. It is retained for backward compatibility and can be reordered or deleted. New blocks use Text, Key-Value List or Data Table.');
                 body.append(note);
             }
-            card.append(body);
+            collapse.append(body);
+            card.append(collapse);
+            heading.addEventListener('click', () => {
+                expandedBlockId = expanded ? null : section.id;
+            });
+            collapse.addEventListener('shown.bs.collapse', () => { expandedBlockId = section.id; });
+            collapse.addEventListener('hidden.bs.collapse', () => {
+                if (expandedBlockId === section.id) expandedBlockId = null;
+            });
+            card.addEventListener('dragstart', event => {
+                if (event.target.closest('button, input, textarea, select')) {
+                    event.preventDefault();
+                    return;
+                }
+                draggedBlockId = section.id;
+                card.classList.add('presentation-block-dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', section.id);
+            });
+            card.addEventListener('dragend', () => {
+                draggedBlockId = null;
+                card.classList.remove('presentation-block-dragging');
+            });
+            card.addEventListener('dragover', event => event.preventDefault());
+            card.addEventListener('drop', event => {
+                event.preventDefault();
+                const sourceId = draggedBlockId || event.dataTransfer.getData('text/plain');
+                if (!sourceId || sourceId === section.id) return;
+                const from = config.sections.findIndex(item => item.id === sourceId);
+                const to = config.sections.findIndex(item => item.id === section.id);
+                if (from < 0 || to < 0) return;
+                const [moved] = config.sections.splice(from, 1);
+                config.sections.splice(to, 0, moved);
+                expandedBlockId = moved.id;
+                render();
+            });
             return card;
         };
         const render = () => {
@@ -389,6 +441,7 @@
             if (type === 'KEY_VALUE') section.fields = [{ label: '', path: '' }];
             if (type === 'TABLE') { section.sourcePath = ''; section.columns = [{ key: '', label: '' }]; section.maxRows = 20; }
             config.sections.push(section);
+            expandedBlockId = section.id;
             render();
         };
         document.querySelectorAll('[data-add-presentation-section]').forEach(add => add.addEventListener('click', () => addBlock(add.dataset.addPresentationSection)));
