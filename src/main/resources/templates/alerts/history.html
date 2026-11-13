@@ -1,81 +1,25 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout('Alert History', ~{::content})}">
 <body><div th:fragment="content">
-    <div class="page-header"><div><h1 class="page-title"><i class="bi bi-clock-history me-2"></i>Alert History</h1>
-        <p class="page-subtitle">A complete view of alert lifecycles, including active and recovered alerts.</p></div></div>
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-md-4"><a class="text-decoration-none" th:href="@{/alerts/history(search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId})}">
-            <div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">All Alerts</div><div class="fs-3 fw-semibold" th:text="${totalAlerts}">0</div></div></div></a></div>
-        <div class="col-12 col-md-4"><a class="text-decoration-none" th:href="@{/alerts/history(status='ACTIVE',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId})}">
-            <div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Active</div><div class="fs-3 fw-semibold text-danger" th:text="${activeAlerts}">0</div></div></div></a></div>
-        <div class="col-12 col-md-4"><a class="text-decoration-none" th:href="@{/alerts/history(status='RESOLVED',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId})}">
-            <div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Recovered</div><div class="fs-3 fw-semibold text-success" th:text="${resolvedAlerts}">0</div></div></div></a></div>
-    </div>
-    <div class="app-card">
-        <div class="app-card-body border-bottom">
-            <form method="get" th:action="@{/alerts/history}" class="row g-2 align-items-end">
-                <div class="col-12 col-lg-3"><label class="form-label small" for="search">Search</label>
-                    <input class="form-control" id="search" name="search" type="search" maxlength="150" placeholder="Alert ID, title, job or application" th:value="${search}"></div>
-                <div class="col-6 col-lg-2"><label class="form-label small" for="status">Status</label>
-                    <select class="form-select" id="status" name="status"><option value="">All statuses</option>
-                        <option value="ACTIVE" th:selected="${status == 'ACTIVE'}">Active</option><option value="RESOLVED" th:selected="${status == 'RESOLVED'}">Recovered</option></select></div>
-                <div class="col-6 col-lg-2"><label class="form-label small" for="severity">Severity</label>
-                    <select class="form-select" id="severity" name="severity"><option value="">All severities</option>
-                        <option th:each="item : ${T(com.dxc.monitoring.entity.AlertRule.Severity).values()}" th:value="${item.name()}" th:text="${item.name()}" th:selected="${severity == item.name()}"></option></select></div>
-                <div class="col-6 col-lg-2"><label class="form-label small" for="applicationId">Application</label>
-                    <select class="form-select" id="applicationId" name="applicationId" onchange="document.getElementById('environmentId').value = '';"><option value="">All applications</option>
-                        <option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}" th:selected="${applicationId == app.id}"></option></select></div>
-                <div class="col-6 col-lg-2"><label class="form-label small" for="environmentId">Environment</label>
-                    <select class="form-select" id="environmentId" name="environmentId"><option value="">All environments</option>
-                        <option th:each="env : ${environments}" th:value="${env.id}" th:text="${env.name}" th:selected="${environmentId == env.id}"></option></select></div>
-                <div class="col-12 col-lg-1 d-grid"><button class="btn btn-primary" type="submit">Apply</button></div>
-                <div class="col-12"><div class="row g-2 mt-1">
-                    <div class="col-6 col-md-3"><label class="form-label small" for="sort">Sort by</label>
-                        <select class="form-select form-select-sm" id="sort" name="sort">
-                            <option value="lastOccurredAt" th:selected="${sort == 'lastOccurredAt'}">Last occurred</option>
-                            <option value="createdAt" th:selected="${sort == 'createdAt'}">Created</option>
-                            <option value="resolvedAt" th:selected="${sort == 'resolvedAt'}">Resolved</option>
-                            <option value="severity" th:selected="${sort == 'severity'}">Severity</option>
-                            <option value="status" th:selected="${sort == 'status'}">Status</option>
-                            <option value="title" th:selected="${sort == 'title'}">Alert title</option>
-                        </select>
-                    </div>
-                    <div class="col-6 col-md-2"><label class="form-label small" for="direction">Direction</label>
-                        <select class="form-select form-select-sm" id="direction" name="direction">
-                            <option value="desc" th:selected="${direction == 'desc'}">Descending</option>
-                            <option value="asc" th:selected="${direction == 'asc'}">Ascending</option>
-                        </select>
-                    </div>
-                    <div class="col-6 col-md-2"><label class="form-label small" for="size">Page size</label>
-                        <select class="form-select form-select-sm" id="size" name="size">
-                            <option value="5" th:selected="${pageSize == 5}">5</option>
-                            <option value="10" th:selected="${pageSize == 10}">10</option>
-                            <option value="25" th:selected="${pageSize == 25}">25</option>
-                        </select>
-                    </div>
-                </div></div>
-            </form>
-        </div>
-        <div th:if="${alerts.totalElements == 0}" class="empty-state"><div class="empty-state-icon"><i class="bi bi-clock-history"></i></div><h6>No alerts found</h6><p>Try changing the selected filters.</p></div>
-        <div th:if="${alerts.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0">
-            <thead><tr><th>Alert ID</th><th>Alert</th><th>Severity</th><th>Application / Environment</th><th>Status</th><th>Occurrences</th><th>Created</th><th>Last Occurred</th><th>Resolved</th></tr></thead>
-            <tbody><tr th:each="alert : ${alerts.content}">
-                <td><a class="fw-semibold text-decoration-none" th:href="@{/alerts/{id}(id=${alert.id})}" th:text="${alert.alertKey}">ALT-2026-00000001</a></td>
-                <td><a class="fw-semibold text-decoration-none" th:href="@{/alerts/{id}(id=${alert.id})}" th:text="${alert.title}">Alert title</a><div class="small text-muted" th:text="${alert.monitoringJob.name}">Monitoring job</div></td>
-                <td><span class="badge text-bg-danger" th:if="${alert.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${alert.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${alert.severity.name() == 'INFO'}">Info</span><span class="badge text-bg-success" th:if="${alert.severity.name() == 'SUCCESS'}">Success</span></td>
-                <td><div th:text="${alert.monitoringJob.application.name}">Application</div><div class="small text-muted" th:text="${alert.monitoringJob.environment != null ? alert.monitoringJob.environment.name : '—'}">Environment</div></td>
-                <td><span class="badge text-bg-danger" th:if="${alert.status.name() == 'ACTIVE'}">Active</span><span class="badge text-bg-success" th:if="${alert.status.name() == 'RESOLVED'}">Recovered</span></td>
-                <td th:text="${alert.occurrenceCount}">1</td><td th:text="${#temporals.format(alert.createdAt, 'yyyy-MM-dd HH:mm:ss')}">Created</td><td th:text="${#temporals.format(alert.lastOccurredAt, 'yyyy-MM-dd HH:mm:ss')}">Time</td>
-                <td th:text="${alert.resolvedAt != null ? #temporals.format(alert.resolvedAt, 'yyyy-MM-dd HH:mm:ss') : '—'}">Time</td>
-            </tr></tbody></table></div>
-        <div th:if="${alerts.totalPages > 1}" class="d-flex justify-content-between align-items-center p-3 border-top">
-            <span class="small text-muted" th:text="'Page ' + (${alerts.number + 1}) + ' of ' + ${alerts.totalPages}">Page</span>
-            <div class="btn-group btn-group-sm">
-                <a class="btn btn-outline-secondary" th:classappend="${alerts.first} ? ' disabled'" th:href="@{/alerts/history(page=0,size=${pageSize},search=${search},status=${status},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},sort=${sort},direction=${direction})}">First</a>
-                <a class="btn btn-outline-secondary" th:classappend="${alerts.first} ? ' disabled'" th:href="@{/alerts/history(page=${alerts.number - 1},size=${pageSize},search=${search},status=${status},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},sort=${sort},direction=${direction})}">Previous</a>
-                <a class="btn btn-outline-secondary" th:classappend="${alerts.last} ? ' disabled'" th:href="@{/alerts/history(page=${alerts.number + 1},size=${pageSize},search=${search},status=${status},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},sort=${sort},direction=${direction})}">Next</a>
-                <a class="btn btn-outline-secondary" th:classappend="${alerts.last} ? ' disabled'" th:href="@{/alerts/history(page=${alerts.totalPages - 1},size=${pageSize},search=${search},status=${status},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},sort=${sort},direction=${direction})}">Last</a>
-            </div>
-        </div>
-    </div>
+<div class="page-header"><div><h1 class="page-title"><i class="bi bi-clock-history me-2"></i>Alert History</h1><p class="page-subtitle">A complete view of alert lifecycles, including active and recovered alerts.</p></div></div>
+<div class="row g-3 mb-3 alert-history-status-cards">
+<div class="col-12 col-md-4"><a class="text-decoration-none" th:href="@{/alerts/history(search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId})}"><section class="dashboard-widget h-100"><div class="dashboard-widget-header"><div class="dashboard-widget-title-group"><div class="dashboard-widget-icon"><i class="bi bi-collection"></i></div><div class="dashboard-widget-title-line min-w-0"><h5 class="dashboard-widget-title">All Alerts</h5><span class="dashboard-widget-description">Complete alert history</span></div></div><div class="dashboard-widget-actions"><span class="dashboard-status dashboard-status-gray"><i class="bi bi-list-ul"></i><span>All</span></span></div></div><div class="dashboard-widget-body"><div class="dashboard-widget-value" th:text="${totalAlerts}">0</div></div></section></a></div>
+<div class="col-12 col-md-4"><a class="text-decoration-none" th:href="@{/alerts/history(status='ACTIVE',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId})}"><section class="dashboard-widget h-100"><div class="dashboard-widget-header"><div class="dashboard-widget-title-group"><div class="dashboard-widget-icon"><i class="bi bi-bell"></i></div><div class="dashboard-widget-title-line min-w-0"><h5 class="dashboard-widget-title">Active Alerts</h5><span class="dashboard-widget-description">Alerts requiring attention</span></div></div><div class="dashboard-widget-actions"><span class="dashboard-status dashboard-status-red"><i class="bi bi-exclamation-circle-fill"></i><span>Active</span></span></div></div><div class="dashboard-widget-body"><div class="dashboard-widget-value" th:text="${activeAlerts}">0</div></div></section></a></div>
+<div class="col-12 col-md-4"><a class="text-decoration-none" th:href="@{/alerts/history(status='RESOLVED',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId})}"><section class="dashboard-widget h-100"><div class="dashboard-widget-header"><div class="dashboard-widget-title-group"><div class="dashboard-widget-icon"><i class="bi bi-check2-circle"></i></div><div class="dashboard-widget-title-line min-w-0"><h5 class="dashboard-widget-title">Recovered</h5><span class="dashboard-widget-description">Alerts that have recovered</span></div></div><div class="dashboard-widget-actions"><span class="dashboard-status dashboard-status-green"><i class="bi bi-check-circle-fill"></i><span>Recovered</span></span></div></div><div class="dashboard-widget-body"><div class="dashboard-widget-value" th:text="${resolvedAlerts}">0</div></div></section></a></div>
+</div>
+<div class="app-card">
+<div class="row g-2 p-3 border-bottom align-items-end">
+<div class="col-12 col-lg-4"><label class="form-label small" for="alertHistorySearch">Search alerts</label><div th:replace="~{fragments/data-table :: controls('alertHistorySearch','alertHistoryPageSize','Alert ID, title, job or application',${pageSize},${search})}"></div></div>
+<div class="col-6 col-lg-2"><label class="form-label small" for="alertHistoryStatus">Status</label><select class="form-select form-select-sm" id="alertHistoryStatus"><option value="">All statuses</option><option value="ACTIVE" th:selected="${status == 'ACTIVE'}">Active</option><option value="RESOLVED" th:selected="${status == 'RESOLVED'}">Recovered</option></select></div>
+<div class="col-6 col-lg-2"><label class="form-label small" for="alertHistorySeverity">Severity</label><select class="form-select form-select-sm" id="alertHistorySeverity"><option value="">All severities</option><option th:each="item : ${T(com.dxc.monitoring.entity.AlertRule.Severity).values()}" th:value="${item.name()}" th:text="${item.name()}" th:selected="${severity == item.name()}"></option></select></div>
+<div class="col-6 col-lg-2"><label class="form-label small" for="alertHistoryApplication">Application</label><select class="form-select form-select-sm" id="alertHistoryApplication"><option value="">All applications</option><option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}" th:selected="${applicationId == app.id}"></option></select></div>
+<div class="col-6 col-lg-2"><label class="form-label small" for="alertHistoryEnvironment">Environment</label><select class="form-select form-select-sm" id="alertHistoryEnvironment"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:text="${env.name}" th:selected="${environmentId == env.id}"></option></select></div>
+<div class="col-12 d-flex justify-content-end"><button type="button" class="btn btn-sm btn-outline-secondary" id="alertHistoryClearFilters"><i class="bi bi-arrow-counterclockwise me-1"></i>Clear filters</button></div>
+</div>
+<div id="alertHistoryTableContainer" class="table-responsive"><div class="p-4 text-muted text-center">Loading alert history...</div></div>
+<div th:replace="~{fragments/data-table :: clientPagination('alertHistoryPagination','alertHistoryPaginationSummary','alertHistoryFirst','alertHistoryPrevious','alertHistoryNext','alertHistoryLast')}"></div>
+</div>
+<script th:inline="javascript">
+window.alertHistoryConfig = { endpoint: /*[[@{/alerts/history/batch}]]*/ '/alerts/history/batch', searchId: 'alertHistorySearch', pageSizeId: 'alertHistoryPageSize', containerId: 'alertHistoryTableContainer', filters: { status: 'alertHistoryStatus', severity: 'alertHistorySeverity', applicationId: 'alertHistoryApplication', environmentId: 'alertHistoryEnvironment' }, sort: /*[[${sort}]]*/ 'createdAt', direction: /*[[${direction}]]*/ 'desc' };
+</script><script th:src="@{/js/alert-history.js}"></script>
 </div></body></html>
