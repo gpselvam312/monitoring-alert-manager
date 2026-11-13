@@ -27,7 +27,7 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class AlertPresentationService {
     private static final Logger log = LoggerFactory.getLogger(AlertPresentationService.class);
-    private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z][A-Za-z0-9_.-]*)}");
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{?([A-Za-z][A-Za-z0-9_.-]*)\\}\\}?");
     private static final int MAX_SECTION_TEXT = 10_000;
     private static final int MAX_PRESENTATION_SIZE = 12_000;
     private static final int MAX_DISPLAY_VALUE = 1_000;
@@ -195,7 +195,7 @@ public class AlertPresentationService {
         String type = text(section.get("type")).toUpperCase(Locale.ROOT);
         String title = renderTemplate(text(section.get("title")), templateValues, document);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("type", type.toLowerCase(Locale.ROOT));
+        result.put("type", "KEY_VALUE".equals(type) ? "details" : type.toLowerCase(Locale.ROOT));
         if (!title.isBlank()) result.put("title", title);
         switch (type) {
             case "TEXT" -> result.put("text", renderTemplate(text(section.get("text")), templateValues, document));
@@ -344,8 +344,16 @@ public class AlertPresentationService {
         while (matcher.find()) {
             String token = matcher.group(1);
             Object replacement = values.get(token);
-            if (replacement == null && (token.startsWith("data.") || token.startsWith("response."))) {
-                JsonPathResolver.ResolvedValues resolved = resolve(document, token);
+            if (replacement == null) {
+                String candidate = token.startsWith("data.") || token.startsWith("response.")
+                        ? token : "data." + token;
+                JsonPathResolver.ResolvedValues resolved = resolve(document, candidate);
+                if (!resolved.found() && !token.startsWith("data.") && !token.startsWith("response.")) {
+                    resolved = resolve(document, "data." + token.replace('_', '.'));
+                }
+                if (!resolved.found() && !token.startsWith("data.") && !token.startsWith("response.")) {
+                    resolved = resolve(document, "response." + token);
+                }
                 if (resolved.found()) replacement = observed(resolved.values());
             }
             matcher.appendReplacement(output, Matcher.quoteReplacement(
