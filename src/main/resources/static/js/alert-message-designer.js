@@ -273,12 +273,12 @@
                     const columnsTable = element('table', 'table table-sm align-middle mb-0');
                     const tableHead = element('thead', 'table-light');
                     const headRow = element('tr');
-                    ['Column heading', 'Array field', ''].forEach(text => headRow.append(element('th', '', text)));
+                    ['Column heading', 'Array field', 'Order'].forEach(text => headRow.append(element('th', '', text)));
                     tableHead.append(headRow);
                     const tableBody = element('tbody');
                     section.columns.forEach((column, columnIndex) => {
                         const row = element('tr');
-                        const labelCell = element('td', 'w-35');
+                        const labelCell = element('td', 'w-25');
                         const label = textInput(column.label, 'Column header', 100);
                         label.classList.add('form-control-sm');
                         label.addEventListener('input', () => { column.label = label.value; sync(); });
@@ -286,14 +286,33 @@
                         const keyCell = element('td');
                         const key = relativePathControl(section.sourcePath, column.key,
                             value => { column.key = value; sync(); }, false);
-                        key.classList.add('form-select-sm');
                         keyCell.append(key);
-                        const actionCell = element('td', 'text-end');
+                        const actionCell = element('td', 'text-end text-nowrap');
+                        const moveUp = button('', 'btn btn-sm btn-outline-secondary me-1',
+                            () => {
+                                if (columnIndex === 0) return;
+                                [section.columns[columnIndex - 1], section.columns[columnIndex]] =
+                                    [section.columns[columnIndex], section.columns[columnIndex - 1]];
+                                render();
+                            }, 'bi bi-arrow-up');
+                        moveUp.title = 'Move column up';
+                        moveUp.setAttribute('aria-label', 'Move column up');
+                        moveUp.disabled = columnIndex === 0;
+                        const moveDown = button('', 'btn btn-sm btn-outline-secondary me-1',
+                            () => {
+                                if (columnIndex >= section.columns.length - 1) return;
+                                [section.columns[columnIndex], section.columns[columnIndex + 1]] =
+                                    [section.columns[columnIndex + 1], section.columns[columnIndex]];
+                                render();
+                            }, 'bi bi-arrow-down');
+                        moveDown.title = 'Move column down';
+                        moveDown.setAttribute('aria-label', 'Move column down');
+                        moveDown.disabled = columnIndex === section.columns.length - 1;
                         const removeColumn = button('', 'btn btn-sm btn-outline-danger',
                             () => { section.columns.splice(columnIndex, 1); render(); }, 'bi bi-trash');
                         removeColumn.title = 'Remove column';
                         removeColumn.setAttribute('aria-label', 'Remove column');
-                        actionCell.append(removeColumn);
+                        actionCell.append(moveUp, moveDown, removeColumn);
                         row.append(labelCell, keyCell, actionCell);
                         tableBody.append(row);
                     });
@@ -318,9 +337,23 @@
                 body.append(control('Items from response array', pathControl(section.sourcePath,
                     value => { section.sourcePath = value; sync(); },
                     field => field.type === 'array', () => render()), 'Choose an array from discovered response fields.'));
-                body.append(control('Field to display for each item', relativePathControl(section.sourcePath,
-                    section.valuePath, value => { section.valuePath = value; sync(); }, true),
-                    'Choose a discovered field or display each item as-is.'));
+                const listFieldWrapper = element('div', 'table-responsive border rounded mb-3');
+                const listFieldTable = element('table', 'table table-sm align-middle mb-0');
+                const listFieldHead = element('thead', 'table-light');
+                const listFieldHeader = element('tr');
+                listFieldHeader.append(element('th', '', 'Field to display for each item'));
+                listFieldHead.append(listFieldHeader);
+                const listFieldBody = element('tbody');
+                const listFieldRow = element('tr');
+                const listFieldCell = element('td');
+                listFieldCell.append(relativePathControl(section.sourcePath,
+                    section.valuePath, value => { section.valuePath = value; sync(); }, true));
+                listFieldRow.append(listFieldCell);
+                listFieldBody.append(listFieldRow);
+                listFieldTable.append(listFieldHead, listFieldBody);
+                listFieldWrapper.append(listFieldTable);
+                body.append(control('List item field', listFieldWrapper,
+                    'A list displays one selected field per array item. Leave it blank to display each item as-is.'));
                 const maxItems = textInput(String(section.maxItems || 10), '10', 3);
                 maxItems.type = 'number'; maxItems.min = '1'; maxItems.max = '100';
                 maxItems.addEventListener('input', () => { section.maxItems = Math.min(100, Math.max(1, Number(maxItems.value) || 1)); sync(); });
