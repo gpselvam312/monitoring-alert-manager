@@ -760,12 +760,20 @@ document.addEventListener('DOMContentLoaded', () => {
     previewButton?.addEventListener('click', async () => {
         const sampleText = sampleInput?.value || '';
         if (!sampleText.trim()) { showMessage('Paste a JSON sample response before testing the condition.','warning'); return; }
-        if (conditionType.value !== 'CONDITION') {
-            showMessage('Condition preview currently tests the visual/advanced condition tree. Switch Condition Mode to Field conditions first.','warning'); return;
-        }
         syncTree();
         let conditionJson = treeInput.value;
-        if (advancedMode && advancedJsonInput) conditionJson = advancedJsonInput.value;
+        if (conditionType.value === 'COUNT_TOTAL') {
+            conditionJson = JSON.stringify({type:'COUNT_TOTAL',collectionPath:collectionPath.value,
+                countOperator:countOperator.value,countThreshold:countThreshold.value});
+        } else if (conditionType.value === 'COUNT_MATCHING') {
+            const matching = {type:'COUNT_MATCHING',collectionPath:collectionPath.value,
+                fieldPath:countFieldPath.value,operator:countFieldOperator.value,
+                countOperator:countOperator.value,countThreshold:countThreshold.value};
+            if (!['EXISTS','NOT_EXISTS','IS_TRUE','IS_FALSE','IS_NULL','IS_NOT_NULL'].includes(matching.operator)) matching.threshold = countFieldThreshold.value;
+            conditionJson = JSON.stringify(matching);
+        } else if (advancedMode && advancedJsonInput) {
+            conditionJson = advancedJsonInput.value;
+        }
         previewButton.disabled = true;
         const originalText = previewButton.innerHTML;
         previewButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Testing…';
