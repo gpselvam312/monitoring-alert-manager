@@ -268,18 +268,40 @@
                 const loadRow = element('div', 'd-flex flex-wrap align-items-center gap-2 mb-3');
                 loadRow.append(loadColumns);
                 body.append(loadRow);
-                section.columns.forEach((column, columnIndex) => {
-                    const row = element('div', 'border rounded p-2 mb-2');
-                    const grid = element('div', 'row g-2 align-items-end');
-                    const label = textInput(column.label, 'Column header', 100);
-                    label.addEventListener('input', () => { column.label = label.value; sync(); });
-                    const key = relativePathControl(section.sourcePath, column.key,
-                        value => { column.key = value; sync(); }, false);
-                    grid.append(control('Column header', label), control('Row field', key));
-                    row.append(grid, button('Remove column', 'btn btn-sm btn-outline-danger mt-2',
-                        () => { section.columns.splice(columnIndex, 1); render(); }, 'bi bi-trash'));
-                    body.append(row);
-                });
+                if (section.columns.length) {
+                    const tableWrapper = element('div', 'table-responsive border rounded mb-3');
+                    const columnsTable = element('table', 'table table-sm align-middle mb-0');
+                    const tableHead = element('thead', 'table-light');
+                    const headRow = element('tr');
+                    ['Column heading', 'Array field', ''].forEach(text => headRow.append(element('th', '', text)));
+                    tableHead.append(headRow);
+                    const tableBody = element('tbody');
+                    section.columns.forEach((column, columnIndex) => {
+                        const row = element('tr');
+                        const labelCell = element('td', 'w-35');
+                        const label = textInput(column.label, 'Column header', 100);
+                        label.classList.add('form-control-sm');
+                        label.addEventListener('input', () => { column.label = label.value; sync(); });
+                        labelCell.append(label);
+                        const keyCell = element('td');
+                        const key = relativePathControl(section.sourcePath, column.key,
+                            value => { column.key = value; sync(); }, false);
+                        key.classList.add('form-select-sm');
+                        keyCell.append(key);
+                        const actionCell = element('td', 'text-end');
+                        actionCell.append(button('', 'btn btn-sm btn-outline-danger',
+                            () => { section.columns.splice(columnIndex, 1); render(); },
+                            'bi bi-trash', 'Remove column'));
+                        row.append(labelCell, keyCell, actionCell);
+                        tableBody.append(row);
+                    });
+                    columnsTable.append(tableHead, tableBody);
+                    tableWrapper.append(columnsTable);
+                    body.append(tableWrapper);
+                } else {
+                    body.append(element('div', 'small text-muted border rounded p-3 mb-3',
+                        'No columns configured. Load fields from the selected array or add a column manually.'));
+                }
                 body.append(button('Add column manually', 'btn btn-sm btn-outline-secondary', () => {
                     section.columns.push({ key: '', label: '' }); render();
                 }, 'bi bi-plus-lg'));
