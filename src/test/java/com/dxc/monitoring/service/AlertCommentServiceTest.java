@@ -49,6 +49,8 @@ class AlertCommentServiceTest {
         User author = mock(User.class);
         when(alertRepository.findById(7L)).thenReturn(Optional.of(alert));
         when(userRepository.findById(3L)).thenReturn(Optional.of(author));
+        when(author.getId()).thenReturn(3L);
+        when(author.getFullName()).thenReturn("Test User");
 
         service.addComment(7L, 3L, "  Investigating the failure.  ");
 
@@ -56,7 +58,8 @@ class AlertCommentServiceTest {
                 org.mockito.ArgumentCaptor.forClass(com.dxc.monitoring.entity.AlertComment.class);
         verify(commentRepository).save(captor.capture());
         org.junit.jupiter.api.Assertions.assertEquals(alert, captor.getValue().getAlert());
-        org.junit.jupiter.api.Assertions.assertEquals(author, captor.getValue().getAuthor());
+        org.junit.jupiter.api.Assertions.assertEquals(3L, captor.getValue().getAuthorUserId());
+        org.junit.jupiter.api.Assertions.assertEquals("Test User", captor.getValue().getAuthorName());
         org.junit.jupiter.api.Assertions.assertEquals("Investigating the failure.", captor.getValue().getCommentText());
     }
 }
