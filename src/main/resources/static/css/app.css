@@ -5793,3 +5793,18 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     }
 }
 
+
+
+/* Keep the generated Route enabled checkbox aligned in narrow routing accordions. */
+.notification-routing-accordion .route-enabled-option {
+    min-height: 2.375rem;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+.notification-routing-accordion .route-enabled-option .route-enabled {
+    float: none;
+    flex: 0 0 auto;
+}
+.notification-routing-accordion .route-enabled-option .form-check-label {
+    line-height: 1.25;
+}
