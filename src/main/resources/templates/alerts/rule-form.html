@@ -134,7 +134,12 @@
     <div class="app-card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
         <div><h2 class="h6 mb-0"><i class="bi bi-layout-text-window-reverse me-2"></i>Message Presentation Designer</h2>
             <div class="small text-muted mt-1">Build reusable message blocks and preview how each notification channel adapts them.</div></div>
-        <span class="badge text-bg-light">Visual designer</span>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary d-none" id="discoverAlertFieldsForPresentation">
+                <i class="bi bi-search me-1"></i>Load Latest Saved Result
+            </button>
+            <span class="badge text-bg-light">Visual designer</span>
+        </div>
     </div>
     <div class="app-card-body">
         <div class="mb-3">
@@ -338,6 +343,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const jobIdInput = document.getElementById('monitoringJobId');
     const discoverButton = document.getElementById('discoverAlertFields');
+    const presentationDiscoverButton = document.getElementById('discoverAlertFieldsForPresentation');
+    let latestSavedResultLoaded = false;
+    const syncPresentationDiscoverButton = () => {
+        presentationDiscoverButton?.classList.toggle('d-none', !jobIdInput?.value || latestSavedResultLoaded);
+    };
+    presentationDiscoverButton?.addEventListener('click', () => discoverButton?.click());
     const fieldSelect = document.getElementById('discoveredFieldPath');
     const message = document.getElementById('fieldDiscoveryMessage');
     const sample = document.getElementById('discoveredFieldSample');
@@ -709,6 +720,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const payload = await response.json();
                 if (!response.ok) throw new Error(payload.message || 'Unable to discover fields from the saved result.');
+                latestSavedResultLoaded = true;
+                syncPresentationDiscoverButton();
                 populateDiscoveredFields(payload.fields);
                 if (!discoveredFields.length) {
                     showMessage('The latest saved result did not contain any discoverable fields. You can enter the field path manually.','warning');
@@ -745,11 +758,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     jobIdInput.addEventListener('change', () => {
+        latestSavedResultLoaded = false;
+        syncPresentationDiscoverButton();
         populateDiscoveredFields([]);
         fieldSelect.replaceChildren(new Option('Load a saved result to discover fields',''));
         fieldSelect.disabled = true; executionInfo.textContent = ''; message.className = 'alert d-none mb-3';
         discoverButton.disabled = !jobIdInput.value;
     });
     if (jobIdInput.value) discoverButton.disabled = false;
+    syncPresentationDiscoverButton();
 });
 </script><script th:src="@{/js/alert-message-designer.js}" defer></script><script th:src="@{/js/alert-rule-workspace.js}" defer></script></div></body></html>
