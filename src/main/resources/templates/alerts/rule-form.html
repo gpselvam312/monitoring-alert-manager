@@ -331,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const populateDiscoveredFields = fields => {
         discoveredFields = Array.isArray(fields) ? fields : [];
         window.alertRuleDiscoveredFields = discoveredFields;
+        window.refreshAlertPresentationDesigner?.();
         fieldDatalist.replaceChildren();
         discoveredFields.forEach(field => {
             const option = new Option();
