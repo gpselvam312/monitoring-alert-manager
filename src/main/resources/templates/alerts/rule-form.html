@@ -501,6 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
         treeEditor.classList.toggle('d-none', !conditionMode || advancedMode);
         addRootCondition.classList.toggle('d-none', !conditionMode || advancedMode);
         addRootGroup.classList.toggle('d-none', !conditionMode || advancedMode);
+        addRootCollection?.classList.toggle('d-none', !conditionMode || advancedMode);
         if (advancedEditor) advancedEditor.classList.toggle('d-none', !conditionMode);
     };
     const makeButton = (label, className, handler) => {
