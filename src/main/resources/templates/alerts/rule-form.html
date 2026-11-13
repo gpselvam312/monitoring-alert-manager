@@ -148,7 +148,7 @@
         <div class="mb-3">
             <label class="form-label" for="alertSubject">Subject <span class="text-danger">*</span></label>
             <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required>
-            <div class="form-text">Defaults to the rule severity and name. These placeholders are resolved using the actual alert: <code>{severity}</code> and <code>{ruleName}</code>. You can edit the subject or add other supported placeholders.</div>
+            <div class="form-text">Automatically populated from this rule’s severity and name. It updates when either changes until you edit the subject. You can also enter supported placeholders such as <code>{jobName}</code> or <code>{environment}</code>.</div>
         </div>
         <div class="row g-3 align-items-stretch presentation-designer-grid">
             <div class="col-12 col-xl-6 presentation-builder-pane">
