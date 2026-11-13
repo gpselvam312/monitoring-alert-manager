@@ -15,7 +15,7 @@
             { id: 'detection', label: 'Detection', icon: 'bi-diagram-3', match: title => title === 'alert condition' },
             { id: 'lifecycle', label: 'Alert Lifecycle', icon: 'bi-arrow-repeat', match: title => title === 'recovery criteria' },
             { id: 'notifications', label: 'Notifications', icon: 'bi-bell', match: title => title.includes('notifications') },
-            { id: 'presentation', label: 'Message Presentation', icon: 'bi-envelope-paper', match: title => title === 'alert content' || title.includes('alert presentation designer') }
+            { id: 'presentation', label: 'Message Presentation', icon: 'bi-envelope-paper', match: title => title === 'alert content' || title === 'fallback alert record content' || title.includes('alert presentation designer') }
         ];
 
         const assigned = new Map(groups.map(group => [group.id, []]));
