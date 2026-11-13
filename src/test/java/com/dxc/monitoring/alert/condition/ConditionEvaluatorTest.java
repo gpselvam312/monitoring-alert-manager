@@ -102,6 +102,20 @@ class ConditionEvaluatorTest {
     }
 
     @Test
+    void collectionQuantifiersHaveExplicitEmptyArraySemantics() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("nodes", java.util.List.of())));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> predicate = Map.of("fieldPath", "state", "operator", "EQ", "threshold", "DOWN");
+
+        assertFalse(evaluator.evaluate(Map.of("type", "COLLECTION", "collectionPath", "data.nodes",
+                "quantifier", "ANY", "condition", predicate), context).matched());
+        assertTrue(evaluator.evaluate(Map.of("type", "COLLECTION", "collectionPath", "data.nodes",
+                "quantifier", "NONE", "condition", predicate), context).matched());
+        assertTrue(evaluator.evaluate(Map.of("type", "COLLECTION", "collectionPath", "data.nodes",
+                "quantifier", "ALL", "emptyMatches", true, "condition", predicate), context).matched());
+    }
+
+    @Test
     void calculatesFilteredNumericAggregate() {
         JsonDocument document = JsonDocument.from(Map.of("data", Map.of("nodes", java.util.List.of(
                 Map.of("state", "UP", "lag", 10),
