@@ -296,8 +296,9 @@ class AlertEvaluationServiceTest {
 
     @Test
     void resolvesActiveAlertWhenRecoveryConditionMatches() {
-        Alert activeAlert = mock(Alert.class);
-        when(activeAlert.getSeverity()).thenReturn(AlertRule.Severity.CRITICAL);
+        Alert activeAlert = new Alert();
+        activeAlert.setSeverity(AlertRule.Severity.CRITICAL);
+        activeAlert.setOccurrenceCount(1L);
         when(rule.getRecoveryConfig()).thenReturn("""
                 {"enabled":true,"fieldPath":"data.cpu.usage","operator":"LESS_THAN_OR_EQUAL",
                  "threshold":75,"consecutiveMatches":1}
