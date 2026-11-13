@@ -591,6 +591,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (countNodes(tree) + 3 > 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
                 node.children.push(defaultGroup('OR')); renderTree();
             }));
+            actions.appendChild(makeButton('Add collection rule','btn btn-sm btn-outline-primary',() => {
+                if (countNodes(tree) + 4 > 100) { showMessage('A condition tree can contain at most 100 nodes.','warning'); return; }
+                node.children.push(defaultCollection()); renderTree();
+            }));
             card.appendChild(actions);
         } else {
             const row = document.createElement('div');
