@@ -3,29 +3,29 @@
 <body><div th:fragment="content">
 <div class="page-header"><div><h1 class="page-title"><i class="bi bi-clock-history me-2"></i>Alert History</h1><p class="page-subtitle">A complete view of alert lifecycles, including active and recovered alerts.</p></div></div>
 <div class="server-health-summary summary-table-cards alert-history-summary" aria-label="Alert history summary">
-<a class="server-health-summary-item server-health-summary-unknown summary-table-card summary-table-card-filter"
+<a class="server-health-summary-item server-health-summary-unknown summary-table-card server-health-summary-filter summary-table-card-filter"
    th:classappend="${status == null or status == '' ? ' is-active' : ''}"
    th:href="@{/alerts/history(search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},size=${pageSize})}"
    aria-label="Filter alerts by All" th:attr="aria-current=${status == null or status == '' ? 'page' : null}">
     <i class="bi bi-hdd-stack summary-table-card-icon" aria-hidden="true"></i>
     <span class="summary-table-card-label">Total Alerts</span>
-    <strong class="summary-table-card-value server-health-total" th:text="${totalAlerts}">0</strong>
+    <strong class="summary-table-card-value" th:text="${totalAlerts}">0</strong>
 </a>
-<a class="server-health-summary-item server-health-summary-critical summary-table-card summary-table-card-filter"
+<a class="server-health-summary-item server-health-summary-unknown summary-table-card server-health-summary-filter summary-table-card-filter"
    th:classappend="${status == 'ACTIVE' ? ' is-active' : ''}"
    th:href="@{/alerts/history(status='ACTIVE',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},size=${pageSize})}"
    aria-label="Filter alerts by Active" th:attr="aria-current=${status == 'ACTIVE' ? 'page' : null}">
     <i class="bi bi-activity summary-table-card-icon" aria-hidden="true"></i>
     <span class="summary-table-card-label">Active Alerts</span>
-    <strong class="summary-table-card-value server-health-critical" th:text="${activeAlerts}">0</strong>
+    <strong class="summary-table-card-value" th:text="${activeAlerts}">0</strong>
 </a>
-<a class="server-health-summary-item server-health-summary-healthy summary-table-card summary-table-card-filter"
+<a class="server-health-summary-item server-health-summary-unknown summary-table-card server-health-summary-filter summary-table-card-filter"
    th:classappend="${status == 'RESOLVED' ? ' is-active' : ''}"
    th:href="@{/alerts/history(status='RESOLVED',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},size=${pageSize})}"
    aria-label="Filter alerts by Recovered" th:attr="aria-current=${status == 'RESOLVED' ? 'page' : null}">
     <i class="bi bi-check-circle summary-table-card-icon" aria-hidden="true"></i>
     <span class="summary-table-card-label">Recovered</span>
-    <strong class="summary-table-card-value server-health-healthy" th:text="${resolvedAlerts}">0</strong>
+    <strong class="summary-table-card-value" th:text="${resolvedAlerts}">0</strong>
 </a>
 </div>
 <div class="app-card">
