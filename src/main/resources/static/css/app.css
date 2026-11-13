@@ -5795,16 +5795,38 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 
 
 
-/* Keep the generated Route enabled checkbox aligned in narrow routing accordions. */
+/* Route enabled uses the same option-card and switch pattern as Rule enabled. */
 .notification-routing-accordion .route-enabled-option {
-    min-height: 2.375rem;
-    flex-wrap: nowrap;
-    white-space: nowrap;
+    min-height: 74px;
+    height: 100%;
+    gap: 10px;
+    padding: 10px 12px;
 }
-.notification-routing-accordion .route-enabled-option .route-enabled {
-    float: none;
+.notification-routing-accordion .route-enabled-option .machine-enabled-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    font-size: 16px;
+}
+.notification-routing-accordion .route-enabled-option .machine-enabled-content {
+    flex: 1 1 auto;
+}
+.notification-routing-accordion .route-enabled-option .machine-enabled-title {
+    margin: 0;
+    line-height: 1.25;
+}
+.notification-routing-accordion .route-enabled-option .machine-enabled-switch {
     flex: 0 0 auto;
 }
-.notification-routing-accordion .route-enabled-option .form-check-label {
-    line-height: 1.25;
+.notification-routing-accordion .route-enabled-option .machine-enabled-switch .form-check-input {
+    width: 42px;
+    height: 22px;
+}
+@media (max-width: 575.98px) {
+    .notification-routing-accordion .route-enabled-option {
+        align-items: center;
+    }
+    .notification-routing-accordion .route-enabled-option .machine-enabled-switch {
+        padding-top: 0;
+    }
 }
