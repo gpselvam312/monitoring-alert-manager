@@ -46,7 +46,7 @@ public class AlertHistoryController {
             @RequestParam(required = false) String severity,
             @RequestParam(required = false) Long applicationId,
             @RequestParam(required = false) Long environmentId,
-            @RequestParam(defaultValue = "lastOccurredAt") String sort,
+            @RequestParam(defaultValue = "createdAt") String sort,
             @RequestParam(defaultValue = "desc") String direction,
             Model model) {
         List<Application> applications = accessService.getApplicationsWithPermission("ALERT_VIEW");
@@ -69,7 +69,7 @@ public class AlertHistoryController {
         Alert.AlertStatus statusFilter = parseStatus(status);
         AlertRule.Severity severityFilter = parseSeverity(severity);
         PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(page, size, sort, direction,
-                "lastOccurredAt", Map.of(
+                "createdAt", Map.of(
                         "createdAt", "createdAt",
                         "lastOccurredAt", "lastOccurredAt",
                         "resolvedAt", "resolvedAt",
