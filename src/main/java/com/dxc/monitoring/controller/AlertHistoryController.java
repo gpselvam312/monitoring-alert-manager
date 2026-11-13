@@ -51,10 +51,12 @@ public class AlertHistoryController {
         String safeSearch = search == null ? "" : search.trim();
         if (safeSearch.length() > 150) safeSearch = safeSearch.substring(0, 150);
         String repositorySearch = safeSearch;
+        Long exactAlertId = null;
         Matcher alertKeyMatcher = Pattern.compile("(?i)^ALT-\\d{4}-(\\d{8,})$").matcher(safeSearch);
         if (alertKeyMatcher.matches()) {
             try {
-                repositorySearch = Long.toString(Long.parseLong(alertKeyMatcher.group(1)));
+                exactAlertId = Long.parseLong(alertKeyMatcher.group(1));
+                repositorySearch = "";
             } catch (NumberFormatException ignored) {
                 repositorySearch = safeSearch;
             }
@@ -77,16 +79,16 @@ public class AlertHistoryController {
 
         Page<Alert> alerts = applicationIds.isEmpty() || invalidApplication
                 ? Page.empty(pageable)
-                : alertRepository.searchHistory(applicationIds, applicationId, environmentId,
+                : alertRepository.searchHistory(applicationIds, applicationId, environmentId, exactAlertId,
                         statusFilter, severityFilter, repositorySearch, pageable);
         long total = applicationIds.isEmpty() || invalidApplication ? 0
-                : alertRepository.countHistory(applicationIds, applicationId, environmentId,
+                : alertRepository.countHistory(applicationIds, applicationId, environmentId, exactAlertId,
                         null, severityFilter, repositorySearch);
         long active = applicationIds.isEmpty() || invalidApplication ? 0
-                : alertRepository.countHistory(applicationIds, applicationId, environmentId,
+                : alertRepository.countHistory(applicationIds, applicationId, environmentId, exactAlertId,
                         Alert.AlertStatus.ACTIVE, severityFilter, repositorySearch);
         long resolved = applicationIds.isEmpty() || invalidApplication ? 0
-                : alertRepository.countHistory(applicationIds, applicationId, environmentId,
+                : alertRepository.countHistory(applicationIds, applicationId, environmentId, exactAlertId,
                         Alert.AlertStatus.RESOLVED, severityFilter, repositorySearch);
 
         List<Environment> environments = applicationId == null || invalidApplication ? List.of()
