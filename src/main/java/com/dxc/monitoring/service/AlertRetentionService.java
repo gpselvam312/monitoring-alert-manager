@@ -124,7 +124,7 @@ public class AlertRetentionService {
 
     @Transactional
     public void togglePolicy(Long policyId, Long userId) {
-        AlertRetentionPolicy policy = policyRepository.findById(policyId)
+        AlertRetentionPolicy policy = policyRepository.findByIdWithScope(policyId)
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
         assertPolicyScopeAccess(policy);
         if (!policy.isEnabled()) {
