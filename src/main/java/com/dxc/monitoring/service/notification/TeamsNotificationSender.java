@@ -70,6 +70,11 @@ public class TeamsNotificationSender implements NotificationChannelSender {
                     bannerStyle = "warning";
                     bannerImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPY6s4BAAK5AQViYejEAAAAAElFTkSuQmCC";
                 }
+                case "SUCCESS" -> {
+                    label = "SUCCESS";
+                    bannerStyle = "good";
+                    bannerImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgK3MHAAFJAMTiIx/MAAAAAElFTkSuQmCC";
+                }
                 default -> {
                     label = "INFORMATIONAL ALERT";
                     bannerStyle = "accent";
