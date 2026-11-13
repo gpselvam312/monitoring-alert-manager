@@ -22,7 +22,6 @@ public class AlertRuleForm {
 
     private String presentationConfigJson = "{}";
     private String alertSubject = "{severity} — {ruleName}";
-    private String alertMessage = "Job {jobName} in application {applicationName}, environment {environment}: {fieldPath} evaluated to {actualValue} (threshold: {threshold}).";
     private Long notificationPolicyId;
     private String notificationRoutesJson = "[]";
     private boolean recoveryEnabled = true;
@@ -72,8 +71,6 @@ public class AlertRuleForm {
     public void setPresentationConfigJson(String presentationConfigJson) { this.presentationConfigJson = presentationConfigJson; }
     public String getAlertSubject() { return alertSubject; }
     public void setAlertSubject(String alertSubject) { this.alertSubject = alertSubject; }
-    public String getAlertMessage() { return alertMessage; }
-    public void setAlertMessage(String alertMessage) { this.alertMessage = alertMessage; }
     public Long getNotificationPolicyId() { return notificationPolicyId; }
     public void setNotificationPolicyId(Long notificationPolicyId) { this.notificationPolicyId = notificationPolicyId; }
     public String getNotificationRoutesJson() { return notificationRoutesJson; }
