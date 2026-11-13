@@ -5,15 +5,9 @@
 <div class="page-header"><div><h1 class="page-title" th:text="${ruleForm.id == null ? 'Create Alert Rule' : 'Edit Alert Rule'}">Alert Rule</h1><p class="page-subtitle">Define the condition that opens an alert and the criteria that resolve it.</p></div><div class="page-header-actions"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Rules</a></div></div>
 <div class="alert alert-danger" role="alert" th:if="${errorMessage}" th:text="${errorMessage}"></div>
 <div class="alert alert-info" role="alert" th:if="${!hasMonitoringJobs}">No standard monitoring jobs are available in applications where you have alert-configuration access.</div>
-<style>
-.alert-rule-tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
-.alert-rule-tabs .nav-link { white-space: nowrap; }
-.alert-rule-tabs .nav-link.active { font-weight: 600; }
-.alert-rule-tab-content { min-width: 0; }
-</style>
 <form th:action="@{/alerts/rules/save}" th:object="${ruleForm}" method="post">
 <input type="hidden" th:field="*{id}">
-<ul class="nav nav-tabs alert-rule-tabs mb-3" id="alertRuleTabs" role="tablist">
+<ul class="nav nav-tabs flex-nowrap overflow-auto mb-3" id="alertRuleTabs" role="tablist">
 <li class="nav-item" role="presentation"><button class="nav-link active" id="rule-details-tab" data-bs-toggle="tab" data-bs-target="#rule-details-pane" type="button" role="tab" aria-controls="rule-details-pane" aria-selected="true"><i class="bi bi-sliders me-1"></i>Rule Details</button></li>
 <li class="nav-item" role="presentation"><button class="nav-link" id="notification-routing-tab" data-bs-toggle="tab" data-bs-target="#notification-routing-pane" type="button" role="tab" aria-controls="notification-routing-pane" aria-selected="false"><i class="bi bi-bell me-1"></i>Notification Channels &amp; Routing</button></li>
 <li class="nav-item" role="presentation"><button class="nav-link" id="alert-condition-tab" data-bs-toggle="tab" data-bs-target="#alert-condition-pane" type="button" role="tab" aria-controls="alert-condition-pane" aria-selected="false"><i class="bi bi-diagram-3 me-1"></i>Alert Condition</button></li>
