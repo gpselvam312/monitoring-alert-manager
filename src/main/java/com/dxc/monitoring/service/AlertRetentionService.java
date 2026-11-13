@@ -125,6 +125,7 @@ public class AlertRetentionService {
     public void togglePolicy(Long policyId, Long userId) {
         AlertRetentionPolicy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
+        assertPolicyScopeAccess(policy);
         if (!policy.isEnabled()) {
             Long applicationId = policy.getApplication() == null ? null : policy.getApplication().getId();
             Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
@@ -140,6 +141,9 @@ public class AlertRetentionService {
 
     @Transactional(readOnly = true)
     public AlertRetentionCleanupExecutor.Preview preview(Long policyId) {
+        AlertRetentionPolicy policy = policyRepository.findById(policyId)
+                .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
+        assertPolicyScopeAccess(policy);
         return cleanupExecutor.preview(policyId);
     }
 
@@ -147,6 +151,7 @@ public class AlertRetentionService {
         AlertRetentionPolicy policy = policyRepository.findById(policyId)
                 .filter(AlertRetentionPolicy::isEnabled)
                 .orElseThrow(() -> new IllegalArgumentException("Only an enabled retention policy can be run."));
+        assertPolicyScopeAccess(policy);
         AlertCleanupRun run = auditService.start(policy.getId(), userId);
         try {
             AlertRetentionCleanupExecutor.CleanupResult result = cleanupExecutor.cleanup(policy.getId());
@@ -217,8 +222,22 @@ public class AlertRetentionService {
         }
     }
 
+    private void assertPolicyScopeAccess(AlertRetentionPolicy policy) {
+        if (policy.getEnvironment() != null) {
+            accessService.assertCanAccessEnvironment(policy.getApplication().getId(),
+                    policy.getEnvironment().getId(), "DATA_EXPUNGE");
+        } else if (policy.getApplication() != null) {
+            accessService.assertCanAccessApplication(policy.getApplication().getId(), "DATA_EXPUNGE");
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<AlertRetentionPolicy> findPolicies() {
-        return policyRepository.findAllByOrderByDataTypeAsc();
+        List<Long> allowedApplicationIds = accessService.getApplicationsWithPermission("DATA_EXPUNGE")
+                .stream().map(Application::getId).toList();
+        return policyRepository.findAllByOrderByDataTypeAsc().stream()
+                .filter(policy -> policy.getApplication() == null
+                        || allowedApplicationIds.contains(policy.getApplication().getId()))
+                .toList();
     }
 }
