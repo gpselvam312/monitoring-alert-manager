@@ -118,9 +118,13 @@ public class AlertHistoryController {
                 .stream().map(Application::getId).toList();
         int fetchSize = lookupProperties.getFetchSize();
         int safeBatch = Math.max(0, Math.min(batch, 1_000_000));
-        Pageable pageable = PageRequest.of(safeBatch, fetchSize,
-                Sort.by("desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC,
-                        sortProperty(sort)).and(Sort.by(Sort.Direction.DESC, "id")));
+        String sortProperty = sortProperty(sort);
+        Sort ordering = Sort.by("desc".equalsIgnoreCase(direction)
+                ? Sort.Direction.DESC : Sort.Direction.ASC, sortProperty);
+        if (!"id".equals(sortProperty)) {
+            ordering = ordering.and(Sort.by(Sort.Direction.DESC, "id"));
+        }
+        Pageable pageable = PageRequest.of(safeBatch, fetchSize, ordering);
         if (applicationIds.isEmpty()) {
             return new HistoryBatch(List.of(), 0, safeBatch, false, fetchSize);
         }
