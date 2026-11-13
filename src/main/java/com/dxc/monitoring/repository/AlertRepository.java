@@ -44,6 +44,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
             where a.monitoringJob.application.id in :applicationIds
               and (:applicationId is null or a.monitoringJob.application.id = :applicationId)
               and (:environmentId is null or a.monitoringJob.environment.id = :environmentId)
+              and (:exactAlertId is null or a.id = :exactAlertId)
               and (:status is null or a.status = :status)
               and (:severity is null or a.severity = :severity)
               and (:search = '' or
