@@ -176,7 +176,7 @@ public class AlertController {
         model.addAttribute("rule", rule);
         model.addAttribute("viewMode", true);
         model.addAttribute("currentPage", "alert-rules");
-        return "alerts/rule-form";
+        return "alerts/alert_rule_form";
     }
 
     @PostMapping("/rules/{id}/delete")
@@ -228,7 +228,7 @@ public class AlertController {
         AlertRuleForm form = new AlertRuleForm();
         addRuleFormModel(model, form);
         model.addAttribute("currentPage", "alert-rules");
-        return "alerts/rule-form";
+        return "alerts/alert_rule_form";
     }
 
     @GetMapping("/rules/{id}/edit")
@@ -241,7 +241,7 @@ public class AlertController {
         form.setNotificationRoutesJson(notificationRouteService.routesAsJson(rule.getId()));
         addRuleFormModel(model, form);
         model.addAttribute("currentPage", "alert-rules");
-        return "alerts/rule-form";
+        return "alerts/alert_rule_form";
     }
 
     @PostMapping("/rules/discovery/sample")
@@ -296,7 +296,7 @@ public class AlertController {
                     ? "Unable to save the alert rule or its notification routes because of a data constraint. Review the configured values and try again."
                     : safeMessage(exception.getMessage()));
             model.addAttribute("currentPage", "alert-rules");
-            return "alerts/rule-form";
+            return "alerts/alert_rule_form";
         }
     }
 
