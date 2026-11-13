@@ -105,21 +105,6 @@ public class AlertController {
         return "alerts/active";
     }
 
-    @GetMapping("/history")
-    @PreAuthorize("hasAuthority('ALERT_VIEW')")
-    public String alertHistory(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size, Model model) {
-        Pageable pageable = pageable(page, size);
-        List<Long> applicationIds = applicationIds("ALERT_VIEW");
-        Page<Alert> alerts = applicationIds.isEmpty() ? Page.empty(pageable)
-                : alertRepository.findByMonitoringJob_Application_IdInAndStatusOrderByLastOccurredAtDescIdDesc(
-                        applicationIds, Alert.AlertStatus.RESOLVED, pageable);
-        model.addAttribute("alerts", alerts);
-        model.addAttribute("pageSize", pageable.getPageSize());
-        model.addAttribute("currentPage", "alert-history");
-        return "alerts/history";
-    }
-
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
     public String alertDetails(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
