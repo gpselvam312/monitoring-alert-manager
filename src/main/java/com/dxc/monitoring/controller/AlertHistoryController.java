@@ -1,13 +1,12 @@
 package com.dxc.monitoring.controller;
 
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,6 +20,7 @@ import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
 @RequestMapping("/alerts/history")
@@ -62,20 +62,18 @@ public class AlertHistoryController {
 
         Alert.AlertStatus statusFilter = parseStatus(status);
         AlertRule.Severity severityFilter = parseSeverity(severity);
-        int safeSize = size == 5 || size == 25 ? size : 10;
-        int safePage = Math.max(0, page);
-        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        String sortProperty = switch (sort == null ? "" : sort) {
-            case "createdAt" -> "createdAt";
-            case "lastOccurredAt" -> "lastOccurredAt";
-            case "resolvedAt" -> "resolvedAt";
-            case "severity" -> "severity";
-            case "status" -> "status";
-            case "title" -> "title";
-            default -> "lastOccurredAt";
-        };
-        Pageable pageable = PageRequest.of(safePage, safeSize,
-                Sort.by(sortDirection, sortProperty).and(Sort.by(Sort.Direction.DESC, "id")));
+        PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(page, size, sort, direction,
+                "lastOccurredAt", Map.of(
+                        "createdAt", "createdAt",
+                        "lastOccurredAt", "lastOccurredAt",
+                        "resolvedAt", "resolvedAt",
+                        "severity", "severity",
+                        "status", "status",
+                        "title", "title"));
+        Pageable pageable = pageSpec.pageable();
+        int safeSize = pageSpec.pageSize();
+        String sortProperty = pageSpec.sort();
+        String safeDirection = pageSpec.direction();
 
         Page<Alert> alerts = applicationIds.isEmpty() || invalidApplication
                 ? Page.empty(pageable)
@@ -103,7 +101,7 @@ public class AlertHistoryController {
         model.addAttribute("applications", applications);
         model.addAttribute("environments", environments);
         model.addAttribute("sort", sortProperty);
-        model.addAttribute("direction", sortDirection.name().toLowerCase());
+        model.addAttribute("direction", safeDirection);
         model.addAttribute("totalAlerts", total);
         model.addAttribute("activeAlerts", active);
         model.addAttribute("resolvedAlerts", resolved);
