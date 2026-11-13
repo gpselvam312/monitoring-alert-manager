@@ -713,6 +713,8 @@
                 chat.append(bubble, element('div', 'text-end small text-muted mt-2', '09:30 ✓✓'));
                 preview.append(chat);
             }
+            const whatsappInfo = whatsappCount?.parentElement;
+            whatsappInfo?.classList.toggle('d-none', activePreview !== 'whatsapp');
             const whatsappText = buildWhatsAppText(header, blocks);
             const count = whatsappText.length;
             whatsappCount.textContent = 'WhatsApp: ' + count.toLocaleString() + ' / 1,024 characters';
