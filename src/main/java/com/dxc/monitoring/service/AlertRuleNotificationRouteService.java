@@ -50,6 +50,21 @@ public class AlertRuleNotificationRouteService {
     }
 
     @Transactional(readOnly = true)
+    public Map<Long, String> emailSenderAddresses() {
+        Map<Long, String> senders = new LinkedHashMap<>();
+        for (NotificationChannel channel : enabledChannels()) {
+            if (channel.getChannelType() != NotificationChannel.ChannelType.EMAIL) continue;
+            try {
+                Map<String, Object> config = objectMapper.readValue(channel.getConfiguration(), new TypeReference<Map<String, Object>>() {});
+                Object from = config.get("from");
+                if (from != null && !String.valueOf(from).isBlank()) senders.put(channel.getId(), String.valueOf(from).trim());
+            } catch (Exception ignored) {
+                // Preview metadata is optional; channel delivery validates its own configuration.
+            }
+        }
+        return senders;
+    }
+    @Transactional(readOnly = true)
     public List<NotificationRecipient> enabledRecipients() {
         return recipientRepository.findByEnabledTrueOrderByNameAsc();
     }
