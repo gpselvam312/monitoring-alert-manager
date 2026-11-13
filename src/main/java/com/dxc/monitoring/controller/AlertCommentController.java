@@ -54,7 +54,7 @@ public class AlertCommentController {
         } catch (IllegalArgumentException exception) {
             redirect.addFlashAttribute("errorMessage", exception.getMessage());
         }
-        return "redirect:/alerts/" + id + "?from=" + safeSource(from);
+        return "redirect:/alerts/" + id + "?from=" + safeSource(from) + "#alert-comments";
     }
     private String safeSource(String from) {
         return "history".equalsIgnoreCase(from) ? "history" : "active";
