@@ -549,6 +549,11 @@ document.addEventListener('DOMContentLoaded', () => {
             [['ANY','At least one record (ANY)'],['ALL','Every record (ALL)'],['NONE','No records (NONE)']].forEach(([value,label]) => { const option = new Option(label,value); option.selected = (node.quantifier || 'ANY') === value; quantifier.add(option); });
             quantifier.addEventListener('change', () => { node.quantifier = quantifier.value; syncTree(); }); quantifierCol.append(quantifierLabel,quantifier);
             configRow.append(pathCol,quantifierCol); card.appendChild(configRow);
+            const emptyRow = document.createElement('div'); emptyRow.className = 'form-check mb-3';
+            const emptyToggle = document.createElement('input'); emptyToggle.type = 'checkbox'; emptyToggle.className = 'form-check-input'; emptyToggle.id = 'collectionEmptyMatches' + Math.random().toString(36).slice(2,8); emptyToggle.checked = node.emptyMatches === true;
+            const emptyLabel = document.createElement('label'); emptyLabel.className = 'form-check-label small'; emptyLabel.htmlFor = emptyToggle.id; emptyLabel.textContent = 'Treat an empty array as a match for ALL';
+            emptyToggle.addEventListener('change', () => { node.emptyMatches = emptyToggle.checked; syncTree(); });
+            emptyRow.append(emptyToggle,emptyLabel); card.appendChild(emptyRow);
             const hint = document.createElement('div'); hint.className = 'small text-muted mb-2'; hint.textContent = 'The nested conditions below are evaluated against each individual array record. AND means all predicates must match that same record.'; card.appendChild(hint);
             card.appendChild(renderNode(node.condition, null, 0, true));
         } else if (node.type === 'GROUP') {
