@@ -258,6 +258,8 @@
             sync();
         };
 
+        window.refreshAlertPresentationDesigner = render;
+
         const titleTemplate = document.getElementById('presentationTitleTemplate');
         const messageTemplate = document.getElementById('presentationMessageTemplate');
         [titleTemplate, messageTemplate].forEach((element, index) => {
