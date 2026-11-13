@@ -103,7 +103,7 @@ public class NotificationRoutingService {
                     route.getGroup() == null ? null : route.getGroup().getId());
             RouteTarget target = new RouteTarget(route.getId(), channel, route.getRecipient(), route.getGroup(),
                     usingCreatedRouteForRecurrence ? eventType : route.getEventType(),
-                    route.getMinimumIntervalSeconds());
+                    route.getMinimumIntervalSeconds(), route.getCcRecipients());
             if (channel.getChannelType() == NotificationChannel.ChannelType.TEAMS) {
                 queueTeamsDelivery(history, target, messagePayload);
             } else {
@@ -132,7 +132,7 @@ public class NotificationRoutingService {
             queueSkipped(history, route, null, "Suppressed by the route's minimum notification interval.", messagePayload);
             return;
         }
-        queueDelivery(history, route, null, route.channel().getName(), key, false, null, messagePayload);
+        queueDelivery(history, route, null, route.channel().getName(), key, false, null, messagePayload, route.ccRecipients());
     }
 
     private void queuePersonDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient, String messagePayload) {
@@ -154,7 +154,7 @@ public class NotificationRoutingService {
             queueSkipped(history, route, recipient, "Suppressed by the route's minimum notification interval.", messagePayload);
             return;
         }
-        queueDelivery(history, route, recipient, destination, key, false, null, messagePayload);
+        queueDelivery(history, route, recipient, destination, key, false, null, messagePayload, route.ccRecipients());
     }
 
     private List<NotificationRecipient> recipientsFor(RouteTarget route) {
@@ -172,17 +172,18 @@ public class NotificationRoutingService {
         String key = history.getId() + ":" + route.channel().getId() + ":" + target + ":SKIPPED";
         if (deliveryRepository.existsByIdempotencyKey(key)) return;
         queueDelivery(history, route, recipient,
-                recipient == null ? route.channel().getName() : recipient.getName(), key, true, reason, messagePayload);
+                recipient == null ? route.channel().getName() : recipient.getName(), key, true, reason, messagePayload, route.ccRecipients());
     }
 
     private void queueDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient,
-            String destination, String key, boolean skipped, String reason, String messagePayload) {
+            String destination, String key, boolean skipped, String reason, String messagePayload, String ccRecipients) {
         NotificationDelivery delivery = new NotificationDelivery();
         delivery.setAlert(history.getAlert());
         delivery.setAlertHistory(history);
         delivery.setChannel(route.channel());
         delivery.setRecipient(recipient);
         delivery.setDestinationSnapshot(destination == null || destination.isBlank() ? "Unconfigured destination" : destination);
+        delivery.setCcRecipientsSnapshot(route.channel().getChannelType() == NotificationChannel.ChannelType.EMAIL ? ccRecipients : null);
         delivery.setIdempotencyKey(key);
         delivery.setStatus(skipped ? NotificationDelivery.DeliveryStatus.SKIPPED : NotificationDelivery.DeliveryStatus.PENDING);
         delivery.setAttemptCount(0);
@@ -344,6 +345,6 @@ public class NotificationRoutingService {
     }
 
     private record RouteTarget(Long id, NotificationChannel channel, NotificationRecipient recipient,
-            NotificationGroup group, NotificationRoute.EventType eventType, Integer minimumIntervalSeconds) {}
+            NotificationGroup group, NotificationRoute.EventType eventType, Integer minimumIntervalSeconds, String ccRecipients) {}
     private record OptionalRecent(NotificationDelivery delivery) {}
 }
