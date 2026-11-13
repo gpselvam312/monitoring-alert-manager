@@ -26,6 +26,7 @@
             alertId: 'AL-2081',
             occurrenceCount: 3,
             cluster_name: 'kafka-cluster-prod',
+            response: { status: 'CRITICAL', schemaVersion: 1 },
             data: {
                 cluster: { name: 'kafka-cluster-prod', version: '3.8.1', status: 'CRITICAL' },
                 summary: { consumerGroupCount: 12, criticalGroupCount: 2, totalLag: 18450 },
