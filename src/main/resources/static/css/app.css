@@ -5477,6 +5477,29 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .presentation-block .app-card-body {
     padding-top: .65rem;
 }
+.presentation-block > .app-card-header {
+    padding: .45rem .65rem;
+    border-radius: .45rem;
+    background: color-mix(in srgb, var(--text-primary) 4%, var(--card-bg));
+}
+.presentation-block > .app-card-header:has(.presentation-block-toggle[aria-expanded="true"]) {
+    color: var(--theme-primary);
+    background: color-mix(in srgb, var(--theme-primary) 7%, var(--card-bg));
+}
+.presentation-block-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    text-decoration: none;
+}
+.presentation-block-toggle .bi {
+    transition: transform .15s ease;
+}
+.presentation-block-toggle[aria-expanded="true"] .bi {
+    transform: rotate(180deg);
+}
 @media (min-width: 1200px) {
     .presentation-builder-pane,
     .presentation-preview-pane {
