@@ -20,6 +20,6 @@
 <div th:replace="~{fragments/data-table :: clientPagination('alertHistoryPagination','alertHistoryPaginationSummary','alertHistoryFirst','alertHistoryPrevious','alertHistoryNext','alertHistoryLast')}"></div>
 </div>
 <script th:inline="javascript">
-window.alertHistoryConfig = { endpoint: /*[[@{/alerts/history/batch}]]*/ '/alerts/history/batch', searchId: 'alertHistorySearch', pageSizeId: 'alertHistoryPageSize', containerId: 'alertHistoryTableContainer', filters: { status: 'alertHistoryStatus', severity: 'alertHistorySeverity', applicationId: 'alertHistoryApplication', environmentId: 'alertHistoryEnvironment' }, sort: /*[[${sort}]]*/ 'createdAt', direction: /*[[${direction}]]*/ 'desc' };
+window.alertHistoryConfig = { endpoint: /*[[@{/alerts/history/batch}]]*/ '/alerts/history/batch', detailEndpoint: /*[[@{/alerts/}]]*/ '/alerts/', searchId: 'alertHistorySearch', pageSizeId: 'alertHistoryPageSize', containerId: 'alertHistoryTableContainer', filters: { status: 'alertHistoryStatus', severity: 'alertHistorySeverity', applicationId: 'alertHistoryApplication', environmentId: 'alertHistoryEnvironment' }, sort: /*[[${sort}]]*/ 'createdAt', direction: /*[[${direction}]]*/ 'desc' };
 </script><script th:src="@{/js/alert-history.js}"></script>
 </div></body></html>
