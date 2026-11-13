@@ -286,6 +286,7 @@ public class NotificationConfigurationController {
 
     private void editOptions(Model model) {
         model.addAttribute("channelTypes", NotificationChannel.ChannelType.values());
+        model.addAttribute("groupChannelTypes", NotificationGroup.ChannelType.values());
         model.addAttribute("severities", AlertRule.Severity.values());
         model.addAttribute("eventTypes", NotificationRoute.EventType.values());
         model.addAttribute("channels", channelRepository.findAllByOrderByNameAsc());
