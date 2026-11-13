@@ -263,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetType,
                 recipientId: targetType === 'RECIPIENT' ? (row.querySelector('.route-recipient').value || null) : null,
                 groupId: targetType === 'GROUP' ? (row.querySelector('.route-group').value || null) : null,
+                ccRecipients: channelTypeFor(row) === 'EMAIL' ? row.querySelector('.route-cc').value.trim() : '',
                 minimumIntervalSeconds: row.querySelector('.route-interval').value || '300',
                 enabled: row.querySelector('.route-enabled').checked
             };
@@ -298,6 +299,9 @@ document.addEventListener('DOMContentLoaded', () => {
         row.querySelector('.route-teams-hint').classList.toggle('d-none', !isTeams);
         row.querySelector('.route-recipient-container').classList.toggle('d-none', isTeams || isGroup);
         row.querySelector('.route-group-container').classList.toggle('d-none', isTeams || !isGroup);
+        const isEmail = selectedChannel?.dataset.channelType === 'EMAIL';
+        row.querySelector('.route-cc-container').classList.toggle('d-none', !isEmail);
+        if (!isEmail) row.querySelector('.route-cc').value = '';
         row.querySelector('.route-recipient').required = !isTeams && !isGroup;
         row.querySelector('.route-group').required = !isTeams && isGroup;
         moveRouteToChannel(row);
@@ -314,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.querySelector('.route-target-type').value = route.targetType || (route.groupId ? 'GROUP' : 'RECIPIENT');
             row.querySelector('.route-recipient').value = route.recipientId == null ? '' : String(route.recipientId);
             row.querySelector('.route-group').value = route.groupId == null ? '' : String(route.groupId);
+            row.querySelector('.route-cc').value = route.ccRecipients || '';
             row.querySelector('.route-interval').value = route.minimumIntervalSeconds == null ? '300' : String(route.minimumIntervalSeconds);
             row.querySelector('.route-enabled').checked = route.enabled !== false;
         } else if (preferredType) {
