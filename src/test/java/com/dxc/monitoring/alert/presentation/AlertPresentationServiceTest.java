@@ -93,7 +93,7 @@ class AlertPresentationServiceTest {
                 "title", "Legacy title", "body", "Legacy message", "severity", "CRITICAL",
                 "ruleName", "Kafka Health", "observedValue", "55", "fieldPath", "data.lag"));
 
-        assertEquals("Legacy title", presentation.title());
+        assertEquals("CRITICAL — Kafka Health", presentation.title());
         assertEquals("", presentation.message());
         assertEquals(List.of("details", "table", "list", "json"),
                 presentation.sections().stream().map(section -> section.get("type")).toList());
@@ -196,7 +196,7 @@ class AlertPresentationServiceTest {
         history.setNewSeverity(AlertRule.Severity.WARNING);
         history.setOccurredAt(OffsetDateTime.parse("2026-11-12T10:00:00+05:30"));
 
-        AlertPresentationService.Presentation presentation = service.buildTemplates(history,
+        AlertPresentationService.Presentation presentation = service.build(history,
                 Map.of("title", "Rule subject", "body", "Fallback message", "observedValue", "245"));
 
         assertNull(presentation);
