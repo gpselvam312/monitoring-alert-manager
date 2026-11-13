@@ -159,9 +159,11 @@ public class NotificationRoutingService {
         if (route.legacyRecipient() != null && route.legacyRecipient().isEnabled()) {
             recipients.put(route.legacyRecipient().getId(), route.legacyRecipient());
         }
+        NotificationGroup.ChannelType expectedGroupType = route.channel().getChannelType() == NotificationChannel.ChannelType.WHATSAPP
+                ? NotificationGroup.ChannelType.WHATSAPP : NotificationGroup.ChannelType.EMAIL;
         java.util.stream.Stream.concat(route.groups().stream(),
                 route.legacyGroup() == null ? java.util.stream.Stream.empty() : java.util.stream.Stream.of(route.legacyGroup()))
-                .filter(group -> group != null && group.isEnabled())
+                .filter(group -> group != null && group.isEnabled() && group.getChannelType() == expectedGroupType)
                 .forEach(group -> groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(group.getId())
                         .stream().map(NotificationGroupMember::getRecipient)
                         .filter(NotificationRecipient::isEnabled)
