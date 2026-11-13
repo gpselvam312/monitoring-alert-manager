@@ -68,7 +68,7 @@
         const rows = visible.map(item => {
             const severityClass = item.severity === 'CRITICAL' ? 'text-bg-danger' : item.severity === 'WARNING' ? 'text-bg-warning' : item.severity === 'SUCCESS' ? 'text-bg-success' : 'text-bg-info';
             const statusClass = item.status === 'ACTIVE' ? 'text-bg-danger' : 'text-bg-success';
-            const detailUrl = '/alerts/' + encodeURIComponent(item.id) + '?from=history';
+            const detailUrl = config.detailEndpoint + encodeURIComponent(item.id) + '?from=history';
             return '<tr>' +
                 '<td><a class="fw-semibold text-decoration-none" href="' + detailUrl + '">' + escapeHtml(item.alertKey) + '</a></td>' +
                 '<td><a class="fw-semibold text-decoration-none" href="' + detailUrl + '">' + escapeHtml(item.title) + '</a><div class="small text-muted">' + escapeHtml(item.jobName) + '</div></td>' +
