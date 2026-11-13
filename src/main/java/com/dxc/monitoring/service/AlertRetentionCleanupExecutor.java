@@ -31,7 +31,7 @@ public class AlertRetentionCleanupExecutor {
         AlertRetentionPolicy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
         OffsetDateTime cutoff = OffsetDateTime.now().minusDays(policy.getRetentionDays());
-        long candidates = countCandidates(policy.getDataType(), cutoff);
+        long candidates = countCandidates(policy, cutoff);
         return new Preview(policy.getDataType(), policy.getRetentionDays(), cutoff, candidates);
     }
 
@@ -41,48 +41,64 @@ public class AlertRetentionCleanupExecutor {
                 .filter(AlertRetentionPolicy::isEnabled)
                 .orElseThrow(() -> new IllegalArgumentException("Select an enabled retention policy before running cleanup."));
         OffsetDateTime cutoff = OffsetDateTime.now().minusDays(policy.getRetentionDays());
-        OffsetDateTime cutoffTimestamp = cutoff;
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("dataType", policy.getDataType().name());
         detail.put("retentionDays", policy.getRetentionDays());
         detail.put("cutoff", cutoff.toString());
+        detail.put("application", policy.getApplication() == null ? "ALL" : policy.getApplication().getName());
+        detail.put("environment", policy.getEnvironment() == null ? "ALL" : policy.getEnvironment().getName());
+        detail.put("alertType", policy.getAlertType());
 
         long examined;
         long deleted;
         switch (policy.getDataType()) {
             case RESOLVED_ALERTS -> {
                 String eligibleAlerts = eligibleResolvedAlertsSql();
-                long alerts = count("SELECT COUNT(*) FROM (" + eligibleAlerts + ") eligible", cutoffTimestamp);
-                long deliveries = count("SELECT COUNT(*) FROM ra_fcb.notification_deliveries d WHERE d.alert_id IN (" + eligibleAlerts + ")", cutoffTimestamp);
-                long histories = count("SELECT COUNT(*) FROM ra_fcb.alert_history h WHERE h.alert_id IN (" + eligibleAlerts + ")", cutoffTimestamp);
-                long readStates = count("SELECT COUNT(*) FROM ra_fcb.user_alert_states s WHERE s.alert_id IN (" + eligibleAlerts + ")", cutoffTimestamp);
-                examined = alerts + deliveries + histories + readStates;
-                int deletedDeliveries = jdbcTemplate.update("DELETE FROM ra_fcb.notification_deliveries WHERE alert_id IN (" + eligibleAlerts + ")", cutoffTimestamp);
-                int deletedReadStates = jdbcTemplate.update("DELETE FROM ra_fcb.user_alert_states WHERE alert_id IN (" + eligibleAlerts + ")", cutoffTimestamp);
-                int deletedHistories = jdbcTemplate.update("DELETE FROM ra_fcb.alert_history WHERE alert_id IN (" + eligibleAlerts + ")", cutoffTimestamp);
-                int deletedAlerts = jdbcTemplate.update("DELETE FROM ra_fcb.alerts WHERE id IN (" + eligibleAlerts + ")", cutoffTimestamp);
-                deleted = (long) deletedDeliveries + deletedReadStates + deletedHistories + deletedAlerts;
+                Object[] parameters = alertScopeParameters(policy, cutoff);
+                long alerts = count("SELECT COUNT(*) FROM (" + eligibleAlerts + ") eligible", parameters);
+                long deliveries = count("SELECT COUNT(*) FROM ra_fcb.notification_deliveries d WHERE d.alert_id IN (" + eligibleAlerts + ")", parameters);
+                long histories = count("SELECT COUNT(*) FROM ra_fcb.alert_history h WHERE h.alert_id IN (" + eligibleAlerts + ")", parameters);
+                long readStates = count("SELECT COUNT(*) FROM ra_fcb.user_alert_states s WHERE s.alert_id IN (" + eligibleAlerts + ")", parameters);
+                long comments = count("SELECT COUNT(*) FROM ra_fcb.alert_comments c WHERE c.alert_id IN (" + eligibleAlerts + ")", parameters);
+                examined = alerts + deliveries + histories + readStates + comments;
+
+                int deletedDeliveries = jdbcTemplate.update(
+                        "DELETE FROM ra_fcb.notification_deliveries WHERE alert_id IN (" + eligibleAlerts + ")", parameters);
+                int deletedReadStates = jdbcTemplate.update(
+                        "DELETE FROM ra_fcb.user_alert_states WHERE alert_id IN (" + eligibleAlerts + ")", parameters);
+                int deletedComments = jdbcTemplate.update(
+                        "DELETE FROM ra_fcb.alert_comments WHERE alert_id IN (" + eligibleAlerts + ")", parameters);
+                int deletedHistories = jdbcTemplate.update(
+                        "DELETE FROM ra_fcb.alert_history WHERE alert_id IN (" + eligibleAlerts + ")", parameters);
+                int deletedAlerts = jdbcTemplate.update(
+                        "DELETE FROM ra_fcb.alerts WHERE id IN (" + eligibleAlerts + ")", parameters);
+                deleted = (long) deletedDeliveries + deletedReadStates + deletedComments + deletedHistories + deletedAlerts;
                 detail.put("alertsDeleted", deletedAlerts);
                 detail.put("historyRowsDeleted", deletedHistories);
                 detail.put("deliveryRowsDeleted", deletedDeliveries);
                 detail.put("userReadStatesDeleted", deletedReadStates);
+                detail.put("commentsDeleted", deletedComments);
             }
             case ALERT_HISTORY -> {
                 String eligibleHistory = eligibleResolvedHistorySql();
-                examined = count("SELECT COUNT(*) FROM (" + eligibleHistory + ") eligible", cutoffTimestamp);
-                deleted = jdbcTemplate.update("DELETE FROM ra_fcb.alert_history WHERE id IN (" + eligibleHistory + ")", cutoffTimestamp);
+                Object[] parameters = alertScopeParameters(policy, cutoff);
+                examined = count("SELECT COUNT(*) FROM (" + eligibleHistory + ") eligible", parameters);
+                deleted = jdbcTemplate.update(
+                        "DELETE FROM ra_fcb.alert_history WHERE id IN (" + eligibleHistory + ")", parameters);
                 detail.put("historyRowsDeleted", deleted);
             }
             case NOTIFICATION_DELIVERIES -> {
                 String eligibleDeliveries = "SELECT id FROM ra_fcb.notification_deliveries WHERE created_at < ? AND (status IN ('SENT', 'SKIPPED') OR (status = 'FAILED' AND attempt_count >= 8))";
-                examined = count("SELECT COUNT(*) FROM (" + eligibleDeliveries + ") eligible", cutoffTimestamp);
-                deleted = jdbcTemplate.update("DELETE FROM ra_fcb.notification_deliveries WHERE id IN (" + eligibleDeliveries + ")", cutoffTimestamp);
+                examined = count("SELECT COUNT(*) FROM (" + eligibleDeliveries + ") eligible", cutoff);
+                deleted = jdbcTemplate.update(
+                        "DELETE FROM ra_fcb.notification_deliveries WHERE id IN (" + eligibleDeliveries + ")", cutoff);
                 detail.put("deliveryRowsDeleted", deleted);
             }
             case RULE_EVALUATIONS -> {
                 String eligibleEvaluations = eligibleOldEvaluationsSql();
-                examined = count("SELECT COUNT(*) FROM (" + eligibleEvaluations + ") eligible", cutoffTimestamp);
-                deleted = jdbcTemplate.update("DELETE FROM ra_fcb.alert_rule_evaluations WHERE id IN (" + eligibleEvaluations + ")", cutoffTimestamp);
+                examined = count("SELECT COUNT(*) FROM (" + eligibleEvaluations + ") eligible", cutoff);
+                deleted = jdbcTemplate.update(
+                        "DELETE FROM ra_fcb.alert_rule_evaluations WHERE id IN (" + eligibleEvaluations + ")", cutoff);
                 detail.put("evaluationRowsDeleted", deleted);
             }
             default -> throw new IllegalArgumentException("Unsupported retention data type.");
@@ -92,25 +108,40 @@ public class AlertRetentionCleanupExecutor {
         return new CleanupResult(examined, deleted, toJson(detail));
     }
 
-    private long countCandidates(AlertRetentionPolicy.DataType dataType, OffsetDateTime cutoff) {
-        String sql = switch (dataType) {
-            case RESOLVED_ALERTS -> "SELECT COUNT(*) FROM (" + eligibleResolvedAlertsSql() + ") eligible";
-            case ALERT_HISTORY -> "SELECT COUNT(*) FROM (" + eligibleResolvedHistorySql() + ") eligible";
-            case NOTIFICATION_DELIVERIES -> "SELECT COUNT(*) FROM ra_fcb.notification_deliveries WHERE created_at < ? AND status NOT IN ('PENDING', 'SENDING')";
-            case RULE_EVALUATIONS -> "SELECT COUNT(*) FROM (" + eligibleOldEvaluationsSql() + ") eligible";
+    private long countCandidates(AlertRetentionPolicy policy, OffsetDateTime cutoff) {
+        return switch (policy.getDataType()) {
+            case RESOLVED_ALERTS -> count("SELECT COUNT(*) FROM (" + eligibleResolvedAlertsSql() + ") eligible",
+                    alertScopeParameters(policy, cutoff));
+            case ALERT_HISTORY -> count("SELECT COUNT(*) FROM (" + eligibleResolvedHistorySql() + ") eligible",
+                    alertScopeParameters(policy, cutoff));
+            case NOTIFICATION_DELIVERIES -> count(
+                    "SELECT COUNT(*) FROM ra_fcb.notification_deliveries WHERE created_at < ? AND status NOT IN ('PENDING', 'SENDING')",
+                    cutoff);
+            case RULE_EVALUATIONS -> count("SELECT COUNT(*) FROM (" + eligibleOldEvaluationsSql() + ") eligible", cutoff);
         };
-        return count(sql, cutoff);
+    }
+
+    private Object[] alertScopeParameters(AlertRetentionPolicy policy, OffsetDateTime cutoff) {
+        Long applicationId = policy.getApplication() == null ? null : policy.getApplication().getId();
+        Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
+        String alertType = policy.getAlertType() == null ? "ALL" : policy.getAlertType();
+        return new Object[] { cutoff, applicationId, applicationId, environmentId, environmentId, alertType, alertType };
     }
 
     private String eligibleResolvedAlertsSql() {
         return """
                 SELECT a.id
                 FROM ra_fcb.alerts a
+                JOIN ra_fcb.monitoring_jobs j ON j.id = a.monitoring_job_id
                 WHERE a.status = 'RESOLVED'
                   AND a.resolved_at < ?
+                  AND (CAST(? AS BIGINT) IS NULL OR j.application_id = ?)
+                  AND (CAST(? AS BIGINT) IS NULL OR j.environment_id = ?)
+                  AND (? = 'ALL' OR a.alert_type = ?)
                   AND NOT EXISTS (
                       SELECT 1 FROM ra_fcb.notification_deliveries d
-                      WHERE d.alert_id = a.id AND (d.status IN ('PENDING', 'SENDING') OR (d.status = 'FAILED' AND d.attempt_count < 8))
+                      WHERE d.alert_id = a.id
+                        AND (d.status IN ('PENDING', 'SENDING') OR (d.status = 'FAILED' AND d.attempt_count < 8))
                   )
                 """;
     }
@@ -120,8 +151,12 @@ public class AlertRetentionCleanupExecutor {
                 SELECT h.id
                 FROM ra_fcb.alert_history h
                 JOIN ra_fcb.alerts a ON a.id = h.alert_id
+                JOIN ra_fcb.monitoring_jobs j ON j.id = a.monitoring_job_id
                 WHERE a.status = 'RESOLVED'
                   AND h.occurred_at < ?
+                  AND (CAST(? AS BIGINT) IS NULL OR j.application_id = ?)
+                  AND (CAST(? AS BIGINT) IS NULL OR j.environment_id = ?)
+                  AND (? = 'ALL' OR a.alert_type = ?)
                   AND NOT EXISTS (
                       SELECT 1 FROM ra_fcb.notification_deliveries d
                       WHERE d.alert_history_id = h.id
@@ -144,8 +179,8 @@ public class AlertRetentionCleanupExecutor {
                 """;
     }
 
-    private long count(String sql, Object parameter) {
-        Long value = jdbcTemplate.queryForObject(sql, Long.class, parameter);
+    private long count(String sql, Object... parameters) {
+        Long value = jdbcTemplate.queryForObject(sql, Long.class, parameters);
         return value == null ? 0L : value;
     }
 
