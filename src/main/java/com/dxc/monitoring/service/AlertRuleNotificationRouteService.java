@@ -150,11 +150,30 @@ public class AlertRuleNotificationRouteService {
             if (recipients.size() != new java.util.HashSet<>(recipientIds).size()) {
                 throw new IllegalArgumentException("One or more selected recipients are unavailable or disabled.");
             }
+            for (NotificationRecipient recipient : recipients) {
+                boolean hasDestination = channel.getChannelType() == NotificationChannel.ChannelType.EMAIL
+                        ? recipient.getEmail() != null && !recipient.getEmail().isBlank()
+                        : channel.getChannelType() == NotificationChannel.ChannelType.WHATSAPP
+                                && recipient.getPhoneNumber() != null && !recipient.getPhoneNumber().isBlank();
+                if (!hasDestination) {
+                    throw new IllegalArgumentException(channel.getChannelType() == NotificationChannel.ChannelType.EMAIL
+                            ? "Every selected Email recipient must have an email address."
+                            : "Every selected WhatsApp recipient must have a phone number.");
+                }
+            }
             List<NotificationGroup> groups = groupIds.isEmpty() ? List.of()
                     : groupRepository.findAllById(groupIds).stream()
                             .filter(NotificationGroup::isEnabled).toList();
             if (groups.size() != new java.util.HashSet<>(groupIds).size()) {
                 throw new IllegalArgumentException("One or more selected recipient groups are unavailable or disabled.");
+            }
+            NotificationGroup.ChannelType expectedGroupType = channel.getChannelType() == NotificationChannel.ChannelType.WHATSAPP
+                    ? NotificationGroup.ChannelType.WHATSAPP : NotificationGroup.ChannelType.EMAIL;
+            for (NotificationGroup group : groups) {
+                if (group.getChannelType() != expectedGroupType) {
+                    throw new IllegalArgumentException("A " + channel.getChannelType()
+                            + " route can use only " + expectedGroupType + " distribution groups.");
+                }
             }
 
             AlertRuleNotificationRoute route = new AlertRuleNotificationRoute();
