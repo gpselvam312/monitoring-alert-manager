@@ -112,7 +112,8 @@ public class AlertController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
     public String alertDetails(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size, Authentication authentication, Model model) {
+            @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "active") String from,
+            Authentication authentication, Model model) {
         List<Long> applicationIds = applicationIds("ALERT_VIEW");
         Alert alert = applicationIds.isEmpty() ? null
                 : alertRepository.findByIdAndMonitoringJob_Application_IdIn(id, applicationIds).orElse(null);
@@ -127,7 +128,9 @@ public class AlertController {
         model.addAttribute("history", history);
         model.addAttribute("comments", commentRepository.findByAlertIdOrderByCreatedAtDescIdDesc(id));
         model.addAttribute("pageSize", pageable.getPageSize());
-        model.addAttribute("currentPage", "active-alerts");
+        String detailSource = "history".equalsIgnoreCase(from) ? "history" : "active";
+        model.addAttribute("detailSource", detailSource);
+        model.addAttribute("currentPage", "history".equals(detailSource) ? "alert-history" : "active-alerts");
         return "alerts/detail";
     }
 
