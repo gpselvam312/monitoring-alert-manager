@@ -65,7 +65,7 @@ public class AlertRetentionController {
         model.addAttribute("environments", environments);
         List<AlertType> alertTypes = alertTypeRepository.findByEnabledTrueOrderBySortOrderAscNameAsc();
         model.addAttribute("alertTypes", alertTypes);
-        Map<String, String> alertTypeLabels = alertTypes.stream()
+        Map<String, String> alertTypeLabels = alertTypeRepository.findAll().stream()
                 .collect(Collectors.toMap(AlertType::getCode, AlertType::getName));
         model.addAttribute("alertTypeLabels", alertTypeLabels);
         model.addAttribute("currentPage", "alert-retention");
