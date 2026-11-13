@@ -679,7 +679,7 @@
                 const subject = element('div', 'border-bottom px-3 py-2 small text-muted');
                 subject.append(element('strong', 'me-2', 'Subject:'), document.createTextNode(header.title));
                 const banner = element('div', 'p-3 text-white');
-                banner.style.background = currentPreviewSeverity() === 'CRITICAL' ? '#b42318' : currentPreviewSeverity() === 'WARNING' ? '#b54708' : '#175cd3';
+                banner.style.background = currentPreviewSeverity() === 'CRITICAL' ? '#b42318' : currentPreviewSeverity() === 'WARNING' ? '#b54708' : currentPreviewSeverity() === 'SUCCESS' ? '#067647' : '#175cd3';
                 banner.append(element('div', 'small fw-bold text-uppercase', currentPreviewSeverity() + ' ALERT'),
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
@@ -693,7 +693,7 @@
                 card.style.color = '#1f2937';
                 appendPreviewMetadata(card, "TEAMS");
                 const accent = element('div', 'p-3 text-white');
-                accent.style.background = currentPreviewSeverity() === 'CRITICAL' ? '#b42318' : currentPreviewSeverity() === 'WARNING' ? '#b54708' : '#175cd3';
+                accent.style.background = currentPreviewSeverity() === 'CRITICAL' ? '#b42318' : currentPreviewSeverity() === 'WARNING' ? '#b54708' : currentPreviewSeverity() === 'SUCCESS' ? '#067647' : '#175cd3';
                 accent.append(element('div', 'small fw-bold', currentPreviewSeverity() + ' ALERT'),
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
@@ -722,7 +722,7 @@
             whatsappWarning.className = count > 1024 ? 'small text-danger fw-semibold' : 'small text-success';
         };
         const buildWhatsAppText = (header, blocks) => {
-            const lines = [header.title];
+            const lines = [currentPreviewSeverity() === 'SUCCESS' ? '🟢 SUCCESS · ' + header.title : header.title];
             blocks.forEach(block => {
                 if (block.title) lines.push(block.title);
                 if (block.type === 'text') lines.push(block.text);
