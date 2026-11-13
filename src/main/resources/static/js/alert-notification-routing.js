@@ -65,7 +65,6 @@
         document.getElementById('activeChannelCount').textContent = activeChannels.length + ' Active';
         channelTypes.forEach(type => {
             const channelRows = rows.filter(row => channelTypeFor(row) === type);
-            const enabledCount = channelRows.filter(row => row.querySelector('.route-enabled').checked).length;
             const empty = document.querySelector('[data-channel-empty="' + type + '"]');
             if (empty) empty.classList.toggle('d-none', channelRows.length > 0);
             const addButton = document.querySelector('[data-add-channel-route="' + type + '"]');
