@@ -31,7 +31,7 @@ public class NotificationDeliveryQueueService {
         }).toList();
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public NotificationDelivery loadForDelivery(Long id) {
         return repository.findByIdWithDetails(id)
                 .orElseThrow(() -> new IllegalArgumentException("Notification delivery was not found."));
