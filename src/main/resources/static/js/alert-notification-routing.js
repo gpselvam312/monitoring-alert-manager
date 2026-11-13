@@ -196,6 +196,106 @@
         select.addEventListener('change', render);
         render();
     };
+    const initializeEmailChipInput = input => {
+        if (!input || input.dataset.chipsReady === 'true') return;
+        input.dataset.chipsReady = 'true';
+        input.type = 'text';
+        input.classList.add('visually-hidden');
+        input.setAttribute('tabindex', '-1');
+        input.setAttribute('aria-hidden', 'true');
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'route-email-multiselect';
+        wrapper.setAttribute('role', 'group');
+        wrapper.setAttribute('aria-label', 'CC email addresses');
+        const chips = document.createElement('div');
+        chips.className = 'route-email-chips';
+        const editor = document.createElement('input');
+        editor.type = 'email';
+        editor.className = 'route-email-editor';
+        editor.placeholder = 'Type an email address and press Enter';
+        editor.autocomplete = 'off';
+        editor.setAttribute('aria-label', 'Add CC email address');
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback route-email-feedback';
+        wrapper.append(chips, editor, feedback);
+        input.parentElement.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+
+        const parse = () => input.value.split(',').map(value => value.trim()).filter(Boolean);
+        const render = () => {
+            chips.replaceChildren();
+            parse().forEach(address => {
+                const chip = document.createElement('span');
+                chip.className = 'route-multiselect-chip';
+                const label = document.createElement('span');
+                label.textContent = address;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'route-multiselect-remove';
+                remove.textContent = '×';
+                remove.setAttribute('aria-label', 'Remove ' + address);
+                remove.addEventListener('click', () => {
+                    input.value = parse().filter(item => item.toLocaleLowerCase() !== address.toLocaleLowerCase()).join(', ');
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    render();
+                });
+                chip.append(label, remove);
+                chips.appendChild(chip);
+            });
+            wrapper.classList.toggle('is-invalid', input.classList.contains('is-invalid'));
+        };
+        const addAddress = () => {
+            const address = editor.value.trim().replace(/[,;]+$/, '');
+            if (!address) return;
+            const valid = /^[^\\s@,;]+@[^\\s@,;]+\\.[^\\s@,;]+$/.test(address);
+            const existing = parse();
+            if (!valid) {
+                feedback.textContent = 'Enter a valid email address.';
+                wrapper.classList.add('is-invalid');
+                editor.focus();
+                return;
+            }
+            if (existing.some(item => item.toLocaleLowerCase() === address.toLocaleLowerCase())) {
+                feedback.textContent = 'This email address has already been added.';
+                wrapper.classList.add('is-invalid');
+                editor.focus();
+                return;
+            }
+            if (existing.length >= 20) {
+                feedback.textContent = 'You can add up to 20 CC email addresses.';
+                wrapper.classList.add('is-invalid');
+                editor.focus();
+                return;
+            }
+            input.value = [...existing, address].join(', ');
+            editor.value = '';
+            feedback.textContent = '';
+            wrapper.classList.remove('is-invalid');
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            render();
+        };
+        editor.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ',' || event.key === ';') {
+                event.preventDefault();
+                addAddress();
+            } else if (event.key === 'Backspace' && !editor.value && parse().length) {
+                input.value = parse().slice(0, -1).join(', ');
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                render();
+            }
+        });
+        editor.addEventListener('blur', () => {
+            if (editor.value.trim()) addAddress();
+        });
+        editor.addEventListener('input', () => {
+            wrapper.classList.remove('is-invalid');
+            feedback.textContent = '';
+        });
+        input.addEventListener('change', render);
+        render();
+        input._routeEmailEditor = editor;
+    };
     const validateRouteTargets = row => {
         const isTeams = channelTypeFor(row) === 'TEAMS';
         const hasRecipients = row.querySelector('.route-recipients').selectedOptions.length > 0;
@@ -236,7 +336,12 @@
             });
             recipientSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
-        if (!isEmail) row.querySelector('.route-cc').value = '';
+        if (!isEmail) {
+            row.querySelector('.route-cc').value = '';
+            row.querySelector('.route-cc').dispatchEvent(new Event('change', { bubbles: true }));
+            const editor = row.querySelector('.route-email-editor');
+            if (editor) editor.value = '';
+        }
         validateRouteTargets(row);
         moveRouteToChannel(row);
         syncNotificationRoutes();
@@ -260,12 +365,14 @@
                 option.selected = groupIds.map(String).includes(option.value);
             });
             row.querySelector('.route-cc').value = route.ccRecipients || '';
+            row.querySelector('.route-cc').dispatchEvent(new Event('change', { bubbles: true }));
             row.querySelector('.route-interval').value = route.minimumIntervalSeconds == null ? '300' : String(route.minimumIntervalSeconds);
             row.querySelector('.route-enabled').checked = route.enabled !== false;
         } else if (preferredType) {
             const matchingOption = Array.from(channelSelect.options).find(option => option.dataset.channelType === preferredType);
             if (matchingOption) channelSelect.value = matchingOption.value;
         }
+        initializeEmailChipInput(row.querySelector('.route-cc'));
         const type = channelTypeFor(row);
         (panelFor(type) || panelFor('EMAIL')).appendChild(row);
         channelSelect.addEventListener('change', () => setRouteChannelOptions(row));
