@@ -2,6 +2,7 @@ package com.dxc.monitoring.controller;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +28,7 @@ import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.service.SystemSettingService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.PageRequestSupport;
 
@@ -34,19 +36,20 @@ import com.dxc.monitoring.web.PageRequestSupport;
 @RequestMapping("/alerts/history")
 public class AlertHistoryController {
     private static final Pattern ALERT_KEY_PATTERN = Pattern.compile("(?i)^ALT-\\d{4}-(\\d{8,})$");
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
     private final AlertRepository alertRepository;
     private final DashboardAccessService accessService;
     private final EnvironmentRepository environmentRepository;
     private final LookupProperties lookupProperties;
+    private final SystemSettingService systemSettingService;
 
     public AlertHistoryController(AlertRepository alertRepository, DashboardAccessService accessService,
-            EnvironmentRepository environmentRepository, LookupProperties lookupProperties) {
+            EnvironmentRepository environmentRepository, LookupProperties lookupProperties,
+            SystemSettingService systemSettingService) {
         this.alertRepository = alertRepository;
         this.accessService = accessService;
         this.environmentRepository = environmentRepository;
         this.lookupProperties = lookupProperties;
+        this.systemSettingService = systemSettingService;
     }
 
     @GetMapping
@@ -158,11 +161,12 @@ public class AlertHistoryController {
     }
 
     private String format(java.time.OffsetDateTime value) {
-        return value == null ? "—" : DATE_FORMAT.format(value);
+        return value == null ? "—" : DateTimeFormatter.ofPattern(systemSettingService.getDateTimeFormat(), Locale.ENGLISH).format(value);
     }
 
     private Map<String, String> allowedSorts() {
-        return Map.of("createdAt", "createdAt", "lastOccurredAt", "lastOccurredAt",
+        return Map.of("alertKey", "id", "occurrenceCount", "occurrenceCount",
+                "createdAt", "createdAt", "lastOccurredAt", "lastOccurredAt",
                 "resolvedAt", "resolvedAt", "severity", "severity", "status", "status", "title", "title");
     }
 
