@@ -210,10 +210,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!enabled) {
             panel.classList.remove('show');
             panel.querySelectorAll('.route-enabled').forEach(input => { input.checked = false; });
-        } else if (openPanel && window.bootstrap?.Collapse) {
-            window.bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
-        } else if (enabled && openPanel) {
-            panel.classList.add('show');
+        } else {
+            panel.querySelectorAll('.route-enabled').forEach(input => { input.checked = true; });
+            const hasChannelOption = Array.from(routeTemplate.content.querySelectorAll('.route-channel option'))
+                .some(option => option.dataset.channelType === type);
+            const hasRoute = routeRows().some(row => channelTypeFor(row) === type);
+            if (!hasRoute && hasChannelOption) addRoute(null, type);
+            if (openPanel && window.bootstrap?.Collapse) {
+                window.bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
+            } else if (openPanel) {
+                panel.classList.add('show');
+            }
         }
         syncNotificationRoutes();
     };
