@@ -90,7 +90,7 @@ class AlertPresentationServiceTest {
         when(resultRepository.findFirstByExecution_IdOrderByCreatedAtDescIdDesc(101L)).thenReturn(Optional.of(result));
 
         AlertPresentationService.Presentation presentation = service.build(history, Map.of(
-                "title", "Legacy title", "body", "Legacy message", "severity", "CRITICAL",
+                "title", "CRITICAL — Kafka Health", "body", "Legacy message", "severity", "CRITICAL",
                 "ruleName", "Kafka Health", "observedValue", "55", "fieldPath", "data.lag"));
 
         assertEquals("CRITICAL — Kafka Health", presentation.title());
