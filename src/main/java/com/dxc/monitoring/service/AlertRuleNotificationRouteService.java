@@ -80,7 +80,8 @@ public class AlertRuleNotificationRouteService {
         for (AlertRuleNotificationRoute route : routeRepository.findByAlertRule_IdOrderByIdAsc(ruleId)) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("channelId", route.getChannel().getId());
-            row.put("targetType", route.getRecipient() != null ? "RECIPIENT" : "GROUP");
+            row.put("targetType", route.getChannel().getChannelType() == NotificationChannel.ChannelType.TEAMS
+                    ? "NONE" : route.getRecipient() != null ? "RECIPIENT" : "GROUP");
             row.put("recipientId", route.getRecipient() == null ? null : route.getRecipient().getId());
             row.put("groupId", route.getGroup() == null ? null : route.getGroup().getId());
             row.put("ccRecipients", route.getCcRecipients() == null ? "" : route.getCcRecipients());
