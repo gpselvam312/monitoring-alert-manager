@@ -29,6 +29,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
             where a.monitoringJob.application.id in :applicationIds
               and (:applicationId is null or a.monitoringJob.application.id = :applicationId)
               and (:environmentId is null or a.monitoringJob.environment.id = :environmentId)
+              and (:exactAlertId is null or a.id = :exactAlertId)
               and (:status is null or a.status = :status)
               and (:severity is null or a.severity = :severity)
               and (:search = '' or
@@ -54,14 +55,15 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
             """)
     Page<Alert> searchHistory(@Param("applicationIds") java.util.List<Long> applicationIds,
             @Param("applicationId") Long applicationId, @Param("environmentId") Long environmentId,
-            @Param("status") Alert.AlertStatus status, @Param("severity") AlertRule.Severity severity,
-            @Param("search") String search, Pageable pageable);
+            @Param("exactAlertId") Long exactAlertId, @Param("status") Alert.AlertStatus status,
+            @Param("severity") AlertRule.Severity severity, @Param("search") String search, Pageable pageable);
 
     @Query("""
             select count(a) from Alert a
             where a.monitoringJob.application.id in :applicationIds
               and (:applicationId is null or a.monitoringJob.application.id = :applicationId)
               and (:environmentId is null or a.monitoringJob.environment.id = :environmentId)
+              and (:exactAlertId is null or a.id = :exactAlertId)
               and (:severity is null or a.severity = :severity)
               and (:search = '' or
                    lower(a.title) like lower(concat('%', :search, '%')) or
@@ -73,8 +75,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
             """)
     long countHistory(@Param("applicationIds") java.util.List<Long> applicationIds,
             @Param("applicationId") Long applicationId, @Param("environmentId") Long environmentId,
-            @Param("status") Alert.AlertStatus status, @Param("severity") AlertRule.Severity severity,
-            @Param("search") String search);
+            @Param("exactAlertId") Long exactAlertId, @Param("status") Alert.AlertStatus status,
+            @Param("severity") AlertRule.Severity severity, @Param("search") String search);
 
     boolean existsByAlertRuleId(Long alertRuleId);
     long countByStatus(Alert.AlertStatus status);
