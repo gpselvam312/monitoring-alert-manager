@@ -48,6 +48,7 @@ import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
 import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.AlertRuleForm;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 import jakarta.validation.Valid;
 
@@ -185,22 +186,19 @@ public class AlertController {
     }
 
     private void addRuleListModel(Model model, int page, int size, String search, String sort, String direction) {
-        int safeSize = size == 5 || size == 10 || size == 25 ? size : 10;
-        int safePage = Math.max(0, page);
         String safeSearch = search == null ? "" : search.trim();
-        String sortProperty = switch (sort == null ? "" : sort) {
-            case "name" -> "name";
-            case "monitoringJob.name" -> "monitoringJob.name";
-            case "monitoringJob.application.name" -> "monitoringJob.application.name";
-            case "monitoringJob.environment.name" -> "monitoringJob.environment.name";
-            case "severity" -> "severity";
-            case "executionSourcePolicy" -> "executionSourcePolicy";
-            case "enabled" -> "enabled";
-            default -> "updatedAt";
-        };
-        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(safePage, safeSize,
-                Sort.by(sortDirection, sortProperty).and(Sort.by(Sort.Direction.DESC, "id")));
+        PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(page, size, sort, direction,
+                "updatedAt", Map.of(
+                        "name", "name",
+                        "monitoringJob.name", "monitoringJob.name",
+                        "monitoringJob.application.name", "monitoringJob.application.name",
+                        "monitoringJob.environment.name", "monitoringJob.environment.name",
+                        "severity", "severity",
+                        "executionSourcePolicy", "executionSourcePolicy",
+                        "enabled", "enabled"));
+        int safeSize = pageSpec.pageSize();
+        String sortProperty = pageSpec.sort();
+        Pageable pageable = pageSpec.pageable();
         List<Long> allowedApplicationIds = applicationIds("ALERT_CONFIG");
         Page<AlertRule> rules = allowedApplicationIds.isEmpty() ? Page.empty(pageable)
                 : ruleRepository.searchForManagement(allowedApplicationIds, safeSearch, pageable);
@@ -208,7 +206,7 @@ public class AlertController {
         model.addAttribute("pageSize", safeSize);
         model.addAttribute("search", safeSearch);
         model.addAttribute("sort", sortProperty);
-        model.addAttribute("direction", sortDirection.name().toLowerCase());
+        model.addAttribute("direction", pageSpec.direction());
     }
 
     @GetMapping("/rules/new")
