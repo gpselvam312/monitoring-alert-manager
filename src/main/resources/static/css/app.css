@@ -5379,42 +5379,63 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 
 
 /* Alert rule navigation tabs — use the active application theme in every theme mode. */
-#alertRuleTabs {
-    gap: .2rem;
+.alert-rule-form #alertRuleTabs {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: .25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
     border-bottom-color: var(--border-color);
+    scrollbar-width: thin;
+    overscroll-behavior-x: contain;
 }
-#alertRuleTabs .nav-link {
+.alert-rule-form #alertRuleTabs .nav-item {
+    flex: 0 0 auto;
+}
+.alert-rule-form #alertRuleTabs .nav-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    padding: .65rem .9rem;
+}
+.alert-rule-form #alertRuleTabContent,
+.alert-rule-form #alertRuleTabContent > .tab-pane {
+    min-width: 0;
+}
+@media (max-width: 767.98px) {
+    .alert-rule-form #alertRuleTabs .nav-link {
+        min-height: 2.5rem;
+        padding: .55rem .75rem;
+        font-size: .875rem;
+    }
+}
+.alert-rule-form #alertRuleTabs .nav-link {
     color: var(--text-secondary) !important;
     background: color-mix(in srgb, var(--text-primary) 3%, var(--card-bg)) !important;
     border-color: transparent transparent var(--border-color) !important;
     white-space: nowrap;
 }
-#alertRuleTabs .nav-link:hover,
-#alertRuleTabs .nav-link:focus-visible {
+.alert-rule-form #alertRuleTabs .nav-link:hover,
+.alert-rule-form #alertRuleTabs .nav-link:focus-visible {
     color: var(--theme-primary) !important;
     border-color: var(--border-color) var(--border-color) var(--border-color) !important;
 }
-#alertRuleTabs .nav-link.active,
-#alertRuleTabs .nav-item.show .nav-link {
+.alert-rule-form #alertRuleTabs .nav-link.active,
+.alert-rule-form #alertRuleTabs .nav-item.show .nav-link {
     color: var(--theme-primary) !important;
     background: var(--card-bg) !important;
     border-color: var(--border-color) var(--border-color) var(--card-bg) !important;
     font-weight: 650;
 }
-#alertRuleTabs .nav-link:focus-visible {
+.alert-rule-form #alertRuleTabs .nav-link:focus-visible {
     outline: 2px solid var(--theme-primary);
     outline-offset: 2px;
     box-shadow: none;
 }
 
 /* Alert rule workspace and compact message presentation designer */
-.alert-rule-workspace .nav-tabs {
-    flex-wrap: wrap;
-    gap: .2rem;
-}
-.alert-rule-workspace .tab-content > .tab-pane {
-    min-width: 0;
-}
 .presentation-message-header {
     background: var(--card-bg);
     border-color: var(--border-color) !important;
