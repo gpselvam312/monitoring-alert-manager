@@ -66,12 +66,27 @@
             select.value = value || (candidates.length === 0 ? 'value' : '');
             return select;
         };
+        const withManualPath = (select, value, onChange, placeholder) => {
+            const wrapper = $('div', 'd-grid gap-2');
+            const manual = input(value, placeholder || 'Or enter a response path manually', 255);
+            select.addEventListener('change', () => {
+                manual.value = select.value;
+                onChange(select.value);
+            });
+            manual.addEventListener('input', () => onChange(manual.value.trim()));
+            wrapper.append(select, manual);
+            return wrapper;
+        };
         const newId = () => 'section-' + (window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 10));
         const normalize = parsed => {
             if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Presentation configuration must be a JSON object.');
             if (parsed.version != null && String(parsed.version) !== '1') throw new Error('Only presentation version 1 is supported.');
             if (parsed.sections != null && !Array.isArray(parsed.sections)) throw new Error('Sections must be an array.');
-            const sections = (parsed.sections || []).map(section => ({ ...section }));
+            const sections = (parsed.sections || []).map(section => ({
+                ...section,
+                id: section.id || newId(),
+                type: String(section.type || '').toUpperCase()
+            }));
             if (sections.length > 20) throw new Error('A presentation can contain at most 20 sections.');
             return { version: 1, titleTemplate: parsed.titleTemplate || '', messageTemplate: parsed.messageTemplate || '', sections };
         };
@@ -104,7 +119,7 @@
             const path = selectPath(section.fields[index]?.path, documentPath);
             label.addEventListener('input', () => { section.fields[index].label = label.value; sync(); });
             path.addEventListener('change', () => { section.fields[index].path = path.value; sync(); });
-            row.append(control('Column label', label), control('Response field', path));
+            row.append(control('Column label', label), control('Response field', withManualPath(path, section.fields[index]?.path || '', value => { section.fields[index].path = value; sync(); })));
             const remove = $('button', 'btn btn-sm btn-outline-danger', 'Remove');
             remove.type = 'button';
             remove.addEventListener('click', () => { section.fields.splice(index, 1); rerender(); });
@@ -120,7 +135,7 @@
             const key = relativeSelect(section.sourcePath, column.key);
             label.addEventListener('input', () => { column.label = label.value; sync(); });
             key.addEventListener('change', () => { column.key = key.value; sync(); });
-            row.append(control('Column heading', label), control('Value from each row', key));
+            row.append(control('Column heading', label), control('Value from each row', withManualPath(key, column.key || '', value => { column.key = value; sync(); }, 'Or enter a row field such as groupId')));
             const actions = $('div', 'col-12 d-flex gap-2 flex-wrap');
             const toolbar = $('div', 'd-flex gap-1 flex-wrap');
             moveToolbar(toolbar, section.columns, index, rerender);
@@ -192,7 +207,7 @@
                     section.columns = (section.columns || []).map(column => ({ ...column }));
                     render();
                 });
-                body.append(control('Rows from response collection', source, 'Choose the array that contains the rows for this table.'));
+                body.append(control('Rows from response collection', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); render(); }, 'Or enter an array path such as data.consumerGroups'), 'Choose a discovered array or enter its path.'));
                 section.columns = Array.isArray(section.columns) ? section.columns : [];
                 const columns = $('div', 'col-12');
                 columns.append($('div', 'd-flex align-items-center justify-content-between gap-2 mb-2',
@@ -213,7 +228,7 @@
                 source.addEventListener('change', () => { section.sourcePath = source.value; render(); });
                 const valuePath = relativeSelect(section.sourcePath, section.valuePath || 'value');
                 valuePath.addEventListener('change', () => { section.valuePath = valuePath.value; sync(); });
-                body.append(control('Items from response collection', source), control('Display field for each item', valuePath));
+                body.append(control('Items from response collection', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); render(); }, 'Or enter an array path')), control('Display field for each item', withManualPath(valuePath, section.valuePath || 'value', value => { section.valuePath = value; sync(); }, 'Or enter a field relative to each item')));
                 const maxItems = $('input', 'form-control');
                 maxItems.type = 'number'; maxItems.min = '1'; maxItems.max = '100'; maxItems.value = section.maxItems || 20;
                 maxItems.addEventListener('input', () => { section.maxItems = Number(maxItems.value); sync(); });
@@ -224,7 +239,7 @@
                 const maxLength = $('input', 'form-control');
                 maxLength.type = 'number'; maxLength.min = '100'; maxLength.max = '10000'; maxLength.value = section.maxLength || 4000;
                 maxLength.addEventListener('input', () => { section.maxLength = Number(maxLength.value); sync(); });
-                body.append(control('Object / response field', source), control('Maximum characters', maxLength));
+                body.append(control('Object / response field', withManualPath(source, section.sourcePath || '', value => { section.sourcePath = value; sync(); }, 'Or enter a path such as data.cluster'), control('Maximum characters', maxLength));
             }
             if (section.type !== 'TEXT') {
                 const emptyText = input(section.emptyText, 'Message shown when no data is available', 300);
