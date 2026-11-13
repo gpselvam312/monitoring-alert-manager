@@ -567,12 +567,29 @@
                         container.append(element('div', 'small text-muted mb-2', block.emptyText || 'No items available'));
                     } else {
                         const wrapper = element('div', 'table-responsive mb-2');
-                        const table = element('table', 'table table-sm table-striped table-bordered mb-0');
+                        const table = element('table', channel === 'email' ? '' : 'table table-sm table-striped table-bordered mb-0');
                         const body = element('tbody');
+                        if (channel === 'email') {
+                            table.setAttribute('role', 'presentation');
+                            table.setAttribute('cellpadding', '0');
+                            table.setAttribute('cellspacing', '0');
+                            table.style.cssText = 'width:100%;border-collapse:collapse;background-color:#FFFFFF;color:#101828;border:1px solid #EAECF0;font-size:13px;';
+                        }
+                        let rowIndex = 0;
                         block.items.forEach(fields => fields.forEach(field => {
                             const row = element('tr');
-                            row.append(element('td', 'fw-semibold text-break', field.label),
-                                element('td', 'text-break', field.value));
+                            const labelCell = element('td', channel === 'email' ? '' : 'fw-semibold text-break', field.label);
+                            const valueCell = element('td', channel === 'email' ? '' : 'text-break', field.value);
+                            if (channel === 'email') {
+                                const background = rowIndex++ % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
+                                [labelCell, valueCell].forEach(cell => {
+                                    cell.style.cssText = 'padding:9px 11px;border-bottom:1px solid #EAECF0;background-color:' + background + ';color:#101828;font-size:13px;line-height:1.5;vertical-align:top;overflow-wrap:anywhere;';
+                                });
+                                labelCell.style.fontWeight = '600';
+                                labelCell.style.color = '#475467';
+                                labelCell.style.width = '38%';
+                            }
+                            row.append(labelCell, valueCell);
                             body.append(row);
                         }));
                         table.append(body);
