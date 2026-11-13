@@ -722,7 +722,7 @@
             whatsappWarning.className = count > 1024 ? 'small text-danger fw-semibold' : 'small text-success';
         };
         const buildWhatsAppText = (header, blocks) => {
-            const lines = [currentPreviewSeverity() === 'SUCCESS' ? '🟢 SUCCESS · ' + header.title : header.title];
+            const lines = [currentPreviewSeverity() === 'SUCCESS' ? '🟢 ' + header.title : header.title];
             blocks.forEach(block => {
                 if (block.title) lines.push(block.title);
                 if (block.type === 'text') lines.push(block.text);
