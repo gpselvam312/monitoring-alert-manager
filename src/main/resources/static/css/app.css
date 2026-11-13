@@ -5777,3 +5777,138 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
         padding-top: 0;
     }
 }
+
+
+/* Searchable multi-selects used by alert notification routing. */
+.route-multiselect {
+    position: relative;
+    min-width: 0;
+}
+.route-multiselect-toggle {
+    display: flex;
+    min-height: 2.65rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: .65rem;
+    padding: .35rem .7rem;
+    color: var(--text-primary);
+    background: var(--input-bg);
+    border-color: var(--border-color);
+    text-align: left;
+    white-space: normal;
+}
+.route-multiselect-toggle:hover,
+.route-multiselect-toggle:focus-visible {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--theme-primary) 5%, var(--input-bg));
+    border-color: var(--theme-primary);
+}
+.route-multiselect-toggle::after {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+.route-multiselect-selection {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3rem;
+}
+.route-multiselect-placeholder {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+.route-multiselect-chip {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: .3rem;
+    padding: .18rem .42rem;
+    border: 1px solid var(--border-color);
+    border-radius: .35rem;
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--text-primary) 8%, var(--card-bg));
+    font-size: .76rem;
+    line-height: 1.35;
+}
+.route-multiselect-chip > span:first-child {
+    overflow-wrap: anywhere;
+}
+.route-multiselect-remove {
+    display: inline-flex;
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.route-multiselect-remove:hover,
+.route-multiselect-remove:focus-visible {
+    color: var(--danger, #dc3545);
+    outline: none;
+}
+.route-multiselect-menu {
+    width: 100%;
+    min-width: min(21rem, calc(100vw - 3rem));
+    max-width: 100%;
+    color: var(--text-primary);
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+.route-multiselect-menu .input-group-text,
+.route-multiselect-menu .form-control {
+    color: var(--text-primary);
+    background: var(--input-bg);
+    border-color: var(--border-color);
+}
+.route-multiselect-menu .input-group-text {
+    color: var(--text-secondary);
+}
+.route-multiselect-options {
+    max-height: 14rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.route-multiselect-option {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .45rem .5rem;
+    border-radius: .35rem;
+    color: var(--text-primary);
+    font-size: .86rem;
+    cursor: pointer;
+}
+.route-multiselect-option:hover {
+    background: color-mix(in srgb, var(--theme-primary) 8%, var(--card-bg));
+}
+.route-multiselect-option .form-check-input {
+    flex: 0 0 auto;
+    margin: 0;
+    border-color: var(--border-color);
+}
+.route-multiselect-option .form-check-input:checked {
+    background-color: var(--theme-primary);
+    border-color: var(--theme-primary);
+}
+.route-multiselect-option[hidden] {
+    display: none !important;
+}
+.route-multiselect > .route-recipients,
+.route-multiselect > .route-groups {
+    position: absolute;
+}
+@media (max-width: 575.98px) {
+    .route-multiselect-menu {
+        min-width: min(19rem, calc(100vw - 2.5rem));
+    }
+    .route-multiselect-chip {
+        font-size: .72rem;
+    }
+}
