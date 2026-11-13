@@ -94,27 +94,15 @@
 </details>
 <div class="form-text mt-3">Missing values and execution/parser errors do not count as healthy results. Recovery uses this configured criterion.</div></div></div>
 <div class="app-card mb-3">
-    <div class="app-card-header"><h2 class="h6 mb-0"><i class="bi bi-envelope-paper me-2"></i>Alert Content</h2></div>
+    <div class="app-card-header"><h2 class="h6 mb-0"><i class="bi bi-card-text me-2"></i>Fallback Alert Record Content</h2></div>
     <div class="app-card-body">
-        <p class="small text-muted">Customize the subject and message shown in the alert and reused by notification channels. Template variables are replaced when an alert is created.</p>
+        <p class="small text-muted">These values are retained as the alert record fallback when the presentation designer does not provide a title or introductory message.</p>
         <div class="row g-3">
-            <div class="col-12">
-                <label class="form-label" for="alertSubject">Alert Subject <span class="text-danger">*</span></label>
-                <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required>
-            </div>
-            <div class="col-12">
-                <label class="form-label" for="alertMessage">Alert Message <span class="text-danger">*</span></label>
-                <textarea class="form-control" id="alertMessage" th:field="*{alertMessage}" rows="4" maxlength="10000" required></textarea>
-            </div>
-            <div class="col-12">
-                <div class="form-text mb-2">Available variables: <code>{ruleName}</code>, <code>{severity}</code>, <code>{jobName}</code>, <code>{applicationName}</code>, <code>{environment}</code>, <code>{fieldPath}</code>, <code>{actualValue}</code>, <code>{threshold}</code>, <code>{executionId}</code>, <code>{timestamp}</code>.</div>
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2"><label class="form-label mb-0" for="alertContentPreview">Preview</label><button type="button" class="btn btn-sm btn-outline-secondary" id="refreshAlertContentPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh Preview</button></div>
-                <div class="rounded border p-3" aria-live="polite">
-                    <div class="fw-semibold text-break" id="alertContentPreviewSubject">Alert subject preview</div>
-                    <div class="small text-muted mt-2 text-break" id="alertContentPreviewMessage" style="white-space: pre-wrap">Alert message preview</div>
-                </div>
-                <div class="form-text">Preview uses example values. Actual values are filled from the rule and triggering execution.</div>
-            </div>
+            <div class="col-12"><label class="form-label" for="alertSubject">Fallback alert subject <span class="text-danger">*</span></label>
+                <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required></div>
+            <div class="col-12"><label class="form-label" for="alertMessage">Fallback alert message <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="alertMessage" th:field="*{alertMessage}" rows="3" maxlength="10000" required></textarea></div>
+            <div class="col-12"><div class="form-text">Legacy variables remain supported: <code>{ruleName}</code>, <code>{severity}</code>, <code>{jobName}</code>, <code>{applicationName}</code>, <code>{environment}</code>, <code>{fieldPath}</code>, <code>{actualValue}</code>, <code>{threshold}</code>, <code>{executionId}</code>, <code>{timestamp}</code>.</div></div>
         </div>
     </div>
 </div>
