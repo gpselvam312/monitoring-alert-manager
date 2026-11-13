@@ -129,15 +129,7 @@
 <div class="form-text mt-3">Missing values and execution/parser errors do not count as healthy results. Recovery uses this configured criterion.</div></div></div>
 </div>
 <div class="tab-pane fade" id="message-presentation-pane" role="tabpanel" aria-labelledby="message-presentation-tab" tabindex="0">
-<details class="app-card mb-3">
-    <summary class="app-card-header h6 mb-0"><i class="bi bi-card-text me-2"></i>Legacy fallback message</summary>
-    <div class="app-card-body">
-        <p class="small text-muted">Used only when no message payload blocks produce content. When blocks are configured and rendered, this fallback message is not added as a separate introduction.</p>
-        <label class="form-label" for="alertMessage">Fallback alert message</label>
-        <textarea class="form-control" id="alertMessage" th:field="*{alertMessage}" rows="3" maxlength="10000" required></textarea>
-        <div class="form-text">Legacy variables remain supported: <code>{ruleName}</code>, <code>{severity}</code>, <code>{jobName}</code>, <code>{applicationName}</code>, <code>{environment}</code>, <code>{fieldPath}</code>, <code>{actualValue}</code>, <code>{threshold}</code>, <code>{executionId}</code>, <code>{timestamp}</code>.</div>
-    </div>
-</details>
+
 <div class="app-card mb-3" id="alertPresentationDesigner">
     <div class="app-card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
         <div><h2 class="h6 mb-0"><i class="bi bi-layout-text-window-reverse me-2"></i>Message Presentation Designer</h2>
