@@ -170,9 +170,13 @@ public class AlertController {
         AlertRule rule = ruleRepository.findByIdWithJob(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert rule was not found."));
         assertRuleAccess(rule, "ALERT_CONFIG");
+        AlertRuleForm form = ruleManagementService.toForm(rule);
+        form.setNotificationRoutesJson(notificationRouteService.routesAsJson(rule.getId()));
+        addRuleFormModel(model, form);
         model.addAttribute("rule", rule);
+        model.addAttribute("viewMode", true);
         model.addAttribute("currentPage", "alert-rules");
-        return "alerts/rule-view";
+        return "alerts/rule-form";
     }
 
     @PostMapping("/rules/{id}/delete")
@@ -326,6 +330,7 @@ public class AlertController {
                 : selectedJob.getName() + " — " + selectedJob.getApplication().getName()
                         + (selectedJob.getEnvironment() != null ? " / " + selectedJob.getEnvironment().getName() : "");
         model.addAttribute("ruleForm", form);
+        model.addAttribute("viewMode", false);
         model.addAttribute("hasMonitoringJobs", hasMonitoringJobs);
         model.addAttribute("selectedMonitoringJobLabel", selectedMonitoringJobLabel);
         model.addAttribute("severities", AlertRule.Severity.values());
