@@ -248,7 +248,7 @@
         const addAddress = () => {
             const address = editor.value.trim().replace(/[,;]+$/, '');
             if (!address) return;
-            const valid = /^[^\\s@,;]+@[^\\s@,;]+\\.[^\\s@,;]+$/.test(address);
+            const valid = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(address);
             const existing = parse();
             if (!valid) {
                 feedback.textContent = 'Enter a valid email address.';
