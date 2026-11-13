@@ -82,13 +82,20 @@
 
         const wrapper = document.createElement('div');
         wrapper.className = 'route-multiselect dropdown';
-        const toggle = document.createElement('button');
-        toggle.type = 'button';
+        const toggle = document.createElement('div');
         toggle.className = 'btn btn-outline-secondary route-multiselect-toggle dropdown-toggle w-100';
         toggle.dataset.bsToggle = 'dropdown';
         toggle.dataset.bsAutoClose = 'outside';
+        toggle.setAttribute('role', 'button');
+        toggle.setAttribute('tabindex', '0');
         toggle.setAttribute('aria-expanded', 'false');
         toggle.setAttribute('aria-label', placeholder);
+        toggle.addEventListener('keydown', event => {
+            if (event.target === toggle && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                toggle.click();
+            }
+        });
         const selectedContent = document.createElement('span');
         selectedContent.className = 'route-multiselect-selection';
         toggle.appendChild(selectedContent);
