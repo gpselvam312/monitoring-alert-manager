@@ -330,6 +330,16 @@ public class ConditionEvaluator {
         return records;
     }
 
+    private void flattenRecords(List<?> source, List<Object> target) {
+        for (Object item : source) {
+            if (item instanceof List<?> nested) {
+                flattenRecords(nested, target);
+            } else {
+                target.add(item);
+            }
+        }
+    }
+
     private boolean evaluateAny(List<Object> values, String operator, Object expected) {
         boolean evaluated = false;
         IllegalArgumentException lastError = null;
