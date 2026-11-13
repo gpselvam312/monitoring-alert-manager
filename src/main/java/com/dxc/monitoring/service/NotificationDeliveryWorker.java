@@ -65,6 +65,9 @@ public class NotificationDeliveryWorker {
                         .orElseThrow(() -> new IllegalStateException("No sender is configured for this notification channel."));
                 Map<String, Object> payload = objectMapper.readValue(delivery.getMessagePayload(),
                         new TypeReference<Map<String, Object>>() {});
+                if (delivery.getCcRecipientsSnapshot() != null && !delivery.getCcRecipientsSnapshot().isBlank()) {
+                    payload.put("ccRecipients", delivery.getCcRecipientsSnapshot());
+                }
                 String secretKey = channel.getCredentialReference();
                 if (secretKey == null || secretKey.isBlank()) {
                     secretKey = switch (channel.getChannelType()) {
