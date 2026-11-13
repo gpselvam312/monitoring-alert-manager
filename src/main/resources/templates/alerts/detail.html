@@ -20,7 +20,7 @@
 <div th:if="${history.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0"><thead><tr><th>Time</th><th>Event</th><th>Status</th><th>Severity</th><th>Execution</th><th>Observed Value</th></tr></thead><tbody>
 <tr th:each="event : ${history.content}"><td th:text="${#temporals.format(event.occurredAt, dateTimeFormat)}">Time</td><td><span class="badge text-bg-secondary" th:text="${event.eventType}">CREATED</span></td><td><span th:text="${event.previousStatus != null ? event.previousStatus + ' → ' : ''}"></span><span th:text="${event.newStatus != null ? event.newStatus : '—'}"></span></td><td><span th:text="${event.previousSeverity != null ? event.previousSeverity + ' → ' : ''}"></span><span th:text="${event.newSeverity != null ? event.newSeverity : '—'}"></span></td><td th:text="${event.execution != null ? '#' + event.execution.id : '—'}">Execution</td><td><code class="text-break" th:text="${event.observedValue != null ? event.observedValue : '—'}">Value</code></td></tr>
 </tbody></table></div>
-<div th:if="${history.totalPages > 1}" class="d-flex justify-content-between align-items-center p-3 border-top"><span class="small text-muted" th:text="'Page ' + (${history.number + 1}) + ' of ' + ${history.totalPages}">Page</span><div class="btn-group btn-group-sm"><a class="btn btn-outline-secondary" th:classappend="${history.first} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number - 1},size=${pageSize},from=${detailSource})}">Previous</a><a class="btn btn-outline-secondary" th:classappend="${history.last} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number + 1},size=${pageSize},from=${detailSource})}">Next</a></div></div>
+<div th:if="${history.totalPages > 1}" class="d-flex justify-content-between align-items-center p-3 border-top"><span class="small text-muted" th:text="'Page ' + (${history.number + 1}) + ' of ' + ${history.totalPages}">Page</span><div class="btn-group btn-group-sm"><a class="btn btn-outline-secondary" th:classappend="${history.first} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number - 1},size=${pageSize},from=${detailSource})} + '#alert-lifecycle'">Previous</a><a class="btn btn-outline-secondary" th:classappend="${history.last} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number + 1},size=${pageSize},from=${detailSource})} + '#alert-lifecycle'">Next</a></div></div>
 </div></div></div>
 <div class="tab-pane fade" id="alert-comments" role="tabpanel" aria-labelledby="alert-comments-tab"><div class="app-card mt-3">
     <div class="app-card-header"><h2 class="h6 mb-0">Comments</h2></div>
@@ -43,4 +43,15 @@
 </div></div>
 </div>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const hash = window.location.hash;
+    if (hash === "#alert-lifecycle" || hash === "#alert-comments") {
+        const trigger = document.querySelector('[data-bs-target="' + hash + '"]');
+        if (trigger && window.bootstrap && window.bootstrap.Tab) {
+            window.bootstrap.Tab.getOrCreateInstance(trigger).show();
+        }
+    }
+});
+</script>
 </div></body></html>
