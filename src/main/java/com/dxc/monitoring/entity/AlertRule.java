@@ -95,7 +95,7 @@ public class AlertRule {
         updatedAt = OffsetDateTime.now();
     }
 
-    public enum Severity { CRITICAL, WARNING, INFO, SUCCESS }
+    public enum Severity { INFO, WARNING, CRITICAL, SUCCESS }
     public enum ExecutionSourcePolicy { SCHEDULED_ONLY, MANUAL_ONLY, ALL_NON_STREAMING }
 
     public Long getId() { return id; }
