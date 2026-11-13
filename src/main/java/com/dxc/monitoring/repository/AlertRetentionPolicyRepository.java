@@ -6,5 +6,6 @@ import com.dxc.monitoring.entity.AlertRetentionPolicy;
 
 public interface AlertRetentionPolicyRepository extends JpaRepository<AlertRetentionPolicy, Long> {
     List<AlertRetentionPolicy> findAllByOrderByDataTypeAsc();
-    boolean existsByDataType(AlertRetentionPolicy.DataType dataType);
+    boolean existsByDataTypeAndApplication_IdAndEnvironment_IdAndAlertType(
+            AlertRetentionPolicy.DataType dataType, Long applicationId, Long environmentId, String alertType);
 }
