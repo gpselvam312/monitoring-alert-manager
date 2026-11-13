@@ -21,15 +21,17 @@ public interface AlertRetentionPolicyRepository extends JpaRepository<AlertReten
     @Query("select p from AlertRetentionPolicy p")
     List<AlertRetentionPolicy> findAllWithScope();
 
-    @Query("""
-            select case when count(p) > 0 then true else false end
-            from AlertRetentionPolicy p
-            where p.dataType = :dataType
-              and ((:applicationId is null and p.application is null) or p.application.id = :applicationId)
-              and ((:environmentId is null and p.environment is null) or p.environment.id = :environmentId)
-              and p.alertType = :alertType
-            """)
-    boolean existsForScope(@Param("dataType") AlertRetentionPolicy.DataType dataType,
+    @Query(value = """
+            select exists (
+                select 1
+                from ra_fcb.alert_retention_policies p
+                where p.data_type = :dataType
+                  and p.application_id is not distinct from :applicationId
+                  and p.environment_id is not distinct from :environmentId
+                  and p.alert_type = :alertType
+            )
+            """, nativeQuery = true)
+    boolean existsForScope(@Param("dataType") String dataType,
             @Param("applicationId") Long applicationId, @Param("environmentId") Long environmentId,
             @Param("alertType") String alertType);
 }
