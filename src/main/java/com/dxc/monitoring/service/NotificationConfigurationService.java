@@ -138,10 +138,11 @@ public class NotificationConfigurationService {
     }
 
     @Transactional
-    public NotificationGroup createGroup(String name, String description, List<Long> recipientIds, Long userId) {
+    public NotificationGroup createGroup(String name, String description, String channelTypeValue, List<Long> recipientIds, Long userId) {
         NotificationGroup group = new NotificationGroup();
         group.setName(required(name, "Group name"));
         group.setDescription(trimToNull(description));
+        group.setChannelType(parseGroupChannelType(channelTypeValue));
         group.setEnabled(true);
         group.setCreatedBy(userId);
         group.setUpdatedBy(userId);
@@ -151,6 +152,7 @@ public class NotificationConfigurationService {
                 NotificationRecipient recipient = recipientRepository.findById(recipientId)
                         .filter(NotificationRecipient::isEnabled)
                         .orElseThrow(() -> new IllegalArgumentException("A selected recipient is unavailable."));
+                validateGroupMemberDestination(group.getChannelType(), recipient);
                 NotificationGroupMember member = new NotificationGroupMember();
                 member.setId(new NotificationGroupMemberId(group.getId(), recipient.getId()));
                 member.setGroup(group);
@@ -337,18 +339,21 @@ public class NotificationConfigurationService {
     }
 
     @Transactional
-    public void updateGroup(Long id, String name, String description, List<Long> recipientIds, Long userId) {
+    public void updateGroup(Long id, String name, String description, String channelTypeValue, List<Long> recipientIds, Long userId) {
         NotificationGroup group = groupRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Recipient group was not found."));
         String cleanName = required(name, "Group name");
         if (cleanName.length() > 150) throw new IllegalArgumentException("Group name must not exceed 150 characters.");
-        group.setName(cleanName); group.setDescription(trimToNull(description)); group.setUpdatedBy(userId);
+        group.setName(cleanName); group.setDescription(trimToNull(description));
+        group.setChannelType(parseGroupChannelType(channelTypeValue)); group.setUpdatedBy(userId);
         groupRepository.save(group);
         groupMemberRepository.deleteByGroup_Id(id);
         if (recipientIds != null) {
             for (Long recipientId : recipientIds.stream().filter(value -> value != null).distinct().toList()) {
                 NotificationRecipient recipient = recipientRepository.findById(recipientId)
-                        .orElseThrow(() -> new IllegalArgumentException("A selected recipient is unavailable."));
+                        .filter(NotificationRecipient::isEnabled)
+                        .orElseThrow(() -> new IllegalArgumentException("A selected recipient is unavailable or disabled."));
+                validateGroupMemberDestination(group.getChannelType(), recipient);
                 NotificationGroupMember member = new NotificationGroupMember();
                 member.setId(new NotificationGroupMemberId(id, recipientId));
                 member.setGroup(group); member.setRecipient(recipient);
@@ -480,6 +485,25 @@ public class NotificationConfigurationService {
     private void validateRecipientDestination(NotificationChannel channel, NotificationRecipient recipient) {
         if (!hasDestination(channel, recipient)) {
             throw new IllegalArgumentException("The selected recipient has no destination configured for this channel type.");
+        }
+    }
+
+    private NotificationGroup.ChannelType parseGroupChannelType(String value) {
+        try {
+            return NotificationGroup.ChannelType.valueOf(required(value, "Group channel").toUpperCase(java.util.Locale.ROOT));
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Choose Email or WhatsApp for the recipient group.");
+        }
+    }
+
+    private void validateGroupMemberDestination(NotificationGroup.ChannelType channelType, NotificationRecipient recipient) {
+        boolean configured = channelType == NotificationGroup.ChannelType.EMAIL
+                ? recipient.getEmail() != null && !recipient.getEmail().isBlank()
+                : recipient.getPhoneNumber() != null && !recipient.getPhoneNumber().isBlank();
+        if (!configured) {
+            throw new IllegalArgumentException(channelType == NotificationGroup.ChannelType.EMAIL
+                    ? "Every Email group member must have an email address."
+                    : "Every WhatsApp distribution group member must have a phone number.");
         }
     }
 
