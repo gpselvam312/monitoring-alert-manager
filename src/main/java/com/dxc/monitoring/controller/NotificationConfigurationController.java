@@ -203,10 +203,10 @@ public class NotificationConfigurationController {
     @PostMapping("/groups/{id}")
     @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
     public String updateGroup(@PathVariable Long id, @RequestParam String name,
-            @RequestParam(required = false) String description, @RequestParam(required = false) List<Long> recipientIds,
-            Authentication authentication, RedirectAttributes redirect) {
+            @RequestParam(required = false) String description, @RequestParam String channelType,
+            @RequestParam(required = false) List<Long> recipientIds, Authentication authentication, RedirectAttributes redirect) {
         try {
-            configurationService.updateGroup(id, name, description, recipientIds, userId(authentication));
+            configurationService.updateGroup(id, name, description, channelType, recipientIds, userId(authentication));
             redirect.addFlashAttribute("successMessage", "Recipient group and memberships updated.");
             return "redirect:/administration/notifications";
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
@@ -324,10 +324,10 @@ public class NotificationConfigurationController {
     @PostMapping("/groups")
     @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
     public String createGroup(@RequestParam String name, @RequestParam(required = false) String description,
-            @RequestParam(required = false) List<Long> recipientIds, Authentication authentication,
+            @RequestParam String channelType, @RequestParam(required = false) List<Long> recipientIds, Authentication authentication,
             RedirectAttributes redirect) {
         try {
-            configurationService.createGroup(name, description, recipientIds, userId(authentication));
+            configurationService.createGroup(name, description, channelType, recipientIds, userId(authentication));
             redirect.addFlashAttribute("successMessage", "Notification group created.");
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirect.addFlashAttribute("errorMessage", safeMessage(exception));
