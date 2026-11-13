@@ -113,19 +113,22 @@
         <span class="badge text-bg-light">Visual designer</span>
     </div>
     <div class="app-card-body">
-        <div class="row g-3 mb-3">
-            <div class="col-12"><label class="form-label" for="presentationTitleTemplate">Notification title</label>
-                <input class="form-control" id="presentationTitleTemplate" maxlength="500" placeholder="{{severity}} — {{ruleName}}"></div>
-            <div class="col-12"><label class="form-label" for="presentationMessageTemplate">Introductory message</label>
-                <textarea class="form-control" id="presentationMessageTemplate" rows="2" maxlength="10000" placeholder="A short summary shown before the configured blocks"></textarea></div>
-        </div>
-        <div class="row g-3 align-items-stretch">
-            <div class="col-12 col-xl-6">
+        <details class="presentation-message-header border rounded mb-3">
+            <summary class="px-3 py-2 small fw-semibold"><i class="bi bi-type me-2"></i>Notification title & introductory message</summary>
+            <div class="row g-3 p-3">
+                <div class="col-12"><label class="form-label" for="presentationTitleTemplate">Notification title</label>
+                    <input class="form-control" id="presentationTitleTemplate" maxlength="500" placeholder="{{severity}} — {{ruleName}}"></div>
+                <div class="col-12"><label class="form-label" for="presentationMessageTemplate">Introductory message</label>
+                    <textarea class="form-control" id="presentationMessageTemplate" rows="2" maxlength="10000" placeholder="A short summary shown before the configured blocks"></textarea></div>
+            </div>
+        </details>
+        <div class="row g-3 align-items-stretch presentation-designer-grid">
+            <div class="col-12 col-xl-6 presentation-builder-pane">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <div><h3 class="h6 mb-0">Modular Block Builder</h3><div class="small text-muted">Add blocks, configure their data bindings and arrange their order.</div></div>
                     <span class="badge text-bg-secondary" id="presentationBlockCount">0 blocks</span>
                 </div>
-                <div id="presentationSections" class="d-grid gap-3" aria-live="polite"></div>
+                <div id="presentationSections" class="d-grid gap-2 presentation-block-list" aria-live="polite"></div>
                 <div class="border rounded p-3 mt-3">
                     <div class="small fw-semibold mb-2">Add a content block</div>
                     <div class="d-flex flex-wrap gap-2">
@@ -136,8 +139,8 @@
                 </div>
                 <div class="form-text mt-2">Variables can be inserted into text and labels. Use double braces, for example <code>{{severity}}</code>, <code>{{timestamp}}</code> or <code>{{data.cluster.name}}</code>.</div>
             </div>
-            <div class="col-12 col-xl-6">
-                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+            <div class="col-12 col-xl-6 presentation-preview-pane">
+                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2 presentation-preview-heading">
                     <div><h3 class="h6 mb-0">Live Preview</h3><div class="small text-muted">Preview uses sample values and adapts the same blocks for each channel.</div></div>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshPresentationPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
                 </div>
