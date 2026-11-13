@@ -132,6 +132,7 @@ public class AlertEvaluationService {
 
         Map<String, Object> evaluationDetails = new LinkedHashMap<>();
         evaluationDetails.put("phase", active.isPresent() ? "RECOVERY" : "CONDITION");
+        evaluationDetails.put("correlationKey", correlationKey);
         evaluationDetails.put("fieldPath", condition.get("fieldPath"));
         evaluationDetails.put("conditionMatched", conditionResult.matched());
         evaluationDetails.put("observedValue", conditionResult.value());
@@ -139,7 +140,7 @@ public class AlertEvaluationService {
 
         if (active.isEmpty()) {
             int previousCount = previousConsecutiveCount(previousEvaluation, "CONDITION", "consecutiveMatches",
-                    "conditionMatched");
+                    "conditionMatched", correlationKey);
             int matchCount = conditionResult.matched() ? previousCount + 1 : 0;
             evaluationDetails.put("consecutiveMatches", matchCount);
             evaluationDetails.put("recoveryMatched", false);
@@ -168,7 +169,7 @@ public class AlertEvaluationService {
             recoveryValue = recoveryResult.value();
             evaluationDetails.put("recoveryDetails", recoveryResult.details());
             int previousRecoveryCount = previousConsecutiveCount(previousEvaluation, "RECOVERY",
-                    "consecutiveRecoveryMatches", "recoveryMatched");
+                    "consecutiveRecoveryMatches", "recoveryMatched", correlationKey);
             recoveryCount = recoveryMatched ? previousRecoveryCount + 1 : 0;
         }
 
@@ -227,7 +228,7 @@ public class AlertEvaluationService {
         if (subjectTemplate == null || subjectTemplate.isBlank()) subjectTemplate = "{severity} — {ruleName}";
         alert.setTitle(truncate(renderAlertTemplate(subjectTemplate, rule, execution, condition,
                 result.value(), now), 500));
-        alert.setSummary("");
+        alert.setSummary(summary(rule, condition, result.value()));
         alert.setCurrentValue(toJson(result.value()));
         alert.setFirstOccurredAt(now);
         alert.setLastOccurredAt(now);
@@ -439,12 +440,19 @@ public class AlertEvaluationService {
         return key;
     }
 
-    private int previousConsecutiveCount(AlertRuleEvaluation previous, String phase, String countKey, String matchedKey) {
+    private int previousConsecutiveCount(AlertRuleEvaluation previous, String phase, String countKey,
+            String matchedKey, String correlationKey) {
         if (previous == null || previous.getDetails() == null || previous.getDetails().isBlank()) return 0;
         try {
             Map<String, Object> details = objectMapper.readValue(previous.getDetails(),
                     new TypeReference<Map<String, Object>>() {});
-            if (!phase.equals(details.get("phase")) || !Boolean.TRUE.equals(details.get(matchedKey))) return 0;
+            // Older evaluations did not persist a correlation key. Treat those as
+            // DEFAULT only; never carry their count into a keyed alert instance.
+            String previousKey = details.containsKey("correlationKey")
+                    ? String.valueOf(details.get("correlationKey")) : "DEFAULT";
+            if (!phase.equals(details.get("phase"))
+                    || !correlationKey.equals(previousKey)
+                    || !Boolean.TRUE.equals(details.get(matchedKey))) return 0;
             Object count = details.get(countKey);
             return count instanceof Number number ? Math.max(0, number.intValue()) : 0;
         } catch (Exception exception) {
