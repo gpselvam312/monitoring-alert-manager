@@ -77,6 +77,7 @@ public class NotificationConfigurationController {
         model.addAttribute("deliveries", deliveries);
         model.addAttribute("channelForm", new NotificationChannelForm());
         model.addAttribute("channelTypes", NotificationChannel.ChannelType.values());
+        model.addAttribute("groupChannelTypes", NotificationGroup.ChannelType.values());
         model.addAttribute("severities", AlertRule.Severity.values());
         model.addAttribute("eventTypes", NotificationRoute.EventType.values());
         model.addAttribute("currentPage", "notification-configuration");
