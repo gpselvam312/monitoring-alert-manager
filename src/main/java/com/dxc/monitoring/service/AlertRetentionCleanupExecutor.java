@@ -32,7 +32,10 @@ public class AlertRetentionCleanupExecutor {
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
         OffsetDateTime cutoff = OffsetDateTime.now().minusDays(policy.getRetentionDays());
         long candidates = countCandidates(policy, cutoff);
-        return new Preview(policy.getDataType(), policy.getRetentionDays(), cutoff, candidates);
+        String scope = (policy.getApplication() == null ? "All applications" : policy.getApplication().getName())
+                + " / " + (policy.getEnvironment() == null ? "All environments" : policy.getEnvironment().getName())
+                + " / " + ("ALL".equals(policy.getAlertType()) ? "All alert types" : policy.getAlertType());
+        return new Preview(policy.getDataType(), policy.getRetentionDays(), cutoff, candidates, scope);
     }
 
     @Transactional
@@ -190,6 +193,6 @@ public class AlertRetentionCleanupExecutor {
     }
 
     public record Preview(AlertRetentionPolicy.DataType dataType, int retentionDays,
-            OffsetDateTime cutoff, long candidateCount) {}
+            OffsetDateTime cutoff, long candidateCount, String scope) {}
     public record CleanupResult(long recordsExamined, long recordsDeleted, String details) {}
 }
