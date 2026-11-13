@@ -140,7 +140,8 @@ public class WhatsAppCloudApiNotificationSender implements NotificationChannelSe
                                 String key = rawColumn instanceof Map<?, ?> column ? string(column, "key", "") : String.valueOf(rawColumn);
                                 String label = rawColumn instanceof Map<?, ?> column ? string(column, "label", key) : key;
                                 if (columnIndex > 0) lines.append(" | ");
-                                lines.append(label).append(": ").append(String.valueOf(row.getOrDefault(key, "")));
+                                Object cell = row.get(key);
+                                lines.append(label).append(": ").append(cell == null ? "" : String.valueOf(cell));
                             }
                         }
                         if (!lines.isEmpty()) text.append("\n\u0060\u0060\u0060\n").append(lines).append("\n\u0060\u0060\u0060");
