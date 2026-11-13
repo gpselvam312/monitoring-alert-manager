@@ -132,17 +132,6 @@
         select.parentElement.insertBefore(wrapper, select);
         wrapper.appendChild(select);
 
-        selectedContent.addEventListener('click', event => {
-            const remove = event.target.closest('.route-multiselect-remove');
-            if (!remove || !selectedContent.contains(remove)) return;
-            event.preventDefault();
-            event.stopPropagation();
-            const option = Array.from(select.options).find(candidate => candidate.value === remove.dataset.optionValue);
-            if (!option || !option.selected) return;
-            option.selected = false;
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-
         const render = () => {
             selectedContent.replaceChildren();
             const selected = Array.from(select.selectedOptions);
@@ -163,6 +152,22 @@
                     remove.dataset.optionValue = option.value;
                     remove.setAttribute('aria-label', 'Remove ' + option.textContent.trim());
                     remove.textContent = '×';
+                    const stopDropdownInteraction = event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        event.stopImmediatePropagation();
+                    };
+                    remove.addEventListener('pointerdown', stopDropdownInteraction);
+                    remove.addEventListener('mousedown', stopDropdownInteraction);
+                    remove.addEventListener('click', event => {
+                        stopDropdownInteraction(event);
+                        const selectedOption = Array.from(select.options)
+                            .find(candidate => candidate.value === remove.dataset.optionValue);
+                        if (!selectedOption || !selectedOption.selected) return;
+                        selectedOption.selected = false;
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                        toggle.focus({ preventScroll: true });
+                    });
                     chip.append(label, remove);
                     selectedContent.appendChild(chip);
                 });
