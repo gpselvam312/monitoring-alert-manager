@@ -258,7 +258,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 enabled: row.querySelector('.route-enabled').checked
             };
         }));
-        routesEmpty.classList.toggle('d-none', rows.length > 0);
+        const hasEnabledRoute = rows.some(row => row.querySelector('.route-enabled').checked
+            && Boolean(row.querySelector('.route-channel').value));
+        routesEmpty.classList.toggle('d-none', hasEnabledRoute);
         const activeChannels = channelTypes.filter(type => isChannelEnabled(type));
         document.getElementById('activeChannelCount').textContent = activeChannels.length + ' Active';
         channelTypes.forEach(type => {
