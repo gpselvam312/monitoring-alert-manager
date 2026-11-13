@@ -6036,45 +6036,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .server-health-summary-healthy.summary-table-card { --summary-card-accent: var(--success); }
 .server-health-summary-unknown.summary-table-card { --summary-card-accent: var(--text-secondary); }
 
-/* Alert History: keep the reusable card treatment ahead of dashboard/link defaults. */
-.alert-history-summary .server-health-summary-item.summary-table-card {
-    min-height: 7.25rem;
-    border: 1px solid color-mix(in srgb, var(--summary-card-accent) 38%, var(--border-color));
-    background: var(--card-bg);
-    color: var(--text-primary);
-    text-decoration: none;
-}
-
-.alert-history-summary .server-health-summary-critical.summary-table-card {
-    --summary-card-accent: var(--danger);
-}
-.alert-history-summary .server-health-summary-healthy.summary-table-card {
-    --summary-card-accent: var(--success);
-}
-.alert-history-summary .server-health-summary-unknown.summary-table-card {
-    --summary-card-accent: var(--text-secondary);
-}
-
-.alert-history-summary .server-health-summary-item.summary-table-card-filter:hover,
-.alert-history-summary .server-health-summary-item.summary-table-card-filter:focus-visible {
-    border-color: var(--summary-card-accent);
-    background: color-mix(in srgb, var(--summary-card-accent) 5%, var(--card-bg));
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--summary-card-accent) 16%, transparent);
-    transform: translateY(-2px);
-    text-decoration: none;
-}
-.alert-history-summary .server-health-summary-item.summary-table-card-filter.is-active {
-    box-shadow: inset 0 0 0 1px var(--theme-primary);
-}
-.alert-history-summary .server-health-summary-item.summary-table-card-filter.is-active:hover {
-    box-shadow: inset 0 0 0 1px var(--theme-primary),
-                0 4px 12px color-mix(in srgb, var(--summary-card-accent) 16%, transparent);
-}
-.alert-history-summary .server-health-summary-item.summary-table-card-filter:focus-visible {
-    outline: 2px solid var(--theme-primary);
-    outline-offset: 2px;
-}
-
+/* Alert History uses the shared summary-table-card styles without local overrides. */
 @media (max-width: 767.98px) {
     .summary-table-cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
