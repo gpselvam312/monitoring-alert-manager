@@ -1,5 +1,7 @@
 package com.dxc.monitoring.controller;
 
+import java.util.List;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,7 +18,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.AlertCleanupRun;
 import com.dxc.monitoring.entity.AlertRetentionPolicy;
+import com.dxc.monitoring.entity.Application;
+import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertCleanupRunRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.AlertRetentionCleanupExecutor;
 import com.dxc.monitoring.service.AlertRetentionService;
@@ -26,11 +32,16 @@ import com.dxc.monitoring.service.AlertRetentionService;
 public class AlertRetentionController {
     private final AlertRetentionService retentionService;
     private final AlertCleanupRunRepository runRepository;
+    private final EnvironmentRepository environmentRepository;
+    private final DashboardAccessService accessService;
 
     public AlertRetentionController(AlertRetentionService retentionService,
-            AlertCleanupRunRepository runRepository) {
+            AlertCleanupRunRepository runRepository, EnvironmentRepository environmentRepository,
+            DashboardAccessService accessService) {
         this.retentionService = retentionService;
         this.runRepository = runRepository;
+        this.environmentRepository = environmentRepository;
+        this.accessService = accessService;
     }
 
     @GetMapping
@@ -40,6 +51,15 @@ public class AlertRetentionController {
         Page<AlertCleanupRun> runs = runRepository.findAllByOrderByStartedAtDesc(PageRequest.of(0, 20));
         model.addAttribute("runs", runs);
         model.addAttribute("dataTypes", AlertRetentionPolicy.DataType.values());
+        List<Application> applications = accessService.getApplicationsWithPermission("DATA_EXPUNGE");
+        List<Long> applicationIds = applications.stream().map(Application::getId).toList();
+        List<Environment> environments = environmentRepository.findAll().stream()
+                .filter(environment -> environment.getApplication() != null
+                        && applicationIds.contains(environment.getApplication().getId()))
+                .toList();
+        model.addAttribute("applications", applications);
+        model.addAttribute("environments", environments);
+        model.addAttribute("alertTypes", List.of("ALL", "MONITORING_JOB"));
         model.addAttribute("currentPage", "alert-retention");
         if (previewPolicyId != null) {
             try {
@@ -57,10 +77,14 @@ public class AlertRetentionController {
     @PreAuthorize("hasAuthority('DATA_EXPUNGE')")
     public String createPolicy(@RequestParam String dataType, @RequestParam int retentionDays,
             @RequestParam(defaultValue = "false") boolean enabled,
-            @RequestParam(required = false) String description, Authentication authentication,
-            RedirectAttributes redirect) {
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Long applicationId,
+            @RequestParam(required = false) Long environmentId,
+            @RequestParam(defaultValue = "ALL") String alertType,
+            Authentication authentication, RedirectAttributes redirect) {
         try {
-            retentionService.createPolicy(dataType, retentionDays, enabled, description, userId(authentication));
+            retentionService.createPolicy(dataType, retentionDays, enabled, description,
+                    applicationId, environmentId, alertType, userId(authentication));
             redirect.addFlashAttribute("successMessage", "Retention policy saved. Cleanup is never run automatically.");
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirect.addFlashAttribute("errorMessage", safeMessage(exception));
