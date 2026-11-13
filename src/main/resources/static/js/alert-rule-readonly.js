@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isNavigationButton = button => button.matches(
         '#alertRuleTabs [data-bs-toggle="tab"], ' +
         '#presentationPreviewTabs [data-preview-channel], ' +
-        '.accordion-button[data-bs-toggle="collapse]'
+        '.accordion-button[data-bs-toggle="collapse"]'
     );
 
     const lockControl = control => {
