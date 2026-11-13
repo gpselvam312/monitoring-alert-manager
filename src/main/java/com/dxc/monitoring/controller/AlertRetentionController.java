@@ -143,7 +143,7 @@ public class AlertRetentionController {
 
     private String safeMessage(Exception exception) {
         if (exception instanceof DataIntegrityViolationException) {
-            return "A retention policy already exists for this data type.";
+            return "A retention policy already exists for this scope.";
         }
         String message = exception.getMessage();
         if (message == null || message.isBlank()) return "Retention operation could not be completed.";
