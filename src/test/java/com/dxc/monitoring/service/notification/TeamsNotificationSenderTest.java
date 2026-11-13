@@ -20,6 +20,18 @@ class TeamsNotificationSenderTest {
     }
 
     @Test
+    void successAlertUsesGreenAdaptiveCardBanner() {
+        TeamsNotificationSender sender = new TeamsNotificationSender(mock(NotificationRestClientFactory.class));
+        Map<String, Object> card = sender.buildAdaptiveCard(Map.of(
+                "title", "Service healthy", "severity", "SUCCESS"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> banner = (Map<String, Object>) ((List<?>) card.get("body")).get(0);
+        assertTrue("good".equals(banner.get("style")));
+        assertTrue(String.valueOf(banner.get("items")).contains("SUCCESS"));
+    }
+
+    @Test
     void rendersListAndJsonPresentationSectionsInAdaptiveCard() {
         TeamsNotificationSender sender = new TeamsNotificationSender(mock(NotificationRestClientFactory.class));
         Map<String, Object> card = sender.buildAdaptiveCard(Map.of(
