@@ -46,6 +46,7 @@ import com.dxc.monitoring.service.AlertRuleManagementService;
 import com.dxc.monitoring.service.AlertRuleConfigurationService;
 import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
 import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
+import com.dxc.monitoring.service.SystemSettingService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.AlertRuleForm;
 import com.dxc.monitoring.web.PageRequestSupport;
@@ -69,6 +70,7 @@ public class AlertController {
     private final NotificationPolicyRepository notificationPolicyRepository;
     private final AlertRuleFieldDiscoveryService fieldDiscoveryService;
     private final AlertRuleNotificationRouteService notificationRouteService;
+    private final SystemSettingService systemSettingService;
 
     public AlertController(AlertRepository alertRepository, AlertHistoryRepository historyRepository,
             AlertCommentRepository commentRepository, AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
@@ -78,7 +80,8 @@ public class AlertController {
             UserAlertStateRepository userAlertStateRepository,
             NotificationPolicyRepository notificationPolicyRepository,
             AlertRuleFieldDiscoveryService fieldDiscoveryService,
-            AlertRuleNotificationRouteService notificationRouteService) {
+            AlertRuleNotificationRouteService notificationRouteService,
+            SystemSettingService systemSettingService) {
         this.alertRepository = alertRepository;
         this.historyRepository = historyRepository;
         this.commentRepository = commentRepository;
@@ -92,6 +95,7 @@ public class AlertController {
         this.notificationPolicyRepository = notificationPolicyRepository;
         this.fieldDiscoveryService = fieldDiscoveryService;
         this.notificationRouteService = notificationRouteService;
+        this.systemSettingService = systemSettingService;
     }
 
     @GetMapping
@@ -127,6 +131,7 @@ public class AlertController {
         model.addAttribute("alert", alert);
         model.addAttribute("history", history);
         model.addAttribute("comments", commentRepository.findByAlertIdOrderByCreatedAtDescIdDesc(id));
+        model.addAttribute("dateTimeFormat", systemSettingService.getDateTimeFormat());
         model.addAttribute("pageSize", pageable.getPageSize());
         String detailSource = "history".equalsIgnoreCase(from) ? "history" : "active";
         model.addAttribute("detailSource", detailSource);
