@@ -80,6 +80,7 @@ public class AlertRetentionService {
         }
         if (enabled) {
             assertNoOverlappingEnabledPolicy(dataType, applicationId, environmentId, alertType, null);
+            assertHistoryRetentionDependency(dataType, retentionDays, applicationId, environmentId, alertType, null);
         }
 
         AlertRetentionPolicy policy = new AlertRetentionPolicy();
@@ -102,6 +103,12 @@ public class AlertRetentionService {
         }
         AlertRetentionPolicy policy = policyRepository.findById(policyId)
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
+        if (policy.isEnabled()) {
+            Long applicationId = policy.getApplication() == null ? null : policy.getApplication().getId();
+            Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
+            assertHistoryRetentionDependency(policy.getDataType(), retentionDays, applicationId,
+                    environmentId, policy.getAlertType(), policy.getId());
+        }
         policy.setRetentionDays(retentionDays);
         policy.setDescription(description == null || description.isBlank() ? null : description.trim());
         policy.setUpdatedBy(userId);
@@ -117,6 +124,8 @@ public class AlertRetentionService {
             Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
             assertNoOverlappingEnabledPolicy(policy.getDataType(), applicationId, environmentId,
                     policy.getAlertType(), policy.getId());
+            assertHistoryRetentionDependency(policy.getDataType(), policy.getRetentionDays(), applicationId,
+                    environmentId, policy.getAlertType(), policy.getId());
         }
         policy.setEnabled(!policy.isEnabled());
         policy.setUpdatedBy(userId);
@@ -144,6 +153,40 @@ public class AlertRetentionService {
         }
     }
 
+
+
+    private void assertHistoryRetentionDependency(AlertRetentionPolicy.DataType dataType, int retentionDays,
+            Long applicationId, Long environmentId, String alertType, Long excludedPolicyId) {
+        AlertRetentionPolicy.DataType relatedType;
+        if (dataType == AlertRetentionPolicy.DataType.RESOLVED_ALERTS) {
+            relatedType = AlertRetentionPolicy.DataType.ALERT_HISTORY;
+        } else if (dataType == AlertRetentionPolicy.DataType.ALERT_HISTORY) {
+            relatedType = AlertRetentionPolicy.DataType.RESOLVED_ALERTS;
+        } else {
+            return;
+        }
+        for (AlertRetentionPolicy existing : policyRepository.findAll()) {
+            if (!existing.isEnabled() || existing.getId().equals(excludedPolicyId)
+                    || existing.getDataType() != relatedType) continue;
+            Long existingApplicationId = existing.getApplication() == null ? null : existing.getApplication().getId();
+            Long existingEnvironmentId = existing.getEnvironment() == null ? null : existing.getEnvironment().getId();
+            boolean applicationOverlap = existingApplicationId == null || applicationId == null
+                    || existingApplicationId.equals(applicationId);
+            boolean environmentOverlap = existingEnvironmentId == null || environmentId == null
+                    || existingEnvironmentId.equals(environmentId);
+            boolean typeOverlap = "ALL".equals(existing.getAlertType()) || "ALL".equals(alertType)
+                    || existing.getAlertType().equals(alertType);
+            if (!applicationOverlap || !environmentOverlap || !typeOverlap) continue;
+            int resolvedRetention = dataType == AlertRetentionPolicy.DataType.RESOLVED_ALERTS
+                    ? retentionDays : existing.getRetentionDays();
+            int historyRetention = dataType == AlertRetentionPolicy.DataType.ALERT_HISTORY
+                    ? retentionDays : existing.getRetentionDays();
+            if (resolvedRetention < historyRetention) {
+                throw new IllegalArgumentException(
+                        "Resolved-alert retention cannot be shorter than lifecycle-history retention for overlapping scopes, because deleting an alert also removes its history and comments.");
+            }
+        }
+    }
 
     private void assertNoOverlappingEnabledPolicy(AlertRetentionPolicy.DataType dataType,
             Long applicationId, Long environmentId, String alertType, Long excludedPolicyId) {
