@@ -8,16 +8,17 @@
         const preview = document.getElementById('presentationPreview');
         if (!form || !jsonInput || !editor || !preview) return;
 
-        const titleInput = document.getElementById('presentationTitleTemplate');
-        const messageInput = document.getElementById('presentationMessageTemplate');
+        const subjectInput = document.getElementById('alertSubject');
+        const ruleNameInput = document.getElementById('name');
+        const ruleSeverityInput = document.getElementById('severity');
         const status = document.getElementById('presentationBuilderMessage');
         const blockCount = document.getElementById('presentationBlockCount');
         const whatsappCount = document.getElementById('whatsAppCharacterCount');
         const whatsappWarning = document.getElementById('whatsAppLimitWarning');
         const fields = () => Array.isArray(window.alertRuleDiscoveredFields) ? window.alertRuleDiscoveredFields : [];
         const sample = {
-            ruleName: 'Service Health Monitor',
-            severity: 'CRITICAL',
+            ruleName: ruleNameInput?.value?.trim() || 'Alert Rule',
+            severity: ruleSeverityInput?.value || 'CRITICAL',
             jobName: 'Application Availability Check',
             applicationName: 'Retail Platform',
             environment: 'PRODUCTION',
@@ -36,11 +37,12 @@
             }
         };;
 
-        let config = { version: 1, titleTemplate: '{{severity}} — {{ruleName}}', messageTemplate: '', sections: [] };
+        let config = { version: 1, sections: [] };
         let jsonEdited = false;
         let activePreview = 'email';
         const previewSeverity = document.getElementById('presentationPreviewSeverity');
-        const currentPreviewSeverity = () => previewSeverity?.value || 'CRITICAL';
+        const currentPreviewSeverity = () => previewSeverity?.value || ruleSeverityInput?.value || 'CRITICAL';
+        if (previewSeverity && ruleSeverityInput?.value) previewSeverity.value = ruleSeverityInput.value;
         let expandedBlockId = null;
         let draggedBlockId = null;
 
@@ -97,7 +99,7 @@
                 return normalized;
             });
             if (sections.length > 20) throw new Error('A presentation can contain at most 20 blocks.');
-            return { version: 1, titleTemplate: parsed.titleTemplate || '', messageTemplate: parsed.messageTemplate || '', sections };
+            return { version: 1, sections };
         };
         const newId = () => 'block-' + (window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 10));
         const discoveredPaths = () => fields().filter(field => field && typeof field.path === 'string'
@@ -542,10 +544,7 @@
             }
             return { type: section.type.toLowerCase(), title, text: '[Legacy block preview]' };
         });
-        const addTitleAndMessage = () => ({
-            title: template(config.titleTemplate || '{{severity}} — {{ruleName}}'),
-            message: template(config.messageTemplate || '')
-        });
+        const addSubject = () => template(subjectInput.value || '{severity} — {ruleName}');
         const appendBlocks = (container, blocks, channel) => {
             blocks.forEach(block => {
                 if (block.title) container.append(element('h6', 'fw-semibold mt-3 mb-2', block.title));
@@ -664,8 +663,9 @@
         };
         const updatePreview = () => {
             sample.severity = currentPreviewSeverity();
+            sample.ruleName = ruleNameInput?.value?.trim() || 'Alert Rule';
             const blocks = renderedBlocks();
-            const header = addTitleAndMessage();
+            const header = { title: addSubject() };
             preview.replaceChildren();
             if (activePreview === 'email') {
                 const email = element('div', 'bg-white border rounded shadow-sm overflow-hidden');
@@ -679,11 +679,6 @@
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
                 body.style.color = '#1f2937';
-                if (header.message) {
-                    const message = element('p', 'mb-2', header.message);
-                    message.style.whiteSpace = 'pre-wrap';
-                    body.append(message);
-                }
                 appendBlocks(body, blocks, 'email');
                 body.append(element('div', 'border-top mt-3 pt-2 small text-muted', 'Monitoring Alert Manager'));
                 email.append(subject, banner, body);
@@ -697,11 +692,6 @@
                 accent.append(element('div', 'small fw-bold', currentPreviewSeverity() + ' ALERT'),
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
-                if (header.message) {
-                    const message = element('p', 'mb-2', header.message);
-                    message.style.whiteSpace = 'pre-wrap';
-                    body.append(message);
-                }
                 appendBlocks(body, blocks, 'teams');
                 card.append(accent, body);
                 preview.append(card);
@@ -714,11 +704,6 @@
                 const bubble = element('div', 'bg-white rounded-3 p-3 shadow-sm');
                 bubble.style.color = '#1f2937';
                 bubble.append(element('div', 'small fw-bold mb-2', header.title));
-                if (header.message) {
-                    const message = element('div', 'small mb-2', header.message);
-                    message.style.whiteSpace = 'pre-wrap';
-                    bubble.append(message);
-                }
                 appendBlocks(bubble, blocks, 'whatsapp');
                 chat.append(bubble, element('div', 'text-end small text-muted mt-2', '09:30 ✓✓'));
                 preview.append(chat);
@@ -730,7 +715,7 @@
             whatsappWarning.className = count > 1024 ? 'small text-danger fw-semibold' : 'small text-success';
         };
         const buildWhatsAppText = (header, blocks) => {
-            const lines = [header.title, header.message];
+            const lines = [header.title];
             blocks.forEach(block => {
                 if (block.title) lines.push(block.title);
                 if (block.type === 'text') lines.push(block.text);
@@ -754,8 +739,6 @@
             return lines.filter(Boolean).join('\n');
         };
         const sync = () => {
-            config.titleTemplate = titleInput.value;
-            config.messageTemplate = messageInput.value;
             jsonInput.value = JSON.stringify(config, null, 2);
             jsonEdited = false;
             updatePreview();
@@ -772,7 +755,9 @@
             render();
         };
         document.querySelectorAll('[data-add-presentation-section]').forEach(add => add.addEventListener('click', () => addBlock(add.dataset.addPresentationSection)));
-        [titleInput, messageInput].forEach(input => input?.addEventListener('input', () => { sync(); updatePreview(); }));
+        subjectInput?.addEventListener('input', updatePreview);
+        ruleNameInput?.addEventListener('input', () => { sample.ruleName = ruleNameInput.value.trim() || 'Alert Rule'; updatePreview(); });
+        ruleSeverityInput?.addEventListener('change', () => { if (previewSeverity) previewSeverity.value = ruleSeverityInput.value; updatePreview(); });
         document.querySelectorAll('[data-preview-channel]').forEach(tab => tab.addEventListener('click', () => {
             activePreview = tab.dataset.previewChannel;
             document.querySelectorAll('[data-preview-channel]').forEach(item => {
@@ -793,8 +778,6 @@
         document.getElementById('applyPresentationJson')?.addEventListener('click', () => {
             try {
                 config = normalize(JSON.parse(jsonInput.value || '{}'));
-                titleInput.value = config.titleTemplate;
-                messageInput.value = config.messageTemplate;
                 render();
                 setStatus('Presentation JSON loaded into the block builder.', 'success');
             } catch (error) {
@@ -803,10 +786,8 @@
         });
         try {
             config = normalize(JSON.parse(jsonInput.value || '{}'));
-            titleInput.value = config.titleTemplate;
-            messageInput.value = config.messageTemplate;
-        } catch (error) {
-            config = { version: 1, titleTemplate: '', messageTemplate: '', sections: [] };
+            } catch (error) {
+            config = { version: 1, sections: [] };
             setStatus('Saved presentation JSON could not be loaded: ' + error.message, 'warning');
         }
         window.refreshAlertPresentationDesigner = () => render();
@@ -816,9 +797,7 @@
             if (jsonEdited) {
                 try {
                     config = normalize(JSON.parse(jsonInput.value || '{}'));
-                    titleInput.value = config.titleTemplate;
-                    messageInput.value = config.messageTemplate;
-                } catch (error) {
+                    } catch (error) {
                     event.preventDefault();
                     setStatus('Correct the advanced presentation JSON before saving: ' + error.message, 'danger');
                     return;
