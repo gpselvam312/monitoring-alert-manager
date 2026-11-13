@@ -155,7 +155,7 @@
         state.searchTimer = setTimeout(navigateWithFilters, 450);
     });
     const clearSearch = byId('clear-' + config.searchId);
-    if (clearSearch) clearSearch.addEventListener('click', () => { searchInput.value = ''; clearSearch.classList.add('d-none'); resetAndLoad(); });
+    if (clearSearch) clearSearch.addEventListener('click', () => { searchInput.value = ''; clearSearch.classList.add('d-none'); navigateWithFilters(); });
     if (pageSizeSelect) pageSizeSelect.addEventListener('change', resetAndLoad);
     Object.values(config.filters || {}).forEach(id => {
         const field = byId(id);
@@ -163,7 +163,7 @@
     });
     const clearFilters = byId('alertHistoryClearFilters');
     if (clearFilters) clearFilters.addEventListener('click', () => {
-        if (searchInput) searchInput.value = '';
+        if (searchInput) { searchInput.value = ''; const clear = byId('clear-' + config.searchId); if (clear) clear.classList.add('d-none'); }
         Object.values(config.filters || {}).forEach(id => { const field = byId(id); if (field) field.value = ''; });
         if (pageSizeSelect) pageSizeSelect.value = '10';
         config.sort = 'createdAt'; config.direction = 'desc';
