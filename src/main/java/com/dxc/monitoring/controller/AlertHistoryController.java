@@ -52,6 +52,7 @@ public class AlertHistoryController {
     @GetMapping
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
     public String history(@RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String severity,
             @RequestParam(required = false) Long applicationId,
@@ -68,7 +69,7 @@ public class AlertHistoryController {
         SearchTerm term = searchTerm(safeSearch);
         Alert.AlertStatus statusFilter = parseStatus(status);
         AlertRule.Severity severityFilter = parseSeverity(severity);
-        PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(0, 10, sort, direction,
+        PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(0, size, sort, direction,
                 "createdAt", allowedSorts());
         long total = applicationIds.isEmpty() || invalidApplication ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
@@ -82,7 +83,7 @@ public class AlertHistoryController {
 
         List<Environment> environments = applicationId == null || invalidApplication ? List.of()
                 : environmentRepository.findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(applicationId);
-        model.addAttribute("pageSize", 10);
+        model.addAttribute("pageSize", pageSpec.pageSize());
         model.addAttribute("search", safeSearch);
         model.addAttribute("status", statusFilter == null ? "" : statusFilter.name());
         model.addAttribute("severity", severityFilter == null ? "" : severityFilter.name());
