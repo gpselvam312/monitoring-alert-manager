@@ -360,9 +360,17 @@
             blocks.forEach(block => {
                 if (block.title) lines.push(block.title);
                 if (block.type === 'text') lines.push(block.text);
-                if (block.type === 'details') block.fields.forEach(field => lines.push(field.label + ': ' + field.value));
-                if (block.type === 'table') block.rows.forEach((row, index) =>
-                    lines.push((index + 1) + '. ' + block.columns.map(column => column.label + ': ' + (row[column.key] || '')).join(' | ')));
+                if (block.type === 'details' && block.fields.length) {
+                    lines.push('```');
+                    block.fields.forEach(field => lines.push(field.label + ': ' + field.value));
+                    lines.push('```');
+                }
+                if (block.type === 'table' && block.rows.length) {
+                    lines.push('```');
+                    block.rows.forEach((row, index) =>
+                        lines.push((index + 1) + '. ' + block.columns.map(column => column.label + ': ' + (row[column.key] || '')).join(' | ')));
+                    lines.push('```');
+                }
             });
             return lines.filter(Boolean).join('\n');
         };
