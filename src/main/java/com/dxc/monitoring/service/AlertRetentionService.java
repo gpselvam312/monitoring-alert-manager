@@ -8,10 +8,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.AlertCleanupRun;
 import com.dxc.monitoring.entity.AlertRetentionPolicy;
+import com.dxc.monitoring.entity.AlertType;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertCleanupRunRepository;
 import com.dxc.monitoring.repository.AlertRetentionPolicyRepository;
+import com.dxc.monitoring.repository.AlertTypeRepository;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
@@ -25,11 +27,13 @@ public class AlertRetentionService {
     private final ApplicationRepository applicationRepository;
     private final EnvironmentRepository environmentRepository;
     private final DashboardAccessService accessService;
+    private final AlertTypeRepository alertTypeRepository;
 
     public AlertRetentionService(AlertRetentionPolicyRepository policyRepository,
             AlertCleanupRunRepository runRepository, AlertRetentionCleanupExecutor cleanupExecutor,
             AlertCleanupAuditService auditService, ApplicationRepository applicationRepository,
-            EnvironmentRepository environmentRepository, DashboardAccessService accessService) {
+            EnvironmentRepository environmentRepository, DashboardAccessService accessService,
+            AlertTypeRepository alertTypeRepository) {
         this.policyRepository = policyRepository;
         this.runRepository = runRepository;
         this.cleanupExecutor = cleanupExecutor;
@@ -37,6 +41,7 @@ public class AlertRetentionService {
         this.applicationRepository = applicationRepository;
         this.environmentRepository = environmentRepository;
         this.accessService = accessService;
+        this.alertTypeRepository = alertTypeRepository;
     }
 
     @Transactional
@@ -59,8 +64,9 @@ public class AlertRetentionService {
         if (!alertScopedData && (applicationId != null || environmentId != null || !"ALL".equals(alertType))) {
             throw new IllegalArgumentException("Application, environment and alert-type scopes are supported for resolved alerts and alert history policies.");
         }
-        if (!List.of("ALL", "MONITORING_JOB").contains(alertType)) {
-            throw new IllegalArgumentException("Choose a supported alert type.");
+        if (!"ALL".equals(alertType)
+                && alertTypeRepository.findById(alertType).filter(AlertType::isEnabled).isEmpty()) {
+            throw new IllegalArgumentException("Choose an enabled alert type.");
         }
         if (environmentId != null && applicationId == null) {
             throw new IllegalArgumentException("Select an application before selecting an environment.");
