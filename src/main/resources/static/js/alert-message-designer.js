@@ -16,30 +16,31 @@
         const whatsappWarning = document.getElementById('whatsAppLimitWarning');
         const fields = () => Array.isArray(window.alertRuleDiscoveredFields) ? window.alertRuleDiscoveredFields : [];
         const sample = {
-            ruleName: 'Kafka Consumer Lag',
+            ruleName: 'Service Health Monitor',
             severity: 'CRITICAL',
-            jobName: 'Kafka Cluster Health',
+            jobName: 'Application Availability Check',
             applicationName: 'Retail Platform',
             environment: 'PRODUCTION',
             timestamp: '2026-11-13 09:30:00 IST',
             executionId: 'EX-10482',
             alertId: 'AL-2081',
             occurrenceCount: 3,
-            cluster_name: 'kafka-cluster-prod',
             response: { status: 'CRITICAL', schemaVersion: 1 },
             data: {
-                cluster: { name: 'kafka-cluster-prod', version: '3.8.1', status: 'CRITICAL' },
-                summary: { consumerGroupCount: 12, criticalGroupCount: 2, totalLag: 18450 },
-                consumers: [
-                    { groupId: 'orders-service', lag: 12400, status: 'CRITICAL' },
-                    { groupId: 'payments-service', lag: 6050, status: 'WARNING' }
+                service: { name: 'payment-api', status: 'DEGRADED', region: 'ap-south-1' },
+                summary: { affectedInstances: 2, totalInstances: 8, errorRate: 7.4 },
+                instances: [
+                    { instance: 'payment-api-03', status: 'CRITICAL', errorRate: 12.8 },
+                    { instance: 'payment-api-06', status: 'WARNING', errorRate: 4.1 }
                 ]
             }
-        };
+        };;
 
         let config = { version: 1, titleTemplate: '{{severity}} — {{ruleName}}', messageTemplate: '', sections: [] };
         let jsonEdited = false;
         let activePreview = 'email';
+        const previewSeverity = document.getElementById('presentationPreviewSeverity');
+        const currentPreviewSeverity = () => previewSeverity?.value || 'CRITICAL';
         let expandedBlockId = null;
         let draggedBlockId = null;
 
@@ -629,8 +630,8 @@
                 const subject = element('div', 'border-bottom px-3 py-2 small text-muted');
                 subject.append(element('strong', 'me-2', 'Subject:'), document.createTextNode(header.title));
                 const banner = element('div', 'p-3 text-white');
-                banner.style.background = sample.severity === 'CRITICAL' ? '#b42318' : sample.severity === 'WARNING' ? '#b54708' : '#175cd3';
-                banner.append(element('div', 'small fw-bold text-uppercase', sample.severity + ' ALERT'),
+                banner.style.background = currentPreviewSeverity() === 'CRITICAL' ? '#b42318' : currentPreviewSeverity() === 'WARNING' ? '#b54708' : '#175cd3';
+                banner.append(element('div', 'small fw-bold text-uppercase', currentPreviewSeverity() + ' ALERT'),
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
                 body.style.color = '#1f2937';
@@ -724,6 +725,7 @@
             updatePreview();
         }));
         document.getElementById('refreshPresentationPreview')?.addEventListener('click', updatePreview);
+        previewSeverity?.addEventListener('change', updatePreview);
         document.getElementById('applyPresentationJson')?.addEventListener('click', () => {
             try {
                 config = normalize(JSON.parse(jsonInput.value || '{}'));
