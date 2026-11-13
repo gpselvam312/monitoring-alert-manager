@@ -267,6 +267,101 @@ class AlertRuleManagementServiceTest {
         assertEquals(saved.getPresentationConfig(), restored.getPresentationConfigJson());
     }
 
+    @Test
+    void updatesExistingRuleWithoutCreatingANewRecordAndTracksUpdater() {
+        stubJobLookup();
+        AlertRule existing = new AlertRule();
+        existing.setId(29L);
+        existing.setMonitoringJob(job);
+        existing.setCreatedBy(3L);
+        when(ruleRepository.findById(29L)).thenReturn(Optional.of(existing));
+        when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AlertRuleForm form = validForm();
+        form.setId(29L);
+        form.setName("Updated CPU rule");
+        form.setSeverity("WARNING");
+
+        AlertRule saved = service.save(form, 8L);
+
+        assertEquals(29L, saved.getId());
+        assertEquals("Updated CPU rule", saved.getName());
+        assertEquals(AlertRule.Severity.WARNING, saved.getSeverity());
+        assertEquals(3L, saved.getCreatedBy());
+        assertEquals(8L, saved.getUpdatedBy());
+        verify(ruleRepository).save(existing);
+    }
+
+    @Test
+    void supportsEveryConfiguredSeverityAndExecutionSourcePolicy() {
+        for (AlertRule.Severity severity : AlertRule.Severity.values()) {
+            for (AlertRule.ExecutionSourcePolicy source : AlertRule.ExecutionSourcePolicy.values()) {
+                stubJobLookup();
+                when(ruleRepository.save(any(AlertRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                AlertRuleForm form = validForm();
+                form.setSeverity(severity.name());
+                form.setExecutionSourcePolicy(source.name());
+
+                AlertRule saved = service.save(form, 5L);
+
+                assertEquals(severity, saved.getSeverity());
+                assertEquals(source, saved.getExecutionSourcePolicy());
+            }
+        }
+    }
+
+    @Test
+    void rejectsMovingAnExistingRuleToAnotherMonitoringJob() {
+        stubJobLookup();
+        MonitoringJob otherJob = new MonitoringJob();
+        otherJob.setId(18L);
+        AlertRule existing = new AlertRule();
+        existing.setId(29L);
+        existing.setMonitoringJob(otherJob);
+        when(ruleRepository.findById(29L)).thenReturn(Optional.of(existing));
+
+        AlertRuleForm form = validForm();
+        form.setId(29L);
+
+        assertThrows(IllegalArgumentException.class, () -> service.save(form, 5L));
+    }
+
+    @Test
+    void rejectsMissingRuleDuringUpdate() {
+        stubJobLookup();
+        when(ruleRepository.findById(404L)).thenReturn(Optional.empty());
+        AlertRuleForm form = validForm();
+        form.setId(404L);
+
+        assertThrows(IllegalArgumentException.class, () -> service.save(form, 5L));
+    }
+
+    @Test
+    void rejectsMissingOrDisabledNotificationPolicy() {
+        stubJobLookup();
+        when(notificationPolicyRepository.findById(77L)).thenReturn(Optional.empty());
+        AlertRuleForm form = validForm();
+        form.setNotificationPolicyId(77L);
+
+        assertThrows(IllegalArgumentException.class, () -> service.save(form, 5L));
+    }
+
+    @Test
+    void rejectsInvalidRecoveryAndConsecutiveMatchSettings() {
+        stubJobLookup();
+        AlertRuleForm disabledRecovery = validForm();
+        disabledRecovery.setRecoveryEnabled(false);
+        assertThrows(IllegalArgumentException.class, () -> service.save(disabledRecovery, 5L));
+
+        AlertRuleForm invalidMatches = validForm();
+        invalidMatches.setConsecutiveMatches(0);
+        assertThrows(IllegalArgumentException.class, () -> service.save(invalidMatches, 5L));
+
+        AlertRuleForm invalidRecoveryMatches = validForm();
+        invalidRecoveryMatches.setRecoveryConsecutiveMatches(101);
+        assertThrows(IllegalArgumentException.class, () -> service.save(invalidRecoveryMatches, 5L));
+    }
+
     private void stubJobLookup() {
         when(jobRepository.findByIdForDetails(JOB_ID)).thenReturn(Optional.of(job));
     }
