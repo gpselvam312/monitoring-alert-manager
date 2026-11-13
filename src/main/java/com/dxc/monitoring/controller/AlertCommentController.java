@@ -46,7 +46,7 @@ public class AlertCommentController {
         }
         if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails user)) {
             redirect.addFlashAttribute("errorMessage", "Your signed-in user could not be identified.");
-            return "redirect:/alerts/" + id + "?from=" + safeSource(from);
+            return "redirect:/alerts/" + id + "?from=" + safeSource(from) + "#alert-comments";
         }
         try {
             commentService.addComment(id, user.getUserId(), comment);
