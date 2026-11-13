@@ -37,6 +37,9 @@ public class Alert {
     @Column(name = "correlation_key", nullable = false, length = 500)
     private String correlationKey = "DEFAULT";
 
+    @Column(name = "alert_type", nullable = false, length = 40)
+    private String alertType = "MONITORING_JOB";
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AlertStatus status = AlertStatus.ACTIVE;
@@ -86,6 +89,7 @@ public class Alert {
         if (updatedAt == null) updatedAt = now;
         if (occurrenceCount == null || occurrenceCount < 1) occurrenceCount = 1L;
         if (correlationKey == null || correlationKey.isBlank()) correlationKey = "DEFAULT";
+        if (alertType == null || alertType.isBlank()) alertType = "MONITORING_JOB";
     }
 
     @PreUpdate
@@ -103,6 +107,8 @@ public class Alert {
     public void setAlertRule(AlertRule alertRule) { this.alertRule = alertRule; }
     public MonitoringJob getMonitoringJob() { return monitoringJob; }
     public void setMonitoringJob(MonitoringJob monitoringJob) { this.monitoringJob = monitoringJob; }
+    public String getAlertType() { return alertType; }
+    public void setAlertType(String alertType) { this.alertType = alertType; }
     public String getCorrelationKey() { return correlationKey; }
     public void setCorrelationKey(String correlationKey) { this.correlationKey = correlationKey; }
     public AlertStatus getStatus() { return status; }
