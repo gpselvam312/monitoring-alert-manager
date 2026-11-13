@@ -10,6 +10,16 @@ import org.junit.jupiter.api.Test;
 
 class TeamsNotificationSenderTest {
     @Test
+    void preservesLineBreaksInConfiguredTextSections() {
+        TeamsNotificationSender sender = new TeamsNotificationSender(mock(NotificationRestClientFactory.class));
+        Map<String, Object> card = sender.buildAdaptiveCard(Map.of(
+                "title", "Multiline alert",
+                "content", List.of(Map.of("type", "text", "text", "First line\\nSecond line"))));
+
+        assertTrue(String.valueOf(card.get("body")).contains("First line\\nSecond line"));
+    }
+
+    @Test
     void rendersListAndJsonPresentationSectionsInAdaptiveCard() {
         TeamsNotificationSender sender = new TeamsNotificationSender(mock(NotificationRestClientFactory.class));
         Map<String, Object> card = sender.buildAdaptiveCard(Map.of(
