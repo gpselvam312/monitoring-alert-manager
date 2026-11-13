@@ -57,9 +57,9 @@
             return;
         }
         const headers = [
-            ['alertKey', 'Alert ID', null], ['title', 'Alert', 'title'], ['severity', 'Severity', 'severity'],
+            ['alertKey', 'Alert ID', 'alertKey'], ['title', 'Alert', 'title'], ['severity', 'Severity', 'severity'],
             ['applicationName', 'Application / Environment', null], ['status', 'Status', 'status'],
-            ['occurrenceCount', 'Occurrences', null], ['createdAt', 'Created', 'createdAt'],
+            ['occurrenceCount', 'Occurrences', 'occurrenceCount'], ['createdAt', 'Created', 'createdAt'],
             ['lastOccurredAt', 'Last Occurred', 'lastOccurredAt'], ['resolvedAt', 'Resolved', 'resolvedAt']
         ];
         const head = headers.map(([, label, sortField]) => '<th scope="col">' +
@@ -85,12 +85,21 @@
             else { config.sort = nextSort; config.direction = 'asc'; }
             state.batch = 0; state.localPage = 0; loadBatch(0, 0);
         }));
-        container.querySelectorAll('.table-sort').forEach(button => {
-            if (button.dataset.sort === config.sort) {
+        if (window.DataTable && typeof window.DataTable.updateSortIndicators === 'function') {
+            window.DataTable.updateSortIndicators({
+                containerId: config.containerId,
+                sort: config.sort,
+                direction: config.direction
+            });
+        } else {
+            container.querySelectorAll('.table-sort').forEach(button => {
                 const icon = button.querySelector('.table-sort-icon');
-                icon.classList.add(config.direction === 'desc' ? 'bi-caret-down-fill' : 'bi-caret-up-fill');
-            }
-        });
+                if (icon && button.dataset.sort === config.sort) {
+                    button.classList.add('active');
+                    icon.classList.add(config.direction === 'desc' ? 'bi-caret-down-fill' : 'bi-caret-up-fill');
+                }
+            });
+        }
         updatePagination(false);
         if (window.DataTable && typeof window.DataTable.updateCompactActions === 'function') {
             window.DataTable.updateCompactActions({ containerId: config.containerId });
