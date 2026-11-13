@@ -22,20 +22,20 @@
 <p class="small text-muted">Choose a channel to configure its destinations and delivery rules. Only routes enabled here receive notifications for this alert rule. Recurrence and reminder events respect the configured minimum interval.</p>
 <input type="hidden" th:field="*{notificationRoutesJson}" id="notificationRoutesJson">
 <div class="row g-3 mb-4" role="group" aria-label="Notification channels">
-<div class="col-12 col-md-4"><button type="button" class="machine-enabled-option notification-channel-option w-100 text-start active" data-channel-selector="EMAIL" aria-controls="routingPanelEmail" aria-expanded="true"><span class="machine-enabled-icon notification-channel-icon email"><i class="bi bi-envelope-fill" aria-hidden="true"></i></span><span class="machine-enabled-content"><span class="machine-enabled-title">Email</span><span class="machine-enabled-description">Deliver alerts to configured email recipients.</span></span><span class="notification-channel-status"><span class="channel-route-count" data-channel-count="EMAIL">0</span><i class="bi bi-chevron-right" aria-hidden="true"></i></span></button></div>
-<div class="col-12 col-md-4"><button type="button" class="machine-enabled-option notification-channel-option w-100 text-start" data-channel-selector="TEAMS" aria-controls="routingPanelTeams" aria-expanded="false"><span class="machine-enabled-icon notification-channel-icon teams"><i class="bi bi-microsoft-teams" aria-hidden="true"></i></span><span class="machine-enabled-content"><span class="machine-enabled-title">Microsoft Teams</span><span class="machine-enabled-description">Post alert cards to configured Teams channels.</span></span><span class="notification-channel-status"><span class="channel-route-count" data-channel-count="TEAMS">0</span><i class="bi bi-chevron-right" aria-hidden="true"></i></span></button></div>
-<div class="col-12 col-md-4"><button type="button" class="machine-enabled-option notification-channel-option w-100 text-start" data-channel-selector="WHATSAPP" aria-controls="routingPanelWhatsapp" aria-expanded="false"><span class="machine-enabled-icon notification-channel-icon whatsapp"><i class="bi bi-whatsapp" aria-hidden="true"></i></span><span class="machine-enabled-content"><span class="machine-enabled-title">WhatsApp</span><span class="machine-enabled-description">Send concise alerts to configured recipients.</span></span><span class="notification-channel-status"><span class="channel-route-count" data-channel-count="WHATSAPP">0</span><i class="bi bi-chevron-right" aria-hidden="true"></i></span></button></div>
+<div class="col-12 col-md-4"><div class="machine-enabled-option notification-channel-option" data-channel-option="EMAIL"><span class="machine-enabled-icon notification-channel-icon email"><i class="bi bi-envelope-fill" aria-hidden="true"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="channelEmailEnabled">Email</label><span class="machine-enabled-description">Deliver alerts to configured email recipients.</span></span><span class="machine-enabled-switch"><input type="checkbox" class="form-check-input" id="channelEmailEnabled" data-channel-toggle="EMAIL" aria-controls="routingPanelEmail"></span></div></div>
+<div class="col-12 col-md-4"><div class="machine-enabled-option notification-channel-option" data-channel-option="TEAMS"><span class="machine-enabled-icon notification-channel-icon teams"><i class="bi bi-microsoft-teams" aria-hidden="true"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="channelTeamsEnabled">Microsoft Teams</label><span class="machine-enabled-description">Post alert cards to configured Teams channels.</span></span><span class="machine-enabled-switch"><input type="checkbox" class="form-check-input" id="channelTeamsEnabled" data-channel-toggle="TEAMS" aria-controls="routingPanelTeams"></span></div></div>
+<div class="col-12 col-md-4"><div class="machine-enabled-option notification-channel-option" data-channel-option="WHATSAPP"><span class="machine-enabled-icon notification-channel-icon whatsapp"><i class="bi bi-whatsapp" aria-hidden="true"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="channelWhatsappEnabled">WhatsApp</label><span class="machine-enabled-description">Send concise alerts to configured recipients.</span></span><span class="machine-enabled-switch"><input type="checkbox" class="form-check-input" id="channelWhatsappEnabled" data-channel-toggle="WHATSAPP" aria-controls="routingPanelWhatsapp"></span></div></div>
 </div>
 <div class="accordion notification-routing-accordion" id="notificationRoutingAccordion">
-<div class="accordion-item">
+<div class="accordion-item d-none" data-channel-accordion-item="EMAIL">
 <h3 class="accordion-header"><button class="accordion-button py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelEmail" aria-expanded="true"><i class="bi bi-envelope text-primary me-2"></i>Email Routing</button></h3>
 <div id="routingPanelEmail" class="accordion-collapse collapse show" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Configure email recipients, severity and alert events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="EMAIL"><i class="bi bi-plus-lg me-1"></i>Add Email Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="EMAIL"></div><div class="small text-muted channel-routes-empty" data-channel-empty="EMAIL">No email routes configured.</div></div></div>
 </div>
-<div class="accordion-item">
+<div class="accordion-item d-none" data-channel-accordion-item="TEAMS">
 <h3 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelTeams" aria-expanded="false"><i class="bi bi-microsoft-teams text-info me-2"></i>Microsoft Teams Routing</button></h3>
 <div id="routingPanelTeams" class="accordion-collapse collapse" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Choose the configured Teams destination and delivery events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="TEAMS"><i class="bi bi-plus-lg me-1"></i>Add Teams Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="TEAMS"></div><div class="small text-muted channel-routes-empty" data-channel-empty="TEAMS">No Teams routes configured.</div></div></div>
 </div>
-<div class="accordion-item">
+<div class="accordion-item d-none" data-channel-accordion-item="WHATSAPP">
 <h3 class="accordion-header"><button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#routingPanelWhatsapp" aria-expanded="false"><i class="bi bi-whatsapp text-success me-2"></i>WhatsApp Routing</button></h3>
 <div id="routingPanelWhatsapp" class="accordion-collapse collapse" data-bs-parent="#notificationRoutingAccordion"><div class="accordion-body"><div class="d-flex justify-content-between align-items-center gap-2 mb-3"><p class="small text-muted mb-0">Configure WhatsApp recipient groups and delivery events.</p><button type="button" class="btn btn-sm btn-outline-primary" data-add-channel-route="WHATSAPP"><i class="bi bi-plus-lg me-1"></i>Add WhatsApp Route</button></div><div class="channel-routes d-grid gap-3" data-channel-routes="WHATSAPP"></div><div class="small text-muted channel-routes-empty" data-channel-empty="WHATSAPP">No WhatsApp routes configured.</div></div></div>
 </div>
@@ -197,18 +197,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const panelFor = type => routesContainer?.querySelector('[data-channel-routes="' + type + '"]');
     const channelTypeFor = row => row.querySelector('.route-channel')?.selectedOptions[0]?.dataset.channelType || '';
     const routeRows = () => Array.from(routesContainer.querySelectorAll('.notification-route-row'));
-    const selectChannel = type => {
-        const panel = document.getElementById('routingPanel' + (type === 'WHATSAPP' ? 'Whatsapp' : type === 'TEAMS' ? 'Teams' : 'Email'));
-        document.querySelectorAll('[data-channel-selector]').forEach(button => {
-            const selected = button.dataset.channelSelector === type;
-            button.classList.toggle('active', selected);
-            button.setAttribute('aria-expanded', String(selected));
-        });
-        if (panel && window.bootstrap?.Collapse) window.bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
-        else if (panel) {
-            routesContainer.querySelectorAll('.accordion-collapse').forEach(item => item.classList.remove('show'));
+    const panelIdFor = type => 'routingPanel' + (type === 'WHATSAPP' ? 'Whatsapp' : type === 'TEAMS' ? 'Teams' : 'Email');
+    const isChannelEnabled = type => !!document.querySelector('[data-channel-toggle="' + type + '"]')?.checked;
+    const setChannelEnabled = (type, enabled, openPanel = false) => {
+        const toggle = document.querySelector('[data-channel-toggle="' + type + '"]');
+        const item = routesContainer.querySelector('[data-channel-accordion-item="' + type + '"]');
+        const panel = document.getElementById(panelIdFor(type));
+        if (!toggle || !item || !panel) return;
+        toggle.checked = enabled;
+        item.classList.toggle('d-none', !enabled);
+        document.querySelector('[data-channel-option="' + type + '"]')?.classList.toggle('channel-enabled', enabled);
+        if (!enabled) {
+            panel.classList.remove('show');
+            panel.querySelectorAll('.route-enabled').forEach(input => { input.checked = false; });
+        } else if (openPanel && window.bootstrap?.Collapse) {
+            window.bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
+        } else if (enabled && openPanel) {
             panel.classList.add('show');
         }
+        syncNotificationRoutes();
     };
     const moveRouteToChannel = row => {
         const destination = panelFor(channelTypeFor(row));
@@ -231,16 +238,13 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }));
         routesEmpty.classList.toggle('d-none', rows.length > 0);
-        const activeChannels = new Set(rows.filter(row => row.querySelector('.route-enabled').checked).map(channelTypeFor));
-        document.getElementById('activeChannelCount').textContent = activeChannels.size + ' Active';
+        const activeChannels = channelTypes.filter(type => isChannelEnabled(type));
+        document.getElementById('activeChannelCount').textContent = activeChannels.length + ' Active';
         channelTypes.forEach(type => {
             const channelRows = rows.filter(row => channelTypeFor(row) === type);
             const enabledCount = channelRows.filter(row => row.querySelector('.route-enabled').checked).length;
-            const count = document.querySelector('[data-channel-count="' + type + '"]');
             const empty = document.querySelector('[data-channel-empty="' + type + '"]');
-            if (count) count.textContent = String(channelRows.length);
             if (empty) empty.classList.toggle('d-none', channelRows.length > 0);
-            document.querySelector('[data-channel-selector="' + type + '"]')?.classList.toggle('configured', enabledCount > 0);
             const addButton = document.querySelector('[data-add-channel-route="' + type + '"]');
             if (addButton) addButton.disabled = !Array.from(routeTemplate.content.querySelectorAll('.route-channel option')).some(option => option.dataset.channelType === type);
         });
@@ -297,18 +301,8 @@ document.addEventListener('DOMContentLoaded', () => {
         syncNotificationRoutes();
         if (type) selectChannel(type);
     };
-    document.querySelectorAll('[data-channel-selector]').forEach(button => button.addEventListener('click', () => selectChannel(button.dataset.channelSelector)));
+    document.querySelectorAll('[data-channel-toggle]').forEach(toggle => toggle.addEventListener('change', () => setChannelEnabled(toggle.dataset.channelToggle, toggle.checked, toggle.checked)));
     document.querySelectorAll('[data-add-channel-route]').forEach(button => button.addEventListener('click', () => addRoute(null, button.dataset.addChannelRoute)));
-    routesContainer.querySelectorAll('.accordion-collapse').forEach(panel => {
-        panel.addEventListener('show.bs.collapse', () => {
-            const type = panel.id === 'routingPanelEmail' ? 'EMAIL' : panel.id === 'routingPanelTeams' ? 'TEAMS' : 'WHATSAPP';
-            document.querySelectorAll('[data-channel-selector]').forEach(button => {
-                const selected = button.dataset.channelSelector === type;
-                button.classList.toggle('active', selected);
-                button.setAttribute('aria-expanded', String(selected));
-            });
-        });
-    });
     try {
         const initialRoutes = JSON.parse(routesInput?.value || '[]');
         if (Array.isArray(initialRoutes)) initialRoutes.forEach(route => addRoute(route));
@@ -317,7 +311,10 @@ document.addEventListener('DOMContentLoaded', () => {
         routesInput.value = '[]';
         routesEmpty.classList.remove('d-none');
     }
-    if (!routeRows().length) selectChannel('EMAIL');
+    channelTypes.forEach(type => {
+        const hasEnabledRoute = routeRows().some(row => channelTypeFor(row) === type && row.querySelector('.route-enabled').checked);
+        setChannelEnabled(type, hasEnabledRoute, false);
+    });
     document.querySelector('form')?.addEventListener('submit', syncNotificationRoutes);
 
     const jobIdInput = document.getElementById('monitoringJobId');
