@@ -137,7 +137,11 @@
             config.sections.splice(target, 0, block);
             render();
         };
-        const removeBlock = index => { config.sections.splice(index, 1); if (expandedBlockId === config.sections[index]?.id) expandedBlockId = null; render(); };
+        const removeBlock = index => {
+            const [removed] = config.sections.splice(index, 1);
+            if (removed && expandedBlockId === removed.id) expandedBlockId = null;
+            render();
+        };
         const rowActions = (index, length) => {
             const actions = element('div', 'd-flex gap-1');
             actions.append(button('Up', 'btn btn-sm btn-outline-secondary', () => moveBlock(index, -1), 'bi bi-arrow-up'));
@@ -156,17 +160,21 @@
                 : section.type === 'TABLE' ? 'Data Table Block' : 'Legacy ' + section.type + ' Block';
             const collapseId = 'presentation-block-collapse-' + index;
             const expanded = expandedBlockId ? expandedBlockId === section.id : index === 0;
-            const heading = element('button', 'btn btn-link text-decoration-none text-reset p-0 d-flex align-items-center gap-2 text-start');
-            heading.type = 'button';
-            heading.dataset.bsToggle = 'collapse';
-            heading.dataset.bsTarget = '#' + collapseId;
-            heading.setAttribute('aria-expanded', String(expanded));
-            heading.setAttribute('aria-controls', collapseId);
-            heading.append(element('i', 'bi bi-grip-vertical text-muted', ''));
+            const heading = element('div', 'd-flex align-items-center gap-2 min-w-0');
+            const dragHandle = element('span', 'presentation-block-drag-handle text-muted');
+            dragHandle.append(element('i', 'bi bi-grip-vertical'));
+            dragHandle.setAttribute('title', 'Drag to reorder');
+            const collapseButton = element('button', 'btn btn-link text-decoration-none text-reset p-0 d-flex align-items-center gap-2 text-start');
+            collapseButton.type = 'button';
+            collapseButton.dataset.bsToggle = 'collapse';
+            collapseButton.dataset.bsTarget = '#' + collapseId;
+            collapseButton.setAttribute('aria-expanded', String(expanded));
+            collapseButton.setAttribute('aria-controls', collapseId);
             const headingText = element('span', 'd-flex flex-column');
             headingText.append(element('span', 'fw-semibold', (index + 1) + '. ' + title));
             headingText.append(element('span', 'small text-muted', 'Block ' + (index + 1) + ' of ' + config.sections.length));
-            heading.append(headingText, element('i', 'bi bi-chevron-down small presentation-block-chevron'));
+            collapseButton.append(headingText, element('i', 'bi bi-chevron-down small presentation-block-chevron'));
+            heading.append(dragHandle, collapseButton);
             header.append(heading, rowActions(index, config.sections.length));
             card.append(header);
             const collapse = element('div', 'collapse' + (expanded ? ' show' : ''));
@@ -231,7 +239,7 @@
             }
             collapse.append(body);
             card.append(collapse);
-            heading.addEventListener('click', () => {
+            collapseButton.addEventListener('click', () => {
                 expandedBlockId = expanded ? null : section.id;
             });
             collapse.addEventListener('shown.bs.collapse', () => { expandedBlockId = section.id; });
@@ -239,7 +247,7 @@
                 if (expandedBlockId === section.id) expandedBlockId = null;
             });
             card.addEventListener('dragstart', event => {
-                if (event.target.closest('button, input, textarea, select')) {
+                if (!event.target.closest('.presentation-block-drag-handle')) {
                     event.preventDefault();
                     return;
                 }
