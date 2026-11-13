@@ -103,9 +103,9 @@
             && (field.path.startsWith('data.') || field.path.startsWith('response.')));
         const relativeDiscoveredPaths = sourcePath => {
             if (!sourcePath) return [];
-            const prefixes = sourcePath.includes('[]')
-                ? [sourcePath.replace(/\\[\\]$/, '') + '.']
-                : [sourcePath + '.', sourcePath + '[].'];
+            const prefixes = sourcePath.endsWith('[]')
+                ? [sourcePath + '.']
+                : sourcePath.includes('[]') ? [sourcePath + '.'] : [sourcePath + '.', sourcePath + '[].'];
             return discoveredPaths().map(field => {
                 const matchedPrefix = prefixes.find(prefix => field.path.startsWith(prefix));
                 const relative = matchedPrefix ? field.path.slice(matchedPrefix.length) : '';
