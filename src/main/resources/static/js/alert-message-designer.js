@@ -532,11 +532,11 @@
                                 const value = resolvePath(field.key, item);
                                 const renderedValue = value === undefined || value === null
                                     ? (usingRepresentativeRow ? 'Example value' : '—') : display(value);
-                                return (field.label || field.key) + ': ' + renderedValue;
-                            }).join(' | ');
+                                return { label: field.label || field.key, value: renderedValue };
+                            });
                         }
-                        return display(section.valuePath ? resolvePath(section.valuePath, item) : item);
-                    }).filter(value => value !== '')
+                        return [{ label: 'Value', value: display(section.valuePath ? resolvePath(section.valuePath, item) : item) }];
+                    }).filter(fields => fields.length)
                 };
             }
             return { type: section.type.toLowerCase(), title, text: '[Legacy block preview]' };
@@ -565,12 +565,19 @@
                 if (block.type === 'list') {
                     if (!block.items.length) {
                         container.append(element('div', 'small text-muted mb-2', block.emptyText || 'No items available'));
-                    } else if (channel === 'whatsapp') {
-                        block.items.forEach((item, index) => container.append(element('div', 'font-monospace small', (index + 1) + '. ' + item)));
                     } else {
-                        const list = element('ul', 'mb-2 ps-3');
-                        block.items.forEach(item => list.append(element('li', 'mb-1', item)));
-                        container.append(list);
+                        const wrapper = element('div', 'table-responsive mb-2');
+                        const table = element('table', 'table table-sm table-striped table-bordered mb-0');
+                        const body = element('tbody');
+                        block.items.forEach(fields => fields.forEach(field => {
+                            const row = element('tr');
+                            row.append(element('td', 'fw-semibold text-break', field.label),
+                                element('td', 'text-break', field.value));
+                            body.append(row);
+                        }));
+                        table.append(body);
+                        wrapper.append(table);
+                        container.append(wrapper);
                     }
                 }
                 if (block.type === 'table') {
@@ -581,7 +588,7 @@
                         });
                     } else {
                         const wrapper = element('div', 'table-responsive');
-                        const table = element('table', 'table table-sm table-bordered mb-2');
+                        const table = element('table', 'table table-sm table-striped table-bordered mb-2');
                         const head = element('thead', 'table-light');
                         const header = element('tr');
                         block.columns.forEach(column => header.append(element('th', '', column.label)));
@@ -605,6 +612,7 @@
             preview.replaceChildren();
             if (activePreview === 'email') {
                 const email = element('div', 'bg-white border rounded shadow-sm overflow-hidden');
+                email.style.color = '#1f2937';
                 const subject = element('div', 'border-bottom px-3 py-2 small text-muted');
                 subject.append(element('strong', 'me-2', 'Subject:'), document.createTextNode(header.title));
                 const banner = element('div', 'p-3 text-white');
@@ -612,6 +620,7 @@
                 banner.append(element('div', 'small fw-bold text-uppercase', sample.severity + ' ALERT'),
                     element('div', 'h5 mb-0 mt-1', header.title));
                 const body = element('div', 'p-3');
+                body.style.color = '#1f2937';
                 if (header.message) body.append(element('p', 'mb-2', header.message));
                 appendBlocks(body, blocks, 'email');
                 body.append(element('div', 'border-top mt-3 pt-2 small text-muted', 'Monitoring Alert Manager'));
@@ -619,6 +628,7 @@
                 preview.append(email);
             } else if (activePreview === 'teams') {
                 const card = element('div', 'bg-white border rounded overflow-hidden shadow-sm');
+                card.style.color = '#1f2937';
                 const accent = element('div', 'p-3 text-white');
                 accent.style.background = sample.severity === 'CRITICAL' ? '#b42318' : sample.severity === 'WARNING' ? '#b54708' : '#175cd3';
                 accent.append(element('div', 'small fw-bold', sample.severity + ' ALERT'),
@@ -631,8 +641,10 @@
             } else {
                 const chat = element('div', 'mx-auto p-3 rounded-4 shadow-sm');
                 chat.style.maxWidth = '360px';
+                chat.style.color = '#1f2937';
                 chat.style.background = '#d9fdd3';
                 const bubble = element('div', 'bg-white rounded-3 p-3 shadow-sm');
+                bubble.style.color = '#1f2937';
                 bubble.append(element('div', 'small fw-bold mb-2', header.title));
                 if (header.message) bubble.append(element('div', 'small mb-2', header.message));
                 appendBlocks(bubble, blocks, 'whatsapp');
@@ -656,7 +668,9 @@
                     lines.push('```');
                 }
                 if (block.type === 'list' && block.items.length) {
-                    block.items.forEach((item, index) => lines.push((index + 1) + '. ' + item));
+                    block.items.forEach((fields, index) => {
+                        lines.push((index + 1) + '. ' + fields.map(field => field.label + ': ' + field.value).join(' | '));
+                    });
                 }
                 if (block.type === 'table' && block.rows.length) {
                     lines.push('```');
