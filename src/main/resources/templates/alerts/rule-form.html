@@ -129,19 +129,15 @@
 <div class="form-text mt-3">Missing values and execution/parser errors do not count as healthy results. Recovery uses this configured criterion.</div></div></div>
 </div>
 <div class="tab-pane fade" id="message-presentation-pane" role="tabpanel" aria-labelledby="message-presentation-tab" tabindex="0">
-<div class="app-card mb-3">
-    <div class="app-card-header"><h2 class="h6 mb-0"><i class="bi bi-card-text me-2"></i>Fallback Alert Record Content</h2></div>
+<details class="app-card mb-3">
+    <summary class="app-card-header h6 mb-0"><i class="bi bi-card-text me-2"></i>Legacy fallback message</summary>
     <div class="app-card-body">
-        <p class="small text-muted">These values are retained as the alert record fallback when the presentation designer does not provide a title or introductory message.</p>
-        <div class="row g-3">
-            <div class="col-12"><label class="form-label" for="alertSubject">Fallback alert subject <span class="text-danger">*</span></label>
-                <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required></div>
-            <div class="col-12"><label class="form-label" for="alertMessage">Fallback alert message <span class="text-danger">*</span></label>
-                <textarea class="form-control" id="alertMessage" th:field="*{alertMessage}" rows="3" maxlength="10000" required></textarea></div>
-            <div class="col-12"><div class="form-text">Legacy variables remain supported: <code>{ruleName}</code>, <code>{severity}</code>, <code>{jobName}</code>, <code>{applicationName}</code>, <code>{environment}</code>, <code>{fieldPath}</code>, <code>{actualValue}</code>, <code>{threshold}</code>, <code>{executionId}</code>, <code>{timestamp}</code>.</div></div>
-        </div>
+        <p class="small text-muted">Used only when no message payload blocks produce content. When blocks are configured and rendered, this fallback message is not added as a separate introduction.</p>
+        <label class="form-label" for="alertMessage">Fallback alert message</label>
+        <textarea class="form-control" id="alertMessage" th:field="*{alertMessage}" rows="3" maxlength="10000" required></textarea>
+        <div class="form-text">Legacy variables remain supported: <code>{ruleName}</code>, <code>{severity}</code>, <code>{jobName}</code>, <code>{applicationName}</code>, <code>{environment}</code>, <code>{fieldPath}</code>, <code>{actualValue}</code>, <code>{threshold}</code>, <code>{executionId}</code>, <code>{timestamp}</code>.</div>
     </div>
-</div>
+</details>
 <div class="app-card mb-3" id="alertPresentationDesigner">
     <div class="app-card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
         <div><h2 class="h6 mb-0"><i class="bi bi-layout-text-window-reverse me-2"></i>Message Presentation Designer</h2>
@@ -149,15 +145,11 @@
         <span class="badge text-bg-light">Visual designer</span>
     </div>
     <div class="app-card-body">
-        <details class="presentation-message-header border rounded mb-3">
-            <summary class="px-3 py-2 small fw-semibold"><i class="bi bi-type me-2"></i>Notification title & introductory message</summary>
-            <div class="row g-3 p-3">
-                <div class="col-12"><label class="form-label" for="presentationTitleTemplate">Notification title</label>
-                    <input class="form-control" id="presentationTitleTemplate" maxlength="500" placeholder="{{severity}} — {{ruleName}}"></div>
-                <div class="col-12"><label class="form-label" for="presentationMessageTemplate">Introductory message</label>
-                    <textarea class="form-control" id="presentationMessageTemplate" rows="2" maxlength="10000" placeholder="A short summary shown before the configured blocks"></textarea></div>
-            </div>
-        </details>
+        <div class="mb-3">
+            <label class="form-label" for="alertSubject">Subject <span class="text-danger">*</span></label>
+            <input class="form-control" id="alertSubject" th:field="*{alertSubject}" maxlength="500" required>
+            <div class="form-text">Defaults to the rule severity and name. These placeholders are resolved using the actual alert: <code>{severity}</code> and <code>{ruleName}</code>. You can edit the subject or add other supported placeholders.</div>
+        </div>
         <div class="row g-3 align-items-stretch presentation-designer-grid">
             <div class="col-12 col-xl-6 presentation-builder-pane">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -181,7 +173,7 @@
             <div class="col-12 col-xl-6 presentation-preview-pane">
                 <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2 presentation-preview-heading">
                     <div><h3 class="h6 mb-0">Live Preview</h3><div class="small text-muted">Preview uses sample values and adapts the same blocks for each channel.</div></div>
-                    <div class="d-flex align-items-center gap-2"><label class="small text-muted mb-0" for="presentationPreviewSeverity">Severity</label><select class="form-select form-select-sm" id="presentationPreviewSeverity" style="width:auto"><option value="CRITICAL">Critical</option><option value="WARNING">Warning</option><option value="INFO">Informational</option></select>
+                    <div class="d-flex align-items-center gap-2"><label class="small text-muted mb-0" for="presentationPreviewSeverity">Preview severity (test only)</label><select class="form-select form-select-sm" id="presentationPreviewSeverity" style="width:auto"><option value="CRITICAL">Critical</option><option value="WARNING">Warning</option><option value="INFO">Informational</option></select>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshPresentationPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button></div>
                 </div>
                 <ul class="nav nav-pills nav-fill mb-3" id="presentationPreviewTabs" role="tablist">
