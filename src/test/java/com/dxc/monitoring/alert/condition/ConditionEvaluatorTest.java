@@ -203,6 +203,88 @@ class ConditionEvaluatorTest {
         assertTrue(evaluator.evaluate(condition, context).matched());
     }
 
+    @Test
+    void evaluatesAllCollectionQuantifiersForMixedRecords() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("nodes", java.util.List.of(
+                Map.of("state", "DOWN"), Map.of("state", "UP")))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> predicate = Map.of("fieldPath", "state", "operator", "EQ", "threshold", "DOWN");
+
+        assertTrue(evaluator.evaluate(Map.of("type", "COLLECTION", "collectionPath", "data.nodes",
+                "quantifier", "ANY", "condition", predicate), context).matched());
+        assertFalse(evaluator.evaluate(Map.of("type", "COLLECTION", "collectionPath", "data.nodes",
+                "quantifier", "ALL", "condition", predicate), context).matched());
+        assertFalse(evaluator.evaluate(Map.of("type", "COLLECTION", "collectionPath", "data.nodes",
+                "quantifier", "NONE", "condition", predicate), context).matched());
+    }
+
+    @Test
+    void evaluatesEveryAggregateOperation() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("nodes", java.util.List.of(
+                Map.of("state", "DOWN", "lag", 10),
+                Map.of("state", "UP", "lag", 30),
+                Map.of("state", "DOWN", "lag", 60)))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+
+        Map<String, Object> count = Map.of("type", "AGGREGATE", "collectionPath", "data.nodes",
+                "operation", "COUNT", "operator", "EQ", "threshold", 3);
+        Map<String, Object> sum = Map.of("type", "AGGREGATE", "collectionPath", "data.nodes",
+                "operation", "SUM", "valuePath", "lag", "operator", "EQ", "threshold", 100);
+        Map<String, Object> min = Map.of("type", "AGGREGATE", "collectionPath", "data.nodes",
+                "operation", "MIN", "valuePath", "lag", "operator", "EQ", "threshold", 10);
+        Map<String, Object> max = Map.of("type", "AGGREGATE", "collectionPath", "data.nodes",
+                "operation", "MAX", "valuePath", "lag", "operator", "EQ", "threshold", 60);
+
+        assertTrue(evaluator.evaluate(count, context).matched());
+        assertTrue(evaluator.evaluate(sum, context).matched());
+        assertTrue(evaluator.evaluate(min, context).matched());
+        assertTrue(evaluator.evaluate(max, context).matched());
+    }
+
+    @Test
+    void aggregateFilterRestrictsTheRecordsBeforeCalculating() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("nodes", java.util.List.of(
+                Map.of("state", "DOWN", "lag", 10),
+                Map.of("state", "UP", "lag", 500),
+                Map.of("state", "DOWN", "lag", 30)))));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> aggregate = Map.of("type", "AGGREGATE", "collectionPath", "data.nodes",
+                "operation", "SUM", "valuePath", "lag", "operator", "EQ", "threshold", 40,
+                "filter", Map.of("fieldPath", "state", "operator", "EQ", "threshold", "DOWN"));
+
+        ConditionEvaluationResult result = evaluator.evaluate(aggregate, context);
+        assertTrue(result.matched());
+        assertEquals("40", result.observedValue().toString());
+    }
+
+    @Test
+    void evaluatesNestedOrGroupsAndFieldToFieldComparison() {
+        JsonDocument document = JsonDocument.from(Map.of("data", Map.of("actual", 95, "limit", 80, "status", "UP")));
+        ConditionEvaluationContext context = new ConditionEvaluationContext(document, Map.of());
+        Map<String, Object> nested = Map.of("type", "GROUP", "operator", "OR", "children", java.util.List.of(
+                Map.of("type", "GROUP", "operator", "AND", "children", java.util.List.of(
+                        condition("data.status", "EQ", "DOWN"),
+                        condition("data.actual", "GT", 90))),
+                Map.of("type", "FIELD_COMPARISON", "leftPath", "data.actual",
+                        "rightPath", "data.limit", "operator", "GT")));
+
+        assertTrue(evaluator.evaluate(nested, context).matched());
+    }
+
+    @Test
+    void rejectsInvalidAggregateCollectionsAndNonNumericValues() {
+        JsonDocument nonArray = JsonDocument.from(Map.of("data", Map.of("nodes", Map.of("lag", 10))));
+        ConditionEvaluationContext nonArrayContext = new ConditionEvaluationContext(nonArray, Map.of());
+        Map<String, Object> aggregate = Map.of("type", "AGGREGATE", "collectionPath", "data.nodes",
+                "operation", "SUM", "valuePath", "lag", "operator", "GT", "threshold", 1);
+        assertThrows(IllegalArgumentException.class, () -> evaluator.evaluate(aggregate, nonArrayContext));
+
+        JsonDocument nonNumeric = JsonDocument.from(Map.of("data", Map.of("nodes",
+                java.util.List.of(Map.of("lag", "unknown")))));
+        ConditionEvaluationContext nonNumericContext = new ConditionEvaluationContext(nonNumeric, Map.of());
+        assertThrows(IllegalArgumentException.class, () -> evaluator.evaluate(aggregate, nonNumericContext));
+    }
+
     private Map<String, Object> condition(String path, String operator, Object threshold) {
         return Map.of("fieldPath", path, "operator", operator, "threshold", threshold);
     }
