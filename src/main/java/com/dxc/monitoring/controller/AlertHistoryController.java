@@ -26,6 +26,7 @@ import com.dxc.monitoring.web.PageRequestSupport;
 @Controller
 @RequestMapping("/alerts/history")
 public class AlertHistoryController {
+    private static final Pattern ALERT_KEY_PATTERN = Pattern.compile("(?i)^ALT-\\d{4}-(\\d{8,})$");
     private final AlertRepository alertRepository;
     private final DashboardAccessService accessService;
     private final EnvironmentRepository environmentRepository;
@@ -56,7 +57,7 @@ public class AlertHistoryController {
         if (safeSearch.length() > 150) safeSearch = safeSearch.substring(0, 150);
         String repositorySearch = safeSearch;
         Long exactAlertId = null;
-        Matcher alertKeyMatcher = Pattern.compile("(?i)^ALT-\\d{4}-(\\d{8,})$").matcher(safeSearch);
+        Matcher alertKeyMatcher = ALERT_KEY_PATTERN.matcher(safeSearch);
         if (alertKeyMatcher.matches()) {
             try {
                 exactAlertId = Long.parseLong(alertKeyMatcher.group(1));
