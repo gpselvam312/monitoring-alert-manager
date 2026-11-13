@@ -5971,25 +5971,86 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .route-email-multiselect.is-invalid .route-email-feedback { display: block; }
 
 
-/* Alert History uses the same compact summary-card system as the dashboard. */
-.alert-history-summary {
+/* Reusable summary cards for compact table and history summaries. */
+.summary-table-cards {
+    display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+    margin-bottom: 1rem;
 }
-.alert-history-summary .server-health-summary-item {
-    min-height: 4.25rem;
-    text-decoration: none;
-}
-.alert-history-summary .server-health-summary-item > span {
+.summary-table-card {
+    --summary-card-accent: var(--text-secondary);
+    display: flex;
     min-width: 0;
+    min-height: 7.25rem;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: .4rem;
+    padding: .9rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--summary-card-accent) 38%, var(--border-color));
+    border-radius: .65rem;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    text-align: left;
+    text-decoration: none;
+    transition: border-color .15s ease, background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.summary-table-card-icon {
+    color: var(--summary-card-accent);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+.summary-table-card-label {
+    color: var(--text-secondary);
+    font-size: .78rem;
+    font-weight: 600;
     overflow-wrap: anywhere;
 }
-.alert-history-summary .server-health-summary-item strong {
-    flex: 0 0 auto;
+.summary-table-card-value {
+    color: var(--text-primary);
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.15;
     font-variant-numeric: tabular-nums;
 }
+.summary-table-card-filter {
+    cursor: pointer;
+}
+.summary-table-card-filter:hover,
+.summary-table-card-filter:focus-visible {
+    border-color: var(--summary-card-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--summary-card-accent) 12%, transparent);
+    transform: translateY(-1px);
+}
+.summary-table-card-filter:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
+}
+.summary-table-card-filter.is-active {
+    box-shadow: inset 0 0 0 1px var(--theme-primary);
+}
+.server-health-summary-total.summary-table-card { --summary-card-accent: var(--theme-primary); }
+.server-health-summary-critical.summary-table-card { --summary-card-accent: var(--danger); }
+.server-health-summary-warning.summary-table-card { --summary-card-accent: var(--warning); }
+.server-health-summary-healthy.summary-table-card { --summary-card-accent: var(--success); }
+.server-health-summary-unknown.summary-table-card { --summary-card-accent: var(--text-secondary); }
+
+/* Alert History adopts the reusable summary-card presentation. */
+.alert-history-summary .summary-table-card {
+    min-height: 7.25rem;
+}
 @media (max-width: 767.98px) {
-    .alert-history-summary {
+    .summary-table-cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .6rem;
+    }
+    .summary-table-card {
+        min-height: 6.75rem;
+        padding: .75rem;
+    }
+    .summary-table-card-value {
+        font-size: 1.4rem;
     }
 }
 
