@@ -29,7 +29,7 @@
                     <select class="form-select" id="environmentId" name="environmentId"><option value="">All environments</option>
                         <option th:each="env : ${environments}" th:value="${env.id}" th:text="${env.name}" th:selected="${environmentId == env.id}"></option></select></div>
                 <div class="col-12 col-lg-1 d-grid"><button class="btn btn-primary" type="submit">Apply</button></div>
-                <div class="row g-2 mt-1">
+                <div class="col-12"><div class="row g-2 mt-1">
                     <div class="col-6 col-md-3"><label class="form-label small" for="sort">Sort by</label>
                         <select class="form-select form-select-sm" id="sort" name="sort">
                             <option value="lastOccurredAt" th:selected="${sort == 'lastOccurredAt'}">Last occurred</option>
@@ -53,7 +53,7 @@
                             <option value="25" th:selected="${pageSize == 25}">25</option>
                         </select>
                     </div>
-                </div>
+                </div></div>
             </form>
         </div>
         <div th:if="${alerts.totalElements == 0}" class="empty-state"><div class="empty-state-icon"><i class="bi bi-clock-history"></i></div><h6>No alerts found</h6><p>Try changing the selected filters.</p></div>
