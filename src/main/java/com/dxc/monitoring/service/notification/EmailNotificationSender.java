@@ -68,6 +68,12 @@ public class EmailNotificationSender implements NotificationChannelSender {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
             helper.setFrom(from);
             helper.setTo(recipient.getEmail());
+            String ccRecipients = string(payload, "ccRecipients", "");
+            if (!ccRecipients.isBlank()) {
+                String[] cc = java.util.Arrays.stream(ccRecipients.split("[,;\\\\s]+"))
+                        .map(String::trim).filter(address -> !address.isBlank()).toArray(String[]::new);
+                if (cc.length > 0) helper.setCc(cc);
+            }
             helper.setSubject(title);
             helper.setText(plainText(payload), htmlRenderer.render(payload));
             mailSender.send(mimeMessage);
