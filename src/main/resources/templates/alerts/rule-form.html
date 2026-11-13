@@ -23,7 +23,7 @@
 <div class="col-12 col-md-4"><label class="form-label" for="severity">Severity</label><select class="form-select" id="severity" th:field="*{severity}"><option th:each="severity : ${severities}" th:value="${severity.name()}" th:text="${severity.name()}"></option></select></div>
 <div class="col-12 col-md-5"><label class="form-label" for="executionSourcePolicy">Execution Source</label><select class="form-select" id="executionSourcePolicy" th:field="*{executionSourcePolicy}"><option value="SCHEDULED_ONLY">Scheduled only (recommended)</option><option value="MANUAL_ONLY">Manual only</option><option value="ALL_NON_STREAMING">Scheduled and manual</option></select><div class="form-text">Historical executions with unknown source are never evaluated.</div></div>
 <div class="col-12"><div class="form-text">Notification destinations are assigned to this alert rule only. Shared channels, recipients and groups are managed under Notification Configuration.</div></div>
-<div class="col-12 col-md-6"><div class="machine-enabled-option rule-enabled-option"><span class="machine-enabled-icon" aria-hidden="true"><i class="bi bi-bell-fill"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="enabled">Rule enabled</label><span class="machine-enabled-description">When enabled, this rule evaluates eligible monitoring executions and can create alerts.</span></span><span class="machine-enabled-switch"><input class="form-check-input" type="checkbox" role="switch" id="enabled" th:field="*{enabled}" aria-label="Enable alert rule"></span></div></div>
+<div class="col-12 col-md-4"><div class="machine-enabled-option rule-enabled-option"><span class="machine-enabled-icon" aria-hidden="true"><i class="bi bi-bell-fill"></i></span><span class="machine-enabled-content"><label class="machine-enabled-title" for="enabled">Rule enabled</label></span><span class="machine-enabled-switch"><input class="form-check-input" type="checkbox" role="switch" id="enabled" th:field="*{enabled}" aria-label="Enable alert rule"></span></div></div>
 </div></div></div>
 </div>
 <div class="tab-pane fade" id="notification-routing-pane" role="tabpanel" aria-labelledby="notification-routing-tab" tabindex="0">
@@ -197,8 +197,7 @@
         <div id="presentationBuilderMessage" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
     </div>
 </div>
-</div>
-</div>
+</div></div>
 <div class="d-flex justify-content-end gap-2"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
 </form><script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -397,8 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (advancedRecoveryEditor) advancedRecoveryEditor.open = true;
     }
     const syncRecoveryConfig = () => {
-        if (recoveryTreeInput) recoveryTreeInput.value = advancedRecoveryMode ? (advancedRecoveryJson?.value || '') : '';
-        standardRecoveryFields?.classList.toggle('d-none', advancedRecoveryMode);
+        if (recoveryTreeInput) recoveryTreeInput.value = advancedRecoveryMode ? (advancedRecoveryJson?.value || '') : '';        standardRecoveryFields?.classList.toggle('d-none', advancedRecoveryMode);
     };
     syncRecoveryConfig();
     advancedRecoveryJson?.addEventListener('input', syncRecoveryConfig);
@@ -597,8 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const operatorCol = document.createElement('div');
             operatorCol.className = 'col-12 col-lg-4';
             const operatorLabel = document.createElement('label');
-            operatorLabel.className = 'form-label'; operatorLabel.textContent = 'Operator';
-            const operatorSelect = document.createElement('select');
+            operatorLabel.className = 'form-label'; operatorLabel.textContent = 'Operator';            const operatorSelect = document.createElement('select');
             operatorSelect.className = 'form-select tree-condition-operator';
             conditionOperators.forEach(([value,text]) => {
                 const option = new Option(text,value); option.selected = (node.operator || 'GREATER_THAN') === value;
