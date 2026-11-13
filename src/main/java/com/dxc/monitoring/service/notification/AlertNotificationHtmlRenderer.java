@@ -87,20 +87,33 @@ public class AlertNotificationHtmlRenderer {
                     }
                 }
                 case "table" -> html.append(renderTable(section));
-                case "list" -> {
-                    Object rawItems = section.get("items");
-                    if (rawItems instanceof List<?> items && !items.isEmpty()) {
-                        html.append("<ul style=\"padding-left:22px;margin:6px 0;color:#344054;font-size:14px;\">");
-                        for (Object item : items.stream().limit(100).toList()) html.append("<li style=\"padding:2px 0;\">")
-                                .append(escape(display(item))).append("</li>");
-                        html.append("</ul>");
-                    }
-                }
+                case "list" -> html.append(renderList(section));
                 case "json" -> html.append("<pre style=\"background:#F9FAFB;border:1px solid #EAECF0;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#344054;\">")
                         .append(escape(value(section, "value", ""))).append("</pre>");
                 default -> { }
             }
         }
+        return html.toString();
+    }
+
+    private String renderList(Map<?, ?> section) {
+        Object rawItems = section.get("items");
+        if (!(rawItems instanceof List<?> items) || items.isEmpty()) return "";
+
+        StringBuilder html = new StringBuilder(
+                "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" "
+                + "style=\"margin-top:8px;border:1px solid #EAECF0;border-collapse:collapse;background-color:#FFFFFF;color:#101828;font-size:13px;\">");
+        int rowIndex = 0;
+        for (Object item : items.stream().limit(100).toList()) {
+            String background = rowIndex++ % 2 == 0 ? "#FFFFFF" : "#F8FAFC";
+            html.append("<tr bgcolor=\"").append(background).append("\">")
+                    .append("<td bgcolor=\"").append(background)
+                    .append("\" style=\"padding:9px 11px;border-bottom:1px solid #EAECF0;background-color:")
+                    .append(background).append(";color:#101828;font-size:13px;line-height:1.5;\">")
+                    .append(escape(display(item)))
+                    .append("</td></tr>");
+        }
+        html.append("</table>");
         return html.toString();
     }
 
