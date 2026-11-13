@@ -175,11 +175,13 @@ public class AlertRuleFieldDiscoveryService {
             return;
         }
         if (value instanceof List<?> list) {
-            if (list.isEmpty()) {
-                addField(path, "array", "[]", fields);
-                return;
-            }
-            // Reuse the same path for every item. Repeated fields are merged below.
+            addField(path, "array", "[" + list.size() + " items]", fields);
+            if (list.isEmpty()) return;
+            // Arrays are exposed as selectable collection sources. Object members are
+            // discovered using reusable paths without numeric indexes.
+            boolean primitiveItems = list.stream().allMatch(item ->
+                    item == null || (!(item instanceof Map<?, ?>) && !(item instanceof List<?>)));
+            if (primitiveItems) return;
             for (Object item : list) {
                 if (fields.size() >= MAX_FIELDS) return;
                 flatten(item, path, fields);
