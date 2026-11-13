@@ -107,8 +107,9 @@ public class AlertRetentionService {
         if (retentionDays < 1 || retentionDays > 36500) {
             throw new IllegalArgumentException("Retention must be between 1 and 36500 days.");
         }
-        AlertRetentionPolicy policy = policyRepository.findById(policyId)
+        AlertRetentionPolicy policy = policyRepository.findByIdWithScope(policyId)
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
+        assertPolicyScopeAccess(policy);
         if (policy.isEnabled()) {
             Long applicationId = policy.getApplication() == null ? null : policy.getApplication().getId();
             Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
