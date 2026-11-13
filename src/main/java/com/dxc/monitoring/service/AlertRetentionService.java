@@ -165,7 +165,7 @@ public class AlertRetentionService {
         } else {
             return;
         }
-        for (AlertRetentionPolicy existing : policyRepository.findAll()) {
+        for (AlertRetentionPolicy existing : policyRepository.findAllWithScope()) {
             if (!existing.isEnabled() || existing.getId().equals(excludedPolicyId)
                     || existing.getDataType() != relatedType) continue;
             Long existingApplicationId = existing.getApplication() == null ? null : existing.getApplication().getId();
@@ -190,7 +190,7 @@ public class AlertRetentionService {
 
     private void assertNoOverlappingEnabledPolicy(AlertRetentionPolicy.DataType dataType,
             Long applicationId, Long environmentId, String alertType, Long excludedPolicyId) {
-        boolean overlaps = policyRepository.findAll().stream()
+        boolean overlaps = policyRepository.findAllWithScope().stream()
                 .filter(AlertRetentionPolicy::isEnabled)
                 .filter(existing -> !existing.getId().equals(excludedPolicyId))
                 .filter(existing -> existing.getDataType() == dataType)
