@@ -575,37 +575,6 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', () => { syncTree(); syncRecoveryConfig(); });
     renderTree();
 
-    const alertSubjectInput = document.getElementById('alertSubject');
-    const alertMessageInput = document.getElementById('alertMessage');
-    const alertPreviewSubject = document.getElementById('alertContentPreviewSubject');
-    const alertPreviewMessage = document.getElementById('alertContentPreviewMessage');
-    const refreshAlertPreview = document.getElementById('refreshAlertContentPreview');
-    const renderAlertContentPreview = () => {
-        const values = {
-            ruleName: document.getElementById('name')?.value || 'CPU Utilization Alert',
-            severity: document.getElementById('severity')?.value || 'CRITICAL',
-            jobName: document.getElementById('monitoringJobLabel')?.value || 'Monitoring Job',
-            applicationName: 'Example Application',
-            environment: 'Example Environment',
-            fieldPath: firstCondition(tree)?.fieldPath || 'system.cpu.percent',
-            actualValue: '94.5',
-            threshold: firstCondition(tree)?.threshold ?? '85',
-            executionId: '12345',
-            timestamp: new Date().toLocaleString()
-        };
-        const render = (template) => (template || '').replace(/\{([A-Za-z][A-Za-z0-9]*)\}/g, (token, key) =>
-            Object.prototype.hasOwnProperty.call(values, key) ? values[key] : token);
-        if (alertPreviewSubject) alertPreviewSubject.textContent = render(alertSubjectInput?.value || '');
-        if (alertPreviewMessage) alertPreviewMessage.textContent = render(alertMessageInput?.value || '');
-    };
-    [alertSubjectInput, alertMessageInput, document.getElementById('name'),
-        document.getElementById('severity'), document.getElementById('monitoringJobLabel')].forEach(input => {
-        input?.addEventListener('input', renderAlertContentPreview);
-        input?.addEventListener('change', renderAlertContentPreview);
-    });
-    refreshAlertPreview?.addEventListener('click', renderAlertContentPreview);
-    renderAlertContentPreview();
-
     const applyOperatorOptions = (selectElement, type) => {
         if (!selectElement) return;
         const allowed = type === 'number'
