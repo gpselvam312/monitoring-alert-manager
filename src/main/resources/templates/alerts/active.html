@@ -9,7 +9,7 @@
 <div th:if="${alerts.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0">
 <thead><tr><th>Severity</th><th>Alert</th><th>Monitoring Job</th><th>Application / Environment</th><th>Occurrences</th><th>Last Occurred</th><th></th></tr></thead>
 <tbody><tr th:each="alert : ${alerts.content}">
-<td><span class="badge text-bg-danger" th:if="${alert.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${alert.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${alert.severity.name() == 'INFO'}">Info</span></td>
+<td><span class="badge text-bg-danger" th:if="${alert.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${alert.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${alert.severity.name() == 'INFO'}">Info</span><span class="badge text-bg-success" th:if="${alert.severity.name() == 'SUCCESS'}">Success</span></td>
 <td><a class="fw-semibold text-decoration-none" th:href="@{/alerts/{id}(id=${alert.id})}" th:text="${alert.title}">Alert title</a><div class="small text-muted" th:text="${alert.summary}">Summary</div></td>
 <td th:text="${alert.monitoringJob.name}">Job</td><td><div th:text="${alert.monitoringJob.application.name}">Application</div><div class="small text-muted" th:text="${alert.monitoringJob.environment != null ? alert.monitoringJob.environment.name : '—'}">Environment</div></td>
 <td th:text="${alert.occurrenceCount}">1</td><td th:text="${#temporals.format(alert.lastOccurredAt, 'yyyy-MM-dd HH:mm:ss')}">Time</td><td class="text-end"><a class="btn btn-sm btn-outline-secondary" th:href="@{/alerts/{id}(id=${alert.id})}">Details</a></td>
