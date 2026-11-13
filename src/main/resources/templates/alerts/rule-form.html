@@ -181,7 +181,8 @@
             <div class="col-12 col-xl-6 presentation-preview-pane">
                 <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2 presentation-preview-heading">
                     <div><h3 class="h6 mb-0">Live Preview</h3><div class="small text-muted">Preview uses sample values and adapts the same blocks for each channel.</div></div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshPresentationPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                    <div class="d-flex align-items-center gap-2"><label class="small text-muted mb-0" for="presentationPreviewSeverity">Severity</label><select class="form-select form-select-sm" id="presentationPreviewSeverity" style="width:auto"><option value="CRITICAL">Critical</option><option value="WARNING">Warning</option><option value="INFO">Informational</option></select>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshPresentationPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button></div>
                 </div>
                 <ul class="nav nav-pills nav-fill mb-3" id="presentationPreviewTabs" role="tablist">
                     <li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" aria-selected="true" data-preview-channel="email"><i class="bi bi-envelope me-1"></i>Email</button></li>
