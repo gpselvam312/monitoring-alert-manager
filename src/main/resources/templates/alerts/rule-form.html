@@ -120,39 +120,61 @@
 </div>
 <div class="app-card mb-3" id="alertPresentationDesigner">
     <div class="app-card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
-        <div><h2 class="h6 mb-0"><i class="bi bi-layout-text-window-reverse me-2"></i>Alert Presentation Designer</h2><div class="small text-muted mt-1">Build one notification layout that is adapted for Email, Teams and WhatsApp.</div></div>
+        <div><h2 class="h6 mb-0"><i class="bi bi-layout-text-window-reverse me-2"></i>Message Presentation Designer</h2>
+            <div class="small text-muted mt-1">Build reusable message blocks and preview how each notification channel adapts them.</div></div>
         <span class="badge text-bg-light">Visual designer</span>
     </div>
     <div class="app-card-body">
-        <div class="row g-3 mb-4">
-            <div class="col-12"><label class="form-label" for="presentationTitleTemplate">Notification title</label><input class="form-control" id="presentationTitleTemplate" maxlength="500" placeholder="Example: {severity} — {ruleName}"></div>
-            <div class="col-12"><label class="form-label" for="presentationMessageTemplate">Introductory message</label><textarea class="form-control" id="presentationMessageTemplate" rows="2" maxlength="10000" placeholder="Add a short summary. You can use response fields such as {data.cluster.name}."></textarea></div>
-            <div class="col-12"><div class="form-text">Available placeholders include {ruleName}, {severity}, {jobName}, {applicationName}, {environment}, {fieldPath}, {actualValue}, {threshold}, {executionId}, {alertId}, {occurrenceCount}, {timestamp}, plus any discovered response path such as {data.cluster.name}.</div></div>
+        <div class="row g-3 mb-3">
+            <div class="col-12"><label class="form-label" for="presentationTitleTemplate">Notification title</label>
+                <input class="form-control" id="presentationTitleTemplate" maxlength="500" placeholder="{{severity}} — {{ruleName}}"></div>
+            <div class="col-12"><label class="form-label" for="presentationMessageTemplate">Introductory message</label>
+                <textarea class="form-control" id="presentationMessageTemplate" rows="2" maxlength="10000" placeholder="A short summary shown before the configured blocks"></textarea></div>
         </div>
-        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-            <div><h3 class="h6 mb-1">Notification sections</h3><p class="small text-muted mb-0">Add sections and arrange them in the order recipients should see them. Drag a section or use its position controls.</p></div>
-            <div class="dropdown">
-                <button class="btn btn-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-plus-lg me-1"></i>Add section</button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><button class="dropdown-item" type="button" data-add-presentation-section="TEXT">Text / summary</button></li>
-                    <li><button class="dropdown-item" type="button" data-add-presentation-section="KEY_VALUE">Key / value details</button></li>
-                    <li><button class="dropdown-item" type="button" data-add-presentation-section="TABLE">Table</button></li>
-                    <li><button class="dropdown-item" type="button" data-add-presentation-section="LIST">List</button></li>
-                    <li><button class="dropdown-item" type="button" data-add-presentation-section="JSON">JSON details</button></li>
+        <div class="row g-3 align-items-stretch">
+            <div class="col-12 col-xl-6">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div><h3 class="h6 mb-0">Modular Block Builder</h3><div class="small text-muted">Add blocks, configure their data bindings and arrange their order.</div></div>
+                    <span class="badge text-bg-secondary" id="presentationBlockCount">0 blocks</span>
+                </div>
+                <div id="presentationSections" class="d-grid gap-3" aria-live="polite"></div>
+                <div class="border rounded p-3 mt-3">
+                    <div class="small fw-semibold mb-2">Add a content block</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-add-presentation-section="TEXT"><i class="bi bi-type me-1"></i>Add Text Block</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-add-presentation-section="KEY_VALUE"><i class="bi bi-list-ul me-1"></i>Add List Block</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-add-presentation-section="TABLE"><i class="bi bi-table me-1"></i>Add Table Block</button>
+                    </div>
+                </div>
+                <div class="form-text mt-2">Variables can be inserted into text and labels. Use double braces, for example <code>{{severity}}</code>, <code>{{timestamp}}</code> or <code>{{data.cluster.name}}</code>.</div>
+            </div>
+            <div class="col-12 col-xl-6">
+                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                    <div><h3 class="h6 mb-0">Live Preview</h3><div class="small text-muted">Preview uses sample values and adapts the same blocks for each channel.</div></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshPresentationPreview"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+                </div>
+                <ul class="nav nav-pills nav-fill mb-3" id="presentationPreviewTabs" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link active" type="button" role="tab" aria-selected="true" data-preview-channel="email"><i class="bi bi-envelope me-1"></i>Email</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" aria-selected="false" data-preview-channel="teams"><i class="bi bi-microsoft-teams me-1"></i>Teams</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" aria-selected="false" data-preview-channel="whatsapp"><i class="bi bi-whatsapp me-1"></i>WhatsApp</button></li>
                 </ul>
+                <div id="presentationPreview" class="border rounded p-3 bg-body-tertiary" aria-live="polite"></div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <span class="small text-muted" id="whatsAppCharacterCount">WhatsApp: 0 / 1,024 characters</span>
+                    <span class="small text-muted" id="whatsAppLimitWarning" role="status"></span>
+                </div>
             </div>
         </div>
-        <div id="presentationBuilderMessage" class="alert d-none mb-3" role="status" aria-live="polite"></div>
-        <div id="presentationSections"></div>
-        <details class="mt-3">
+        <details class="mt-4">
             <summary class="small fw-semibold">Advanced JSON (optional)</summary>
             <div class="pt-3">
-                <p class="small text-muted">Most users can configure the presentation above. Advanced JSON is available for importing or editing the same versioned configuration directly.</p>
+                <p class="small text-muted">Import or edit the same versioned presentation configuration used by the visual builder.</p>
                 <label class="form-label" for="presentationConfigJson">Presentation configuration</label>
-                <textarea class="form-control font-monospace" id="presentationConfigJson" th:field="*{presentationConfigJson}" rows="12" spellcheck="false"></textarea>
-                <div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-outline-primary" id="applyPresentationJson">Load JSON into visual designer</button></div>
+                <textarea class="form-control font-monospace" id="presentationConfigJson" th:field="*{presentationConfigJson}" rows="10" spellcheck="false"></textarea>
+                <div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-outline-primary" id="applyPresentationJson">Load JSON into block builder</button></div>
             </div>
         </details>
+        <div id="presentationBuilderMessage" class="alert d-none mt-3 mb-0" role="status" aria-live="polite"></div>
     </div>
 </div>
 <div class="d-flex justify-content-end gap-2"><a th:href="@{/alerts/rules}" class="btn btn-outline-secondary">Cancel</a><button type="submit" class="btn btn-primary" th:disabled="${!hasMonitoringJobs}"><i class="bi bi-check-lg me-1"></i>Save Rule</button></div>
@@ -683,4 +705,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (jobIdInput.value) discoverButton.disabled = false;
 });
-</script><script th:src="@{/js/alert-presentation-builder.js}" defer></script><script th:src="@{/js/alert-rule-workspace.js}" defer></script></div></body></html>
+</script><script th:src="@{/js/alert-message-designer.js}" defer></script><script th:src="@{/js/alert-rule-workspace.js}" defer></script></div></body></html>
