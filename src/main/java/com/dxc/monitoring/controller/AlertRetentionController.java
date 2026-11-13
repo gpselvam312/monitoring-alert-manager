@@ -53,10 +53,8 @@ public class AlertRetentionController {
         model.addAttribute("dataTypes", AlertRetentionPolicy.DataType.values());
         List<Application> applications = accessService.getApplicationsWithPermission("DATA_EXPUNGE");
         List<Long> applicationIds = applications.stream().map(Application::getId).toList();
-        List<Environment> environments = environmentRepository.findAll().stream()
-                .filter(environment -> environment.getApplication() != null
-                        && applicationIds.contains(environment.getApplication().getId()))
-                .toList();
+        List<Environment> environments = applicationIds.isEmpty() ? List.of()
+                : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds);
         model.addAttribute("applications", applications);
         model.addAttribute("environments", environments);
         model.addAttribute("alertTypes", List.of("ALL", "MONITORING_JOB"));
