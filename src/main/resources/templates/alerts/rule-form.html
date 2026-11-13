@@ -592,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const quantifierCol = document.createElement('div'); quantifierCol.className = 'col-12 col-lg-5';
             const quantifierLabel = document.createElement('label'); quantifierLabel.className = 'form-label'; quantifierLabel.textContent = 'Record matching';
             const quantifier = document.createElement('select'); quantifier.className = 'form-select';
-            [['ANY','At least one record (ANY)'],['ALL','Every record (ALL)'],['NONE','No records (NONE)']].forEach(([value,label]) => { const option = new Option(label,value); option.selected = (node.quantifier || 'ANY') === value; quantifier.add(option); });
+            ['ANY|At least one record (ANY)', 'ALL|Every record (ALL)', 'NONE|No records (NONE)'].forEach(entry => { const [value,label] = entry.split('|'); const option = new Option(label,value); option.selected = (node.quantifier || 'ANY') === value; quantifier.add(option); });
             quantifier.addEventListener('change', () => { node.quantifier = quantifier.value; syncTree(); }); quantifierCol.append(quantifierLabel,quantifier);
             configRow.append(pathCol,quantifierCol); card.appendChild(configRow);
             const emptyRow = document.createElement('div'); emptyRow.className = 'form-check mb-3';
