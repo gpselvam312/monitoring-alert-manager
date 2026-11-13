@@ -20,6 +20,8 @@ public class NotificationDelivery {
     private NotificationRecipient recipient;
     @Column(name = "destination_snapshot", nullable = false, length = 1000)
     private String destinationSnapshot;
+    @Column(name = "cc_recipients_snapshot", columnDefinition = "text")
+    private String ccRecipientsSnapshot;
     @Column(name = "idempotency_key", nullable = false, unique = true, length = 500)
     private String idempotencyKey;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20)
@@ -53,6 +55,7 @@ public class NotificationDelivery {
     public NotificationChannel getChannel(){return channel;} public void setChannel(NotificationChannel v){channel=v;}
     public NotificationRecipient getRecipient(){return recipient;} public void setRecipient(NotificationRecipient v){recipient=v;}
     public String getDestinationSnapshot(){return destinationSnapshot;} public void setDestinationSnapshot(String v){destinationSnapshot=v;}
+    public String getCcRecipientsSnapshot(){return ccRecipientsSnapshot;} public void setCcRecipientsSnapshot(String v){ccRecipientsSnapshot=v;}
     public String getIdempotencyKey(){return idempotencyKey;} public void setIdempotencyKey(String v){idempotencyKey=v;}
     public DeliveryStatus getStatus(){return status;} public void setStatus(DeliveryStatus v){status=v;}
     public Integer getAttemptCount(){return attemptCount;} public void setAttemptCount(Integer v){attemptCount=v;}
