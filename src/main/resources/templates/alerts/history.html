@@ -3,28 +3,29 @@
 <body><div th:fragment="content">
 <div class="page-header"><div><h1 class="page-title"><i class="bi bi-clock-history me-2"></i>Alert History</h1><p class="page-subtitle">A complete view of alert lifecycles, including active and recovered alerts.</p></div></div>
 <div class="server-health-summary alert-history-summary" aria-label="Alert history summary">
-<a class="server-health-summary-item server-health-summary-total server-health-summary-filter text-decoration-none"
+<a class="server-health-summary-item server-health-summary-total text-decoration-none"
    th:classappend="${status == null or status == '' ? ' is-active' : ''}"
    th:href="@{/alerts/history(search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},size=${pageSize})}"
    aria-label="Filter alerts by All" th:attr="aria-current=${status == null or status == '' ? 'page' : null}">
     <span><i class="bi bi-collection" aria-hidden="true"></i> All Alerts</span>
     <strong class="server-health-total" th:text="${totalAlerts}">0</strong>
 </a>
-<a class="server-health-summary-item server-health-summary-critical server-health-summary-filter text-decoration-none"
+<a class="server-health-summary-item server-health-summary-critical text-decoration-none"
    th:classappend="${status == 'ACTIVE' ? ' is-active' : ''}"
    th:href="@{/alerts/history(status='ACTIVE',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},size=${pageSize})}"
    aria-label="Filter alerts by Active" th:attr="aria-current=${status == 'ACTIVE' ? 'page' : null}">
     <span><i class="bi bi-bell" aria-hidden="true"></i> Active Alerts</span>
     <strong class="server-health-critical" th:text="${activeAlerts}">0</strong>
 </a>
-<a class="server-health-summary-item server-health-summary-healthy server-health-summary-filter text-decoration-none"
+<a class="server-health-summary-item server-health-summary-healthy text-decoration-none"
    th:classappend="${status == 'RESOLVED' ? ' is-active' : ''}"
    th:href="@{/alerts/history(status='RESOLVED',search=${search},severity=${severity},applicationId=${applicationId},environmentId=${environmentId},size=${pageSize})}"
    aria-label="Filter alerts by Recovered" th:attr="aria-current=${status == 'RESOLVED' ? 'page' : null}">
     <span><i class="bi bi-check-circle" aria-hidden="true"></i> Recovered</span>
     <strong class="server-health-healthy" th:text="${resolvedAlerts}">0</strong>
 </a>
-</div><div class="app-card">
+</div>
+<div class="app-card">
 <div class="row g-2 p-3 align-items-end">
 <div class="col-6 col-lg-3"><label class="form-label small" for="alertHistoryStatus">Status</label><select class="form-select form-select-sm" id="alertHistoryStatus"><option value="">All statuses</option><option value="ACTIVE" th:selected="${status == 'ACTIVE'}">Active</option><option value="RESOLVED" th:selected="${status == 'RESOLVED'}">Recovered</option></select></div>
 <div class="col-6 col-lg-3"><label class="form-label small" for="alertHistorySeverity">Severity</label><select class="form-select form-select-sm" id="alertHistorySeverity"><option value="">All severities</option><option th:each="item : ${T(com.dxc.monitoring.entity.AlertRule.Severity).values()}" th:value="${item.name()}" th:text="${item.name()}" th:selected="${severity == item.name()}"></option></select></div>
