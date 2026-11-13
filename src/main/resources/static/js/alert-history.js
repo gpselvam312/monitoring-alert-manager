@@ -143,6 +143,7 @@
         });
         query.set('sort', config.sort || 'createdAt');
         query.set('direction', config.direction || 'desc');
+        if (pageSizeSelect && pageSizeSelect.value) query.set('size', pageSizeSelect.value);
         window.location.assign(window.location.pathname + (query.toString() ? '?' + query.toString() : ''));
     }
     Object.entries({ alertHistoryFirst: 'first', alertHistoryPrevious: 'previous', alertHistoryNext: 'next', alertHistoryLast: 'last' })
