@@ -206,13 +206,16 @@
             const collapseId = 'presentation-block-collapse-' + index;
             const expanded = expandedBlockId ? expandedBlockId === section.id : index === 0;
             const heading = element('div', 'd-flex align-items-center flex-grow-1 min-w-0');
-            const collapseButton = element('button', 'btn btn-sm btn-outline-secondary flex-shrink-0');
+            const collapseButton = element('button', 'btn btn-sm btn-link text-muted p-1 flex-shrink-0 presentation-block-toggle');
             collapseButton.type = 'button';
             collapseButton.dataset.bsToggle = 'collapse';
             collapseButton.dataset.bsTarget = '#' + collapseId;
             collapseButton.setAttribute('aria-expanded', String(expanded));
             collapseButton.setAttribute('aria-controls', collapseId);
-            collapseButton.textContent = expanded ? 'Collapse' : 'Expand';
+            const collapseIcon = element('i', 'bi bi-chevron-down');
+            collapseIcon.setAttribute('aria-hidden', 'true');
+            collapseButton.append(collapseIcon);
+            collapseButton.setAttribute('aria-label', expanded ? 'Collapse block' : 'Expand block');
             const headingText = element('div', 'd-flex align-items-baseline gap-2 min-w-0 flex-nowrap');
             headingText.append(element('span', 'fw-semibold text-nowrap', (index + 1) + '. ' + title));
             headingText.append(element('span', 'small text-muted text-nowrap', 'Block ' + (index + 1) + ' of ' + config.sections.length));
@@ -438,10 +441,10 @@
             collapseButton.addEventListener('click', () => {
                 expandedBlockId = expanded ? null : section.id;
             });
-            collapse.addEventListener('shown.bs.collapse', () => { expandedBlockId = section.id; collapseButton.textContent = 'Collapse'; collapseButton.setAttribute('aria-expanded', 'true'); });
+            collapse.addEventListener('shown.bs.collapse', () => { expandedBlockId = section.id; collapseButton.setAttribute('aria-label', 'Collapse block'); collapseButton.setAttribute('aria-expanded', 'true'); });
             collapse.addEventListener('hidden.bs.collapse', () => {
                 if (expandedBlockId === section.id) expandedBlockId = null;
-                collapseButton.textContent = 'Expand'; collapseButton.setAttribute('aria-expanded', 'false');
+                collapseButton.setAttribute('aria-label', 'Expand block'); collapseButton.setAttribute('aria-expanded', 'false');
             });
             return card;
         };
