@@ -289,9 +289,11 @@
                         key.classList.add('form-select-sm');
                         keyCell.append(key);
                         const actionCell = element('td', 'text-end');
-                        actionCell.append(button('', 'btn btn-sm btn-outline-danger',
-                            () => { section.columns.splice(columnIndex, 1); render(); },
-                            'bi bi-trash', 'Remove column'));
+                        const removeColumn = button('', 'btn btn-sm btn-outline-danger',
+                            () => { section.columns.splice(columnIndex, 1); render(); }, 'bi bi-trash');
+                        removeColumn.title = 'Remove column';
+                        removeColumn.setAttribute('aria-label', 'Remove column');
+                        actionCell.append(removeColumn);
                         row.append(labelCell, keyCell, actionCell);
                         tableBody.append(row);
                     });
