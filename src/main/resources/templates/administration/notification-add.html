@@ -27,7 +27,7 @@
       <div class="col-12"><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Create Recipient</button> <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}">Cancel</a></div>
     </form>
     <form th:if="${editType == 'GROUP'}" th:action="@{/administration/notifications/groups}" method="post" class="row g-3">
-      <div class="col-12 col-md-4"><label class="form-label">Group Name</label><input class="form-control" name="name" maxlength="150" required></div><div class="col-12 col-md-4"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div><div class="col-12 col-md-4"><label class="form-label">Members</label><select class="form-select" name="recipientIds" multiple size="6"><option th:each="recipient : ${recipients}" th:if="${recipient.enabled}" th:value="${recipient.id}" th:text="${recipient.name}"></option></select><div class="form-text">Use Ctrl/Cmd to select multiple recipients.</div></div>
+      <div class="col-12 col-md-4"><label class="form-label">Group Name</label><input class="form-control" name="name" maxlength="150" required></div><div class="col-12 col-md-4"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div><div class="col-12 col-md-4"><label class="form-label">Group Channel</label><select class="form-select" id="groupChannelType" name="channelType" onchange="filterGroupMembers()" required><option value="EMAIL">Email distribution group</option><option value="WHATSAPP">WhatsApp distribution group</option></select><div class="form-text">WhatsApp groups are internal lists of phone numbers, not WhatsApp chat groups.</div></div><div class="col-12"><label class="form-label">Members</label><select class="form-select" id="groupMemberRecipients" name="recipientIds" multiple size="6"><option th:each="recipient : ${recipients}" th:if="${recipient.enabled}" th:value="${recipient.id}" th:attr="data-email=${recipient.email != null and !recipient.email.isBlank()},data-phone=${recipient.phoneNumber != null and !recipient.phoneNumber.isBlank()}" th:text="${recipient.name}"></option></select><div class="form-text">Only recipients with the destination required by the selected channel are available.</div></div>
       <div class="col-12"><button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Create Group</button> <a class="btn btn-outline-secondary" th:href="@{/administration/notifications}">Cancel</a></div>
     </form>
     <form th:if="${editType == 'POLICY'}" th:action="@{/administration/notifications/policies}" method="post" class="row g-3">
@@ -59,6 +59,14 @@
       if (group) { group.classList.toggle('d-none', target !== 'GROUP'); group.querySelector('select').disabled = target !== 'GROUP'; }
       if (recipient) { recipient.classList.toggle('d-none', target !== 'RECIPIENT'); recipient.querySelector('select').disabled = target !== 'RECIPIENT'; }
     }
-    document.addEventListener('DOMContentLoaded', () => { toggleChannelFields(); toggleRouteTarget(); });
+    function filterGroupMembers() {
+      const type = document.getElementById('groupChannelType')?.value || 'EMAIL';
+      document.querySelectorAll('#groupMemberRecipients option').forEach(option => {
+        const eligible = type === 'WHATSAPP' ? option.dataset.phone === 'true' : option.dataset.email === 'true';
+        option.hidden = !eligible;
+        if (!eligible) option.selected = false;
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => { toggleChannelFields(); toggleRouteTarget(); filterGroupMembers(); });
   </script>
 </div></body></html>
