@@ -49,6 +49,10 @@ monitoring:
       # Trusted directories remain environment-specific; approved hashes are stored per Monitoring Job.
       allowed-directories: ${MONITORING_SCRIPT_ALLOWED_DIRECTORIES:${user.dir}/scripts}
 
-  # The key must be provided by the runtime environment and must not be stored in source control.
-  external-applications:
-    encryption-key: ${MONITORING_EXTERNAL_APP_ENCRYPTION_KEY:}
+  security:
+    encryption:
+      # Supply a Base64-encoded 32-byte key through the runtime environment; never commit production keys.
+      key: ${MONITORING_ENCRYPTION_KEY:${MONITORING_EXTERNAL_APP_ENCRYPTION_KEY:}}
+      previous-key: ${MONITORING_PREVIOUS_ENCRYPTION_KEY:}
+      # Set true for one startup to migrate all encrypted values, then return to false and remove previous-key.
+      updatePwd: ${MONITORING_ENCRYPTION_UPDATE_PWD:false}

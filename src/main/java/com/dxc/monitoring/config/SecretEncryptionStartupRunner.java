@@ -15,25 +15,24 @@ public class SecretEncryptionStartupRunner implements ApplicationRunner {
     private final SecretEncryptionMigrationService migrationService;
     private final BackgroundWorkReadiness readiness;
     private final String previousKey;
+    private final String currentKey;
     private final boolean updatePasswords;
 
     public SecretEncryptionStartupRunner(SecretEncryptionMigrationService migrationService,
             BackgroundWorkReadiness readiness,
             @Value("${monitoring.security.encryption.previous-key:}") String previousKey,
+            @Value("${monitoring.security.encryption.key:}") String currentKey,
             @Value("${monitoring.security.encryption.updatePwd:false}") boolean updatePasswords) {
         this.migrationService = migrationService;
         this.readiness = readiness;
         this.previousKey = previousKey;
+        this.currentKey = currentKey;
         this.updatePasswords = updatePasswords;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         if (updatePasswords) {
-            String currentKey = System.getProperty("monitoring.security.encryption.key");
-            // The configured current key is also available through the environment-backed property.
-            if (currentKey == null || currentKey.isBlank())
-                currentKey = System.getenv("MONITORING_ENCRYPTION_KEY");
             if (currentKey == null || currentKey.isBlank())
                 throw new IllegalStateException("MONITORING_ENCRYPTION_KEY is required when updatePwd is true.");
             var result = migrationService.rotate(previousKey, currentKey);
