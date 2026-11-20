@@ -1,12 +1,13 @@
 (() => {
     'use strict';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    const initializeAlertMessageDesigner = () => {
         const form = document.querySelector('form[action*="/alerts/rules/save"]');
         const jsonInput = document.getElementById('presentationConfigJson');
         const editor = document.getElementById('presentationSections');
         const preview = document.getElementById('presentationPreview');
-        if (!form || !jsonInput || !editor || !preview) return;
+        if (!form || !jsonInput || !editor || !preview || form.dataset.messageDesignerInitialized === 'true') return;
+        form.dataset.messageDesignerInitialized = 'true';
 
         const subjectInput = document.getElementById('alertSubject');
         const ruleNameInput = document.getElementById('name');
@@ -792,5 +793,7 @@
             }
             sync();
         });
-    });
+        };
+    document.addEventListener('DOMContentLoaded', initializeAlertMessageDesigner);
+    document.addEventListener('alert-rule-secondary-tabs-loaded', initializeAlertMessageDesigner);
 })();
