@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,6 +15,30 @@ import com.dxc.monitoring.entity.NotificationDelivery;
 
 public interface NotificationDeliveryRepository extends JpaRepository<NotificationDelivery, Long> {
     boolean existsByIdempotencyKey(String idempotencyKey);
+
+    @Modifying
+    @Query(value = """
+            INSERT INTO ra_fcb.notification_deliveries
+                (alert_id, alert_history_id, channel_id, recipient_id, destination_snapshot,
+                 cc_recipients_snapshot, idempotency_key, status, attempt_count, next_attempt_at,
+                 last_error, message_payload, created_at, updated_at)
+            VALUES
+                (:alertId, :historyId, :channelId, :recipientId, :destination,
+                 :ccRecipients, :idempotencyKey, :status, 0, :nextAttemptAt,
+                 :lastError, CAST(:messagePayload AS jsonb), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (idempotency_key) DO NOTHING
+            """, nativeQuery = true)
+    int insertIfAbsent(@Param("alertId") Long alertId,
+            @Param("historyId") Long historyId,
+            @Param("channelId") Long channelId,
+            @Param("recipientId") Long recipientId,
+            @Param("destination") String destination,
+            @Param("ccRecipients") String ccRecipients,
+            @Param("idempotencyKey") String idempotencyKey,
+            @Param("status") String status,
+            @Param("nextAttemptAt") java.time.OffsetDateTime nextAttemptAt,
+            @Param("lastError") String lastError,
+            @Param("messagePayload") String messagePayload);
 
     @EntityGraph(attributePaths = {"alert", "alertHistory", "channel", "recipient"})
     @Query("select d from NotificationDelivery d where d.id = :id")

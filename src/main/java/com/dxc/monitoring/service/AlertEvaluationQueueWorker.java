@@ -37,8 +37,13 @@ public class AlertEvaluationQueueWorker {
             } catch (Exception exception) {
                 log.error("Alert evaluation request {} failed on attempt {}.",
                         request.requestId(), request.attemptCount(), exception);
-                queueService.markFailed(request.requestId(), request.attemptCount(), MAX_ATTEMPTS,
-                        exception.getMessage());
+                try {
+                    queueService.markFailed(request.requestId(), request.attemptCount(), MAX_ATTEMPTS,
+                            exception.getClass().getSimpleName());
+                } catch (RuntimeException stateException) {
+                    log.error("Unable to persist failure state for alert evaluation request {} exceptionType={}",
+                            request.requestId(), stateException.getClass().getSimpleName());
+                }
             }
         }
     }

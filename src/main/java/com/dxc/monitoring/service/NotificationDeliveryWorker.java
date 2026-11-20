@@ -82,17 +82,20 @@ public class NotificationDeliveryWorker {
                 log.info("Notification deliveryId={} marked SENT via channelId={} channelType={}",
                         claim.deliveryId(), channel.getId(), channel.getChannelType());
             } catch (Exception exception) {
+                String failure = safeMessage(exception);
                 log.error("Notification deliveryId={} failed on attempt {} exceptionType={} message={}",
-                        claim.deliveryId(), claim.attemptCount(), exception.getClass().getSimpleName(), safeMessage(exception), exception);
-                queueService.markFailed(claim.deliveryId(), claim.attemptCount(), MAX_ATTEMPTS, safeMessage(exception));
+                        claim.deliveryId(), claim.attemptCount(), exception.getClass().getSimpleName(), failure);
+                try {
+                    queueService.markFailed(claim.deliveryId(), claim.attemptCount(), MAX_ATTEMPTS, failure);
+                } catch (RuntimeException stateException) {
+                    log.error("Unable to persist failure state for notification deliveryId={} exceptionType={}",
+                            claim.deliveryId(), stateException.getClass().getSimpleName());
+                }
             }
         }
     }
 
     private String safeMessage(Exception exception) {
-        String message = exception.getMessage();
-        if (message == null || message.isBlank()) return "Notification provider delivery failed.";
-        String sanitized = message.replaceAll("[\\r\\n\\t]+", " ").trim();
-        return sanitized.length() > 1000 ? sanitized.substring(0, 1000) : sanitized;
+        return "Notification provider delivery failed (" + exception.getClass().getSimpleName() + ").";
     }
 }

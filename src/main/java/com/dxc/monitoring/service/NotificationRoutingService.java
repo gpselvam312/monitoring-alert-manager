@@ -4,7 +4,6 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -182,20 +181,19 @@ public class NotificationRoutingService {
 
     private void queueDelivery(AlertHistory history, RouteTarget route, NotificationRecipient recipient,
             String destination, String key, boolean skipped, String reason, String messagePayload, String ccRecipients) {
-        NotificationDelivery delivery = new NotificationDelivery();
-        delivery.setAlert(history.getAlert());
-        delivery.setAlertHistory(history);
-        delivery.setChannel(route.channel());
-        delivery.setRecipient(recipient);
-        delivery.setDestinationSnapshot(destination == null || destination.isBlank() ? "Unconfigured destination" : destination);
-        delivery.setCcRecipientsSnapshot(route.channel().getChannelType() == NotificationChannel.ChannelType.EMAIL ? ccRecipients : null);
-        delivery.setIdempotencyKey(key);
-        delivery.setStatus(skipped ? NotificationDelivery.DeliveryStatus.SKIPPED : NotificationDelivery.DeliveryStatus.PENDING);
-        delivery.setAttemptCount(0);
-        delivery.setNextAttemptAt(OffsetDateTime.now());
-        delivery.setLastError(reason);
-        delivery.setMessagePayload(messagePayload);
-        deliveryRepository.save(delivery);
+        int inserted = deliveryRepository.insertIfAbsent(
+                history.getAlert().getId(), history.getId(), route.channel().getId(),
+                recipient == null ? null : recipient.getId(),
+                destination == null || destination.isBlank() ? "Unconfigured destination" : destination,
+                route.channel().getChannelType() == NotificationChannel.ChannelType.EMAIL ? ccRecipients : null,
+                key, skipped ? NotificationDelivery.DeliveryStatus.SKIPPED.name()
+                        : NotificationDelivery.DeliveryStatus.PENDING.name(),
+                OffsetDateTime.now(), reason, messagePayload);
+        if (inserted == 0) {
+            log.debug("Duplicate notification delivery suppressed by idempotency key for alertHistoryId={} channelId={}",
+                    history.getId(), route.channel().getId());
+            return;
+        }
         if (skipped) {
             log.warn("Notification delivery queued as SKIPPED alertHistoryId={} alertId={} routeId={} channelId={} recipientId={} reason={}",
                     history.getId(), history.getAlert().getId(), route.id(), route.channel().getId(),
