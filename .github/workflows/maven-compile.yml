@@ -12,6 +12,7 @@ on:
     branches:
       - feature/monitoring-execution-scheduling
       - feature/iframe-widget-configuration
+      - feature/common-crud-ui-framework
 
 jobs:
   compile:

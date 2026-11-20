@@ -21,8 +21,7 @@ jobs:
           node-version: '22'
       - name: Check JavaScript syntax
         run: |
-          node --check src/main/resources/static/js/dashboard.js
-          node --check src/main/resources/static/js/summary-table-configurator.js
+          find src/main/resources/static/js -type f -name '*.js' -print0 | xargs -0 -n1 node --check
       - name: Check shell syntax
         run: bash -n scripts/system-metrics-example.sh
       - name: Validate generated JSON contract
