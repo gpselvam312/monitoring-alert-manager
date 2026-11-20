@@ -6037,14 +6037,6 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .server-health-summary-unknown.summary-table-card { --summary-card-accent: var(--text-secondary); }
 
 /* Alert History summary cards: compact gradient cards with a clear accent edge. */
-.alert-history-summary .summary-card-active {
-    --summary-card-accent: #dc3545;
-}
-
-.alert-history-summary .summary-card-recovered {
-    --summary-card-accent: #198754;
-}
-
 .alert-history-summary .summary-table-card {
     --summary-card-accent: var(--theme-primary, #0d6efd);
     position: relative;
@@ -6110,6 +6102,16 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .alert-history-summary .summary-table-card-filter.is-active {
     border-color: var(--summary-card-accent);
     box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--summary-card-accent) 22%, transparent);
+}
+
+.alert-history-summary .summary-card-active,
+.alert-history-summary .summary-table-card.summary-card-active {
+    --summary-card-accent: #dc3545;
+}
+
+.alert-history-summary .summary-card-recovered,
+.alert-history-summary .summary-table-card.summary-card-recovered {
+    --summary-card-accent: #198754;
 }
 
 @media (max-width: 767.98px) {
