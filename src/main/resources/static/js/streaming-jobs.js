@@ -395,7 +395,15 @@
         if (startButton) startButton.disabled = true;
         if (stopButton) stopButton.disabled = true;
         try {
-            await request('/api/streaming-jobs/' + encodeURIComponent(job.id) + '/' + action, { method: 'POST' });
+            const params = new URLSearchParams({
+                page: String(page),
+                size: String(Number(pageSizeSelect.value) || 5),
+                search: searchInput.value.trim(),
+                sort: sortKey,
+                direction: sortDirection
+            });
+            await request('/api/streaming-jobs/' + encodeURIComponent(job.id) + '/' + action + '?' + params.toString(),
+                { method: 'POST' });
             await refresh(false);
             const refreshedJob = selectedJob();
             if (action === 'start' && refreshedJob && activeStates.has(refreshedJob.status)) {

@@ -5,9 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -20,16 +18,19 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.dxc.monitoring.service.StreamingJobService;
+import com.dxc.monitoring.web.PageRequestSupport;
 import com.dxc.monitoring.service.StreamingJobService.StreamingJobView;
 
 @Controller
 public class StreamingJobController
 {
     private final StreamingJobService streamingJobService;
+    private final PageRequestSupport pageRequestSupport;
 
-    public StreamingJobController(StreamingJobService streamingJobService)
+    public StreamingJobController(StreamingJobService streamingJobService, PageRequestSupport pageRequestSupport)
     {
         this.streamingJobService = streamingJobService;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping("/monitoring/streaming-jobs")
@@ -37,7 +38,7 @@ public class StreamingJobController
     public String page(Model model)
     {
         model.addAttribute("currentPage", "streaming-jobs");
-        model.addAttribute("pageSize", 5);
+        model.addAttribute("pageSize", pageRequestSupport.defaultPageSize());
         model.addAttribute("search", "");
         return "monitoring/streaming-jobs";
     }
@@ -50,41 +51,45 @@ public class StreamingJobController
             @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction)
     {
-        int normalizedPage = Math.max(0, page);
-        int normalizedSize = (size == 5 || size == 10 || size == 25) ? size : 5;
         Map<String, String> allowedFields = Map.of(
-                "name", "name",
-                "application", "application.name",
-                "environment", "environment.name",
-                "machine", "machine.name",
-                "type", "type",
-                "severity", "severity",
-                "schedule", "schedule.name",
-                "enabled", "enabled");
-        String sortField = allowedFields.getOrDefault(sort, "name");
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction)
-                ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(normalizedPage, normalizedSize,
-                Sort.by(sortDirection, sortField).and(Sort.by(Sort.Direction.ASC, "id")));
+                "name", "name", "application", "application.name", "environment", "environment.name",
+                "machine", "machine.name", "type", "type", "severity", "severity",
+                "schedule", "schedule.name", "enabled", "enabled");
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", allowedFields);
+        Pageable pageable = spec.pageable();
         return streamingJobService.listJobs(search, pageable);
+    }
+
+    private List<StreamingJobView> currentPage(int page, int size, String search, String sort, String direction) {
+        Map<String, String> allowedFields = Map.of("name", "name", "application", "application.name",
+                "environment", "environment.name", "machine", "machine.name", "type", "type",
+                "severity", "severity", "schedule", "schedule.name", "enabled", "enabled");
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", allowedFields);
+        return streamingJobService.listJobs(search, spec.pageable()).getContent();
     }
 
     @PostMapping("/api/streaming-jobs/{id}/start")
     @ResponseBody
     @PreAuthorize("hasAuthority('MONITORING_RUN')")
-    public List<StreamingJobView> start(@PathVariable Long id, Principal principal)
+    public List<StreamingJobView> start(@PathVariable Long id, Principal principal,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
+            @RequestParam(defaultValue = "asc") String direction)
     {
         streamingJobService.start(id, principal.getName());
-        return streamingJobService.listJobs();
+        return currentPage(page, size, search, sort, direction);
     }
 
     @PostMapping("/api/streaming-jobs/{id}/stop")
     @ResponseBody
     @PreAuthorize("hasAuthority('MONITORING_RUN')")
-    public List<StreamingJobView> stop(@PathVariable Long id)
+    public List<StreamingJobView> stop(@PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
+            @RequestParam(defaultValue = "asc") String direction)
     {
         streamingJobService.stop(id);
-        return streamingJobService.listJobs();
+        return currentPage(page, size, search, sort, direction);
     }
 
     @GetMapping(value = "/api/streaming-jobs/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
