@@ -183,7 +183,7 @@ public class AlertRetentionService {
      * The transaction-scoped advisory lock is shared across all retention policy types.
      */
     private void lockPolicyConfiguration() {
-        jdbcTemplate.execute(connection -> {
+        jdbcTemplate.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) connection -> {
             try (java.sql.PreparedStatement statement =
                     connection.prepareStatement("SELECT pg_advisory_xact_lock(19791, 1)")) {
                 statement.execute();
