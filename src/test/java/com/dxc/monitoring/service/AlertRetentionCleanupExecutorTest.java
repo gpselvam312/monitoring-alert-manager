@@ -97,8 +97,8 @@ class AlertRetentionCleanupExecutorTest {
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
         verify(jdbcTemplate).queryForObject(sql.capture(), eq(Long.class), any(Object[].class));
         assertEquals(3L, preview.candidateCount());
-        assertTrue(sql.getValue().contains("status IN ('SENT', 'SKIPPED')"));
-        assertTrue(sql.getValue().contains("status = 'FAILED' AND attempt_count >= 8"));
-        assertFalse(sql.getValue().contains("status NOT IN ('PENDING', 'SENDING')"));
+        assertTrue(sql.getValue().contains("d.status IN ('SENT', 'SKIPPED')"));
+        assertTrue(sql.getValue().contains("d.status = 'FAILED' AND d.attempt_count >= 8"));
+        assertFalse(sql.getValue().contains("d.status NOT IN ('PENDING', 'SENDING')"));
     }
 }
