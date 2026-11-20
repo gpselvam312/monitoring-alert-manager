@@ -3,6 +3,7 @@ package com.dxc.monitoring.service;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringJob;
+import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.service.executor.MonitoringExecutionResult;
 import com.dxc.monitoring.service.executor.MonitoringExecutor;
 import com.dxc.monitoring.service.executor.MonitoringExecutorFactory;
@@ -22,16 +24,19 @@ public class MonitoringExecutionManager
     private final MonitoringExecutionService executionService;
     private final MonitoringResultNormalizer resultNormalizer;
     private final AlertEvaluationQueueService alertEvaluationQueueService;
+    private final MonitoringJobRepository monitoringJobRepository;
     private final ConcurrentHashMap<Long, ReentrantLock> jobLocks = new ConcurrentHashMap<>();
 
     public MonitoringExecutionManager(MonitoringExecutorFactory executorFactory,
             MonitoringExecutionService executionService, MonitoringResultNormalizer resultNormalizer,
-            AlertEvaluationQueueService alertEvaluationQueueService)
+            AlertEvaluationQueueService alertEvaluationQueueService,
+            MonitoringJobRepository monitoringJobRepository)
     {
         this.executorFactory = executorFactory;
         this.executionService = executionService;
         this.resultNormalizer = resultNormalizer;
         this.alertEvaluationQueueService = alertEvaluationQueueService;
+        this.monitoringJobRepository = monitoringJobRepository;
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -74,8 +79,15 @@ public class MonitoringExecutionManager
                 throw new IllegalStateException("Monitoring job is already running.");
         }
 
+        String claimToken = null;
         try
         {
+            if (!job.isAllowConcurrentExecution()) {
+                claimToken = UUID.randomUUID().toString();
+                int leaseSeconds = Math.max(60, (job.getTimeoutSeconds() == null ? 300 : job.getTimeoutSeconds()) + 120);
+                if (monitoringJobRepository.tryClaimExecution(job.getId(), claimToken, leaseSeconds) != 1)
+                    throw new IllegalStateException("Monitoring job is already running on another application instance.");
+            }
             MonitoringExecutor executor = executorFactory.getExecutor(job.getType());
             MonitoringExecution execution = executionService.startExecution(job, 1,
                     triggerSource == null ? MonitoringExecution.TriggerSource.UNKNOWN : triggerSource);
@@ -117,8 +129,17 @@ public class MonitoringExecutionManager
         }
         finally
         {
-            if (lockAcquired)
+            if (claimToken != null) {
+                try {
+                    monitoringJobRepository.releaseExecutionClaim(job.getId(), claimToken);
+                } catch (RuntimeException releaseException) {
+                    // The bounded claim lease safely expires if this instance cannot release it.
+                }
+            }
+            if (lockAcquired) {
                 lock.unlock();
+                jobLocks.remove(job.getId(), lock);
+            }
         }
     }
 }

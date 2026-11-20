@@ -7,6 +7,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -110,6 +112,29 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
             @Param("environmentId") Long environmentId,
             @Param("executionMode") MonitoringJob.ExecutionMode executionMode,
             Pageable pageable);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+            UPDATE ra_fcb.monitoring_jobs
+            SET execution_claim_token = CAST(:claimToken AS UUID),
+                execution_claim_until = CURRENT_TIMESTAMP + (:leaseSeconds * INTERVAL '1 second')
+            WHERE id = :jobId
+              AND enabled = TRUE
+              AND (execution_claim_until IS NULL OR execution_claim_until < CURRENT_TIMESTAMP)
+            """, nativeQuery = true)
+    int tryClaimExecution(@Param("jobId") Long jobId,
+            @Param("claimToken") String claimToken,
+            @Param("leaseSeconds") int leaseSeconds);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+            UPDATE ra_fcb.monitoring_jobs
+            SET execution_claim_token = NULL, execution_claim_until = NULL
+            WHERE id = :jobId AND execution_claim_token = CAST(:claimToken AS UUID)
+            """, nativeQuery = true)
+    int releaseExecutionClaim(@Param("jobId") Long jobId, @Param("claimToken") String claimToken);
 
     boolean existsByExecutionModeAndApplication_IdIn(MonitoringJob.ExecutionMode executionMode, List<Long> applicationIds);
 
