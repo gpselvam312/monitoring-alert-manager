@@ -6037,6 +6037,14 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .server-health-summary-unknown.summary-table-card { --summary-card-accent: var(--text-secondary); }
 
 /* Alert History summary cards: compact gradient cards with a clear accent edge. */
+.alert-history-summary .summary-card-active {
+    --summary-card-accent: #dc3545;
+}
+
+.alert-history-summary .summary-card-recovered {
+    --summary-card-accent: #198754;
+}
+
 .alert-history-summary .summary-table-card {
     --summary-card-accent: var(--theme-primary, #0d6efd);
     position: relative;
