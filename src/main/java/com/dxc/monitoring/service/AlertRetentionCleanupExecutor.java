@@ -92,16 +92,18 @@ public class AlertRetentionCleanupExecutor {
             }
             case NOTIFICATION_DELIVERIES -> {
                 String eligibleDeliveries = eligibleNotificationDeliveriesSql();
-                examined = count("SELECT COUNT(*) FROM (" + eligibleDeliveries + ") eligible", cutoff);
+                Object[] parameters = alertScopeParameters(policy, cutoff);
+                examined = count("SELECT COUNT(*) FROM (" + eligibleDeliveries + ") eligible", parameters);
                 deleted = jdbcTemplate.update(
-                        "DELETE FROM ra_fcb.notification_deliveries WHERE id IN (" + eligibleDeliveries + ")", cutoff);
+                        "DELETE FROM ra_fcb.notification_deliveries WHERE id IN (" + eligibleDeliveries + ")", parameters);
                 detail.put("deliveryRowsDeleted", deleted);
             }
             case RULE_EVALUATIONS -> {
                 String eligibleEvaluations = eligibleOldEvaluationsSql();
-                examined = count("SELECT COUNT(*) FROM (" + eligibleEvaluations + ") eligible", cutoff);
+                Object[] parameters = evaluationScopeParameters(policy, cutoff);
+                examined = count("SELECT COUNT(*) FROM (" + eligibleEvaluations + ") eligible", parameters);
                 deleted = jdbcTemplate.update(
-                        "DELETE FROM ra_fcb.alert_rule_evaluations WHERE id IN (" + eligibleEvaluations + ")", cutoff);
+                        "DELETE FROM ra_fcb.alert_rule_evaluations WHERE id IN (" + eligibleEvaluations + ")", parameters);
                 detail.put("evaluationRowsDeleted", deleted);
             }
             default -> throw new IllegalArgumentException("Unsupported retention data type.");
@@ -118,8 +120,10 @@ public class AlertRetentionCleanupExecutor {
             case ALERT_HISTORY -> count("SELECT COUNT(*) FROM (" + eligibleResolvedHistorySql() + ") eligible",
                     alertScopeParameters(policy, cutoff));
             case NOTIFICATION_DELIVERIES -> count(
-                    "SELECT COUNT(*) FROM (" + eligibleNotificationDeliveriesSql() + ") eligible", cutoff);
-            case RULE_EVALUATIONS -> count("SELECT COUNT(*) FROM (" + eligibleOldEvaluationsSql() + ") eligible", cutoff);
+                    "SELECT COUNT(*) FROM (" + eligibleNotificationDeliveriesSql() + ") eligible",
+                    alertScopeParameters(policy, cutoff));
+            case RULE_EVALUATIONS -> count("SELECT COUNT(*) FROM (" + eligibleOldEvaluationsSql() + ") eligible",
+                    evaluationScopeParameters(policy, cutoff));
         };
     }
 
@@ -166,13 +170,24 @@ public class AlertRetentionCleanupExecutor {
                 """;
     }
 
+    private Object[] evaluationScopeParameters(AlertRetentionPolicy policy, OffsetDateTime cutoff) {
+        Long applicationId = policy.getApplication() == null ? null : policy.getApplication().getId();
+        Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
+        return new Object[] { cutoff, applicationId, applicationId, environmentId, environmentId };
+    }
+
     private String eligibleNotificationDeliveriesSql() {
         return """
-                SELECT id
-                FROM ra_fcb.notification_deliveries
-                WHERE created_at < ?
-                  AND (status IN ('SENT', 'SKIPPED')
-                       OR (status = 'FAILED' AND attempt_count >= 8))
+                SELECT d.id
+                FROM ra_fcb.notification_deliveries d
+                JOIN ra_fcb.alerts a ON a.id = d.alert_id
+                JOIN ra_fcb.monitoring_jobs j ON j.id = a.monitoring_job_id
+                WHERE d.created_at < ?
+                  AND (CAST(? AS BIGINT) IS NULL OR j.application_id = ?)
+                  AND (CAST(? AS BIGINT) IS NULL OR j.environment_id = ?)
+                  AND (? = 'ALL' OR a.alert_type = ?)
+                  AND (d.status IN ('SENT', 'SKIPPED')
+                       OR (d.status = 'FAILED' AND d.attempt_count >= 8))
                 """;
     }
 
@@ -180,7 +195,11 @@ public class AlertRetentionCleanupExecutor {
         return """
                 SELECT e.id
                 FROM ra_fcb.alert_rule_evaluations e
+                JOIN ra_fcb.alert_rules r ON r.id = e.alert_rule_id
+                JOIN ra_fcb.monitoring_jobs j ON j.id = r.monitoring_job_id
                 WHERE e.evaluated_at < ?
+                  AND (CAST(? AS BIGINT) IS NULL OR j.application_id = ?)
+                  AND (CAST(? AS BIGINT) IS NULL OR j.environment_id = ?)
                   AND EXISTS (
                       SELECT 1
                       FROM ra_fcb.alert_rule_evaluations newer
