@@ -6176,6 +6176,16 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     border-top: 1px solid var(--border-color);
 }
 
+/* Keep the Lifecycle History empty state compact without changing shared empty states. */
+.alert-lifecycle-empty {
+    min-height: 0;
+    padding: 1rem;
+}
+
+.alert-lifecycle-empty p {
+    margin: 0;
+}
+
 /* Alert History channel badges — matches the supplied delivery-log prototype. */
 .ch-badge {
     display: inline-flex;
