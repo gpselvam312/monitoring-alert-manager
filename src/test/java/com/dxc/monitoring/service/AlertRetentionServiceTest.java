@@ -1,6 +1,7 @@
 package com.dxc.monitoring.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -8,6 +9,10 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.dxc.monitoring.entity.AlertRetentionPolicy;
 import com.dxc.monitoring.entity.Application;
@@ -56,4 +61,44 @@ class AlertRetentionServiceTest {
             assertEquals(22L, saved.getEnvironment().getId());
         }
     }
+    @Test
+    void deniesGlobalRetentionPolicyToNonPlatformAdministrator() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("operator", "n/a",
+                        java.util.List.of(new SimpleGrantedAuthority("DATA_EXPUNGE"))));
+        try {
+            AlertRetentionService service = createService();
+            assertThrows(AccessDeniedException.class,
+                    () -> service.createPolicy("RESOLVED_ALERTS", 90, false, null, null, null, "ALL", 7L));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void allowsGlobalRetentionPolicyForPlatformAdministrator() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("admin", "n/a",
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+        try {
+            AlertRetentionService service = createService();
+            AlertRetentionPolicy saved = service.createPolicy(
+                    "RESOLVED_ALERTS", 90, false, null, null, null, "ALL", 1L);
+            assertEquals(null, saved.getApplication());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    private AlertRetentionService createService() {
+        AlertRetentionPolicyRepository policies = mock(AlertRetentionPolicyRepository.class);
+        when(policies.existsForScope(any(), any(), any(), any())).thenReturn(false);
+        when(policies.save(any(AlertRetentionPolicy.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        return new AlertRetentionService(policies, mock(AlertCleanupRunRepository.class),
+                mock(AlertRetentionCleanupExecutor.class), mock(AlertCleanupAuditService.class),
+                mock(ApplicationRepository.class), mock(EnvironmentRepository.class),
+                mock(DashboardAccessService.class), mock(AlertTypeRepository.class));
+    }
+
 }
