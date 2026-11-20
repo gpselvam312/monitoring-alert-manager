@@ -7,112 +7,87 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.dxc.monitoring.config.ScriptValidationProperties;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.service.SystemSettingService;
 
-/**
- * Fail-closed checks for monitoring scripts. Static scanning is defense in depth,
- * not a replacement for OS-level permissions and sandboxing.
- */
 @Component
-public class ScriptSecurityValidator
-{
-    private static final Pattern DANGEROUS_COMMAND = Pattern.compile(
-            "(?im)(^|[;&|()\\s])(?:sudo|rm|rmdir|shred|mkfs(?:\\.[a-z0-9]+)?|wipefs|fdisk|parted|dd|"
-            + "truncate|shutdown|reboot|poweroff|halt|killall|pkill|systemctl\\s+(?:stop|disable|mask)|"
-            + "service\\s+\\S+\\s+stop|chmod|chown)(?=\\s|$)");
-
-    private static final Pattern NESTED_SCRIPT = Pattern.compile(
-            "(?im)(^|[;&|()\\s])(?:source|eval|exec|xargs|find\\s+[^\\n]*\\s-exec|"
-            + "bash|sh|dash|zsh|ksh|python(?:[0-9.]*)?|perl|ruby|node)(?=\\s|$)"
-            + "|(^|[;&|()\\s])\\.\\s+\\S+"
-            + "|(^|[;&|()\\s])\\S+\\.sh(?=\\s|$)"
-            + "|(?:curl|wget)\\b[^\\n]*\\|\\s*(?:ba)?sh\\b");
-
+public class ScriptSecurityValidator {
+    private static final Logger log = LoggerFactory.getLogger(ScriptSecurityValidator.class);
+    private static final Pattern ASSIGNMENT = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*=.*");
+    private static final Set<String> SHELL_WORDS = Set.of("if","then","else","elif","fi","do","done","while","until","!");
+    private static final Set<String> WRAPPERS = Set.of("env","command","builtin","nohup","time");
+    private static final Set<String> NESTED = Set.of("source","eval","exec","xargs","bash","sh","dash","zsh","ksh","python","python2","python3","perl","ruby","node");
     private final Path[] fallbackAllowedDirectories;
     private final SystemSettingService systemSettingService;
+    private final ScriptValidationProperties validation;
 
     @Autowired
     public ScriptSecurityValidator(
             @Value("${monitoring.security.script.allowed-directories:${user.dir}/scripts}") String allowedDirectories,
-            SystemSettingService systemSettingService)
-    {
+            SystemSettingService systemSettingService, ScriptValidationProperties validation) {
         this.fallbackAllowedDirectories = toPaths(Arrays.asList(allowedDirectories.split(",")));
         this.systemSettingService = systemSettingService;
+        this.validation = validation;
+        this.validation.validate();
     }
 
-    /**
-     * Compatibility constructor for isolated validator tests using only the configured property.
-     */
-    ScriptSecurityValidator(String allowedDirectories)
-    {
-        this.fallbackAllowedDirectories = toPaths(Arrays.asList(allowedDirectories.split(",")));
-        this.systemSettingService = null;
+    ScriptSecurityValidator(String allowedDirectories) {
+        this(allowedDirectories, null, new ScriptValidationProperties());
     }
 
-    private Path[] toPaths(java.util.List<String> directories)
-    {
-        return directories.stream().map(String::trim).filter(value -> !value.isBlank())
-                .map(Path::of).map(Path::toAbsolutePath).map(Path::normalize).toArray(Path[]::new);
+    ScriptSecurityValidator(String allowedDirectories, ScriptValidationProperties validation) {
+        this(allowedDirectories, null, validation);
     }
 
-    private Path[] getAllowedDirectories()
-    {
-        if (systemSettingService == null)
-            return fallbackAllowedDirectories;
-        try
-        {
-            java.util.List<String> configured = systemSettingService.getScriptAllowedDirectories();
+    private Path[] toPaths(List<String> directories) {
+        return directories.stream().map(String::trim).filter(v -> !v.isBlank()).map(Path::of)
+                .map(Path::toAbsolutePath).map(Path::normalize).toArray(Path[]::new);
+    }
+
+    private Path[] getAllowedDirectories() {
+        if (systemSettingService == null) return fallbackAllowedDirectories;
+        try {
+            List<String> configured = systemSettingService.getScriptAllowedDirectories();
             return configured.isEmpty() ? fallbackAllowedDirectories : toPaths(configured);
-        }
-        catch (IllegalStateException exception)
-        {
+        } catch (IllegalStateException exception) {
             throw new IllegalArgumentException("Script security configuration is invalid.");
         }
     }
 
-    public Path validate(MonitoringJob job) throws IOException
-    {
+    public Path validate(MonitoringJob job) throws IOException {
         if (job.getScriptPath() == null || job.getScriptPath().isBlank())
             throw new IllegalArgumentException("Script path is required for SCRIPT monitoring job.");
-
         Path configuredPath = Path.of(job.getScriptPath()).toAbsolutePath().normalize();
         if (Files.isSymbolicLink(configuredPath))
             throw new IllegalArgumentException("Script security validation rejected a symbolic-link script.");
-
         if (!Files.exists(configuredPath) || !Files.isRegularFile(configuredPath) || !Files.isReadable(configuredPath))
             throw new IllegalArgumentException("Script security validation requires an existing, readable regular file.");
-
         Path realScript = configuredPath.toRealPath();
         Path allowedRoot = findAllowedRoot(realScript);
         if (allowedRoot == null)
             throw new IllegalArgumentException("Script security validation rejected a path outside configured allowed directories.");
-
         String approvedHash = job.getApprovedSha256();
         if (approvedHash == null || !approvedHash.matches("(?i)[a-f0-9]{64}"))
             throw new IllegalArgumentException("Execution blocked: Approved SHA-256 hash is not configured for this job.");
-
         String actualHash = sha256(realScript);
         if (!MessageDigest.isEqual(actualHash.getBytes(java.nio.charset.StandardCharsets.US_ASCII),
                 approvedHash.toLowerCase(Locale.ROOT).getBytes(java.nio.charset.StandardCharsets.US_ASCII)))
             throw new IllegalArgumentException("Execution blocked: Script SHA-256 validation failed. The script may have changed since approval.");
-
         String script = Files.readString(realScript);
-        if (DANGEROUS_COMMAND.matcher(script).find())
-            throw new IllegalArgumentException("Script security validation rejected a known dangerous command pattern.");
-
-        if (NESTED_SCRIPT.matcher(script).find())
-            throw new IllegalArgumentException("Script security validation rejected nested or indirect script execution patterns.");
-
-        if (job.getWorkingDirectory() != null && !job.getWorkingDirectory().isBlank())
-        {
+        if (validation.isEnabled()) validateCommands(script);
+        if (job.getWorkingDirectory() != null && !job.getWorkingDirectory().isBlank()) {
             Path workingDirectory = Path.of(job.getWorkingDirectory()).toAbsolutePath().normalize();
             if (Files.isSymbolicLink(workingDirectory) || !Files.isDirectory(workingDirectory))
                 throw new IllegalArgumentException("Script security validation rejected an invalid working directory.");
@@ -120,33 +95,84 @@ public class ScriptSecurityValidator
             if (!realWorkingDirectory.startsWith(allowedRoot))
                 throw new IllegalArgumentException("Script security validation rejected a working directory outside the allowed script directory.");
         }
-
         return realScript;
     }
 
-    private Path findAllowedRoot(Path realScript) throws IOException
-    {
-        for (Path configuredRoot : getAllowedDirectories())
-        {
-            if (!Files.isDirectory(configuredRoot))
-                continue;
-            Path realRoot = configuredRoot.toRealPath();
-            if (realScript.startsWith(realRoot))
-                return realRoot;
+    private void validateCommands(String script) {
+        validation.validate();
+        for (List<String> tokens : ShellCommandScanner.commands(script)) {
+            int index=0;
+            while (index<tokens.size() && SHELL_WORDS.contains(tokens.get(index).toLowerCase(Locale.ROOT))) index++;
+            while (index<tokens.size() && ASSIGNMENT.matcher(tokens.get(index)).matches()) index++;
+            while (index<tokens.size() && WRAPPERS.contains(base(tokens.get(index)))) {
+                String wrapper=base(tokens.get(index++));
+                while (index<tokens.size() && (tokens.get(index).startsWith("-") || ASSIGNMENT.matcher(tokens.get(index)).matches())) index++;
+                if (wrapper.equals("env") || wrapper.equals("command") || wrapper.equals("builtin")) continue;
+            }
+            if (index>=tokens.size()) continue;
+            String command=base(tokens.get(index));
+            if (command.isBlank() || command.startsWith(">") || command.startsWith("<")) continue;
+            if (NESTED.contains(command) || command.endsWith(".sh") || command.equals("."))
+                throw new IllegalArgumentException("Script security validation rejected nested or indirect script execution.");
+            if (tokens.subList(index+1,tokens.size()).contains("-exec") && command.equals("find"))
+                throw new IllegalArgumentException("Script security validation rejected find -exec.");
+            boolean restricted=validation.getRestrictedCommands().contains(command)
+                    || (command.startsWith("mkfs.") && validation.getRestrictedCommands().contains("mkfs"));
+            if (command.equals("systemctl"))
+                restricted=tokens.size()>index+1 && Set.of("stop","disable","mask").contains(tokens.get(index+1));
+            if (command.equals("service"))
+                restricted=tokens.size()>index+3 && tokens.get(index+2).equals("stop");
+            if (restricted && !isAllowed(command,tokens.subList(index+1,tokens.size()))) {
+                throw new IllegalArgumentException("Script security validation rejected restricted command '" + command + "'.");
+            }
+        }
+    }
+
+    private boolean isAllowed(String command,List<String> arguments) {
+        for (var rule:validation.getAllowedCommandRules()) {
+            if (!rule.getCommand().equalsIgnoreCase(command) || rule.getAllowedArguments().size()!=arguments.size()) continue;
+            boolean matches=true;
+            for (int i=0;i<arguments.size();i++) {
+                if (!glob(rule.getAllowedArguments().get(i).trim()).matcher(arguments.get(i)).matches()) { matches=false; break; }
+            }
+            if (matches) {
+                log.warn("Script validation allowed restricted command '{}' under configured argument rule.",command);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Pattern glob(String value) {
+        StringBuilder regex=new StringBuilder("^");
+        for(char c:value.toCharArray()) {
+            if(c=='*') regex.append(".*");
+            else if(c=='?') regex.append('.');
+            else regex.append(Pattern.quote(String.valueOf(c)));
+        }
+        return Pattern.compile(regex.append("$").toString());
+    }
+
+    private String base(String token) {
+        String value=token.toLowerCase(Locale.ROOT);
+        int slash=value.lastIndexOf('/');
+        return slash>=0?value.substring(slash+1):value;
+    }
+
+    private Path findAllowedRoot(Path realScript) throws IOException {
+        for (Path configuredRoot:getAllowedDirectories()) {
+            if (!Files.isDirectory(configuredRoot)) continue;
+            Path realRoot=configuredRoot.toRealPath();
+            if (realScript.startsWith(realRoot)) return realRoot;
         }
         return null;
     }
 
-    public static String sha256(Path file) throws IOException
-    {
-        try
-        {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file));
-            return HexFormat.of().formatHex(digest);
-        }
-        catch (NoSuchAlgorithmException exception)
-        {
-            throw new IllegalStateException("SHA-256 is not available in this Java runtime.", exception);
+    public static String sha256(Path file) throws IOException {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available in this Java runtime.",exception);
         }
     }
 }

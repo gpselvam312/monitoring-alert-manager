@@ -48,6 +48,34 @@ monitoring:
     script:
       # Trusted directories remain environment-specific; approved hashes are stored per Monitoring Job.
       allowed-directories: ${MONITORING_SCRIPT_ALLOWED_DIRECTORIES:${user.dir}/scripts}
+      validation:
+        enabled: ${MONITORING_SCRIPT_VALIDATION_ENABLED:true}
+        restricted-commands:
+          - sudo
+          - rm
+          - rmdir
+          - shred
+          - mkfs
+          - wipefs
+          - fdisk
+          - parted
+          - dd
+          - truncate
+          - shutdown
+          - reboot
+          - poweroff
+          - halt
+          - killall
+          - pkill
+          - systemctl
+          - service
+          - chmod
+          - chown
+        allowed-command-rules: []
+        # Example narrow exception:
+        # allowed-command-rules:
+        #   - command: rm
+        #     allowed-arguments: ["-f", "*.tmp"]
     encryption:
       # Supply a Base64-encoded 32-byte key through the runtime environment; never commit production keys.
       key: ${MONITORING_ENCRYPTION_KEY:${MONITORING_EXTERNAL_APP_ENCRYPTION_KEY:}}
