@@ -20,6 +20,8 @@
                 config.direction = 'asc';
             }
 
+            config._requestSequence = config._requestSequence || 0;
+            config._activeRequest = config._activeRequest || null;
             DataTable.configs[name] = config;
         },
 
@@ -134,10 +136,16 @@
                     ? searchInput.value.trim()
                     : '';
 
+            if (config._activeRequest) {
+                config._activeRequest.abort();
+            }
+
+            const requestController = new AbortController();
+            const requestSequence = ++config._requestSequence;
+            config._activeRequest = requestController;
+
             container.innerHTML =
-                '<div class="p-4 text-muted text-center">' +
-                'Loading...' +
-                '</div>';
+                '<div class="p-4 text-muted text-center">Loading...</div>';
 
             const params = new URLSearchParams({
                 page: page,
@@ -145,9 +153,9 @@
                 search: search
             });
 
-			if (config.tabId) {
-			    params.set('tabId', config.tabId);
-			}
+            if (config.tabId) {
+                params.set('tabId', config.tabId);
+            }
             if (config.filterIds && typeof config.filterIds === 'object') {
                 Object.entries(config.filterIds).forEach(function (entry) {
                     const parameterName = entry[0];
@@ -158,49 +166,51 @@
                 });
             }
             if (config.sort) {
-
-                params.set(
-                    'sort',
-                    config.sort
-                );
-
-                params.set(
-                    'direction',
-                    config.direction
-                );
+                params.set('sort', config.sort);
+                params.set('direction', config.direction);
             }
 
-            fetch(config.endpoint + '?' + params.toString())
+            fetch(config.endpoint + '?' + params.toString(), {
+                signal: requestController.signal,
+                headers: {
+                    'Accept': 'text/html',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
                 .then(function (response) {
-
-                    if (!response.ok) {
-
-                        throw new Error(
-                            'Unable to load table data.'
-                        );
-
+                    if (response.status === 401) {
+                        window.location.assign('/login?expired');
+                        throw new Error('Your session has expired.');
                     }
-
+                    if (response.status === 403) {
+                        throw new Error('You do not have permission to view this data.');
+                    }
+                    if (!response.ok) {
+                        throw new Error('Unable to load table data.');
+                    }
                     return response.text();
-
                 })
                 .then(function (html) {
-
+                    if (requestSequence !== config._requestSequence) {
+                        return;
+                    }
                     container.innerHTML = html;
-
                     DataTable.updateSortIndicators(config);
-					DataTable.updateCompactActions(config);
-
+                    DataTable.updateCompactActions(config);
                 })
                 .catch(function (error) {
-
+                    if (error.name === 'AbortError' || requestSequence !== config._requestSequence) {
+                        return;
+                    }
                     console.error(error);
-
-                    container.innerHTML =
-                        '<div class="p-4 text-danger">' +
-                        'Unable to load data.' +
-                        '</div>';
-
+                    container.textContent = error.message === 'You do not have permission to view this data.'
+                        ? error.message : 'Unable to load data.';
+                    container.classList.add('text-danger');
+                })
+                .finally(function () {
+                    if (requestSequence === config._requestSequence) {
+                        config._activeRequest = null;
+                    }
                 });
 
         },
