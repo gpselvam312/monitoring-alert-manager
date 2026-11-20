@@ -4,7 +4,7 @@
     const config = window.activeAlertConfig;
     if (!config) return;
 
-    const state = { batch: 0, localPage: 0, pageSize: 10, fetchSize: 100, totalElements: 0, hasNext: false, items: [], loading: false, searchTimer: null };
+    const state = { batch: 0, localPage: 0, pageSize: 10, fetchSize: 100, totalElements: 0, hasNext: false, items: [], loading: false, searchTimer: null, requestId: 0, requestController: null };
     const byId = id => document.getElementById(id);
     const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     const searchInput = byId(config.searchId);
@@ -22,15 +22,22 @@
     }
 
     function loadBatch(batch, localPage) {
-        if (state.loading) return;
+        if (state.requestController) state.requestController.abort();
+        const requestId = ++state.requestId;
+        const requestController = new AbortController();
+        state.requestController = requestController;
         state.loading = true;
         container.innerHTML = '<div class="p-4 text-muted text-center"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading active alerts...</div>';
-        fetch(config.endpoint + '?' + paramsForBatch(batch).toString(), { headers: { 'Accept': 'application/json' } })
+        fetch(config.endpoint + '?' + paramsForBatch(batch).toString(), {
+            headers: { 'Accept': 'application/json' },
+            signal: requestController.signal
+        })
             .then(response => {
                 if (!response.ok) throw new Error('Unable to load active alerts.');
                 return response.json();
             })
             .then(data => {
+                if (requestId !== state.requestId) return;
                 state.batch = data.batch;
                 state.fetchSize = data.fetchSize;
                 state.items = data.items || [];
@@ -42,11 +49,17 @@
                 render();
             })
             .catch(error => {
+                if (requestId !== state.requestId || error.name === 'AbortError') return;
                 console.error(error);
                 container.innerHTML = '<div class="p-4 text-danger">Unable to load active alerts. Please try again.</div>';
                 updatePagination(true);
             })
-            .finally(() => { state.loading = false; });
+            .finally(() => {
+                if (requestId === state.requestId) {
+                    state.loading = false;
+                    state.requestController = null;
+                }
+            });
     }
 
     function render() {
