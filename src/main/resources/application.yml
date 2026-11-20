@@ -48,8 +48,6 @@ monitoring:
     script:
       # Trusted directories remain environment-specific; approved hashes are stored per Monitoring Job.
       allowed-directories: ${MONITORING_SCRIPT_ALLOWED_DIRECTORIES:${user.dir}/scripts}
-
-  security:
     encryption:
       # Supply a Base64-encoded 32-byte key through the runtime environment; never commit production keys.
       key: ${MONITORING_ENCRYPTION_KEY:${MONITORING_EXTERNAL_APP_ENCRYPTION_KEY:}}
