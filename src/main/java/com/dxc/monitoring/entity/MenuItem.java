@@ -36,6 +36,9 @@ public class MenuItem
     @Column(name = "required_permission", length = 100)
     private String requiredPermission;
 
+    @Column(name = "section_name", length = 80)
+    private String sectionName;
+
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -55,6 +58,8 @@ public class MenuItem
     public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
     public String getRequiredPermission() { return requiredPermission; }
     public void setRequiredPermission(String requiredPermission) { this.requiredPermission = requiredPermission; }
+    public String getSectionName() { return sectionName; }
+    public void setSectionName(String sectionName) { this.sectionName = sectionName; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
 }

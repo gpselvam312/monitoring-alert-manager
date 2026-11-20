@@ -53,6 +53,11 @@
                                 <input id="displayOrder" name="displayOrder" type="number" class="form-control" min="0" required th:value="${menuItem.displayOrder}">
                             </div>
                             <div class="col-md-6">
+                                <label for="sectionName" class="form-label">Sidebar Section</label>
+                                <input id="sectionName" name="sectionName" class="form-control" maxlength="80" placeholder="Monitoring" th:value="${menuItem.sectionName}">
+                                <div class="form-text">Controls the sidebar section for this menu or its child entries.</div>
+                            </div>
+                            <div class="col-md-6">
                                 <label for="requiredPermission" class="form-label">Required Permission</label>
                                 <input id="requiredPermission" name="requiredPermission" class="form-control" maxlength="100" placeholder="SYSTEM_CONFIG" th:value="${menuItem.requiredPermission}">
                                 <div class="form-text">Must match an authority granted to the signed-in user.</div>

@@ -1,11 +1,5 @@
 package com.dxc.monitoring.service;
 
-import com.dxc.monitoring.entity.MenuItem;
-import com.dxc.monitoring.repository.MenuItemRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,151 +8,96 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
-public class MenuItemService
-{
-    private static final Set<String> ADMIN_ONLY_MENUS = Set.of("USERS", "ROLES", "MENU_MANAGEMENT");
-    private static final Set<String> NOT_YET_SUPPORTED_MENUS = Set.of("AUDIT_LOG");
+public class MenuItemService {
+    private final MenuDefinitionCacheService menuCache;
 
-    private final MenuItemRepository menuItemRepository;
-
-    public MenuItemService(MenuItemRepository menuItemRepository)
-    {
-        this.menuItemRepository = menuItemRepository;
+    public MenuItemService(MenuDefinitionCacheService menuCache) {
+        this.menuCache = menuCache;
     }
 
     @Transactional(readOnly = true)
-    public List<SidebarSection> getVisibleSections(Authentication authentication)
-    {
-        if (authentication == null || !authentication.isAuthenticated())
-        {
-            return List.of();
-        }
-
+    public List<SidebarSection> getVisibleSections(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) return List.of();
         Set<String> authorities = authentication.getAuthorities().stream()
-                .map(authority -> authority.getAuthority())
-                .collect(Collectors.toSet());
+                .map(authority -> authority.getAuthority()).collect(Collectors.toSet());
+        if (authorities.contains("ROLE_ANONYMOUS")) return List.of();
 
-        if (authorities.contains("ROLE_ANONYMOUS"))
-        {
-            return List.of();
+        List<MenuDefinitionCacheService.MenuDefinition> items = menuCache.getEnabledMenuDefinitions();
+        Map<Long, List<MenuDefinitionCacheService.MenuDefinition>> childrenByParent = new java.util.HashMap<>();
+        List<MenuDefinitionCacheService.MenuDefinition> roots = new ArrayList<>();
+        for (var item : items) {
+            if (item.parentId() == null) roots.add(item);
+            else childrenByParent.computeIfAbsent(item.parentId(), ignored -> new ArrayList<>()).add(item);
         }
 
-        List<MenuItem> items = menuItemRepository.findByEnabledTrueOrderByDisplayOrderAscIdAsc();
         Map<String, SidebarSection> sections = new LinkedHashMap<>();
-        for (MenuItem item : items)
-        {
-            if (item.getParentId() != null)
-            {
-                continue;
-            }
-
-            String href = routeFor(item);
-            if (href != null && isVisible(item, authorities))
-            {
-                String sectionName = rootSection(item.getMenuKey());
+        for (var root : roots) {
+            String rootUrl = routeFor(root.url());
+            if (rootUrl != null && isVisible(root, authorities)) {
+                String sectionName = sectionName(root.sectionName(), "Main");
                 sections.computeIfAbsent(sectionName, name -> new SidebarSection(name, new ArrayList<>()))
-                        .getItems().add(toLink(item, href));
+                        .getItems().add(toLink(root, rootUrl));
             }
-
-            List<MenuItem> children = items.stream()
-                    .filter(child -> item.getId() != null && item.getId().equals(child.getParentId()))
-                    .filter(child -> routeFor(child) != null && isVisible(child, authorities))
-                    .toList();
-
-            if (!children.isEmpty())
-            {
-                SidebarSection section = sections.computeIfAbsent(item.getMenuName(),
-                        name -> new SidebarSection(name, new ArrayList<>()));
-                for (MenuItem child : children)
-                {
-                    section.getItems().add(toLink(child, routeFor(child)));
+            List<MenuDefinitionCacheService.MenuDefinition> children =
+                    childrenByParent.getOrDefault(root.id(), List.of());
+            if (!children.isEmpty()) {
+                String sectionName = sectionName(root.sectionName(), root.menuName());
+                for (var child : children) {
+                    String href = routeFor(child.url());
+                    if (href != null && isVisible(child, authorities)) {
+                        sections.computeIfAbsent(sectionName, name -> new SidebarSection(name, new ArrayList<>()))
+                                .getItems().add(toLink(child, href));
+                    }
                 }
             }
         }
-
-        return sections.values().stream()
-                .filter(section -> !section.getItems().isEmpty())
-                .toList();
+        return sections.values().stream().filter(section -> !section.getItems().isEmpty()).toList();
     }
 
-    private boolean isVisible(MenuItem item, Set<String> authorities)
-    {
-        String requiredPermission = item.getRequiredPermission();
-        if (requiredPermission != null && !requiredPermission.isBlank()
-                && !authorities.contains(requiredPermission))
-        {
-            return false;
-        }
-
-        return !ADMIN_ONLY_MENUS.contains(item.getMenuKey()) || authorities.contains("ROLE_ADMIN");
+    private boolean isVisible(MenuDefinitionCacheService.MenuDefinition item, Set<String> authorities) {
+        String requiredPermission = item.requiredPermission();
+        return requiredPermission == null || requiredPermission.isBlank() || authorities.contains(requiredPermission);
     }
 
-    private String routeFor(MenuItem item)
-    {
-        if (item.getUrl() == null || item.getUrl().isBlank()
-                || NOT_YET_SUPPORTED_MENUS.contains(item.getMenuKey()))
-        {
-            return null;
-        }
+    private String sectionName(String configured, String fallback) {
+        return configured == null || configured.isBlank() ? fallback : configured.trim();
+    }
 
-        String url = item.getUrl().trim();
-        // Only allow local application paths; do not allow external URLs or script schemes.
+    private String routeFor(String configuredUrl) {
+        if (configuredUrl == null || configuredUrl.isBlank()) return null;
+        String url = configuredUrl.trim();
         if (!url.startsWith("/") || url.startsWith("//") || url.contains("..")
-                || url.contains("\\") || url.contains("\r") || url.contains("\n"))
-        {
-            return null;
-        }
+                || url.contains("\\") || url.contains("\r") || url.contains("\n")
+                || url.matches("(?i).*%(2f|5c|2e).*")) return null;
         return url;
     }
 
-    private String rootSection(String menuKey)
-    {
-        return switch (menuKey)
-        {
-            case "DASHBOARD" -> "Main";
-            case "MONITORING_JOBS", "STREAMING_JOBS", "MACHINES" -> "Monitoring";
-            case "SCHEDULES" -> "Scheduling";
-            default -> "Main";
-        };
+    private SidebarLink toLink(MenuDefinitionCacheService.MenuDefinition item, String href) {
+        return new SidebarLink(item.menuKey().toLowerCase(Locale.ROOT).replace('_', '-'),
+                item.menuName(), item.icon(), href);
     }
 
-    private SidebarLink toLink(MenuItem item, String href)
-    {
-        return new SidebarLink(item.getMenuKey().toLowerCase(Locale.ROOT).replace('_', '-'),
-                item.getMenuName(), item.getIcon(), href);
-    }
-
-    public static final class SidebarSection
-    {
+    public static final class SidebarSection {
         private final String name;
         private final List<SidebarLink> items;
-
-        public SidebarSection(String name, List<SidebarLink> items)
-        {
-            this.name = name;
-            this.items = items;
-        }
-
+        public SidebarSection(String name, List<SidebarLink> items) { this.name = name; this.items = items; }
         public String getName() { return name; }
         public List<SidebarLink> getItems() { return items; }
     }
 
-    public static final class SidebarLink
-    {
+    public static final class SidebarLink {
         private final String menuKey;
         private final String label;
         private final String icon;
         private final String href;
-
-        public SidebarLink(String menuKey, String label, String icon, String href)
-        {
-            this.menuKey = menuKey;
-            this.label = label;
-            this.icon = icon;
-            this.href = href;
+        public SidebarLink(String menuKey, String label, String icon, String href) {
+            this.menuKey = menuKey; this.label = label; this.icon = icon; this.href = href;
         }
-
         public String getMenuKey() { return menuKey; }
         public String getLabel() { return label; }
         public String getIcon() { return icon; }

@@ -16,7 +16,7 @@ public class CacheConfig {
     @Bean
     CacheManager cacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager(
-                "enabledApplications", "enabledEnvironmentsByApplication");
+                "enabledApplications", "enabledEnvironmentsByApplication", "menuDefinitions");
         manager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(500)
                 .expireAfterWrite(30, TimeUnit.SECONDS)

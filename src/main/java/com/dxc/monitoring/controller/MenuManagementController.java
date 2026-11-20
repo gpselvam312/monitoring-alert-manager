@@ -8,6 +8,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -100,6 +101,7 @@ public class MenuManagementController {
 
     @PostMapping("/save")
     @Transactional
+    @CacheEvict(cacheNames = "menuDefinitions", allEntries = true)
     public String save(@RequestParam(required = false) Long id, @RequestParam String menuKey,
             @RequestParam String menuName, @RequestParam(required = false) String url,
             @RequestParam(required = false) String icon, @RequestParam(required = false) Long parentId,
@@ -112,7 +114,8 @@ public class MenuManagementController {
         String normalizedIcon = icon == null || icon.isBlank() ? null : icon.trim();
         String normalizedPermission = requiredPermission == null || requiredPermission.isBlank()
                 ? null : requiredPermission.trim();
-        String error = validate(normalizedKey, normalizedName, normalizedUrl, displayOrder, parentId, id);
+        String normalizedSection = sectionName == null || sectionName.isBlank() ? null : sectionName.trim();
+        String error = validate(normalizedKey, normalizedName, normalizedUrl, normalizedSection, displayOrder, parentId, id);
         if (error != null) {
             MenuItem form = new MenuItem();
             form.setId(id); form.setMenuKey(normalizedKey); form.setMenuName(normalizedName);
@@ -130,17 +133,18 @@ public class MenuManagementController {
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
         entity.setMenuKey(normalizedKey); entity.setMenuName(normalizedName); entity.setUrl(normalizedUrl);
         entity.setIcon(normalizedIcon); entity.setParentId(parentId); entity.setDisplayOrder(displayOrder);
-        entity.setRequiredPermission(normalizedPermission); entity.setEnabled(enabled);
+        entity.setRequiredPermission(normalizedPermission); entity.setSectionName(normalizedSection); entity.setEnabled(enabled);
         menuItemRepository.save(entity);
         redirectAttributes.addFlashAttribute("successMessage", "Menu item saved.");
         return "redirect:/administration/menus";
     }
 
-    private String validate(String key, String name, String url, int order, Long parentId, Long id) {
+    private String validate(String key, String name, String url, String sectionName, int order, Long parentId, Long id) {
         if (!MENU_KEY_PATTERN.matcher(key).matches())
             return "Menu Key must start with a letter and contain only uppercase letters, numbers, and underscores (2–80 characters).";
         if (name.isBlank() || name.length() > 100)
             return "Menu Name is required and must be no longer than 100 characters.";
+        if (sectionName != null && sectionName.length() > 80) return "Sidebar Section must be no longer than 80 characters.";
         if (order < 0) return "Display Order must be zero or greater.";
         if (url != null && (!url.startsWith("/") || url.startsWith("//") || url.contains("..")
                 || url.contains("\\") || url.contains("\r") || url.contains("\n")
@@ -160,6 +164,7 @@ public class MenuManagementController {
 
     @PostMapping("/{id}/toggle")
     @Transactional
+    @CacheEvict(cacheNames = "menuDefinitions", allEntries = true)
     public String toggle(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         MenuItem menuItem = menuItemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
