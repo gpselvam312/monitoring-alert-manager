@@ -5,9 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -36,6 +34,7 @@ import com.dxc.monitoring.service.MonitoringJobService;
 import com.dxc.monitoring.service.StreamingJobService;
 import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
 @RequestMapping("/monitoring/jobs")
@@ -53,9 +52,14 @@ public class MonitoringJobController
     private final MonitoringExecutionService monitoringExecutionService;
     private final MonitoringResultNormalizer resultNormalizer;
     private final DashboardAccessService accessService;
+    private final PageRequestSupport pageRequestSupport;
 
     @Value("${monitoring.streaming.max-runtime-seconds:86400}")
     private int configuredMaximumStreamingRuntimeSeconds;
+
+    private static final Map<String, String> EXECUTION_SORT_FIELDS = Map.of(
+            "startedAt", "startedAt", "completedAt", "completedAt", "durationMs", "durationMs",
+            "attemptNumber", "attemptNumber", "status", "status");
 
     private static final Map<String, String> JOB_SORT_FIELDS =
         Map.of("name", "name", "application.name", "application.name", "environment.name", "environment.name",
@@ -67,7 +71,7 @@ public class MonitoringJobController
             ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
             MonitoringExecutionManager monitoringExecutionManager,
             MonitoringExecutionService monitoringExecutionService, MonitoringResultNormalizer resultNormalizer,
-            DashboardAccessService accessService)
+            DashboardAccessService accessService, PageRequestSupport pageRequestSupport)
     {
         this.monitoringJobService = monitoringJobService;
         this.streamingJobService = streamingJobService;
@@ -80,6 +84,7 @@ public class MonitoringJobController
         this.monitoringExecutionService = monitoringExecutionService;
         this.resultNormalizer = resultNormalizer;
         this.accessService = accessService;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     /*
@@ -91,39 +96,20 @@ public class MonitoringJobController
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
-
         String normalizedSearch = search == null ? "" : search.trim();
-
-        Sort pageableSort = buildJobSort(sort, direction);
-
-        Pageable pageable = PageRequest.of(page, size, pageableSort);
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", JOB_SORT_FIELDS);
+        Pageable pageable = spec.pageable();
 
         Page<MonitoringJob> jobs = monitoringJobService.findAll(normalizedSearch, pageable);
 
         model.addAttribute("jobs", jobs);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("search", normalizedSearch);
         model.addAttribute("currentPage", "monitoring-jobs");
 
         return "monitoring/jobs";
-    }
-
-    private Sort buildJobSort(String sort, String direction)
-    {
-        String sortField = JOB_SORT_FIELDS.getOrDefault(sort, "name");
-
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
-
-        return Sort.by(sortDirection, sortField);
     }
 
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
@@ -132,21 +118,9 @@ public class MonitoringJobController
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
-
         String normalizedSearch = search == null ? "" : search.trim();
-
-        Sort pageableSort = buildJobSort(sort, direction);
-
-        Pageable pageable = PageRequest.of(page, size, pageableSort);
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", JOB_SORT_FIELDS);
+        Pageable pageable = spec.pageable();
 
         Page<MonitoringJob> jobs = monitoringJobService.findAll(normalizedSearch, pageable);
 
@@ -639,21 +613,10 @@ public class MonitoringJobController
             @RequestParam(defaultValue = "startedAt") String sort, @RequestParam(defaultValue = "desc") String direction,
             Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
-
         String normalizedSearch = search == null ? "" : search.trim();
+        var spec = pageRequestSupport.create(page, size, sort, direction, "startedAt", EXECUTION_SORT_FIELDS);
+        Pageable pageable = spec.pageable();
 
-        Pageable pageable = PageRequest.of(page, size, buildExecutionSort(sort, direction));
-
-        monitoringJobService.findById(id);
         Page<MonitoringExecution> executions = monitoringExecutionService.findByJobId(id, normalizedSearch, pageable);
 
         Map<Long, MonitoringResult.ResultStatus> resultStatuses =
@@ -668,21 +631,6 @@ public class MonitoringJobController
         return "monitoring/execution-history :: executionHistory";
     }
 
-    private Sort buildExecutionSort(String sort, String direction)
-    {
-        Map<String, String> allowedFields = Map.of(
-                "startedAt", "startedAt",
-                "completedAt", "completedAt",
-                "durationMs", "durationMs",
-                "attemptNumber", "attemptNumber",
-                "status", "status");
-        String field = allowedFields.getOrDefault(sort, "startedAt");
-        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction)
-                ? Sort.Direction.ASC : Sort.Direction.DESC;
-        return Sort.by(sortDirection, field).and(Sort.by(Sort.Direction.DESC, "startedAt"))
-                .and(Sort.by(Sort.Direction.DESC, "id"));
-    }
-
     @GetMapping("/{id}/executions/table")
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
     public String executionHistoryTable(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
@@ -690,19 +638,9 @@ public class MonitoringJobController
             @RequestParam(defaultValue = "startedAt") String sort, @RequestParam(defaultValue = "desc") String direction,
             Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
-
         String normalizedSearch = search == null ? "" : search.trim();
-
-        Pageable pageable = PageRequest.of(page, size, buildExecutionSort(sort, direction));
+        var spec = pageRequestSupport.create(page, size, sort, direction, "startedAt", EXECUTION_SORT_FIELDS);
+        Pageable pageable = spec.pageable();
 
         Page<MonitoringExecution> executions = monitoringExecutionService.findByJobId(id, normalizedSearch, pageable);
 

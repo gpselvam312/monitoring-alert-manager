@@ -3,9 +3,7 @@ package com.dxc.monitoring.controller;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -23,6 +21,7 @@ import com.dxc.monitoring.entity.Machine;
 import com.dxc.monitoring.entity.User;
 import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.service.MachineService;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
 @RequestMapping("/monitoring/machines")
@@ -31,14 +30,16 @@ public class MachineController
 
     private final MachineService machineService;
     private final UserRepository userRepository;
+    private final PageRequestSupport pageRequestSupport;
     private static final Map<String, String> MACHINE_SORT_FIELDS = Map.of("name", "name", "hostname", "hostname",
             "ipAddress", "ipAddress", "environment.name", "environment.name", "enabled", "enabled");
 
-    public MachineController(MachineService machineService, UserRepository userRepository)
+    public MachineController(MachineService machineService, UserRepository userRepository, PageRequestSupport pageRequestSupport)
     {
 
         this.machineService = machineService;
         this.userRepository = userRepository;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -47,20 +48,14 @@ public class MachineController
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
         String normalizedSearch = search == null ? "" : search.trim();
-        Sort pageableSort = buildMachineSort(sort, direction);
-        Pageable pageable = PageRequest.of(page, size, pageableSort);
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", MACHINE_SORT_FIELDS);
+        Pageable pageable = spec.pageable();
         Page<Machine> machines = machineService.findAll(normalizedSearch, pageable);
         model.addAttribute("machines", machines);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("search", normalizedSearch);
         model.addAttribute("currentPage", "machines");
         return "monitoring/machines";
@@ -72,29 +67,14 @@ public class MachineController
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
         String normalizedSearch = search == null ? "" : search.trim();
-        Sort pageableSort = buildMachineSort(sort, direction);
-        Pageable pageable = PageRequest.of(page, size, pageableSort);
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", MACHINE_SORT_FIELDS);
+        Pageable pageable = spec.pageable();
         Page<Machine> machines = machineService.findAll(normalizedSearch, pageable);
         model.addAttribute("machines", machines);
         model.addAttribute("pageSize", size);
         model.addAttribute("search", normalizedSearch);
         return "monitoring/machines :: machinesTable";
-    }
-
-    private Sort buildMachineSort(String sort, String direction)
-    {
-        String sortField = MACHINE_SORT_FIELDS.getOrDefault(sort, "name");
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        return Sort.by(sortDirection, sortField);
     }
 
     @GetMapping("/new")

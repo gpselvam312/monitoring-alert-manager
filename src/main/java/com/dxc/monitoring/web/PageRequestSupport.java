@@ -16,6 +16,8 @@ public class PageRequestSupport {
         properties.validate();
     }
 
+    public int defaultPageSize() { return properties.getDefaultPageSize(); }
+
     public PageSpec create(int page, int size, String sort, String direction,
             String defaultSort, Map<String, String> allowedSorts) {
         int safePage = Math.max(0, page);
