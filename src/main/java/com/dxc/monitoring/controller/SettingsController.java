@@ -19,7 +19,7 @@ import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
 @RequestMapping("/administration/settings")
-@PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
+@PreAuthorize("hasAuthority('ROLE_ADMIN')")
 public class SettingsController {
     private static final Map<String, String> SORT_FIELDS = Map.of(
             "settingKey", "settingKey", "description", "description",
