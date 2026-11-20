@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,13 +161,16 @@ public class NotificationRoutingService {
         }
         NotificationGroup.ChannelType expectedGroupType = route.channel().getChannelType() == NotificationChannel.ChannelType.WHATSAPP
                 ? NotificationGroup.ChannelType.WHATSAPP : NotificationGroup.ChannelType.EMAIL;
-        java.util.stream.Stream.concat(route.groups().stream(),
+        Set<Long> groupIds = java.util.stream.Stream.concat(route.groups().stream(),
                 route.legacyGroup() == null ? java.util.stream.Stream.empty() : java.util.stream.Stream.of(route.legacyGroup()))
                 .filter(group -> group != null && group.isEnabled() && group.getChannelType() == expectedGroupType)
-                .forEach(group -> groupMemberRepository.findByGroup_IdAndRecipient_EnabledTrue(group.getId())
-                        .stream().map(NotificationGroupMember::getRecipient)
-                        .filter(NotificationRecipient::isEnabled)
-                        .forEach(recipient -> recipients.putIfAbsent(recipient.getId(), recipient)));
+                .map(NotificationGroup::getId).collect(java.util.stream.Collectors.toSet());
+        if (!groupIds.isEmpty()) {
+            groupMemberRepository.findByGroup_IdInAndRecipient_EnabledTrue(groupIds).stream()
+                    .map(NotificationGroupMember::getRecipient)
+                    .filter(recipient -> recipient != null && recipient.isEnabled())
+                    .forEach(recipient -> recipients.putIfAbsent(recipient.getId(), recipient));
+        }
         return List.copyOf(recipients.values());
     }
 
