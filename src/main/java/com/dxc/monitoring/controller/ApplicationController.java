@@ -54,7 +54,7 @@ public class ApplicationController
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('MONITORING_VIEW')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     public String list(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
@@ -63,7 +63,7 @@ public class ApplicationController
         String normalizedSearch = search == null ? "" : search.trim();
         Pageable pageable = spec.pageable();
 
-        java.util.List<Long> accessibleIds = accessService.getAccessibleApplications().stream()
+        java.util.List<Long> accessibleIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
                 .map(Application::getId).toList();
         Page<Application> applications = accessibleIds.isEmpty() ? Page.empty(pageable)
                 : applicationRepository.findAllForApplications(normalizedSearch, accessibleIds, pageable);
@@ -79,7 +79,7 @@ public class ApplicationController
     }
 
     @GetMapping("/table")
-    @PreAuthorize("hasAuthority('MONITORING_VIEW')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     public String applicationTable(@RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "name") String sort, @RequestParam(defaultValue = "asc") String direction,
@@ -88,7 +88,7 @@ public class ApplicationController
         var spec = pageRequestSupport.create(page, size, sort, direction, "name", APPLICATION_SORT_FIELDS);
         String normalizedSearch = search == null ? "" : search.trim();
         Pageable pageable = spec.pageable();
-        java.util.List<Long> accessibleIds = accessService.getAccessibleApplications().stream()
+        java.util.List<Long> accessibleIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
                 .map(Application::getId).toList();
         Page<Application> applications = accessibleIds.isEmpty() ? Page.empty(pageable)
                 : applicationRepository.findAllForApplications(normalizedSearch, accessibleIds, pageable);
