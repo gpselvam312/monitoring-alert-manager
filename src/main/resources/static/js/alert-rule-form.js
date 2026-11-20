@@ -1,4 +1,9 @@
-document.addEventListener('DOMContentLoaded', () => {
+const initializeAlertRuleForm = () => {
+    const treeInput = document.getElementById('conditionTreeJson');
+    if (!treeInput) return;
+    const form = treeInput.closest('form');
+    if (!form || form.dataset.alertRuleFormInitialized === 'true') return;
+    form.dataset.alertRuleFormInitialized = 'true';
     const jobIdInput = document.getElementById('monitoringJobId');
     const discoverButton = document.getElementById('discoverAlertFields');
     const presentationDiscoverButton = document.getElementById('discoverAlertFieldsForPresentation');
@@ -24,8 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const countFieldPathContainer = document.getElementById('countFieldPathContainer');
     const countFieldOperatorContainer = document.getElementById('countFieldOperatorContainer');
     const countFieldThresholdContainer = document.getElementById('countFieldThresholdContainer');
-    const treeInput = document.getElementById('conditionTreeJson');
-    const form = treeInput.closest('form');
 
     const sortDropdownAlphabetically = select => {
         if (!select || select.options.length < 2) return;
@@ -253,4 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (jobIdInput.value) discoverButton.disabled = false;
     syncPresentationDiscoverButton();
-});
+};
+
+document.addEventListener('DOMContentLoaded', initializeAlertRuleForm);
+document.addEventListener('alert-rule-secondary-tabs-loaded', initializeAlertRuleForm);
