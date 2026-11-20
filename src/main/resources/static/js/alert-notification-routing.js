@@ -1,9 +1,11 @@
 (() => {
     'use strict';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    const initializeAlertNotificationRouting = () => {
     const routesInput = document.getElementById('notificationRoutesJson');
     const routesContainer = document.getElementById('notificationRoutingAccordion');
+    if (!routesInput || !routesContainer || routesContainer.dataset.routingInitialized === 'true') return;
+    routesContainer.dataset.routingInitialized = 'true';
     const routesEmpty = document.getElementById('notificationRoutesEmpty');
     const routeTemplate = document.getElementById('notificationRouteTemplate');
     const channelTypes = ['EMAIL', 'TEAMS', 'WHATSAPP'];
@@ -436,5 +438,7 @@
         }
         syncNotificationRoutes();
     });
-    });
+    };
+    document.addEventListener('DOMContentLoaded', initializeAlertNotificationRouting);
+    document.addEventListener('alert-rule-secondary-tabs-loaded', initializeAlertNotificationRouting);
 })();
