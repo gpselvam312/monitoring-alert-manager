@@ -31,9 +31,9 @@ import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleNotificationRouteRepository;
-import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.NotificationDeliveryRepository;
 import com.dxc.monitoring.service.SystemSettingService;
+import com.dxc.monitoring.service.ReferenceDataCacheService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.PageRequestSupport;
 
@@ -43,20 +43,20 @@ public class AlertHistoryController {
     private static final Pattern ALERT_KEY_PATTERN = Pattern.compile("(?i)^ALT-\\d{4}-(\\d{8,})$");
     private final AlertRepository alertRepository;
     private final DashboardAccessService accessService;
-    private final EnvironmentRepository environmentRepository;
+    private final ReferenceDataCacheService referenceDataCache;
     private final LookupProperties lookupProperties;
     private final SystemSettingService systemSettingService;
     private final AlertRuleNotificationRouteRepository notificationRouteRepository;
     private final NotificationDeliveryRepository notificationDeliveryRepository;
 
     public AlertHistoryController(AlertRepository alertRepository, DashboardAccessService accessService,
-            EnvironmentRepository environmentRepository, LookupProperties lookupProperties,
+            ReferenceDataCacheService referenceDataCache, LookupProperties lookupProperties,
             SystemSettingService systemSettingService,
             AlertRuleNotificationRouteRepository notificationRouteRepository,
             NotificationDeliveryRepository notificationDeliveryRepository) {
         this.alertRepository = alertRepository;
         this.accessService = accessService;
-        this.environmentRepository = environmentRepository;
+        this.referenceDataCache = referenceDataCache;
         this.lookupProperties = lookupProperties;
         this.systemSettingService = systemSettingService;
         this.notificationRouteRepository = notificationRouteRepository;
@@ -76,7 +76,9 @@ public class AlertHistoryController {
             Model model) {
         List<Application> applications = accessService.getApplicationsWithPermission("ALERT_VIEW");
         List<Long> applicationIds = applications.stream().map(Application::getId).toList();
-        boolean invalidApplication = applicationId != null && !applicationIds.contains(applicationId);
+        if (applicationId != null && !applicationIds.contains(applicationId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this application.");
+        }
         validateEnvironment(environmentId, applicationId, applicationIds);
 
         String safeSearch = normalizeSearch(search);
@@ -85,18 +87,18 @@ public class AlertHistoryController {
         AlertRule.Severity severityFilter = parseSeverity(severity);
         PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(0, size, sort, direction,
                 "triggeredAt", allowedSorts());
-        long total = applicationIds.isEmpty() || invalidApplication ? 0
+        long total = applicationIds.isEmpty() ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
                         null, severityFilter, term.repositorySearch());
-        long active = applicationIds.isEmpty() || invalidApplication ? 0
+        long active = applicationIds.isEmpty() ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
                         Alert.AlertStatus.ACTIVE, severityFilter, term.repositorySearch());
-        long resolved = applicationIds.isEmpty() || invalidApplication ? 0
+        long resolved = applicationIds.isEmpty() ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
                         Alert.AlertStatus.RESOLVED, severityFilter, term.repositorySearch());
 
-        List<Environment> environments = applicationId == null || invalidApplication ? List.of()
-                : environmentRepository.findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(applicationId);
+        List<Environment> environments = applicationId == null ? List.of()
+                : referenceDataCache.getEnabledEnvironments(applicationId);
         model.addAttribute("pageSize", pageSpec.pageSize());
         model.addAttribute("search", safeSearch);
         model.addAttribute("status", statusFilter == null ? "" : statusFilter.name());
@@ -182,8 +184,13 @@ public class AlertHistoryController {
 
     private void validateEnvironment(Long environmentId, Long applicationId, List<Long> applicationIds) {
         if (environmentId == null) return;
-        Environment environment = environmentRepository.findById(environmentId)
-                .filter(Environment::isEnabled)
+        List<Environment> availableEnvironments = applicationId == null
+                ? applicationIds.stream()
+                        .flatMap(id -> referenceDataCache.getEnabledEnvironments(id).stream()).toList()
+                : referenceDataCache.getEnabledEnvironments(applicationId);
+        Environment environment = availableEnvironments.stream()
+                .filter(candidate -> candidate.getId().equals(environmentId))
+                .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Choose an available environment."));
         Long environmentApplicationId = environment.getApplication() == null
