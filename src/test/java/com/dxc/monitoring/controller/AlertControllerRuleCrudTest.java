@@ -18,7 +18,6 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertHistoryRepository;
-import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.AlertCommentRepository;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleEvaluationRepository;
@@ -31,6 +30,7 @@ import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
 import com.dxc.monitoring.service.AlertRuleManagementService;
 import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
 import com.dxc.monitoring.service.SystemSettingService;
+import com.dxc.monitoring.service.ReferenceDataCacheService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 class AlertControllerRuleCrudTest {
@@ -45,7 +45,7 @@ class AlertControllerRuleCrudTest {
     void setUp() {
         alertRepository = mock(AlertRepository.class);
         AlertHistoryRepository historyRepository = mock(AlertHistoryRepository.class);
-        EnvironmentRepository environmentRepository = mock(EnvironmentRepository.class);
+        ReferenceDataCacheService referenceDataCache = mock(ReferenceDataCacheService.class);
         AlertCommentRepository commentRepository = mock(AlertCommentRepository.class);
         ruleRepository = mock(AlertRuleRepository.class);
         evaluationRepository = mock(AlertRuleEvaluationRepository.class);
@@ -59,7 +59,7 @@ class AlertControllerRuleCrudTest {
         AlertRuleNotificationRouteService routeService = mock(AlertRuleNotificationRouteService.class);
         SystemSettingService systemSettingService = mock(SystemSettingService.class);
 
-        controller = new AlertController(alertRepository, environmentRepository, historyRepository, commentRepository, ruleRepository,
+        controller = new AlertController(alertRepository, referenceDataCache, historyRepository, commentRepository, ruleRepository,
                 evaluationRepository, jobRepository, managementService, configurationService,
                 accessService, userAlertStateRepository, notificationPolicyRepository,
                 fieldDiscoveryService, routeService, systemSettingService);
