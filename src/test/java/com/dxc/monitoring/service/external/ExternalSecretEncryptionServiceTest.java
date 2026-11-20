@@ -43,6 +43,23 @@ class ExternalSecretEncryptionServiceTest
     }
 
     @Test
+    void decryptsAndReencryptsUsingExplicitRotationKeys()
+    {
+        String previousKey = KEY;
+        String nextKey = Base64.getEncoder().encodeToString(new byte[32].clone());
+        byte[] changed = Base64.getDecoder().decode(nextKey);
+        changed[0] = 7;
+        nextKey = Base64.getEncoder().encodeToString(changed);
+        ExternalSecretEncryptionService service = new ExternalSecretEncryptionService(nextKey);
+        String oldCiphertext = service.encryptWithKey("rotated-secret", previousKey);
+        String newCiphertext = service.encryptWithKey(
+                service.decryptWithKey(oldCiphertext, previousKey), nextKey);
+
+        assertEquals("rotated-secret", service.decryptWithKey(newCiphertext, nextKey));
+        assertThrows(IllegalStateException.class, () -> service.decryptWithKey(newCiphertext, previousKey));
+    }
+
+    @Test
     void requiresConfiguredKeyWhenEncrypting()
     {
         ExternalSecretEncryptionService service = new ExternalSecretEncryptionService("");

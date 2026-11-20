@@ -55,8 +55,6 @@ public class SecretEncryptionMigrationService {
                 notificationCount++;
             }
         }
-        externalAccounts.saveAll(externalAccounts.findAll());
-        notificationSecrets.saveAll(notificationSecrets.findAll());
         return new RotationResult(externalCount, notificationCount);
     }
 
