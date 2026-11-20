@@ -83,10 +83,12 @@ public class MonitoringExecutionManager
         try
         {
             if (!job.isAllowConcurrentExecution()) {
-                claimToken = UUID.randomUUID().toString();
-                int leaseSeconds = Math.max(60, (job.getTimeoutSeconds() == null ? 300 : job.getTimeoutSeconds()) + 120);
-                if (monitoringJobRepository.tryClaimExecution(job.getId(), claimToken, leaseSeconds) != 1)
+                String candidateToken = UUID.randomUUID().toString();
+                int timeoutSeconds = job.getTimeoutSeconds() == null ? 300 : Math.max(1, job.getTimeoutSeconds());
+                int leaseSeconds = (int) Math.min(Integer.MAX_VALUE, (long) timeoutSeconds + 120L);
+                if (monitoringJobRepository.tryClaimExecution(job.getId(), candidateToken, leaseSeconds) != 1)
                     throw new IllegalStateException("Monitoring job is already running on another application instance.");
+                claimToken = candidateToken;
             }
             MonitoringExecutor executor = executorFactory.getExecutor(job.getType());
             MonitoringExecution execution = executionService.startExecution(job, 1,
