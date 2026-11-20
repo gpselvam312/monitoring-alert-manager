@@ -59,10 +59,8 @@ public class AlertRetentionService {
         }
         String alertType = alertTypeValue == null || alertTypeValue.isBlank()
                 ? "ALL" : alertTypeValue.trim().toUpperCase(Locale.ROOT);
-        boolean alertScopedData = dataType == AlertRetentionPolicy.DataType.RESOLVED_ALERTS
-                || dataType == AlertRetentionPolicy.DataType.ALERT_HISTORY;
-        if (!alertScopedData && (applicationId != null || environmentId != null || !"ALL".equals(alertType))) {
-            throw new IllegalArgumentException("Application, environment and alert-type scopes are supported for resolved alerts and alert history policies.");
+        if (dataType == AlertRetentionPolicy.DataType.RULE_EVALUATIONS && !"ALL".equals(alertType)) {
+            throw new IllegalArgumentException("Alert-type filtering is not applicable to rule evaluations. Application and environment scopes are supported.");
         }
         if (!"ALL".equals(alertType)
                 && alertTypeRepository.findById(alertType).filter(AlertType::isEnabled).isEmpty()) {
