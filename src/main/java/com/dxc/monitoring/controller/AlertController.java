@@ -120,9 +120,11 @@ public class AlertController {
         List<com.dxc.monitoring.entity.Environment> environments = applications.stream()
                 .flatMap(application -> referenceDataCache.getEnabledEnvironments(application.getId()).stream())
                 .toList();
-        if (environmentId != null && environments.stream().noneMatch(env -> env.getId().equals(environmentId))) {
+        if (environmentId != null && environments.stream().noneMatch(env ->
+                env.getId().equals(environmentId)
+                        && (applicationId == null || env.getApplication().getId().equals(applicationId)))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Choose an environment within your authorized application scope.");
+                    "Choose an environment within the selected application and your authorized scope.");
         }
         model.addAttribute("applications", applications);
         model.addAttribute("environments", environments);
