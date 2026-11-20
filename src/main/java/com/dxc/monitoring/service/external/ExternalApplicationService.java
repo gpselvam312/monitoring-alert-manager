@@ -167,7 +167,7 @@ public class ExternalApplicationService
             throw new IllegalArgumentException("Select a supported authentication type.");
 
         if (applicationRepository.findByApplicationCodeIgnoreCase(code)
-                .filter(existing -> !existing.getId().equals(form.getId())).isPresent())
+                .filter(duplicateCandidate -> !duplicateCandidate.getId().equals(form.getId())).isPresent())
             throw new IllegalArgumentException("An external application with this code already exists.");
 
         ExternalApplication app = existing == null ? new ExternalApplication() : existing;
