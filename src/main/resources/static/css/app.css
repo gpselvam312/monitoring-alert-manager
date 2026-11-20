@@ -6207,3 +6207,8 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .ch-badge .bi {
     font-size: .85rem;
 }
+
+/* The tab wrapper owns its spacing; avoid inherited app-card padding above tab panels. */
+.alert-detail-tabs-card {
+    padding: 0;
+}
