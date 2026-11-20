@@ -3,9 +3,7 @@ package com.dxc.monitoring.controller;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +24,7 @@ import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
 @RequestMapping("/administration/applications")
@@ -36,19 +35,22 @@ public class ApplicationController
     private final DashboardAccessService accessService;
     private final EnvironmentRepository environmentRepository;
     private final DashboardTabRepository dashboardTabRepository;
+    private final PageRequestSupport pageRequestSupport;
 
     private static final Map<String, String> APPLICATION_SORT_FIELDS =
         Map.of("name", "name", "description", "description", "enabled", "enabled");
 
     public ApplicationController(ApplicationRepository applicationRepository,
             MonitoringJobRepository monitoringJobRepository, DashboardAccessService accessService,
-            EnvironmentRepository environmentRepository, DashboardTabRepository dashboardTabRepository)
+            EnvironmentRepository environmentRepository, DashboardTabRepository dashboardTabRepository,
+            PageRequestSupport pageRequestSupport)
     {
         this.applicationRepository = applicationRepository;
         this.monitoringJobRepository = monitoringJobRepository;
         this.accessService = accessService;
         this.environmentRepository = environmentRepository;
         this.dashboardTabRepository = dashboardTabRepository;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -57,21 +59,9 @@ public class ApplicationController
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
-
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", APPLICATION_SORT_FIELDS);
         String normalizedSearch = search == null ? "" : search.trim();
-
-        Sort pageableSort = buildApplicationSort(sort, direction);
-
-        Pageable pageable = PageRequest.of(page, size, pageableSort);
+        Pageable pageable = spec.pageable();
 
         java.util.List<Long> accessibleIds = accessService.getAccessibleApplications().stream()
                 .map(Application::getId).toList();
@@ -79,7 +69,9 @@ public class ApplicationController
                 : applicationRepository.findAllForApplications(normalizedSearch, accessibleIds, pageable);
 
         model.addAttribute("applications", applications);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("search", normalizedSearch);
         model.addAttribute("currentPage", "applications");
 
@@ -105,9 +97,7 @@ public class ApplicationController
 
         String normalizedSearch = search == null ? "" : search.trim();
 
-        Sort pageableSort = buildApplicationSort(sort, direction);
-
-        Pageable pageable = PageRequest.of(page, size, pageableSort);
+        Pageable pageable = spec.pageable();
 
         java.util.List<Long> accessibleIds = accessService.getAccessibleApplications().stream()
                 .map(Application::getId).toList();
@@ -115,7 +105,9 @@ public class ApplicationController
                 : applicationRepository.findAllForApplications(normalizedSearch, accessibleIds, pageable);
 
         model.addAttribute("applications", applications);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("search", normalizedSearch);
 
         return "administration/applications :: applicationsTable";
@@ -137,15 +129,6 @@ public class ApplicationController
         environment.setDescription(description);
         environment.setEnabled(true);
         environmentRepository.save(environment);
-    }
-
-    private Sort buildApplicationSort(String sort, String direction)
-    {
-        String sortField = APPLICATION_SORT_FIELDS.getOrDefault(sort, "name");
-
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
-
-        return Sort.by(sortDirection, sortField);
     }
 
     @GetMapping("/new")

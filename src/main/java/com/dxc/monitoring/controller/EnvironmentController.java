@@ -7,13 +7,11 @@ import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.repository.DashboardTabRepository;
 import com.dxc.monitoring.repository.MachineRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
-import com.dxc.monitoring.service.ReferenceDataCacheService;
+import com.dxc.monitoring.web.PageRequestSupport;
 import com.dxc.monitoring.entity.Application;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import java.util.Map;
 import org.springframework.cache.annotation.CacheEvict;
 
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,12 +31,12 @@ public class EnvironmentController
     private final MonitoringJobRepository monitoringJobRepository;
     private final DashboardTabRepository dashboardTabRepository;
     private final MachineRepository machineRepository;
-    private final ReferenceDataCacheService referenceDataCache;
+    private final PageRequestSupport pageRequestSupport;
 
     public EnvironmentController(EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository,
             DashboardAccessService accessService, MonitoringJobRepository monitoringJobRepository,
             DashboardTabRepository dashboardTabRepository, MachineRepository machineRepository,
-            ReferenceDataCacheService referenceDataCache)
+            PageRequestSupport pageRequestSupport)
     {
         this.environmentRepository = environmentRepository;
         this.applicationRepository = applicationRepository;
@@ -46,25 +44,25 @@ public class EnvironmentController
         this.monitoringJobRepository = monitoringJobRepository;
         this.dashboardTabRepository = dashboardTabRepository;
         this.machineRepository = machineRepository;
-        this.referenceDataCache = referenceDataCache;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     public String list(Model model)
     {
-        Pageable pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "name"));
-
-        java.util.List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
-                .map(Application::getId).toList();
-        Page<Environment> page = applicationIds.isEmpty() ? Page.empty(pageable)
-                : environmentRepository.findAllForApplications("", applicationIds, pageable);
+        var spec = pageRequestSupport.create(0, 5, "name", "asc", "name",
+                Map.of("name", "name", "description", "description", "enabled", "enabled"));
+        java.util.List<Application> applications = accessService.getApplicationsWithPermission("SYSTEM_CONFIG");
+        java.util.List<Long> applicationIds = applications.stream().map(Application::getId).toList();
+        Page<Environment> page = applicationIds.isEmpty() ? Page.empty(spec.pageable())
+                : environmentRepository.findAllForApplications("", applicationIds, spec.pageable());
 
         model.addAttribute("page", page);
-        model.addAttribute("pageSize", 5);
+        model.addAttribute("pageSize", spec.pageSize());
         model.addAttribute("search", "");
         model.addAttribute("currentPage", "environments");
-        model.addAttribute("applications", accessService.getApplicationsWithPermission("SYSTEM_CONFIG"));
+        model.addAttribute("applications", applications);
 
         return "administration/environments";
     }
@@ -75,18 +73,19 @@ public class EnvironmentController
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sort));
-
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name",
+                Map.of("name", "name", "description", "description", "enabled", "enabled"));
         java.util.List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
                 .map(Application::getId).toList();
-        Page<Environment> environmentPage = applicationIds.isEmpty() ? Page.empty(pageable)
-                : environmentRepository.findAllForApplications(search.trim(), applicationIds, pageable);
+        Page<Environment> environmentPage = applicationIds.isEmpty() ? Page.empty(spec.pageable())
+                : environmentRepository.findAllForApplications(search == null ? "" : search.trim(),
+                        applicationIds, spec.pageable());
 
         model.addAttribute("page", environmentPage);
-        model.addAttribute("pageSize", size);
-        model.addAttribute("search", search);
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("search", search == null ? "" : search.trim());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
 
         return "administration/environments :: environmentsTable";
     }
@@ -96,7 +95,7 @@ public class EnvironmentController
     public String createForm(Model model)
     {
         model.addAttribute("environment", new Environment());
-        model.addAttribute("applications", referenceDataCache.getEnabledApplications());
+        model.addAttribute("applications", accessService.getApplicationsWithPermission("SYSTEM_CONFIG"));
         model.addAttribute("pageTitle", "Add Environment");
         model.addAttribute("currentPage", "environments");
 
