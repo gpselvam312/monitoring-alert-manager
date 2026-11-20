@@ -106,6 +106,7 @@ public class MenuManagementController {
             @RequestParam String menuName, @RequestParam(required = false) String url,
             @RequestParam(required = false) String icon, @RequestParam(required = false) Long parentId,
             @RequestParam int displayOrder, @RequestParam(required = false) String requiredPermission,
+            @RequestParam(required = false) String sectionName,
             @RequestParam(defaultValue = "false") boolean enabled, Model model,
             RedirectAttributes redirectAttributes) {
         String normalizedKey = menuKey == null ? "" : menuKey.trim().toUpperCase(Locale.ROOT);
@@ -121,7 +122,7 @@ public class MenuManagementController {
             form.setId(id); form.setMenuKey(normalizedKey); form.setMenuName(normalizedName);
             form.setUrl(normalizedUrl); form.setIcon(normalizedIcon); form.setParentId(parentId);
             form.setDisplayOrder(displayOrder); form.setRequiredPermission(normalizedPermission);
-            form.setEnabled(enabled);
+            form.setSectionName(normalizedSection); form.setEnabled(enabled);
             model.addAttribute("menuItem", form);
             populateForm(model, id);
             model.addAttribute("pageTitle", id == null ? "Add Menu" : "Edit Menu");
