@@ -18,9 +18,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.Machine;
-import com.dxc.monitoring.entity.User;
-import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.service.MachineService;
+import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
@@ -29,16 +28,14 @@ public class MachineController
 {
 
     private final MachineService machineService;
-    private final UserRepository userRepository;
     private final PageRequestSupport pageRequestSupport;
     private static final Map<String, String> MACHINE_SORT_FIELDS = Map.of("name", "name", "hostname", "hostname",
             "ipAddress", "ipAddress", "environment.name", "environment.name", "enabled", "enabled");
 
-    public MachineController(MachineService machineService, UserRepository userRepository, PageRequestSupport pageRequestSupport)
+    public MachineController(MachineService machineService, PageRequestSupport pageRequestSupport)
     {
 
         this.machineService = machineService;
-        this.userRepository = userRepository;
         this.pageRequestSupport = pageRequestSupport;
     }
 
@@ -97,8 +94,7 @@ public class MachineController
     public String saveMachine(@ModelAttribute("machine") Machine machine, Authentication authentication)
     {
 
-        User currentUser = userRepository.findByUsername(authentication.getName()).orElseThrow(
-                () -> new IllegalArgumentException("Logged-in user not found: " + authentication.getName()));
+        Long currentUserId = ((CustomUserDetails) authentication.getPrincipal()).getUserId();
 
         Environment selectedEnvironment = null;
 
@@ -123,7 +119,7 @@ public class MachineController
             existingMachine.setEnabled(machine.isEnabled());
 
             // Preserve createdBy
-            existingMachine.setUpdatedBy(currentUser.getId());
+            existingMachine.setUpdatedBy(currentUserId);
 
             machineService.save(existingMachine);
 
@@ -132,8 +128,8 @@ public class MachineController
 
             // CREATE new machine
             machine.setEnvironment(selectedEnvironment);
-            machine.setCreatedBy(currentUser.getId());
-            machine.setUpdatedBy(currentUser.getId());
+            machine.setCreatedBy(currentUserId);
+            machine.setUpdatedBy(currentUserId);
 
             machineService.save(machine);
         }
