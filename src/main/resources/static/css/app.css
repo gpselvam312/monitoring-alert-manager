@@ -5379,7 +5379,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 
 
 /* Alert rule navigation tabs: one responsive, theme-aware definition. */
-.alert-rule-form #alertRuleTabs {
+.responsive-tab-nav {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     width: 100%;
@@ -5389,13 +5389,13 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     overflow: visible;
     border-bottom-color: var(--border-color);
 }
-.alert-rule-form #alertRuleTabs > .nav-item {
+.responsive-tab-nav > .nav-item {
     display: flex;
     width: 100%;
     min-width: 0;
     max-width: 100%;
 }
-.alert-rule-form #alertRuleTabs > .nav-item > .nav-link {
+.responsive-tab-nav > .nav-item > .nav-link {
     display: flex;
     flex: 1 1 auto;
     width: 100%;
@@ -5414,40 +5414,43 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     text-align: center;
     line-height: 1.25;
 }
-.alert-rule-form #alertRuleTabs .nav-link:hover,
-.alert-rule-form #alertRuleTabs .nav-link:focus-visible {
+.responsive-tab-nav .nav-link:hover,
+.responsive-tab-nav .nav-link:focus-visible {
     color: var(--theme-primary) !important;
     border-color: var(--border-color) var(--border-color) var(--border-color) !important;
 }
-.alert-rule-form #alertRuleTabs .nav-link.active,
-.alert-rule-form #alertRuleTabs .nav-item.show .nav-link {
+.responsive-tab-nav .nav-link.active,
+.responsive-tab-nav .nav-item.show .nav-link {
     color: var(--theme-primary) !important;
     background: var(--card-bg) !important;
     border-color: var(--border-color) var(--border-color) var(--card-bg) !important;
     font-weight: 650;
 }
-.alert-rule-form #alertRuleTabs .nav-link:focus-visible {
+.responsive-tab-nav .nav-link:focus-visible {
     outline: 2px solid var(--theme-primary);
     outline-offset: 2px;
     box-shadow: none;
 }
-.alert-rule-form #alertRuleTabContent,
-.alert-rule-form #alertRuleTabContent > .tab-pane {
+.responsive-tab-content,
+.responsive-tab-content > .tab-pane {
     min-width: 0;
 }
 @media (max-width: 767.98px) {
-    .alert-rule-form #alertRuleTabs {
+    .responsive-tab-nav,
+    .responsive-tab-nav.responsive-tab-nav-3 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: .4rem;
         padding-bottom: .5rem;
     }
-    .alert-rule-form #alertRuleTabs > .nav-item > .nav-link {
+    .responsive-tab-nav > .nav-item > .nav-link {
         justify-content: flex-start;
         padding: .55rem .6rem;
         font-size: .82rem;
         text-align: left;
     }
 }
+
+.responsive-tab-nav-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* Message presentation channel preview tabs share the alert-rule tab theme. */
 .alert-rule-form #presentationPreviewTabs {
@@ -5966,3 +5969,271 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 }
 .route-email-feedback { display: none; flex-basis: 100%; }
 .route-email-multiselect.is-invalid .route-email-feedback { display: block; }
+
+
+/* Reusable summary cards for compact table and history summaries. */
+.summary-table-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+.summary-table-card {
+    --summary-card-accent: var(--text-secondary);
+    display: flex;
+    min-width: 0;
+    min-height: 7.25rem;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: .4rem;
+    padding: .9rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--summary-card-accent) 38%, var(--border-color));
+    border-radius: .65rem;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    text-align: left;
+    text-decoration: none;
+    transition: border-color .15s ease, background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.summary-table-card-icon {
+    color: var(--summary-card-accent);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+.summary-table-card-label {
+    color: var(--text-secondary);
+    font-size: .78rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.summary-table-card-value {
+    color: var(--text-primary);
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+}
+.summary-table-card-filter {
+    cursor: pointer;
+}
+.summary-table-card-filter:hover,
+.summary-table-card-filter:focus-visible {
+    border-color: var(--summary-card-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--summary-card-accent) 12%, transparent);
+    transform: translateY(-1px);
+}
+.summary-table-card-filter:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
+}
+.summary-table-card-filter.is-active {
+    box-shadow: inset 0 0 0 1px var(--theme-primary);
+}
+.server-health-summary-total.summary-table-card { --summary-card-accent: var(--theme-primary); }
+.server-health-summary-critical.summary-table-card { --summary-card-accent: var(--danger); }
+.server-health-summary-warning.summary-table-card { --summary-card-accent: var(--warning); }
+.server-health-summary-healthy.summary-table-card { --summary-card-accent: var(--success); }
+.server-health-summary-unknown.summary-table-card { --summary-card-accent: var(--text-secondary); }
+
+/* Alert History summary cards */
+.alert-history-summary .summary-table-card {
+    --summary-card-accent: var(--theme-primary);
+    display: flex;
+    min-width: 0;
+    min-height: 86px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .55rem;
+    padding: .8rem .9rem;
+    overflow: hidden;
+    color: var(--text-primary);
+    text-align: left;
+    text-decoration: none;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--summary-card-accent) 9%, var(--card-bg)),
+        var(--card-bg) 78%
+    );
+    border: 1px solid color-mix(in srgb, var(--summary-card-accent) 38%, var(--border-color));
+    border-left: 4px solid var(--summary-card-accent);
+    border-radius: .65rem;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.alert-history-summary .summary-card-active {
+    --summary-card-accent: var(--danger);
+}
+
+.alert-history-summary .summary-card-recovered {
+    --summary-card-accent: var(--success);
+}
+
+.alert-history-summary .summary-table-card-icon {
+    color: var(--summary-card-accent);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.alert-history-summary .summary-table-card-label {
+    color: var(--text-secondary);
+    font-size: .78rem;
+    font-weight: 600;
+}
+
+.alert-history-summary .summary-table-card-value {
+    color: var(--text-primary);
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+}
+
+.alert-history-summary .summary-table-card-filter {
+    cursor: pointer;
+}
+
+.alert-history-summary .summary-table-card-filter:hover,
+.alert-history-summary .summary-table-card-filter:focus-visible {
+    border-color: var(--summary-card-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--summary-card-accent) 12%, transparent);
+    transform: translateY(-1px);
+}
+
+.alert-history-summary .summary-table-card-filter:focus-visible {
+    outline: 2px solid var(--summary-card-accent);
+    outline-offset: 2px;
+}
+
+.alert-history-summary .summary-table-card-filter.is-active {
+    border-color: var(--summary-card-accent);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--summary-card-accent) 22%, transparent);
+}
+
+@media (max-width: 767.98px) {
+    .summary-table-cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .6rem;
+    }
+    .summary-table-card {
+        min-height: 6.75rem;
+        padding: .75rem;
+    }
+    .summary-table-card-value {
+        font-size: 1.4rem;
+    }
+}
+
+
+
+
+/* Alert Details summary cards use the same accent border and hover treatment as Alert History. */
+.alert-detail-summary .summary-table-card {
+    min-height: 86px;
+    justify-content: space-between;
+    gap: .55rem;
+    padding: .8rem .9rem;
+    overflow: hidden;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--summary-card-accent) 9%, var(--card-bg)),
+        var(--card-bg) 78%
+    );
+    border: 1px solid color-mix(in srgb, var(--summary-card-accent) 38%, var(--border-color));
+    border-left: 4px solid var(--summary-card-accent);
+    border-radius: .65rem;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.alert-detail-summary .summary-table-card:hover {
+    border-color: var(--summary-card-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--summary-card-accent) 12%, transparent);
+    transform: translateY(-1px);
+}
+
+.alert-detail-summary .summary-table-card-icon {
+    color: var(--summary-card-accent);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.alert-comments-panel {
+    min-width: 0;
+    padding: .25rem 0 .75rem;
+}
+
+.alert-comments-panel > .d-flex {
+    margin-bottom: .5rem !important;
+}
+
+.alert-comment-form {
+    max-width: 100%;
+    margin-bottom: .5rem !important;
+}
+
+.alert-comment-form textarea {
+    min-height: 4.25rem;
+    resize: vertical;
+}
+
+.alert-comments-empty {
+    padding: .25rem 0;
+}
+
+.alert-comment-item {
+    padding: .3rem 0;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Keep the Lifecycle History empty state compact without changing shared empty states. */
+.alert-lifecycle-card > .app-card-header {
+    min-height: 0;
+    padding: .7rem 1rem;
+}
+
+.alert-lifecycle-empty {
+    min-height: 0;
+    padding: .5rem .75rem;
+}
+
+.alert-lifecycle-empty p {
+    margin: 0;
+}
+
+/* Alert History channel badges — matches the supplied delivery-log prototype. */
+.ch-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .25rem .45rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--text-primary) 5%, var(--card-bg));
+    font-size: .75rem;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+.ch-badge .bi {
+    font-size: .85rem;
+}
+
+/* The tab wrapper owns its spacing; avoid inherited app-card padding above tab panels. */
+.alert-detail-tabs-card {
+    padding: 0;
+}
+
+/* Keep all Alert Details tab content inset from the outer tab border. */
+.alert-detail-tabs-card #alert-overview,
+.alert-detail-tabs-card #alert-lifecycle,
+.alert-detail-tabs-card #alert-comments {
+    padding: 1rem 1.25rem;
+}
+
+@media (max-width: 575.98px) {
+    .alert-detail-tabs-card #alert-overview,
+    .alert-detail-tabs-card #alert-lifecycle,
+    .alert-detail-tabs-card #alert-comments {
+        padding: .75rem;
+    }
+}

@@ -1,16 +1,118 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" th:replace="~{fragments/layout :: layout('Alert Details', ~{::content})}">
 <body><div th:fragment="content">
-<div class="page-header"><div><h1 class="page-title"><i class="bi bi-bell me-2"></i><span th:text="${alert.title}">Alert Details</span></h1><p class="page-subtitle" th:text="${alert.summary}">Summary</p></div><div class="page-header-actions"><a th:href="@{/alerts}" class="btn btn-outline-secondary">Active Alerts</a><a th:href="@{/alerts/history}" class="btn btn-outline-secondary">History</a></div></div>
-<div class="row g-3 mb-3"><div class="col-12 col-md-6 col-xl-3"><div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Status</div><div class="fs-5 fw-semibold" th:text="${alert.status}">ACTIVE</div></div></div></div><div class="col-12 col-md-6 col-xl-3"><div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Severity</div><div class="fs-5 fw-semibold"><span class="badge text-bg-danger" th:if="${alert.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${alert.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${alert.severity.name() == 'INFO'}">Info</span><span class="badge text-bg-success" th:if="${alert.severity.name() == 'SUCCESS'}">Success</span></div></div></div></div><div class="col-12 col-md-6 col-xl-3"><div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Occurrences</div><div class="fs-5 fw-semibold" th:text="${alert.occurrenceCount}">1</div></div></div></div><div class="col-12 col-md-6 col-xl-3"><div class="app-card h-100"><div class="app-card-body"><div class="text-muted small">Correlation Key</div><div class="fw-semibold text-break" th:text="${alert.correlationKey}">DEFAULT</div></div></div></div></div>
-<div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Alert Context</h2></div><div class="app-card-body"><dl class="row mb-0">
-<dt class="col-sm-3">Monitoring Job</dt><dd class="col-sm-9" th:text="${alert.monitoringJob.name}">Job</dd><dt class="col-sm-3">Application</dt><dd class="col-sm-9" th:text="${alert.monitoringJob.application.name}">Application</dd><dt class="col-sm-3">Environment</dt><dd class="col-sm-9" th:text="${alert.monitoringJob.environment != null ? alert.monitoringJob.environment.name : '—'}">Environment</dd><dt class="col-sm-3">Current Value</dt><dd class="col-sm-9"><code class="text-break" th:text="${alert.currentValue != null ? alert.currentValue : '—'}">Value</code></dd><dt class="col-sm-3">First Occurred</dt><dd class="col-sm-9" th:text="${#temporals.format(alert.firstOccurredAt, 'yyyy-MM-dd HH:mm:ss')}">Time</dd><dt class="col-sm-3">Last Occurred</dt><dd class="col-sm-9" th:text="${#temporals.format(alert.lastOccurredAt, 'yyyy-MM-dd HH:mm:ss')}">Time</dd><dt class="col-sm-3">Resolved At</dt><dd class="col-sm-9" th:text="${alert.resolvedAt != null ? #temporals.format(alert.resolvedAt, 'yyyy-MM-dd HH:mm:ss') : 'Not resolved'}">Time</dd>
+<div class="page-header"><div><h1 class="page-title"><i class="bi bi-bell me-2"></i><span th:text="${alert.title}">Alert Details</span></h1><p class="page-subtitle"><span class="me-2 fw-semibold" th:text="${alert.alertKey}">ALT-2026-00000001</span><span th:text="${alert.summary}">Summary</span></p></div><div class="page-header-actions"><a th:if="${detailSource == 'history'}" th:href="@{/alerts/history}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to History</a><a th:if="${detailSource != 'history'}" th:href="@{/alerts}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Active Alerts</a></div></div>
+<div class="row g-3 mb-3 alert-detail-summary">
+<div class="col-12 col-md-6 col-xl-3"><div class="summary-table-card h-100" th:classappend="${alert.status.name() == 'ACTIVE' ? 'server-health-summary-critical' : 'server-health-summary-healthy'}"><i class="bi bi-activity summary-table-card-icon" aria-hidden="true"></i><span class="summary-table-card-label">Status</span><span class="summary-table-card-value fs-5" th:text="${alert.status}">ACTIVE</span></div></div>
+<div class="col-12 col-md-6 col-xl-3"><div class="summary-table-card h-100" th:classappend="${alert.severity.name() == 'CRITICAL' ? 'server-health-summary-critical' : (alert.severity.name() == 'WARNING' ? 'server-health-summary-warning' : 'server-health-summary-total')}"><i class="bi bi-exclamation-triangle summary-table-card-icon" aria-hidden="true"></i><span class="summary-table-card-label">Severity</span><span class="summary-table-card-value fs-5"><span class="badge text-bg-danger" th:if="${alert.severity.name() == 'CRITICAL'}">Critical</span><span class="badge text-bg-warning" th:if="${alert.severity.name() == 'WARNING'}">Warning</span><span class="badge text-bg-info" th:if="${alert.severity.name() == 'INFO'}">Info</span><span class="badge text-bg-success" th:if="${alert.severity.name() == 'SUCCESS'}">Success</span></span></div></div>
+<div class="col-12 col-md-6 col-xl-3"><div class="summary-table-card server-health-summary-healthy h-100"><i class="bi bi-arrow-repeat summary-table-card-icon" aria-hidden="true"></i><span class="summary-table-card-label">Occurrences</span><span class="summary-table-card-value" th:text="${alert.occurrenceCount}">1</span></div></div>
+<div class="col-12 col-md-6 col-xl-3"><div class="summary-table-card server-health-summary-unknown h-100"><i class="bi bi-clock-history summary-table-card-icon" aria-hidden="true"></i><span class="summary-table-card-label">Last Occurred</span><span class="summary-table-card-value fs-6" th:text="${#temporals.format(alert.lastOccurredAt, dateTimeFormat)}">Time</span></div></div>
+</div>
+<div class="app-card alert-detail-tabs-card">
+<div class="app-card-header pb-0">
+<ul class="nav nav-tabs responsive-tab-nav responsive-tab-nav-3" id="alertDetailTabs" role="tablist">
+<li class="nav-item" role="presentation"><button class="nav-link active" id="alert-overview-tab" data-bs-toggle="tab" data-bs-target="#alert-overview" type="button" role="tab" aria-controls="alert-overview" aria-selected="true">Overview</button></li>
+<li class="nav-item" role="presentation"><button class="nav-link" id="alert-lifecycle-tab" data-bs-toggle="tab" data-bs-target="#alert-lifecycle" type="button" role="tab" aria-controls="alert-lifecycle" aria-selected="false">Lifecycle History</button></li>
+<li class="nav-item" role="presentation"><button class="nav-link" id="alert-comments-tab" data-bs-toggle="tab" data-bs-target="#alert-comments" type="button" role="tab" aria-controls="alert-comments" aria-selected="false">Comments</button></li>
+</ul>
+</div>
+<div class="tab-content responsive-tab-content" id="alertDetailTabContent">
+<div class="tab-pane fade show active" id="alert-overview" role="tabpanel" aria-labelledby="alert-overview-tab"><div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Alert Details</h2></div><div class="app-card-body"><dl class="row mb-0">
+<dt class="col-sm-3">Monitoring Job</dt><dd class="col-sm-9" th:text="${alert.monitoringJob.name}">Job</dd><dt class="col-sm-3">Application</dt><dd class="col-sm-9" th:text="${alert.monitoringJob.application.name}">Application</dd><dt class="col-sm-3">Environment</dt><dd class="col-sm-9" th:text="${alert.monitoringJob.environment != null ? alert.monitoringJob.environment.name : '—'}">Environment</dd><dt class="col-sm-3">Current Value</dt><dd class="col-sm-9"><code class="text-break" th:text="${alert.currentValue != null ? alert.currentValue : '—'}">Value</code></dd><dt class="col-sm-3">First Occurred</dt><dd class="col-sm-9" th:text="${#temporals.format(alert.firstOccurredAt, dateTimeFormat)}">Time</dd><dt class="col-sm-3">Last Occurred</dt><dd class="col-sm-9" th:text="${#temporals.format(alert.lastOccurredAt, dateTimeFormat)}">Time</dd><dt class="col-sm-3">Resolved At</dt><dd class="col-sm-9" th:text="${alert.resolvedAt != null ? #temporals.format(alert.resolvedAt, dateTimeFormat) : 'Not resolved'}">Time</dd>
 </dl></div></div>
-<div class="app-card"><div class="app-card-header"><h2 class="h6 mb-0">Lifecycle History</h2></div><div class="app-card-body p-0">
-<div th:if="${history.totalElements == 0}" class="empty-state"><p>No history events recorded.</p></div>
-<div th:if="${history.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0"><thead><tr><th>Time</th><th>Event</th><th>Status</th><th>Severity</th><th>Execution</th><th>Observed Value</th></tr></thead><tbody>
-<tr th:each="event : ${history.content}"><td th:text="${#temporals.format(event.occurredAt, 'yyyy-MM-dd HH:mm:ss')}">Time</td><td><span class="badge text-bg-secondary" th:text="${event.eventType}">CREATED</span></td><td><span th:text="${event.previousStatus != null ? event.previousStatus + ' → ' : ''}"></span><span th:text="${event.newStatus != null ? event.newStatus : '—'}"></span></td><td><span th:text="${event.previousSeverity != null ? event.previousSeverity + ' → ' : ''}"></span><span th:text="${event.newSeverity != null ? event.newSeverity : '—'}"></span></td><td th:text="${event.execution != null ? '#' + event.execution.id : '—'}">Execution</td><td><code class="text-break" th:text="${event.observedValue != null ? event.observedValue : '—'}">Value</code></td></tr>
-</tbody></table></div>
-<div th:if="${history.totalPages > 1}" class="d-flex justify-content-between align-items-center p-3 border-top"><span class="small text-muted" th:text="'Page ' + (${history.number + 1}) + ' of ' + ${history.totalPages}">Page</span><div class="btn-group btn-group-sm"><a class="btn btn-outline-secondary" th:classappend="${history.first} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number - 1},size=${pageSize})}">Previous</a><a class="btn btn-outline-secondary" th:classappend="${history.last} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number + 1},size=${pageSize})}">Next</a></div></div>
+<div class="app-card">
+<div class="app-card-header"><div><h2 class="h6 mb-0">Alert Rule</h2><p class="small text-muted mb-0 mt-1">Current rule configuration</p></div></div>
+<div class="app-card-body"><dl class="row mb-0" th:if="${alert.alertRule != null}">
+<dt class="col-sm-3">Rule Name</dt><dd class="col-sm-9 fw-semibold" th:text="${alert.alertRule.name}">Rule name</dd>
+<dt class="col-sm-3">Description</dt><dd class="col-sm-9" th:text="${alert.alertRule.description != null and !#strings.isEmpty(alert.alertRule.description) ? alert.alertRule.description : '—'}">Description</dd>
+<dt class="col-sm-3">Configured Severity</dt><dd class="col-sm-9" th:text="${alert.alertRule.severity}">WARNING</dd>
+<dt class="col-sm-3">Execution Source</dt><dd class="col-sm-9" th:text="${alert.alertRule.executionSourcePolicy}">SCHEDULED_ONLY</dd>
+<dt class="col-sm-3">Rule Status</dt><dd class="col-sm-9"><span class="badge text-bg-success" th:if="${alert.alertRule.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${alert.alertRule.enabled}">Disabled</span></dd>
+</dl><p class="text-muted small mb-0" th:unless="${alert.alertRule != null}">No alert rule is associated with this alert.</p></div>
 </div></div>
+<div class="tab-pane fade" id="alert-lifecycle" role="tabpanel" aria-labelledby="alert-lifecycle-tab"><div class="app-card alert-lifecycle-card"><div class="app-card-header"><h2 class="h6 mb-0">Lifecycle History</h2></div><div class="app-card-body p-0">
+<div th:if="${history.totalElements == 0}" class="empty-state alert-lifecycle-empty"><p>No history events recorded.</p></div>
+<div th:if="${history.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0"><thead><tr><th>Time</th><th>Event</th><th>Status</th><th>Severity</th><th>Execution</th><th>Observed Value</th></tr></thead><tbody>
+<tr th:each="event : ${history.content}"><td th:text="${#temporals.format(event.occurredAt, dateTimeFormat)}">Time</td><td><span class="badge text-bg-secondary" th:text="${event.eventType}">CREATED</span></td><td><span th:text="${event.previousStatus != null ? event.previousStatus + ' → ' : ''}"></span><span th:text="${event.newStatus != null ? event.newStatus : '—'}"></span></td><td><span th:text="${event.previousSeverity != null ? event.previousSeverity + ' → ' : ''}"></span><span th:text="${event.newSeverity != null ? event.newSeverity : '—'}"></span></td><td th:text="${event.execution != null ? '#' + event.execution.id : '—'}">Execution</td><td><code class="text-break" th:text="${event.observedValue != null ? event.observedValue : '—'}">Value</code></td></tr>
+</tbody></table></div>
+<div th:if="${history.totalPages > 1}" class="d-flex justify-content-between align-items-center p-3 border-top"><span class="small text-muted" th:text="'Page ' + (${history.number + 1}) + ' of ' + ${history.totalPages}">Page</span><div class="btn-group btn-group-sm"><a class="btn btn-outline-secondary" th:classappend="${history.first} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number - 1},size=${pageSize},from=${detailSource})} + '#alert-lifecycle'">Previous</a><a class="btn btn-outline-secondary" th:classappend="${history.last} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number + 1},size=${pageSize},from=${detailSource})} + '#alert-lifecycle'">Next</a></div></div>
+</div></div></div>
+<div class="tab-pane fade" id="alert-comments" role="tabpanel" aria-labelledby="alert-comments-tab">
+<div class="alert-comments-panel">
+<div class="d-flex align-items-center justify-content-between mb-3"><h2 class="h6 mb-0">Comments</h2><span class="small text-muted" th:text="${comments.size()} + ' comment(s)'">0 comments</span></div>
+<form method="post" th:action="@{/alerts/{id}/comments(id=${alert.id})}" class="alert-comment-form mb-3"><input type="hidden" name="from" th:value="${detailSource}">
+<label class="form-label" for="comment">Add a comment</label>
+<textarea class="form-control" id="comment" name="comment" rows="2" maxlength="5000" required placeholder="Share an update or investigation note..."></textarea>
+<div class="d-flex justify-content-end mt-2"><button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-send me-1" aria-hidden="true"></i>Add Comment</button></div>
+</form>
+<div th:if="${comments.isEmpty()}" class="alert-comments-empty text-muted small">No comments have been added to this alert.</div>
+<div th:each="comment : ${comments}" class="alert-comment-item">
+<div class="d-flex flex-wrap justify-content-between gap-2 mb-1"><strong th:text="${comment.authorName}">Author</strong><span class="small text-muted" th:text="${#temporals.format(comment.createdAt, dateTimeFormat)}">Time</span></div>
+<p class="mb-0 text-break" style="white-space: pre-wrap" th:text="${comment.commentText}">Comment</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const hash = window.location.hash;
+    if (hash === "#alert-lifecycle" || hash === "#alert-comments") {
+        const trigger = document.querySelector('[data-bs-target="' + hash + '"]');
+        if (trigger && window.bootstrap && window.bootstrap.Tab) {
+            window.bootstrap.Tab.getOrCreateInstance(trigger).show();
+        }
+    }
+});
+
+document.addEventListener("submit", async function (event) {
+    const form = event.target.closest("#alert-comments .alert-comment-form");
+    if (!form) return;
+
+    event.preventDefault();
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalButtonHtml = submitButton ? submitButton.innerHTML : "";
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Adding...';
+    }
+
+    try {
+        const response = await fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            credentials: "same-origin"
+        });
+        if (!response.ok) throw new Error("The comment could not be submitted.");
+
+        const responseHtml = await response.text();
+        const refreshedDocument = new DOMParser().parseFromString(responseHtml, "text/html");
+        const refreshedComments = refreshedDocument.querySelector("#alert-comments");
+        const currentComments = document.querySelector("#alert-comments");
+        if (!refreshedComments || !currentComments) {
+            window.location.assign(response.url);
+            return;
+        }
+
+        currentComments.innerHTML = refreshedComments.innerHTML;
+        const activeTab = document.querySelector("#alert-comments-tab");
+        if (activeTab && window.bootstrap && window.bootstrap.Tab) {
+            window.bootstrap.Tab.getOrCreateInstance(activeTab).show();
+        }
+    } catch (error) {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonHtml;
+        }
+        let message = document.querySelector("#alert-comments .alert-comment-submit-error");
+        if (!message) {
+            message = document.createElement("div");
+            message.className = "alert alert-danger alert-comment-submit-error py-2 small";
+            form.prepend(message);
+        }
+        message.textContent = "Unable to add the comment. Please try again.";
+    }
+});
+</script>
 </div></body></html>

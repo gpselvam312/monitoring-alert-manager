@@ -34,6 +34,7 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertHistoryRepository;
+import com.dxc.monitoring.repository.AlertCommentRepository;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleRepository;
 import com.dxc.monitoring.repository.AlertRuleEvaluationRepository;
@@ -45,8 +46,11 @@ import com.dxc.monitoring.service.AlertRuleManagementService;
 import com.dxc.monitoring.service.AlertRuleConfigurationService;
 import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
 import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
+import com.dxc.monitoring.service.SystemSettingService;
+import com.dxc.monitoring.service.ReferenceDataCacheService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.AlertRuleForm;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 import jakarta.validation.Valid;
 
@@ -55,7 +59,9 @@ import jakarta.validation.Valid;
 public class AlertController {
     private static final Logger log = LoggerFactory.getLogger(AlertController.class);
     private final AlertRepository alertRepository;
+    private final ReferenceDataCacheService referenceDataCache;
     private final AlertHistoryRepository historyRepository;
+    private final AlertCommentRepository commentRepository;
     private final AlertRuleRepository ruleRepository;
     private final AlertRuleEvaluationRepository ruleEvaluationRepository;
     private final MonitoringJobRepository jobRepository;
@@ -66,18 +72,22 @@ public class AlertController {
     private final NotificationPolicyRepository notificationPolicyRepository;
     private final AlertRuleFieldDiscoveryService fieldDiscoveryService;
     private final AlertRuleNotificationRouteService notificationRouteService;
+    private final SystemSettingService systemSettingService;
 
-    public AlertController(AlertRepository alertRepository, AlertHistoryRepository historyRepository,
-            AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
+    public AlertController(AlertRepository alertRepository, ReferenceDataCacheService referenceDataCache, AlertHistoryRepository historyRepository,
+            AlertCommentRepository commentRepository, AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
             MonitoringJobRepository jobRepository,
             AlertRuleManagementService ruleManagementService, AlertRuleConfigurationService ruleConfigurationService,
             DashboardAccessService accessService,
             UserAlertStateRepository userAlertStateRepository,
             NotificationPolicyRepository notificationPolicyRepository,
             AlertRuleFieldDiscoveryService fieldDiscoveryService,
-            AlertRuleNotificationRouteService notificationRouteService) {
+            AlertRuleNotificationRouteService notificationRouteService,
+            SystemSettingService systemSettingService) {
         this.alertRepository = alertRepository;
+        this.referenceDataCache = referenceDataCache;
         this.historyRepository = historyRepository;
+        this.commentRepository = commentRepository;
         this.ruleRepository = ruleRepository;
         this.ruleEvaluationRepository = ruleEvaluationRepository;
         this.jobRepository = jobRepository;
@@ -88,42 +98,52 @@ public class AlertController {
         this.notificationPolicyRepository = notificationPolicyRepository;
         this.fieldDiscoveryService = fieldDiscoveryService;
         this.notificationRouteService = notificationRouteService;
+        this.systemSettingService = systemSettingService;
     }
 
     @GetMapping
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
-    public String activeAlerts(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size, Model model) {
-        Pageable pageable = pageable(page, size);
-        List<Long> applicationIds = applicationIds("ALERT_VIEW");
-        Page<Alert> alerts = applicationIds.isEmpty() ? Page.empty(pageable)
-                : alertRepository.findByMonitoringJob_Application_IdInAndStatusOrderByLastOccurredAtDescIdDesc(
-                        applicationIds, Alert.AlertStatus.ACTIVE, pageable);
-        model.addAttribute("alerts", alerts);
-        model.addAttribute("pageSize", pageable.getPageSize());
+    public String activeAlerts(@RequestParam(required = false) String search,
+            @RequestParam(required = false) Long applicationId,
+            @RequestParam(required = false) Long environmentId,
+            @RequestParam(required = false) String severity,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "lastOccurredAt") String sort,
+            @RequestParam(defaultValue = "desc") String direction, Model model) {
+        List<Application> applications = accessService.getApplicationsWithPermission("ALERT_VIEW");
+        List<Long> applicationIds = applications.stream().map(Application::getId).toList();
+        if (applicationId != null && !applicationIds.contains(applicationId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this application.");
+        }
+        // Reuse the same cached environment reference data used by the Dashboard.
+        // Only environments belonging to applications authorized for ALERT_VIEW are exposed.
+        List<com.dxc.monitoring.entity.Environment> environments = applications.stream()
+                .flatMap(application -> referenceDataCache.getEnabledEnvironments(application.getId()).stream())
+                .toList();
+        if (environmentId != null && environments.stream().noneMatch(env ->
+                env.getId().equals(environmentId)
+                        && (applicationId == null || env.getApplication().getId().equals(applicationId)))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Choose an environment within the selected application and your authorized scope.");
+        }
+        model.addAttribute("applications", applications);
+        model.addAttribute("environments", environments);
+        model.addAttribute("search", search == null ? "" : search.trim());
+        model.addAttribute("applicationId", applicationId);
+        model.addAttribute("environmentId", environmentId);
+        model.addAttribute("severity", severity == null ? "" : severity);
+        model.addAttribute("pageSize", size == 5 || size == 10 || size == 25 ? size : 10);
+        model.addAttribute("sort", sort);
+        model.addAttribute("direction", direction);
         model.addAttribute("currentPage", "active-alerts");
         return "alerts/active";
-    }
-
-    @GetMapping("/history")
-    @PreAuthorize("hasAuthority('ALERT_VIEW')")
-    public String alertHistory(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size, Model model) {
-        Pageable pageable = pageable(page, size);
-        List<Long> applicationIds = applicationIds("ALERT_VIEW");
-        Page<Alert> alerts = applicationIds.isEmpty() ? Page.empty(pageable)
-                : alertRepository.findByMonitoringJob_Application_IdInAndStatusOrderByLastOccurredAtDescIdDesc(
-                        applicationIds, Alert.AlertStatus.RESOLVED, pageable);
-        model.addAttribute("alerts", alerts);
-        model.addAttribute("pageSize", pageable.getPageSize());
-        model.addAttribute("currentPage", "alert-history");
-        return "alerts/history";
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
     public String alertDetails(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size, Authentication authentication, Model model) {
+            @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "active") String from,
+            Authentication authentication, Model model) {
         List<Long> applicationIds = applicationIds("ALERT_VIEW");
         Alert alert = applicationIds.isEmpty() ? null
                 : alertRepository.findByIdAndMonitoringJob_Application_IdIn(id, applicationIds).orElse(null);
@@ -136,8 +156,12 @@ public class AlertController {
         Page<AlertHistory> history = historyRepository.findByAlertIdOrderByOccurredAtDescIdDesc(id, historyPageable);
         model.addAttribute("alert", alert);
         model.addAttribute("history", history);
+        model.addAttribute("comments", commentRepository.findByAlertIdOrderByCreatedAtDescIdDesc(id));
+        model.addAttribute("dateTimeFormat", systemSettingService.getDateTimeFormat());
         model.addAttribute("pageSize", pageable.getPageSize());
-        model.addAttribute("currentPage", "active-alerts");
+        String detailSource = "history".equalsIgnoreCase(from) ? "history" : "active";
+        model.addAttribute("detailSource", detailSource);
+        model.addAttribute("currentPage", "history".equals(detailSource) ? "alert-history" : "active-alerts");
         return "alerts/detail";
     }
 
@@ -196,22 +220,19 @@ public class AlertController {
     }
 
     private void addRuleListModel(Model model, int page, int size, String search, String sort, String direction) {
-        int safeSize = size == 5 || size == 10 || size == 25 ? size : 10;
-        int safePage = Math.max(0, page);
         String safeSearch = search == null ? "" : search.trim();
-        String sortProperty = switch (sort == null ? "" : sort) {
-            case "name" -> "name";
-            case "monitoringJob.name" -> "monitoringJob.name";
-            case "monitoringJob.application.name" -> "monitoringJob.application.name";
-            case "monitoringJob.environment.name" -> "monitoringJob.environment.name";
-            case "severity" -> "severity";
-            case "executionSourcePolicy" -> "executionSourcePolicy";
-            case "enabled" -> "enabled";
-            default -> "updatedAt";
-        };
-        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(safePage, safeSize,
-                Sort.by(sortDirection, sortProperty).and(Sort.by(Sort.Direction.DESC, "id")));
+        PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(page, size, sort, direction,
+                "updatedAt", Map.of(
+                        "name", "name",
+                        "monitoringJob.name", "monitoringJob.name",
+                        "monitoringJob.application.name", "monitoringJob.application.name",
+                        "monitoringJob.environment.name", "monitoringJob.environment.name",
+                        "severity", "severity",
+                        "executionSourcePolicy", "executionSourcePolicy",
+                        "enabled", "enabled"));
+        int safeSize = pageSpec.pageSize();
+        String sortProperty = pageSpec.sort();
+        Pageable pageable = pageSpec.pageable();
         List<Long> allowedApplicationIds = applicationIds("ALERT_CONFIG");
         Page<AlertRule> rules = allowedApplicationIds.isEmpty() ? Page.empty(pageable)
                 : ruleRepository.searchForManagement(allowedApplicationIds, safeSearch, pageable);
@@ -219,7 +240,7 @@ public class AlertController {
         model.addAttribute("pageSize", safeSize);
         model.addAttribute("search", safeSearch);
         model.addAttribute("sort", sortProperty);
-        model.addAttribute("direction", sortDirection.name().toLowerCase());
+        model.addAttribute("direction", pageSpec.direction());
     }
 
     @GetMapping("/rules/new")

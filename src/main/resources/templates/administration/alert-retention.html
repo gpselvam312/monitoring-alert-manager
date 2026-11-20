@@ -7,21 +7,51 @@
 <div class="alert alert-warning"><strong>Safety:</strong> active alerts and pending notification deliveries are protected. Rule-evaluation cleanup always preserves the latest evaluation for each rule so consecutive-match and recovery counters remain correct.</div>
 
 <div class="app-card mb-3"><div class="app-card-header"><h2 class="h6 mb-0">Retention Policies</h2></div><div class="app-card-body p-0">
-<div class="table-responsive"><table class="table app-table align-middle mb-0"><thead><tr><th>Data Type</th><th>Retention / Description</th><th>Status</th><th>Preview</th><th>Action</th></tr></thead><tbody>
-<tr th:each="policy : ${policies}"><td class="fw-semibold" th:text="${policy.dataType}">RESOLVED_ALERTS</td><td><form class="d-flex flex-wrap gap-2 align-items-center" method="post" th:action="@{/administration/alert-retention/policies/{id}/update(id=${policy.id})}"><input class="form-control form-control-sm" style="max-width:110px" type="number" name="retentionDays" min="1" max="36500" th:value="${policy.retentionDays}" required><input class="form-control form-control-sm" style="min-width:160px;max-width:280px" name="description" maxlength="1000" th:value="${policy.description}" placeholder="Description"><button class="btn btn-sm btn-outline-primary" type="submit">Save</button></form></td><td><span class="badge text-bg-success" th:if="${policy.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${policy.enabled}">Disabled</span></td><td><a class="btn btn-sm btn-outline-secondary" th:href="@{/administration/alert-retention(previewPolicyId=${policy.id})}"><i class="bi bi-search me-1"></i>Preview</a></td><td><form method="post" th:action="@{/administration/alert-retention/policies/{id}/toggle(id=${policy.id})}"><button class="btn btn-sm btn-outline-secondary" type="submit" th:text="${policy.enabled ? 'Disable' : 'Enable'}">Toggle</button></form></td></tr>
+<div class="table-responsive"><table class="table app-table align-middle mb-0"><thead><tr><th>Data Type</th><th>Scope</th><th>Retention / Description</th><th>Status</th><th>Preview</th><th>Action</th></tr></thead><tbody>
+<tr th:each="policy : ${policies}"><td class="fw-semibold" th:text="${policy.dataType}">RESOLVED_ALERTS</td><td><div th:text="${policy.application != null ? policy.application.name : 'All applications'}">Application</div><div class="small text-muted" th:text="${policy.environment != null ? policy.environment.name : 'All environments'}">Environment</div><div class="small text-muted" th:text="${policy.alertType == 'ALL' ? 'All alert types' : alertTypeLabels.get(policy.alertType)}">Alert type</div></td><td><form class="d-flex flex-wrap gap-2 align-items-center" method="post" th:action="@{/administration/alert-retention/policies/{id}/update(id=${policy.id})}"><input class="form-control form-control-sm" style="max-width:110px" type="number" name="retentionDays" min="1" max="36500" th:value="${policy.retentionDays}" required><input class="form-control form-control-sm" style="min-width:160px;max-width:280px" name="description" maxlength="1000" th:value="${policy.description}" placeholder="Description"><button class="btn btn-sm btn-outline-primary" type="submit">Save</button></form></td><td><span class="badge text-bg-success" th:if="${policy.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${policy.enabled}">Disabled</span></td><td><a class="btn btn-sm btn-outline-secondary" th:href="@{/administration/alert-retention(previewPolicyId=${policy.id})}"><i class="bi bi-search me-1"></i>Preview</a></td><td><form method="post" th:action="@{/administration/alert-retention/policies/{id}/toggle(id=${policy.id})}"><button class="btn btn-sm btn-outline-secondary" type="submit" th:text="${policy.enabled ? 'Disable' : 'Enable'}">Toggle</button></form></td></tr>
 <tr th:if="${#lists.isEmpty(policies)}"><td colspan="6" class="text-muted text-center py-3">No retention policies exist. No cleanup can run until you create and explicitly enable one.</td></tr>
 </tbody></table></div>
 <div class="p-3 border-top"><h3 class="h6 mb-3">Create Retention Policy</h3><form th:action="@{/administration/alert-retention/policies}" method="post"><div class="row g-3">
-<div class="col-12 col-lg-4"><label class="form-label">Data Type</label><select class="form-select" name="dataType" required><option value="">Select data type</option><option th:each="type : ${dataTypes}" th:value="${type.name()}" th:text="${type.name()}"></option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Data Type</label><select class="form-select" id="retentionDataType" name="dataType" onchange="filterRetentionAlertTypes()" required><option value="">Select data type</option><option th:each="type : ${dataTypes}" th:value="${type.name()}" th:text="${type.name()}"></option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Application</label><select class="form-select" id="retentionApplication" name="applicationId" onchange="filterRetentionEnvironments()"><option value="">All applications</option><option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}"></option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Environment</label><select class="form-select" id="retentionEnvironment" name="environmentId"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:attr="data-application-id=${env.application.id}" th:text="${env.application.name + ' / ' + env.name}"></option></select></div>
+<div class="col-12 col-lg-3"><label class="form-label">Alert Type</label><div class="form-text mb-1">Applies to alert and delivery records; rule evaluations use application and environment scope.</div><select class="form-select" id="retentionAlertType" name="alertType"><option value="ALL">All alert types</option><option th:each="type : ${alertTypes}" th:value="${type.code}" th:text="${type.name}"></option></select></div>
 <div class="col-12 col-lg-2"><label class="form-label">Retention (days)</label><input class="form-control" type="number" name="retentionDays" min="1" max="36500" placeholder="e.g. 90" required></div>
-<div class="col-12 col-lg-4"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div>
+<div class="col-12 col-lg-5"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div>
 <div class="col-12 col-lg-2 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="enabled" value="true" id="policyEnabled"><label class="form-check-label" for="policyEnabled">Enable policy</label></div></div>
 <div class="col-12"><button type="submit" class="btn btn-primary">Save Policy</button></div>
 </div></form></div>
 </div></div>
 
+<script>
+function filterRetentionEnvironments() {
+    const applicationId = document.getElementById('retentionApplication').value;
+    const environmentSelect = document.getElementById('retentionEnvironment');
+    Array.from(environmentSelect.options).forEach(function (option) {
+        if (!option.value) return;
+        const visible = applicationId !== '' && option.dataset.applicationId === applicationId;
+        option.hidden = !visible;
+        if (!visible && option.selected) environmentSelect.value = '';
+    });
+}
+function filterRetentionAlertTypes() {
+    const dataType = document.getElementById('retentionDataType').value;
+    const alertTypeSelect = document.getElementById('retentionAlertType');
+    const ruleEvaluations = dataType === 'RULE_EVALUATIONS';
+    Array.from(alertTypeSelect.options).forEach(function (option) {
+        if (!option.value) return;
+        option.hidden = ruleEvaluations && option.value !== 'ALL';
+    });
+    if (ruleEvaluations) alertTypeSelect.value = 'ALL';
+}
+document.addEventListener('DOMContentLoaded', function () {
+    filterRetentionEnvironments();
+    filterRetentionAlertTypes();
+});
+</script>
+
 <div class="app-card mb-3" th:if="${preview != null}"><div class="app-card-header"><h2 class="h6 mb-0">Cleanup Preview</h2></div><div class="app-card-body">
-<div class="row g-3 mb-3"><div class="col-12 col-md-4"><div class="text-muted small">Data Type</div><div class="fw-semibold" th:text="${preview.dataType}">Data type</div></div><div class="col-12 col-md-4"><div class="text-muted small">Retention Window</div><div class="fw-semibold" th:text="${preview.retentionDays + ' days'}">90 days</div></div><div class="col-12 col-md-4"><div class="text-muted small">Eligible Primary Records</div><div class="fs-4 fw-semibold" th:text="${preview.candidateCount}">0</div></div></div>
+<div class="row g-3 mb-3"><div class="col-12 col-md-3"><div class="text-muted small">Data Type</div><div class="fw-semibold" th:text="${preview.dataType}">Data type</div></div><div class="col-12 col-md-3"><div class="text-muted small">Scope</div><div class="fw-semibold" th:text="${preview.scope}">Scope</div></div><div class="col-12 col-md-2"><div class="text-muted small">Retention Window</div><div class="fw-semibold" th:text="${preview.retentionDays + ' days'}">90 days</div></div><div class="col-12 col-md-4"><div class="text-muted small">Eligible Primary Records</div><div class="fs-4 fw-semibold" th:text="${preview.candidateCount}">0</div></div></div>
 <p class="small text-muted" th:text="'Cutoff time: ' + ${#temporals.format(preview.cutoff, 'yyyy-MM-dd HH:mm:ss')}">Cutoff</p>
 <div class="alert alert-warning">Preview is read-only. Cleanup will permanently delete eligible records and associated data for resolved alerts. Pending delivery work and active alerts are excluded.</div>
 <form th:action="@{/administration/alert-retention/run}" method="post" class="d-flex flex-wrap gap-3 align-items-center">

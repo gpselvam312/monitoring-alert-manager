@@ -1,5 +1,9 @@
 package com.dxc.monitoring.controller;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,7 +20,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.AlertCleanupRun;
 import com.dxc.monitoring.entity.AlertRetentionPolicy;
+import com.dxc.monitoring.entity.AlertType;
+import com.dxc.monitoring.entity.Application;
+import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertCleanupRunRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.repository.AlertTypeRepository;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.AlertRetentionCleanupExecutor;
 import com.dxc.monitoring.service.AlertRetentionService;
@@ -26,11 +36,18 @@ import com.dxc.monitoring.service.AlertRetentionService;
 public class AlertRetentionController {
     private final AlertRetentionService retentionService;
     private final AlertCleanupRunRepository runRepository;
+    private final EnvironmentRepository environmentRepository;
+    private final DashboardAccessService accessService;
+    private final AlertTypeRepository alertTypeRepository;
 
     public AlertRetentionController(AlertRetentionService retentionService,
-            AlertCleanupRunRepository runRepository) {
+            AlertCleanupRunRepository runRepository, EnvironmentRepository environmentRepository,
+            DashboardAccessService accessService, AlertTypeRepository alertTypeRepository) {
         this.retentionService = retentionService;
         this.runRepository = runRepository;
+        this.environmentRepository = environmentRepository;
+        this.accessService = accessService;
+        this.alertTypeRepository = alertTypeRepository;
     }
 
     @GetMapping
@@ -40,6 +57,17 @@ public class AlertRetentionController {
         Page<AlertCleanupRun> runs = runRepository.findAllByOrderByStartedAtDesc(PageRequest.of(0, 20));
         model.addAttribute("runs", runs);
         model.addAttribute("dataTypes", AlertRetentionPolicy.DataType.values());
+        List<Application> applications = accessService.getApplicationsWithPermission("DATA_EXPUNGE");
+        List<Long> applicationIds = applications.stream().map(Application::getId).toList();
+        List<Environment> environments = applicationIds.isEmpty() ? List.of()
+                : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds);
+        model.addAttribute("applications", applications);
+        model.addAttribute("environments", environments);
+        List<AlertType> alertTypes = alertTypeRepository.findByEnabledTrueOrderBySortOrderAscNameAsc();
+        model.addAttribute("alertTypes", alertTypes);
+        Map<String, String> alertTypeLabels = alertTypeRepository.findAll().stream()
+                .collect(Collectors.toMap(AlertType::getCode, AlertType::getName));
+        model.addAttribute("alertTypeLabels", alertTypeLabels);
         model.addAttribute("currentPage", "alert-retention");
         if (previewPolicyId != null) {
             try {
@@ -57,10 +85,14 @@ public class AlertRetentionController {
     @PreAuthorize("hasAuthority('DATA_EXPUNGE')")
     public String createPolicy(@RequestParam String dataType, @RequestParam int retentionDays,
             @RequestParam(defaultValue = "false") boolean enabled,
-            @RequestParam(required = false) String description, Authentication authentication,
-            RedirectAttributes redirect) {
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Long applicationId,
+            @RequestParam(required = false) Long environmentId,
+            @RequestParam(defaultValue = "ALL") String alertType,
+            Authentication authentication, RedirectAttributes redirect) {
         try {
-            retentionService.createPolicy(dataType, retentionDays, enabled, description, userId(authentication));
+            retentionService.createPolicy(dataType, retentionDays, enabled, description,
+                    applicationId, environmentId, alertType, userId(authentication));
             redirect.addFlashAttribute("successMessage", "Retention policy saved. Cleanup is never run automatically.");
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             redirect.addFlashAttribute("errorMessage", safeMessage(exception));
@@ -121,7 +153,7 @@ public class AlertRetentionController {
 
     private String safeMessage(Exception exception) {
         if (exception instanceof DataIntegrityViolationException) {
-            return "A retention policy already exists for this data type.";
+            return "A retention policy already exists for this scope.";
         }
         String message = exception.getMessage();
         if (message == null || message.isBlank()) return "Retention operation could not be completed.";
