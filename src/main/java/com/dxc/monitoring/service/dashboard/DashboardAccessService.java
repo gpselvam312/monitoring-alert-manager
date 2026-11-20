@@ -11,26 +11,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
-import com.dxc.monitoring.entity.Role;
-import com.dxc.monitoring.entity.UserApplicationRole;
-import com.dxc.monitoring.repository.ApplicationRepository;
-import com.dxc.monitoring.repository.EnvironmentRepository;
-import com.dxc.monitoring.repository.UserApplicationRoleRepository;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.ReferenceDataCacheService;
 
 @Service
 public class DashboardAccessService {
-    private final ApplicationRepository applications;
-    private final EnvironmentRepository environments;
     private final ReferenceDataCacheService referenceDataCache;
-    private final UserApplicationRoleRepository assignments;
 
-    public DashboardAccessService(ApplicationRepository applications, EnvironmentRepository environments,
-            UserApplicationRoleRepository assignments, ReferenceDataCacheService referenceDataCache) {
-        this.applications = applications;
-        this.environments = environments;
-        this.assignments = assignments;
+    public DashboardAccessService(ReferenceDataCacheService referenceDataCache) {
         this.referenceDataCache = referenceDataCache;
     }
 
@@ -41,19 +29,18 @@ public class DashboardAccessService {
 
     @Transactional(readOnly = true)
     public Long getPrimaryApplicationId() {
-        return assignments.findFirstByUser_IdAndPrimaryTrue(currentUserId())
-                .map(assignment -> assignment.getApplication().getId())
-                .orElse(null);
+        return currentUserDetails().getPrimaryApplicationId();
     }
 
     @Transactional(readOnly = true)
     public List<Application> getApplicationsWithPermission(String permission) {
-        if (isPlatformAdmin()) return referenceDataCache.getEnabledApplications();
-        return assignments.findAssignmentsForUser(currentUserId()).stream()
-                .filter(a -> a.getApplication().isEnabled())
-                .filter(a -> hasPermission(a.getRole(), permission))
-                .map(UserApplicationRole::getApplication).distinct()
-                .sorted(Comparator.comparing(Application::getName, String.CASE_INSENSITIVE_ORDER)).toList();
+        List<Application> enabled = referenceDataCache.getEnabledApplications();
+        if (isPlatformAdmin()) return enabled;
+        CustomUserDetails user = currentUserDetails();
+        return enabled.stream()
+                .filter(application -> user.hasApplicationPermission(application.getId(), permission))
+                .sorted(Comparator.comparing(Application::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -64,13 +51,11 @@ public class DashboardAccessService {
     @Transactional(readOnly = true)
     public void assertCanAccessApplication(Long applicationId, String permission) {
         if (applicationId == null) throw new AccessDeniedException("An application must be selected.");
-        Application app = applications.findById(applicationId).filter(Application::isEnabled)
-                .orElseThrow(() -> new AccessDeniedException("Application is unavailable."));
+        Application application = referenceDataCache.getEnabledApplications().stream()
+                .filter(candidate -> applicationId.equals(candidate.getId()))
+                .findFirst().orElseThrow(() -> new AccessDeniedException("Application is unavailable."));
         if (isPlatformAdmin()) return;
-        Long userId = currentUserId();
-        UserApplicationRole assignment = assignments.findByUser_IdAndApplication_Id(userId, app.getId())
-                .orElseThrow(() -> new AccessDeniedException("You are not assigned to this application."));
-        if (!hasPermission(assignment.getRole(), permission))
+        if (!currentUserDetails().hasApplicationPermission(application.getId(), permission))
             throw new AccessDeniedException("Your role does not allow this action for the selected application.");
     }
 
@@ -88,9 +73,12 @@ public class DashboardAccessService {
     @Transactional(readOnly = true)
     public void assertCanAccessEnvironment(Long applicationId, Long environmentId, String permission) {
         assertCanAccessApplication(applicationId, permission);
-        if (environmentId == null || environments.findById(environmentId)
-                .filter(Environment::isEnabled)
-                .filter(e -> e.getApplication() != null && e.getApplication().getId().equals(applicationId)).isEmpty())
+        boolean belongsToApplication = environmentId != null
+                && referenceDataCache.getEnabledEnvironments(applicationId).stream()
+                        .anyMatch(environment -> environmentId.equals(environment.getId())
+                                && environment.getApplication() != null
+                                && applicationId.equals(environment.getApplication().getId()));
+        if (!belongsToApplication)
             throw new AccessDeniedException("The selected environment does not belong to this application or is disabled.");
     }
 
@@ -101,22 +89,17 @@ public class DashboardAccessService {
         assertCanAccessEnvironment(tab.getApplication().getId(), tab.getEnvironment().getId(), "MONITORING_VIEW");
     }
 
-    private boolean hasPermission(Role role, String permission) {
-        return role != null && role.getPermissions().stream()
-                .anyMatch(p -> permission.equals(p.getName()));
-    }
-
     private boolean isPlatformAdmin() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream().anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 
-    private Long currentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated())
-            throw new AccessDeniedException("Authentication is required.");
-        if (auth.getPrincipal() instanceof CustomUserDetails userDetails)
-            return userDetails.getUserId();
-        throw new AccessDeniedException("Authenticated user details are unavailable.");
+    private CustomUserDetails currentUserDetails() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof CustomUserDetails userDetails))
+            throw new AccessDeniedException("Authenticated user details are unavailable.");
+        return userDetails;
     }
 }

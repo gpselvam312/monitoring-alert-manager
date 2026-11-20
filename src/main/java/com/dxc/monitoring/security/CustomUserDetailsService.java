@@ -14,6 +14,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -47,12 +49,21 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Data services must still verify the role against the specific application being accessed.
         Set<UserApplicationRole> assignments = new HashSet<>(
                 userApplicationRoleRepository.findAssignmentsForUser(user.getId()));
-        assignments.stream().map(UserApplicationRole::getRole).filter(role -> role != null)
-                .flatMap(role -> role.getPermissions().stream()).map(Permission::getName)
-                .filter(name -> name != null && !name.isBlank())
-                .map(SimpleGrantedAuthority::new).forEach(authorities::add);
+        Map<Long, Set<String>> applicationPermissions = new HashMap<>();
+        Long primaryApplicationId = null;
+        for (UserApplicationRole assignment : assignments) {
+            if (assignment.getApplication() == null || assignment.getRole() == null) continue;
+            Long applicationId = assignment.getApplication().getId();
+            Set<String> permissions = applicationPermissions.computeIfAbsent(applicationId, ignored -> new HashSet<>());
+            assignment.getRole().getPermissions().stream().map(Permission::getName)
+                    .filter(name -> name != null && !name.isBlank()).forEach(permission -> {
+                        permissions.add(permission);
+                        authorities.add(new SimpleGrantedAuthority(permission));
+                    });
+            if (assignment.isPrimary()) primaryApplicationId = applicationId;
+        }
 
         return new CustomUserDetails(user.getId(), user.getUsername(), user.getPasswordHash(),
-                user.isEnabled(), authorities, user.getFullName());
+                user.isEnabled(), authorities, user.getFullName(), applicationPermissions, primaryApplicationId);
     }
 }

@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
@@ -17,124 +17,71 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
-import com.dxc.monitoring.entity.Permission;
-import com.dxc.monitoring.entity.Role;
-import com.dxc.monitoring.entity.User;
-import com.dxc.monitoring.entity.UserApplicationRole;
-import com.dxc.monitoring.entity.UserApplicationRoleId;
-import com.dxc.monitoring.repository.ApplicationRepository;
-import com.dxc.monitoring.repository.EnvironmentRepository;
-import com.dxc.monitoring.repository.UserApplicationRoleRepository;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.ReferenceDataCacheService;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardAccessServiceTest {
-    @Mock private ApplicationRepository applications;
-    @Mock private EnvironmentRepository environments;
     @Mock private ReferenceDataCacheService referenceDataCache;
-    @Mock private UserApplicationRoleRepository assignments;
-
     @InjectMocks private DashboardAccessService service;
-
-    private User user;
     private Application appA;
     private Application appB;
-    private Role viewerRole;
 
     @BeforeEach
     void setUp() {
-        user = new User();
-        user.setId(7L);
-        user.setUsername("viewer1");
-        CustomUserDetails userDetails = new CustomUserDetails(
-                7L, "viewer1", "password", true, List.of(), "Viewer One");
+        appA = application(11L, "App A");
+        appB = application(12L, "App B");
+        CustomUserDetails details = new CustomUserDetails(7L, "viewer1", "password", true,
+                List.of(new SimpleGrantedAuthority("MONITORING_VIEW")), "Viewer One",
+                Map.of(11L, Set.of("MONITORING_VIEW")), 12L);
         SecurityContextHolder.getContext().setAuthentication(
-                UsernamePasswordAuthenticationToken.authenticated(userDetails, "password", List.of()));
-
-        appA = new Application();
-        appA.setId(11L);
-        appA.setName("App A");
-        appA.setEnabled(true);
-
-        appB = new Application();
-        appB.setId(12L);
-        appB.setName("App B");
-        appB.setEnabled(true);
-
-        Permission view = new Permission();
-        view.setName("MONITORING_VIEW");
-        viewerRole = new Role();
-        viewerRole.setName("VIEWER");
-        viewerRole.setPermissions(Set.of(view));
-
-    }
-
-    private void stubApplicationAccess() {
-        UserApplicationRole assignment = new UserApplicationRole();
-        assignment.setId(new UserApplicationRoleId(7L, 11L));
-        assignment.setUser(user);
-        assignment.setApplication(appA);
-        assignment.setRole(viewerRole);
-        when(assignments.findByUser_IdAndApplication_Id(7L, 11L)).thenReturn(Optional.of(assignment));
-        when(applications.findById(11L)).thenReturn(Optional.of(appA));
+                UsernamePasswordAuthenticationToken.authenticated(details, "password", details.getAuthorities()));
+        when(referenceDataCache.getEnabledApplications()).thenReturn(List.of(appA, appB));
     }
 
     @AfterEach
-    void clearSecurityContext() {
-        SecurityContextHolder.clearContext();
-    }
+    void clearSecurityContext() { SecurityContextHolder.clearContext(); }
 
-    @Test
-    void returnsConfiguredPrimaryApplicationId() {
-        UserApplicationRole primaryAssignment = new UserApplicationRole();
-        primaryAssignment.setId(new UserApplicationRoleId(7L, 12L));
-        primaryAssignment.setUser(user);
-        primaryAssignment.setApplication(appB);
-        primaryAssignment.setRole(viewerRole);
-        primaryAssignment.setPrimary(true);
-        when(assignments.findFirstByUser_IdAndPrimaryTrue(7L)).thenReturn(Optional.of(primaryAssignment));
-
+    @Test void returnsConfiguredPrimaryApplicationIdFromLoginSnapshot() {
         assertEquals(12L, service.getPrimaryApplicationId());
     }
 
-    @Test
-    void returnsOnlyEnvironmentsOwnedByTheSelectedApplication() {
-        stubApplicationAccess();
+    @Test void returnsOnlyApplicationsAndEnvironmentsGrantedAtLogin() {
         Environment sit = new Environment();
-        sit.setId(101L);
-        sit.setName("SIT");
-        sit.setApplication(appA);
-        sit.setEnabled(true);
+        sit.setId(101L); sit.setName("SIT"); sit.setApplication(appA); sit.setEnabled(true);
         when(referenceDataCache.getEnabledEnvironments(11L)).thenReturn(List.of(sit));
-
-        List<Environment> result = service.getEnvironmentsForApplication(11L);
-
-        assertEquals(List.of(sit), result);
+        assertEquals(List.of(appA), service.getApplicationsWithPermission("MONITORING_VIEW"));
+        assertEquals(List.of(sit), service.getEnvironmentsForApplication(11L));
     }
 
-    @Test
-    void rejectsAnEnvironmentOwnedByAnotherApplication() {
-        stubApplicationAccess();
+    @Test void rejectsAnEnvironmentOwnedByAnotherApplication() {
         Environment appBProd = new Environment();
-        appBProd.setId(202L);
-        appBProd.setName("PROD");
-        appBProd.setApplication(appB);
-        appBProd.setEnabled(true);
-        when(environments.findById(202L)).thenReturn(Optional.of(appBProd));
-
-        assertThrows(AccessDeniedException.class,
-                () -> service.assertCanAccessEnvironment(11L, 202L));
+        appBProd.setId(202L); appBProd.setName("PROD"); appBProd.setApplication(appB); appBProd.setEnabled(true);
+        when(referenceDataCache.getEnabledEnvironments(11L)).thenReturn(List.of(appBProd));
+        assertThrows(AccessDeniedException.class, () -> service.assertCanAccessEnvironment(11L, 202L));
     }
 
-    @Test
-    void rejectsActionsNotGrantedByTheSelectedApplicationRole() {
-        stubApplicationAccess();
+    @Test void rejectsActionsNotGrantedByTheSelectedApplicationRole() {
         assertThrows(AccessDeniedException.class,
                 () -> service.assertCanAccessApplication(11L, "MONITORING_CONFIG"));
+    }
+
+    @Test void platformAdministratorCanAccessEveryEnabledApplication() {
+        CustomUserDetails admin = new CustomUserDetails(1L, "admin", "password", true,
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")), "Administrator");
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(admin, "password", admin.getAuthorities()));
+        assertEquals(List.of(appA, appB), service.getApplicationsWithPermission("MACHINE_CONFIG"));
+    }
+
+    private Application application(Long id, String name) {
+        Application application = new Application();
+        application.setId(id); application.setName(name); application.setEnabled(true);
+        return application;
     }
 }
