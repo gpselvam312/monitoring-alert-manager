@@ -109,9 +109,15 @@ public class ScriptSecurityValidator {
                 while (index<tokens.size() && (tokens.get(index).startsWith("-") || ASSIGNMENT.matcher(tokens.get(index)).matches())) index++;
                 if (wrapper.equals("env") || wrapper.equals("command") || wrapper.equals("builtin")) continue;
             }
-            while (index<tokens.size() && tokens.get(index).matches("(?:[0-9]+)?[<>]{1,2}")) {
-                index++;
-                if (index<tokens.size()) index++;
+            while (index<tokens.size()) {
+                if (tokens.get(index).matches("[0-9]+") && index+1<tokens.size()
+                        && (tokens.get(index+1).equals(">") || tokens.get(index+1).equals("<"))) {
+                    index += 2;
+                    if (index<tokens.size()) index++;
+                } else if (tokens.get(index).equals(">") || tokens.get(index).equals("<")) {
+                    index++;
+                    if (index<tokens.size()) index++;
+                } else break;
             }
             if (index>=tokens.size()) continue;
             String command=base(tokens.get(index));

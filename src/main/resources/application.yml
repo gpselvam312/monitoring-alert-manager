@@ -3,9 +3,9 @@ spring:
     name: monitoring-alert-manager
 
   datasource:
-    url: jdbc:postgresql://10.166.6.246:5432/ra_fcb_monitors?currentSchema=ra_fcb
-    username: rafcb_user
-    password: rafcbuser@123
+    url: ${MONITORING_DB_URL:jdbc:postgresql://localhost:5432/ra_fcb_monitors?currentSchema=ra_fcb}
+    username: ${MONITORING_DB_USERNAME:}
+    password: ${MONITORING_DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
 
   jpa:
