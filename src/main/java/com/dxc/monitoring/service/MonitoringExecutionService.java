@@ -17,6 +17,7 @@ import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.MonitoringResult;
 import com.dxc.monitoring.repository.MonitoringExecutionRepository;
 import com.dxc.monitoring.repository.MonitoringResultRepository;
+import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 @Service
@@ -26,13 +27,16 @@ public class MonitoringExecutionService
     private final MonitoringExecutionRepository executionRepository;
     private final MonitoringResultRepository resultRepository;
     private final DashboardAccessService accessService;
+    private final MonitoringJobRepository jobRepository;
 
     public MonitoringExecutionService(MonitoringExecutionRepository executionRepository,
-            MonitoringResultRepository resultRepository, DashboardAccessService accessService)
+            MonitoringResultRepository resultRepository, DashboardAccessService accessService,
+            MonitoringJobRepository jobRepository)
     {
         this.executionRepository = executionRepository;
         this.resultRepository = resultRepository;
         this.accessService = accessService;
+        this.jobRepository = jobRepository;
     }
 
     @Transactional
@@ -102,20 +106,21 @@ public class MonitoringExecutionService
     @Transactional(readOnly = true)
     public List<MonitoringExecution> findByJobId(Long monitoringJobId)
     {
-        accessService.assertCanAccessApplicationForJob(monitoringJobId, "MONITORING_VIEW");
+        assertJobAccess(monitoringJobId);
         return executionRepository.findByMonitoringJobIdOrderByStartedAtDesc(monitoringJobId);
     }
 
     @Transactional(readOnly = true)
     public List<MonitoringResult> findResultsByExecutionId(Long executionId)
     {
+        findById(executionId);
         return resultRepository.findAllByExecutionId(executionId);
     }
 
     @Transactional(readOnly = true)
     public Page<MonitoringExecution> findByJobId(Long monitoringJobId, String search, Pageable pageable)
     {
-        accessService.assertCanAccessApplicationForJob(monitoringJobId, "MONITORING_VIEW");
+        assertJobAccess(monitoringJobId);
         return executionRepository.findByMonitoringJobId(monitoringJobId, search, pageable);
     }
 
@@ -191,8 +196,17 @@ public class MonitoringExecutionService
     {
         MonitoringExecution execution = executionRepository.findById(executionId)
                 .orElseThrow(() -> new IllegalArgumentException("Execution not found: " + executionId));
-        accessService.assertCanAccessApplicationForJob(execution.getMonitoringJob().getId(), "MONITORING_VIEW");
+        assertJobAccess(execution.getMonitoringJob().getId());
         return execution;
+    }
+
+    private void assertJobAccess(Long jobId)
+    {
+        MonitoringJob job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found: " + jobId));
+        if (job.getApplication() == null)
+            throw new org.springframework.security.access.AccessDeniedException("This job is not assigned to an application.");
+        accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_VIEW");
     }
 
     @Transactional(readOnly = true)
@@ -200,7 +214,7 @@ public class MonitoringExecutionService
     {
         MonitoringExecution execution = executionRepository.findByIdAndMonitoringJob_Id(executionId, jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Execution not found for monitoring job."));
-        accessService.assertCanAccessApplicationForJob(jobId, "MONITORING_VIEW");
+        assertJobAccess(jobId);
         return execution;
     }
 }

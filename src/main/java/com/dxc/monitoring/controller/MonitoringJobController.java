@@ -514,8 +514,6 @@ public class MonitoringJobController
     public String viewJob(@PathVariable Long id, @RequestParam(required = false) String mode, Model model)
     {
         MonitoringJob job = monitoringJobService.findById(id);
-        if (job.getApplication() != null)
-            accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_CONFIG");
         boolean streamingContext = "STREAMING".equalsIgnoreCase(mode)
                 && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING;
 
@@ -533,6 +531,7 @@ public class MonitoringJobController
     public String editJobForm(@PathVariable Long id, @RequestParam(required = false) String mode, Model model)
     {
         MonitoringJob job = monitoringJobService.findById(id);
+        accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_CONFIG");
         boolean streamingContext = "STREAMING".equalsIgnoreCase(mode)
                 && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING;
 
