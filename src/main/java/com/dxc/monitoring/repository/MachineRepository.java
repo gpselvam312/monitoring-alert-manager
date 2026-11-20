@@ -42,6 +42,7 @@ public interface MachineRepository extends JpaRepository<Machine, Long>
             FROM Machine m
             JOIN m.environment e
             WHERE e.application.id IN :applicationIds
+              AND e.enabled = true AND e.application.enabled = true
               AND (LOWER(m.name) LIKE LOWER(CONCAT('%', :search, '%'))
                 OR LOWER(COALESCE(m.hostname, '')) LIKE LOWER(CONCAT('%', :search, '%'))
                 OR LOWER(COALESCE(m.ipAddress, '')) LIKE LOWER(CONCAT('%', :search, '%'))
