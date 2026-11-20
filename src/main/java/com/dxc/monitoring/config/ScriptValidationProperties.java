@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "monitoring.security.script.validation")
 public class ScriptValidationProperties {
     private boolean enabled = true;
-    private List<String> restrictedCommands = new ArrayList<>(List.of("sudo","rm","rmdir","shred","mkfs","wipefs","fdisk","parted","dd","truncate","shutdown","reboot","poweroff","halt","killall","pkill","systemctl","service","chmod","chown"));
+    private List<String> restrictedCommands = new ArrayList<>(List.of("sudo","su","doas","pkexec","rm","rmdir","shred","mkfs","wipefs","fdisk","parted","dd","truncate","shutdown","reboot","poweroff","halt","kill","killall","pkill","systemctl","service","chmod","chown","mount","umount","docker","podman","iptables","nft"));
     private List<AllowedCommandRule> allowedCommandRules = new ArrayList<>();
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }

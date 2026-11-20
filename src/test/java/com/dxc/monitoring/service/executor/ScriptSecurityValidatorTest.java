@@ -58,6 +58,16 @@ class ScriptSecurityValidatorTest {
         Path script=write("sh helper.sh\n");
         assertThrows(IllegalArgumentException.class,()->new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
     }
+    @Test void rejectsIndirectCommandExecutionThroughShellHooksAndUtilities() throws Exception {
+        for (String body : List.of(
+                "trap 'rm -rf /tmp/x' EXIT\\n",
+                "busybox rm -rf /tmp/x\\n",
+                "awk 'BEGIN { system(\\"rm -rf /tmp/x\\") }'\\n")) {
+            Path script = write(body);
+            assertThrows(IllegalArgumentException.class,
+                    () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
+        }
+    }
     @Test void rejectsOverlyBroadAllowedRule() {
         ScriptValidationProperties config=new ScriptValidationProperties();
         var rule=new ScriptValidationProperties.AllowedCommandRule();

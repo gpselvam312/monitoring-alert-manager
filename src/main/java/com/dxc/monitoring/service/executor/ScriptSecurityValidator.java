@@ -28,7 +28,7 @@ public class ScriptSecurityValidator {
     private static final Pattern ASSIGNMENT = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*=.*");
     private static final Set<String> SHELL_WORDS = Set.of("if","then","else","elif","fi","do","done","while","until","!");
     private static final Set<String> WRAPPERS = Set.of("env","command","builtin","nohup","time");
-    private static final Set<String> NESTED = Set.of("source","eval","exec","xargs","bash","sh","dash","zsh","ksh","python","python2","python3","perl","ruby","node");
+    private static final Set<String> NESTED = Set.of("source","eval","exec","xargs","bash","sh","dash","zsh","ksh","python","python2","python3","perl","ruby","node","nodejs","trap","busybox");
     private final Path[] fallbackAllowedDirectories;
     private final SystemSettingService systemSettingService;
     private final ScriptValidationProperties validation;
@@ -126,14 +126,18 @@ public class ScriptSecurityValidator {
             if (command.isBlank() || command.startsWith(">") || command.startsWith("<")) continue;
             if (isNested(command) || command.endsWith(".sh") || command.equals("."))
                 throw new IllegalArgumentException("Script security validation rejected nested or indirect script execution.");
-            if (tokens.subList(index+1,tokens.size()).contains("-exec") && command.equals("find"))
-                throw new IllegalArgumentException("Script security validation rejected find -exec.");
+            if (command.equals("find") && tokens.subList(index+1,tokens.size()).stream()
+                    .anyMatch(arg -> Set.of("-exec", "-execdir", "-ok", "-okdir").contains(arg)))
+                throw new IllegalArgumentException("Script security validation rejected find command execution actions.");
+            if ((command.equals("awk") || command.equals("gawk"))
+                    && tokens.subList(index+1,tokens.size()).stream().anyMatch(arg -> arg.contains("system(")))
+                throw new IllegalArgumentException("Script security validation rejected awk system() command execution.");
             boolean restricted=validation.getRestrictedCommands().contains(command)
                     || (command.startsWith("mkfs.") && validation.getRestrictedCommands().contains("mkfs"));
             if (command.equals("systemctl"))
-                restricted=tokens.size()>index+1 && Set.of("stop","disable","mask").contains(tokens.get(index+1));
+                restricted=tokens.size()>index+1 && Set.of("start","stop","restart","disable","mask").contains(tokens.get(index+1));
             if (command.equals("service"))
-                restricted=tokens.size()>index+2 && tokens.get(index+2).equals("stop");
+                restricted=tokens.size()>index+2 && Set.of("stop","restart").contains(tokens.get(index+2));
             if (restricted && validation.isEnabled() && !isAllowed(command,tokens.subList(index+1,tokens.size()))) {
                 throw new IllegalArgumentException("Script security validation rejected restricted command '" + command + "'.");
             }

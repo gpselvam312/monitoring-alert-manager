@@ -56,6 +56,9 @@ monitoring:
         enabled: ${MONITORING_SCRIPT_VALIDATION_ENABLED:true}
         restricted-commands:
           - sudo
+          - su
+          - doas
+          - pkexec
           - rm
           - rmdir
           - shred
@@ -69,12 +72,19 @@ monitoring:
           - reboot
           - poweroff
           - halt
+          - kill
           - killall
           - pkill
           - systemctl
           - service
           - chmod
           - chown
+          - mount
+          - umount
+          - docker
+          - podman
+          - iptables
+          - nft
         allowed-command-rules: []
         # Example narrow exception:
         # allowed-command-rules:
