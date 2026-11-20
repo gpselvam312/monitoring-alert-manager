@@ -38,7 +38,7 @@ public class ScheduleController
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('SCHEDULE_VIEW')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String listSchedules(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
@@ -60,7 +60,7 @@ public class ScheduleController
     }
 
     @GetMapping("/table")
-    @PreAuthorize("hasAuthority('SCHEDULE_VIEW')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String scheduleTable(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
@@ -225,7 +225,7 @@ public class ScheduleController
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCHEDULE_VIEW')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String viewSchedule(@PathVariable Long id, Model model)
     {
         Schedule schedule = scheduleService.findById(id);
