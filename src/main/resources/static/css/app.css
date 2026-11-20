@@ -6128,6 +6128,54 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 
 
 
+/* Alert Details summary cards use the same accent border and hover treatment as Alert History. */
+.alert-detail-summary .summary-table-card {
+    min-height: 86px;
+    justify-content: space-between;
+    gap: .55rem;
+    padding: .8rem .9rem;
+    overflow: hidden;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--summary-card-accent) 9%, var(--card-bg)),
+        var(--card-bg) 78%
+    );
+    border: 1px solid color-mix(in srgb, var(--summary-card-accent) 38%, var(--border-color));
+    border-left: 4px solid var(--summary-card-accent);
+    border-radius: .65rem;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.alert-detail-summary .summary-table-card:hover {
+    border-color: var(--summary-card-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--summary-card-accent) 12%, transparent);
+    transform: translateY(-1px);
+}
+
+.alert-detail-summary .summary-table-card-icon {
+    color: var(--summary-card-accent);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.alert-comments-panel {
+    min-width: 0;
+}
+
+.alert-comment-form {
+    max-width: 100%;
+}
+
+.alert-comment-form textarea {
+    min-height: 4.25rem;
+    resize: vertical;
+}
+
+.alert-comment-item {
+    padding: .85rem 0;
+    border-top: 1px solid var(--border-color);
+}
+
 /* Alert History channel badges — matches the supplied delivery-log prototype. */
 .ch-badge {
     display: inline-flex;
