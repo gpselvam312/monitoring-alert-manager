@@ -29,7 +29,7 @@
 <dt class="col-sm-3">Execution Source</dt><dd class="col-sm-9" th:text="${alert.alertRule.executionSourcePolicy}">SCHEDULED_ONLY</dd>
 <dt class="col-sm-3">Rule Status</dt><dd class="col-sm-9"><span class="badge text-bg-success" th:if="${alert.alertRule.enabled}">Enabled</span><span class="badge text-bg-secondary" th:unless="${alert.alertRule.enabled}">Disabled</span></dd>
 </dl><p class="text-muted small mb-0" th:unless="${alert.alertRule != null}">No alert rule is associated with this alert.</p></div>
-</div></div></div>
+</div></div>
 <div class="tab-pane fade" id="alert-lifecycle" role="tabpanel" aria-labelledby="alert-lifecycle-tab"><div class="app-card alert-lifecycle-card"><div class="app-card-header"><h2 class="h6 mb-0">Lifecycle History</h2></div><div class="app-card-body p-0">
 <div th:if="${history.totalElements == 0}" class="empty-state alert-lifecycle-empty"><p>No history events recorded.</p></div>
 <div th:if="${history.totalElements > 0}" class="table-responsive"><table class="table app-table align-middle mb-0"><thead><tr><th>Time</th><th>Event</th><th>Status</th><th>Severity</th><th>Execution</th><th>Observed Value</th></tr></thead><tbody>
