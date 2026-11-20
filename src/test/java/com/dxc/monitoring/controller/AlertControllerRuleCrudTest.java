@@ -23,7 +23,6 @@ import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleEvaluationRepository;
 import com.dxc.monitoring.repository.AlertRuleRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
-import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.repository.UserAlertStateRepository;
 import com.dxc.monitoring.service.AlertRuleConfigurationService;
 import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
@@ -56,14 +55,13 @@ class AlertControllerRuleCrudTest {
         AlertRuleConfigurationService configurationService = mock(AlertRuleConfigurationService.class);
         accessService = mock(DashboardAccessService.class);
         UserAlertStateRepository userAlertStateRepository = mock(UserAlertStateRepository.class);
-        NotificationPolicyRepository notificationPolicyRepository = mock(NotificationPolicyRepository.class);
         AlertRuleFieldDiscoveryService fieldDiscoveryService = mock(AlertRuleFieldDiscoveryService.class);
         AlertRuleNotificationRouteService routeService = mock(AlertRuleNotificationRouteService.class);
         SystemSettingService systemSettingService = mock(SystemSettingService.class);
 
         controller = new AlertController(alertRepository, referenceDataCache, historyRepository, commentRepository, ruleRepository,
                 evaluationRepository, jobRepository, managementService, configurationService,
-                accessService, userAlertStateRepository, notificationPolicyRepository,
+                accessService, userAlertStateRepository,
                 fieldDiscoveryService, routeService, systemSettingService, new PageRequestSupport(new PaginationProperties()));
 
         rule = mock(AlertRule.class);
