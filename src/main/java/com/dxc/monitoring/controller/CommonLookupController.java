@@ -19,7 +19,6 @@ import com.dxc.monitoring.config.LookupProperties;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.MonitoringJob;
-import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
@@ -30,14 +29,12 @@ public class CommonLookupController {
     private static final String PERMISSION = "ALERT_CONFIG";
 
     private final MonitoringJobRepository jobs;
-    private final EnvironmentRepository environments;
     private final DashboardAccessService accessService;
     private final LookupProperties properties;
 
-    public CommonLookupController(MonitoringJobRepository jobs, EnvironmentRepository environments,
+    public CommonLookupController(MonitoringJobRepository jobs,
             DashboardAccessService accessService, LookupProperties properties) {
         this.jobs = jobs;
-        this.environments = environments;
         this.accessService = accessService;
         this.properties = properties;
     }
@@ -65,14 +62,12 @@ public class CommonLookupController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this application.");
         }
         if (environmentId != null) {
-            Environment selectedEnvironment = environments.findById(environmentId)
-                    .filter(Environment::isEnabled)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Choose an available environment."));
-            Long environmentApplicationId = selectedEnvironment.getApplication() == null
-                    ? null : selectedEnvironment.getApplication().getId();
-            if (environmentApplicationId == null || !applicationIds.contains(environmentApplicationId)
-                    || (applicationId != null && !applicationId.equals(environmentApplicationId))) {
+            List<Environment> allowedEnvironments = allowedEnvironments(applicationIds);
+            boolean environmentAllowed = allowedEnvironments.stream().anyMatch(environment ->
+                    environmentId.equals(environment.getId())
+                            && (applicationId == null || (environment.getApplication() != null
+                                    && applicationId.equals(environment.getApplication().getId()))));
+            if (!environmentAllowed) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Choose an environment within your authorized application scope.");
             }
@@ -103,12 +98,18 @@ public class CommonLookupController {
         }
         List<LookupOption> applicationOptions = accessible.stream()
                 .map(a -> new LookupOption(a.getId(), a.getName())).toList();
-        List<Environment> allowedEnvironments = applicationIds.isEmpty() ? List.of()
-                : environments.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds);
+        List<Environment> allowedEnvironments = allowedEnvironments(applicationIds);
         List<LookupOption> environmentOptions = allowedEnvironments.stream()
                 .filter(e -> applicationId == null || applicationId.equals(e.getApplication().getId()))
                 .map(e -> new LookupOption(e.getId(), e.getName())).toList();
         return Map.of("applications", applicationOptions, "environments", environmentOptions);
+    }
+
+    private List<Environment> allowedEnvironments(List<Long> applicationIds) {
+        if (applicationIds.isEmpty()) return List.of();
+        return applicationIds.stream()
+                .flatMap(applicationId -> accessService.getEnvironmentsForApplication(applicationId, PERMISSION).stream())
+                .toList();
     }
 
     private String sortProperty(String sort) {
