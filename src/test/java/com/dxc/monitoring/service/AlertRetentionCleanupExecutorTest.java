@@ -1,6 +1,7 @@
 package com.dxc.monitoring.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -48,6 +49,6 @@ class AlertRetentionCleanupExecutorTest {
         assertEquals(3L, preview.candidateCount());
         assertTrue(sql.getValue().contains("status IN ('SENT', 'SKIPPED')"));
         assertTrue(sql.getValue().contains("status = 'FAILED' AND attempt_count >= 8"));
-        assertTrue(!sql.getValue().contains("status NOT IN ('PENDING', 'SENDING')"));
+        assertFalse(sql.getValue().contains("status NOT IN ('PENDING', 'SENDING')"));
     }
 }
