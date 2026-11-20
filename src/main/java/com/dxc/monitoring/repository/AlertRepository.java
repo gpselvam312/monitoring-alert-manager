@@ -36,6 +36,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
                    lower(a.title) like lower(concat('%', :search, '%')) or
                    lower(coalesce(a.summary, '')) like lower(concat('%', :search, '%')) or
                    lower(a.monitoringJob.name) like lower(concat('%', :search, '%')) or
+                   lower(a.alertRule.name) like lower(concat('%', :search, '%')) or
                    lower(a.monitoringJob.application.name) like lower(concat('%', :search, '%')) or
                    str(a.id) like concat('%', :search, '%'))
             """,
@@ -51,6 +52,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
                    lower(a.title) like lower(concat('%', :search, '%')) or
                    lower(coalesce(a.summary, '')) like lower(concat('%', :search, '%')) or
                    lower(a.monitoringJob.name) like lower(concat('%', :search, '%')) or
+                   lower(a.alertRule.name) like lower(concat('%', :search, '%')) or
                    lower(a.monitoringJob.application.name) like lower(concat('%', :search, '%')) or
                    str(a.id) like concat('%', :search, '%'))
             """)
@@ -70,6 +72,7 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
                    lower(a.title) like lower(concat('%', :search, '%')) or
                    lower(coalesce(a.summary, '')) like lower(concat('%', :search, '%')) or
                    lower(a.monitoringJob.name) like lower(concat('%', :search, '%')) or
+                   lower(a.alertRule.name) like lower(concat('%', :search, '%')) or
                    lower(a.monitoringJob.application.name) like lower(concat('%', :search, '%')) or
                    str(a.id) like concat('%', :search, '%'))
               and (:status is null or a.status = :status)
