@@ -22,18 +22,17 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.MonitoringResult;
-import com.dxc.monitoring.entity.User;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.MachineRepository;
 import com.dxc.monitoring.repository.ScheduleRepository;
-import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.service.MonitoringExecutionManager;
 import com.dxc.monitoring.service.MonitoringExecutionService;
 import com.dxc.monitoring.service.MonitoringJobService;
 import com.dxc.monitoring.service.StreamingJobService;
 import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
+import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
@@ -45,7 +44,6 @@ public class MonitoringJobController
     private final StreamingJobService streamingJobService;
     private final MachineRepository machineRepository;
     private final ScheduleRepository scheduleRepository;
-    private final UserRepository userRepository;
     private final ApplicationRepository applicationRepository;
     private final EnvironmentRepository environmentRepository;
     private final MonitoringExecutionManager monitoringExecutionManager;
@@ -67,7 +65,7 @@ public class MonitoringJobController
                 "schedule.name", "enabled", "enabled");
 
     public MonitoringJobController(MonitoringJobService monitoringJobService, StreamingJobService streamingJobService, MachineRepository machineRepository,
-            ScheduleRepository scheduleRepository, UserRepository userRepository,
+            ScheduleRepository scheduleRepository,
             ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
             MonitoringExecutionManager monitoringExecutionManager,
             MonitoringExecutionService monitoringExecutionService, MonitoringResultNormalizer resultNormalizer,
@@ -77,7 +75,6 @@ public class MonitoringJobController
         this.streamingJobService = streamingJobService;
         this.machineRepository = machineRepository;
         this.scheduleRepository = scheduleRepository;
-        this.userRepository = userRepository;
         this.applicationRepository = applicationRepository;
         this.environmentRepository = environmentRepository;
         this.monitoringExecutionManager = monitoringExecutionManager;
@@ -242,8 +239,7 @@ public class MonitoringJobController
         Long resolvedScheduleId = job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING
                 ? null : scheduleId;
 
-        User currentUser = userRepository.findByUsername(authentication.getName()).orElseThrow(
-                () -> new IllegalArgumentException("Logged-in user not found: " + authentication.getName()));
+        Long currentUserId = ((CustomUserDetails) authentication.getPrincipal()).getUserId();
 
         boolean updatingJob = job.getId() != null;
         if (updatingJob)
@@ -335,7 +331,7 @@ public class MonitoringJobController
             }
 
             // Audit
-            existingJob.setUpdatedBy(currentUser.getId());
+            existingJob.setUpdatedBy(currentUserId);
 
             monitoringJobService.save(existingJob);
         } else
