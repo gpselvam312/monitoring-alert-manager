@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,12 +32,13 @@ public class AlertRetentionService {
     private final EnvironmentRepository environmentRepository;
     private final DashboardAccessService accessService;
     private final AlertTypeRepository alertTypeRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public AlertRetentionService(AlertRetentionPolicyRepository policyRepository,
             AlertCleanupRunRepository runRepository, AlertRetentionCleanupExecutor cleanupExecutor,
             AlertCleanupAuditService auditService, ApplicationRepository applicationRepository,
             EnvironmentRepository environmentRepository, DashboardAccessService accessService,
-            AlertTypeRepository alertTypeRepository) {
+            AlertTypeRepository alertTypeRepository, JdbcTemplate jdbcTemplate) {
         this.policyRepository = policyRepository;
         this.runRepository = runRepository;
         this.cleanupExecutor = cleanupExecutor;
@@ -45,6 +47,7 @@ public class AlertRetentionService {
         this.environmentRepository = environmentRepository;
         this.accessService = accessService;
         this.alertTypeRepository = alertTypeRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Transactional
@@ -86,6 +89,7 @@ public class AlertRetentionService {
                 || !environment.getApplication().getId().equals(applicationId))) {
             throw new IllegalArgumentException("The selected environment does not belong to the selected application.");
         }
+        if (enabled) lockPolicyConfiguration();
         if (policyRepository.existsForScope(dataType.name(), applicationId, environmentId, alertType)) {
             throw new IllegalArgumentException("A retention policy already exists for this exact scope.");
         }
@@ -116,6 +120,7 @@ public class AlertRetentionService {
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
         assertPolicyScopeAccess(policy);
         if (policy.isEnabled()) {
+            lockPolicyConfiguration();
             Long applicationId = policy.getApplication() == null ? null : policy.getApplication().getId();
             Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
             assertHistoryRetentionDependency(policy.getDataType(), retentionDays, applicationId,
@@ -133,6 +138,7 @@ public class AlertRetentionService {
                 .orElseThrow(() -> new IllegalArgumentException("Retention policy was not found."));
         assertPolicyScopeAccess(policy);
         if (!policy.isEnabled()) {
+            lockPolicyConfiguration();
             Long applicationId = policy.getApplication() == null ? null : policy.getApplication().getId();
             Long environmentId = policy.getEnvironment() == null ? null : policy.getEnvironment().getId();
             assertNoOverlappingEnabledPolicy(policy.getDataType(), applicationId, environmentId,
@@ -171,6 +177,20 @@ public class AlertRetentionService {
     }
 
 
+
+    /**
+     * Serialize policy configuration changes because app/environment scopes can overlap.
+     * The transaction-scoped advisory lock is shared across all retention policy types.
+     */
+    private void lockPolicyConfiguration() {
+        jdbcTemplate.execute(connection -> {
+            try (java.sql.PreparedStatement statement =
+                    connection.prepareStatement("SELECT pg_advisory_xact_lock(19791, 1)")) {
+                statement.execute();
+            }
+            return null;
+        });
+    }
 
     private void assertHistoryRetentionDependency(AlertRetentionPolicy.DataType dataType, int retentionDays,
             Long applicationId, Long environmentId, String alertType, Long excludedPolicyId) {

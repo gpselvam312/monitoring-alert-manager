@@ -10,6 +10,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -51,7 +52,7 @@ class AlertRetentionServiceTest {
                 applicationRepository,
                 environmentRepository,
                 mock(DashboardAccessService.class),
-                mock(AlertTypeRepository.class));
+                mock(AlertTypeRepository.class), mock(JdbcTemplate.class));
 
         for (AlertRetentionPolicy.DataType dataType : AlertRetentionPolicy.DataType.values()) {
             AlertRetentionPolicy saved = service.createPolicy(
@@ -98,7 +99,7 @@ class AlertRetentionServiceTest {
         return new AlertRetentionService(policies, mock(AlertCleanupRunRepository.class),
                 mock(AlertRetentionCleanupExecutor.class), mock(AlertCleanupAuditService.class),
                 mock(ApplicationRepository.class), mock(EnvironmentRepository.class),
-                mock(DashboardAccessService.class), mock(AlertTypeRepository.class));
+                mock(DashboardAccessService.class), mock(AlertTypeRepository.class), mock(JdbcTemplate.class));
     }
 
 }
