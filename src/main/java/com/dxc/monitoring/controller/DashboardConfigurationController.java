@@ -7,9 +7,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,6 +26,7 @@ import com.dxc.monitoring.entity.DashboardWidget;
 import com.dxc.monitoring.service.dashboard.DashboardConfigurationService;
 import com.dxc.monitoring.service.dashboard.DashboardWidgetForm;
 import com.dxc.monitoring.service.external.ExternalApplicationService;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 import jakarta.validation.Valid;
 
@@ -39,13 +38,23 @@ public class DashboardConfigurationController
     private final DashboardConfigurationService dashboardConfigurationService;
     private final ExternalApplicationService externalApplicationService;
     private final ObjectMapper objectMapper;
+    private final PageRequestSupport pageRequestSupport;
+
+    private static final Map<String, String> TAB_SORT_FIELDS = Map.of(
+            "name", "name", "application.name", "application.name", "environment.name", "environment.name",
+            "sortOrder", "sortOrder", "enabled", "enabled");
+    private static final Map<String, String> WIDGET_SORT_FIELDS = Map.of(
+            "name", "name", "widgetType", "widgetType", "size", "size", "sortOrder", "sortOrder",
+            "enabled", "enabled", "autoRefresh", "autoRefresh", "detailsEnabled", "detailsEnabled");
 
     public DashboardConfigurationController(DashboardConfigurationService dashboardConfigurationService,
-            ExternalApplicationService externalApplicationService, ObjectMapper objectMapper)
+            ExternalApplicationService externalApplicationService, ObjectMapper objectMapper,
+            PageRequestSupport pageRequestSupport)
     {
         this.dashboardConfigurationService = dashboardConfigurationService;
         this.externalApplicationService = externalApplicationService;
         this.objectMapper = objectMapper;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -116,7 +125,7 @@ public class DashboardConfigurationController
     {
         if (bindingResult.hasErrors())
         {
-            populateDashboardConfigurationModel(model, form.getTabId(), "", "", 0, 5, 0, 5);
+            populateDashboardConfigurationModel(model, form.getTabId(), "", "", 0, pageRequestSupport.defaultPageSize(), 0, pageRequestSupport.defaultPageSize());
 
             model.addAttribute("dashboardWidgetValidationFailed", true);
 
@@ -189,35 +198,18 @@ public class DashboardConfigurationController
         return dashboardConfigurationService.findWidgetsByTabId(tabId);
     }
 
-    private int normalizePageSize(int size)
-    {
-        if (size == 5 || size == 10 || size == 25)
-        {
-            return size;
-        }
-
-        return 10;
-    }
-
     @GetMapping("/tabs/table")
     public String tabsTable(@RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "sortOrder") String sort,
+            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "sortOrder") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        int pageSize = normalizePageSize(size);
-
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
-
-        String sortField = normalizeTabSort(sort);
-
-        Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize, Sort.by(sortDirection, sortField));
-
-        Page<DashboardTab> tabs = dashboardConfigurationService.findTabs(search, pageable);
-
+        var spec = pageRequestSupport.create(page, size, sort, direction, "sortOrder", TAB_SORT_FIELDS);
+        Page<DashboardTab> tabs = dashboardConfigurationService.findTabs(search, spec.pageable());
         model.addAttribute("tabs", tabs);
         model.addAttribute("tabSearch", search);
-        model.addAttribute("pageSize", pageSize);
-
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         return "administration/dashboard-configuration :: dashboardTabsTable";
     }
 
@@ -230,61 +222,21 @@ public class DashboardConfigurationController
 
     @GetMapping("/widgets/table")
     public String widgetsTable(@RequestParam Long tabId, @RequestParam(defaultValue = "") String search,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "sortOrder") String sort, @RequestParam(defaultValue = "asc") String direction,
             Model model)
     {
-        int pageSize = normalizePageSize(size);
-
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
-
-        String sortField = normalizeWidgetSort(sort);
-
-        Pageable pageable = PageRequest.of(Math.max(page, 0), pageSize, Sort.by(sortDirection, sortField));
-
+        var spec = pageRequestSupport.create(page, size, sort, direction, "sortOrder", WIDGET_SORT_FIELDS);
         DashboardTab selectedTab = dashboardConfigurationService.findTabById(tabId);
-
-        if (selectedTab == null)
-        {
-            throw new IllegalArgumentException("Dashboard tab not found.");
-        }
-
-        Page<DashboardWidget> widgets = dashboardConfigurationService.findWidgetsByTabId(tabId, search, pageable);
-
+        if (selectedTab == null) throw new IllegalArgumentException("Dashboard tab not found.");
+        Page<DashboardWidget> widgets = dashboardConfigurationService.findWidgetsByTabId(tabId, search, spec.pageable());
         model.addAttribute("selectedTab", selectedTab);
         model.addAttribute("widgets", widgets);
         model.addAttribute("widgetSearch", search);
-        model.addAttribute("pageSize", pageSize);
-
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         return "administration/dashboard-configuration :: dashboardWidgetsTable";
-    }
-
-    private String normalizeTabSort(String sort)
-    {
-        return switch (sort)
-        {
-            case "name" -> "name";
-            case "application.name" -> "application.name";
-            case "environment.name" -> "environment.name";
-            case "sortOrder" -> "sortOrder";
-            case "enabled" -> "enabled";
-            default -> "sortOrder";
-        };
-    }
-
-    private String normalizeWidgetSort(String sort)
-    {
-        return switch (sort)
-        {
-            case "name" -> "name";
-            case "widgetType" -> "widgetType";
-            case "size" -> "size";
-            case "sortOrder" -> "sortOrder";
-            case "enabled" -> "enabled";
-            case "autoRefresh" -> "autoRefresh";
-            case "detailsEnabled" -> "detailsEnabled";
-            default -> "sortOrder";
-        };
     }
 
     @GetMapping("/widgets/{id}")
@@ -331,33 +283,19 @@ public class DashboardConfigurationController
     private void populateDashboardConfigurationModel(Model model, Long tabId, String tabSearch, String widgetSearch,
             int tabPage, int tabSize, int widgetPage, int widgetSize)
     {
-        Pageable tabPageable = PageRequest.of(Math.max(tabPage, 0), normalizePageSize(tabSize),
-                Sort.by("sortOrder").ascending().and(Sort.by("name").ascending()));
-
-        Page<DashboardTab> tabs = dashboardConfigurationService.findTabs(tabSearch, tabPageable);
-
-        List<DashboardTab> dashboardTabs =
-            dashboardConfigurationService.findAllTabs().stream().filter(DashboardTab::getEnabled).toList();
-
-        DashboardTab selectedTab = null;
-
-        if (tabId != null)
-        {
-            selectedTab = dashboardConfigurationService.findTabById(tabId);
-        } else if (!tabs.isEmpty())
-        {
-            selectedTab = tabs.getContent().get(0);
-        }
-
+        var tabSpec = pageRequestSupport.create(tabPage, tabSize, "sortOrder", "asc", "sortOrder", TAB_SORT_FIELDS);
+        Page<DashboardTab> tabs = dashboardConfigurationService.findTabs(tabSearch, tabSpec.pageable());
+        List<DashboardTab> dashboardTabs = dashboardConfigurationService.findAllTabs().stream()
+                .filter(DashboardTab::getEnabled).toList();
+        DashboardTab selectedTab = tabId == null
+                ? (tabs.isEmpty() ? null : tabs.getContent().get(0))
+                : dashboardConfigurationService.findTabById(tabId);
         Page<DashboardWidget> widgets = Page.empty();
-
-        if (selectedTab != null)
-        {
-            Pageable widgetPageable = PageRequest.of(Math.max(widgetPage, 0), normalizePageSize(widgetSize),
-                    Sort.by("sortOrder").ascending().and(Sort.by("name").ascending()));
-
-            widgets =
-                dashboardConfigurationService.findWidgetsByTabId(selectedTab.getId(), widgetSearch, widgetPageable);
+        var widgetSpec = pageRequestSupport.create(widgetPage, widgetSize, "sortOrder", "asc",
+                "sortOrder", WIDGET_SORT_FIELDS);
+        if (selectedTab != null) {
+            widgets = dashboardConfigurationService.findWidgetsByTabId(
+                    selectedTab.getId(), widgetSearch, widgetSpec.pageable());
         }
 
         model.addAttribute("currentPage", "dashboard-configuration");
@@ -368,18 +306,17 @@ public class DashboardConfigurationController
         model.addAttribute("selectedTab", selectedTab);
         model.addAttribute("widgets", widgets);
         model.addAttribute("monitoringJobs", dashboardConfigurationService.findDashboardMonitoringJobs());
-        model.addAttribute("externalApplications", externalApplicationService.findEnabled());
+        model.addAttribute("externalApplications", externalApplicationService.findEnabledForCurrentUser());
         model.addAttribute("externalApplicationTypeLabels", externalApplicationService.findEnabledTypes().stream()
                 .collect(java.util.stream.Collectors.toMap(type -> type.getCode(), type -> type.getDisplayName())));
         model.addAttribute("tabSearch", tabSearch);
         model.addAttribute("widgetSearch", widgetSearch);
+        model.addAttribute("tabPage", tabPage);
+        model.addAttribute("tabSize", tabSpec.pageSize());
         model.addAttribute("widgetPage", widgetPage);
-        int normalizedWidgetSize = normalizePageSize(widgetSize);
-        model.addAttribute("widgetSize", normalizedWidgetSize);
-        model.addAttribute("pageSize", normalizedWidgetSize);
-        
-        if (!model.containsAttribute("dashboardWidgetForm"))
-        {
+        model.addAttribute("widgetSize", widgetSpec.pageSize());
+        model.addAttribute("pageSize", widgetSpec.pageSize());
+        if (!model.containsAttribute("dashboardWidgetForm")) {
             model.addAttribute("dashboardWidgetForm", new DashboardWidgetForm());
         }
     }

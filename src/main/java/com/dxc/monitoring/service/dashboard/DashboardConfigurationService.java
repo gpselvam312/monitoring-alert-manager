@@ -69,7 +69,9 @@ public class DashboardConfigurationService
         List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG").stream()
                 .map(Application::getId).toList();
         if (applicationIds.isEmpty()) return List.of();
-        return environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds);
+        return applicationIds.stream()
+                .flatMap(applicationId -> accessService.getEnvironmentsForApplication(applicationId, "SYSTEM_CONFIG").stream())
+                .toList();
     }
 
     @Transactional(readOnly = true)
