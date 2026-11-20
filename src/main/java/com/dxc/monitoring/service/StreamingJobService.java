@@ -240,6 +240,10 @@ public class StreamingJobService
     {
         MonitoringJob job = jobRepository.findByIdForDetails(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found: " + jobId));
+        if (job.getApplication() == null)
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Streaming job is not assigned to an application.");
+        accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_VIEW");
         if (!job.isEnabled() || job.getExecutionMode() != MonitoringJob.ExecutionMode.STREAMING)
             throw new IllegalArgumentException("Only enabled streaming jobs expose a live output stream.");
 
