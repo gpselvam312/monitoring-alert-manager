@@ -34,6 +34,7 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertHistoryRepository;
+import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.AlertCommentRepository;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleRepository;
@@ -58,6 +59,7 @@ import jakarta.validation.Valid;
 public class AlertController {
     private static final Logger log = LoggerFactory.getLogger(AlertController.class);
     private final AlertRepository alertRepository;
+    private final EnvironmentRepository environmentRepository;
     private final AlertHistoryRepository historyRepository;
     private final AlertCommentRepository commentRepository;
     private final AlertRuleRepository ruleRepository;
@@ -72,7 +74,7 @@ public class AlertController {
     private final AlertRuleNotificationRouteService notificationRouteService;
     private final SystemSettingService systemSettingService;
 
-    public AlertController(AlertRepository alertRepository, AlertHistoryRepository historyRepository,
+    public AlertController(AlertRepository alertRepository, EnvironmentRepository environmentRepository, AlertHistoryRepository historyRepository,
             AlertCommentRepository commentRepository, AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
             MonitoringJobRepository jobRepository,
             AlertRuleManagementService ruleManagementService, AlertRuleConfigurationService ruleConfigurationService,
@@ -83,6 +85,7 @@ public class AlertController {
             AlertRuleNotificationRouteService notificationRouteService,
             SystemSettingService systemSettingService) {
         this.alertRepository = alertRepository;
+        this.environmentRepository = environmentRepository;
         this.historyRepository = historyRepository;
         this.commentRepository = commentRepository;
         this.ruleRepository = ruleRepository;
@@ -100,15 +103,35 @@ public class AlertController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
-    public String activeAlerts(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size, Model model) {
-        Pageable pageable = pageable(page, size);
-        List<Long> applicationIds = applicationIds("ALERT_VIEW");
-        Page<Alert> alerts = applicationIds.isEmpty() ? Page.empty(pageable)
-                : alertRepository.findByMonitoringJob_Application_IdInAndStatusOrderByLastOccurredAtDescIdDesc(
-                        applicationIds, Alert.AlertStatus.ACTIVE, pageable);
-        model.addAttribute("alerts", alerts);
-        model.addAttribute("pageSize", pageable.getPageSize());
+    public String activeAlerts(@RequestParam(required = false) String search,
+            @RequestParam(required = false) Long applicationId,
+            @RequestParam(required = false) Long environmentId,
+            @RequestParam(required = false) String severity,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "lastOccurredAt") String sort,
+            @RequestParam(defaultValue = "desc") String direction, Model model) {
+        List<Application> applications = accessService.getApplicationsWithPermission("ALERT_VIEW");
+        List<Long> applicationIds = applications.stream().map(Application::getId).toList();
+        if (applicationId != null && !applicationIds.contains(applicationId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this application.");
+        }
+        List<com.dxc.monitoring.entity.Environment> environments = applicationId == null
+                ? (applicationIds.isEmpty() ? List.of()
+                        : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds))
+                : environmentRepository.findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(applicationId);
+        if (environmentId != null && environments.stream().noneMatch(env -> env.getId().equals(environmentId))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Choose an environment within your authorized application scope.");
+        }
+        model.addAttribute("applications", applications);
+        model.addAttribute("environments", environments);
+        model.addAttribute("search", search == null ? "" : search.trim());
+        model.addAttribute("applicationId", applicationId);
+        model.addAttribute("environmentId", environmentId);
+        model.addAttribute("severity", severity == null ? "" : severity);
+        model.addAttribute("pageSize", size == 5 || size == 10 || size == 25 ? size : 10);
+        model.addAttribute("sort", sort);
+        model.addAttribute("direction", direction);
         model.addAttribute("currentPage", "active-alerts");
         return "alerts/active";
     }
