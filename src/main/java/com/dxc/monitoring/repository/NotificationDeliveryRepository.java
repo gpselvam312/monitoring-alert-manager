@@ -16,7 +16,7 @@ import com.dxc.monitoring.entity.NotificationDelivery;
 public interface NotificationDeliveryRepository extends JpaRepository<NotificationDelivery, Long> {
     boolean existsByIdempotencyKey(String idempotencyKey);
 
-    @Modifying
+    @Modifying(flushAutomatically = true)
     @Query(value = """
             INSERT INTO ra_fcb.notification_deliveries
                 (alert_id, alert_history_id, channel_id, recipient_id, destination_snapshot,
