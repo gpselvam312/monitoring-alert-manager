@@ -42,6 +42,7 @@ public class SystemSettingService
 
     private volatile String cachedApplicationName;
     private volatile String cachedTheme;
+    private volatile String cachedDateTimeFormat;
     private volatile Boolean cachedSiteOffline;
     private volatile String cachedMaintenanceBypassIps;
 
@@ -102,15 +103,28 @@ public class SystemSettingService
     @Transactional(readOnly = true)
     public String getDateTimeFormat()
     {
-        try
+        String value = cachedDateTimeFormat;
+        if (value == null)
         {
-            String value = findByKey(DATE_TIME_FORMAT).getSettingValue();
-            return value == null || value.isBlank() ? "MM/dd/yyyy hh:mm:ss a" : value;
+            synchronized (this)
+            {
+                value = cachedDateTimeFormat;
+                if (value == null)
+                {
+                    try
+                    {
+                        value = findByKey(DATE_TIME_FORMAT).getSettingValue();
+                    }
+                    catch (IllegalArgumentException exception)
+                    {
+                        value = "MM/dd/yyyy hh:mm:ss a";
+                    }
+                    cachedDateTimeFormat = value = value == null || value.isBlank()
+                            ? "MM/dd/yyyy hh:mm:ss a" : value;
+                }
+            }
         }
-        catch (IllegalArgumentException exception)
-        {
-            return "MM/dd/yyyy hh:mm:ss a";
-        }
+        return value;
     }
 
     @Transactional(readOnly = true)
@@ -264,6 +278,7 @@ public class SystemSettingService
         {
             case APPLICATION_NAME -> cachedApplicationName = value;
             case THEME -> cachedTheme = ALLOWED_THEMES.contains(value) ? value : "orange";
+            case DATE_TIME_FORMAT -> cachedDateTimeFormat = value;
             case SITE_OFFLINE -> cachedSiteOffline = Boolean.parseBoolean(value);
             case MAINTENANCE_BYPASS_IPS -> cachedMaintenanceBypassIps = value;
             default -> { }

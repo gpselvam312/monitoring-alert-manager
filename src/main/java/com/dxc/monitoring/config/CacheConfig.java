@@ -1,6 +1,5 @@
 package com.dxc.monitoring.config;
 
-import java.util.concurrent.TimeUnit;
 
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -19,7 +18,6 @@ public class CacheConfig {
                 "enabledApplications", "enabledEnvironmentsByApplication", "menuDefinitions");
         manager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(500)
-                .expireAfterWrite(30, TimeUnit.SECONDS)
                 .recordStats());
         return manager;
     }
