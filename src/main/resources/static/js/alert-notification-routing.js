@@ -347,7 +347,7 @@
             groupSelect.dispatchEvent(new Event('change', { bubbles: true }));
             const recipientSelect = row.querySelector('.route-recipients');
             Array.from(recipientSelect.options).forEach(option => {
-                const hasDestination = isEmail ? Boolean(option.dataset.email) : Boolean(option.dataset.phone);
+                const hasDestination = isEmail ? option.dataset.hasEmail === 'true' : option.dataset.hasPhone === 'true';
                 option.hidden = !hasDestination;
                 if (!hasDestination) option.selected = false;
             });
