@@ -36,7 +36,7 @@
 <div class="col-6 col-lg-3"><label class="form-label small" for="alertHistoryEnvironment">Environment</label><select class="form-select form-select-sm" id="alertHistoryEnvironment"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:text="${env.name}" th:selected="${environmentId == env.id}"></option></select></div>
 <div class="col-12 d-flex justify-content-end"><button type="button" class="btn btn-sm btn-outline-secondary" id="alertHistoryClearFilters"><i class="bi bi-arrow-counterclockwise me-1"></i>Clear filters</button></div>
 </div>
-<div class="border-bottom" th:replace="~{fragments/data-table :: controls('alertHistorySearch','alertHistoryPageSize','Alert ID, title, job or application',${pageSize},${search})}"></div>
+<div class="border-bottom" th:replace="~{fragments/data-table :: controls('alertHistorySearch','alertHistoryPageSize','Alert ID, rule, job or application',${pageSize},${search})}"></div>
 <div id="alertHistoryTableContainer" class="table-responsive"><div class="p-4 text-muted text-center">Loading alert history...</div></div>
 <div th:replace="~{fragments/data-table :: clientPagination('alertHistoryPagination','alertHistoryPaginationSummary','alertHistoryFirst','alertHistoryPrevious','alertHistoryNext','alertHistoryLast')}"></div>
 </div>
