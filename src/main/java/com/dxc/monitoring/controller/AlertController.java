@@ -197,7 +197,6 @@ public class AlertController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert rule was not found."));
         assertRuleAccess(rule, "ALERT_CONFIG");
         AlertRuleForm form = ruleManagementService.toForm(rule);
-        form.setNotificationRoutesJson(notificationRouteService.routesAsJson(rule.getId()));
         addRuleFormModel(model, form);
         model.addAttribute("rule", rule);
         model.addAttribute("viewMode", true);
@@ -267,6 +266,24 @@ public class AlertController {
         return "alerts/alert_rule_form";
     }
 
+    @GetMapping("/rules/tabs/secondary")
+    @PreAuthorize("hasAuthority('ALERT_CONFIG')")
+    public String secondaryRuleTabs(@RequestParam(required = false) Long id,
+            @RequestParam(defaultValue = "false") boolean viewMode, Model model) {
+        AlertRuleForm form = new AlertRuleForm();
+        if (id != null) {
+            AlertRule rule = ruleRepository.findByIdWithJob(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert rule was not found."));
+            assertRuleAccess(rule, "ALERT_CONFIG");
+            form = ruleManagementService.toForm(rule);
+            form.setNotificationRoutesJson(notificationRouteService.routesAsJson(rule.getId()));
+        }
+        addRuleFormModel(model, form);
+        model.addAttribute("viewMode", viewMode);
+        addRuleSecondaryModel(model);
+        return "alerts/fragments/alert-rule-secondary-tabs :: secondaryTabs";
+    }
+
     @PostMapping("/rules/discovery/sample")
     @ResponseBody
     @PreAuthorize("hasAuthority('ALERT_CONFIG')")
@@ -315,6 +332,7 @@ public class AlertController {
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
             log.warn("Unable to save alert rule id={} exceptionType={}", form.getId(), exception.getClass().getSimpleName());
             addRuleFormModel(model, form);
+            addRuleSecondaryModel(model);
             model.addAttribute("errorMessage", exception instanceof DataIntegrityViolationException
                     ? "Unable to save the alert rule or its notification routes because of a data constraint. Review the configured values and try again."
                     : safeMessage(exception.getMessage()));
@@ -358,6 +376,11 @@ public class AlertController {
         model.addAttribute("selectedMonitoringJobLabel", selectedMonitoringJobLabel);
         model.addAttribute("severities", AlertRule.Severity.values());
         model.addAttribute("sourcePolicies", AlertRule.ExecutionSourcePolicy.values());
+        model.addAttribute("lazySecondaryTabs", true);
+    }
+
+    private void addRuleSecondaryModel(Model model) {
+        model.addAttribute("lazySecondaryTabs", false);
         model.addAttribute("notificationChannels", notificationRouteService.enabledChannels());
         model.addAttribute("emailSenderAddresses", notificationRouteService.emailSenderAddresses());
         model.addAttribute("notificationRecipients", notificationRouteService.enabledRecipients());
