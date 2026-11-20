@@ -3,6 +3,7 @@ package com.dxc.monitoring.service.dashboard;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ class DashboardAccessServiceTest {
                 Map.of(11L, Set.of("MONITORING_VIEW")), 12L);
         SecurityContextHolder.getContext().setAuthentication(
                 UsernamePasswordAuthenticationToken.authenticated(details, "password", details.getAuthorities()));
-        when(referenceDataCache.getEnabledApplications()).thenReturn(List.of(appA, appB));
+        lenient().when(referenceDataCache.getEnabledApplications()).thenReturn(List.of(appA, appB));
     }
 
     @AfterEach
