@@ -52,6 +52,7 @@ public interface ExternalApplicationRepository extends JpaRepository<ExternalApp
               )
             """)
     Page<ExternalApplication> search(@Param("search") String search,
+            @Param("applicationIds") List<Long> applicationIds,
             @Param("applicationId") Long applicationId,
             @Param("environmentId") Long environmentId,
             @Param("externalType") String externalType, Pageable pageable);

@@ -66,6 +66,12 @@ public class DashboardAccessService {
     }
 
     @Transactional(readOnly = true)
+    public List<Environment> getEnvironmentsForApplication(Long applicationId, String permission) {
+        assertCanAccessApplication(applicationId, permission);
+        return referenceDataCache.getEnabledEnvironments(applicationId);
+    }
+
+    @Transactional(readOnly = true)
     public void assertCanAccessEnvironment(Long applicationId, Long environmentId) {
         assertCanAccessEnvironment(applicationId, environmentId, "MONITORING_VIEW");
     }

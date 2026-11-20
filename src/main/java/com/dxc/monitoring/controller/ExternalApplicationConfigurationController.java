@@ -23,6 +23,8 @@ import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.ExternalApplicationTypeRepository;
 import com.dxc.monitoring.service.external.ExternalApplicationForm;
 import com.dxc.monitoring.service.external.ExternalApplicationService;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
 @RequestMapping("/administration/external-applications")
@@ -42,15 +44,20 @@ public class ExternalApplicationConfigurationController
     private final ApplicationRepository applicationRepository;
     private final EnvironmentRepository environmentRepository;
     private final ExternalApplicationTypeRepository externalApplicationTypeRepository;
+    private final DashboardAccessService accessService;
+    private final PageRequestSupport pageRequestSupport;
 
     public ExternalApplicationConfigurationController(ExternalApplicationService externalApplicationService,
             ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
-            ExternalApplicationTypeRepository externalApplicationTypeRepository)
+            ExternalApplicationTypeRepository externalApplicationTypeRepository,
+            DashboardAccessService accessService, PageRequestSupport pageRequestSupport)
     {
         this.externalApplicationService = externalApplicationService;
         this.applicationRepository = applicationRepository;
         this.environmentRepository = environmentRepository;
         this.externalApplicationTypeRepository = externalApplicationTypeRepository;
+        this.accessService = accessService;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -155,13 +162,11 @@ public class ExternalApplicationConfigurationController
     private void populateTableModel(Model model, int page, int size, String search, String sort, String direction,
             Long applicationId, Long environmentId, String externalType)
     {
-        int pageSize = PAGE_SIZES.contains(size) ? size : 5;
-        int requestedPage = Math.max(0, page);
+        var spec = pageRequestSupport.create(page, size, sort, direction, "applicationName", SORT_FIELDS);
+        int pageSize = spec.pageSize();
+        int requestedPage = spec.pageable().getPageNumber();
         String normalizedSearch = search == null ? "" : search.trim();
-        String sortField = SORT_FIELDS.getOrDefault(sort, "applicationName");
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction)
-                ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(requestedPage, pageSize, Sort.by(sortDirection, sortField));
+        Pageable pageable = spec.pageable();
         Page<ExternalApplication> applications = externalApplicationService.findPage(
                 normalizedSearch, applicationId, environmentId, externalType, pageable);
 
@@ -172,9 +177,10 @@ public class ExternalApplicationConfigurationController
                     normalizedSearch, applicationId, environmentId, externalType, pageable);
         }
 
+        List<Long> externalApplicationIds = applications.getContent().stream().map(ExternalApplication::getId).toList();
+        java.util.Set<Long> configuredAccountIds = externalApplicationService.findConfiguredAccountIds(externalApplicationIds);
         Map<Long, Boolean> configuredAccounts = new HashMap<>();
-        for (ExternalApplication application : applications.getContent())
-            configuredAccounts.put(application.getId(), externalApplicationService.hasAccount(application.getId()));
+        externalApplicationIds.forEach(id -> configuredAccounts.put(id, configuredAccountIds.contains(id)));
 
         model.addAttribute("externalApplications", applications);
         model.addAttribute("configuredAccounts", configuredAccounts);
@@ -186,8 +192,15 @@ public class ExternalApplicationConfigurationController
         model.addAttribute("externalApplicationTypes", externalApplicationService.findEnabledTypes());
         model.addAttribute("externalTypeLabels", externalApplicationTypeRepository.findAll().stream()
                 .collect(java.util.stream.Collectors.toMap(type -> type.getCode(), type -> type.getDisplayName())));
-        model.addAttribute("internalApplications", applicationRepository.findByEnabledTrueOrderByNameAsc());
-        model.addAttribute("environments", environmentRepository.findByEnabledTrueOrderByName());
+        List<com.dxc.monitoring.entity.Application> accessibleApplications =
+                accessService.getApplicationsWithPermission("MONITORING_CONFIG");
+        model.addAttribute("internalApplications", accessibleApplications);
+        List<com.dxc.monitoring.entity.Environment> accessibleEnvironments = accessibleApplications.stream()
+                .flatMap(application -> accessService.getEnvironmentsForApplication(
+                        application.getId(), "MONITORING_CONFIG").stream()).toList();
+        model.addAttribute("environments", accessibleEnvironments);
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("currentPage", "external-applications");
     }
 }

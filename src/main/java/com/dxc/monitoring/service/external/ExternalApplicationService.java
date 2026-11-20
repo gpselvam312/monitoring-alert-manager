@@ -20,6 +20,7 @@ import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.ExternalApplicationAccountRepository;
 import com.dxc.monitoring.repository.ExternalApplicationRepository;
 import com.dxc.monitoring.repository.ExternalApplicationTypeRepository;
+import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 
 @Service
 public class ExternalApplicationService
@@ -32,13 +33,15 @@ public class ExternalApplicationService
     private final ApplicationRepository internalApplicationRepository;
     private final EnvironmentRepository environmentRepository;
     private final ExternalApplicationTypeRepository externalApplicationTypeRepository;
+    private final DashboardAccessService accessService;
 
     public ExternalApplicationService(ExternalApplicationRepository applicationRepository,
             ExternalApplicationAccountRepository accountRepository,
             ExternalSecretEncryptionService encryptionService,
             ApplicationRepository internalApplicationRepository,
             EnvironmentRepository environmentRepository,
-            ExternalApplicationTypeRepository externalApplicationTypeRepository)
+            ExternalApplicationTypeRepository externalApplicationTypeRepository,
+            DashboardAccessService accessService)
     {
         this.applicationRepository = applicationRepository;
         this.accountRepository = accountRepository;
@@ -46,6 +49,7 @@ public class ExternalApplicationService
         this.internalApplicationRepository = internalApplicationRepository;
         this.environmentRepository = environmentRepository;
         this.externalApplicationTypeRepository = externalApplicationTypeRepository;
+        this.accessService = accessService;
     }
 
     @Transactional(readOnly = true)
@@ -85,7 +89,10 @@ public class ExternalApplicationService
                 ? null : externalType.trim().toUpperCase(Locale.ROOT);
         if (normalizedType != null && externalApplicationTypeRepository.findByCodeIgnoreCaseAndEnabledTrue(normalizedType).isEmpty())
             normalizedType = null;
-        return applicationRepository.search(search == null ? "" : search.trim(),
+        List<Long> allowedApplicationIds = accessService.getApplicationsWithPermission("MONITORING_CONFIG")
+                .stream().map(Application::getId).toList();
+        if (allowedApplicationIds.isEmpty()) return Page.empty(pageable);
+        return applicationRepository.search(search == null ? "" : search.trim(), allowedApplicationIds,
                 applicationId, environmentId, normalizedType, pageable);
     }
 
@@ -98,6 +105,9 @@ public class ExternalApplicationService
 
         ExternalApplication app = applicationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("External application was not found."));
+        if (app.getApplication() == null)
+            throw new org.springframework.security.access.AccessDeniedException("External application is not assigned to an accessible application.");
+        accessService.assertCanAccessApplication(app.getApplication().getId(), "MONITORING_CONFIG");
         form.setId(app.getId());
         form.setApplicationCode(app.getApplicationCode());
         form.setApplicationName(app.getApplicationName());
@@ -132,6 +142,14 @@ public class ExternalApplicationService
         if (form.getEnvironmentId() == null)
             throw new IllegalArgumentException("Select an environment.");
 
+        ExternalApplication existing = form.getId() == null ? null : applicationRepository.findById(form.getId())
+                .orElseThrow(() -> new IllegalArgumentException("External application was not found."));
+        if (existing != null) {
+            if (existing.getApplication() == null)
+                throw new org.springframework.security.access.AccessDeniedException("External application is not assigned to an accessible application.");
+            accessService.assertCanAccessApplication(existing.getApplication().getId(), "MONITORING_CONFIG");
+        }
+        accessService.assertCanAccessApplication(form.getApplicationId(), "MONITORING_CONFIG");
         Application internalApplication = internalApplicationRepository.findById(form.getApplicationId())
                 .filter(Application::isEnabled)
                 .orElseThrow(() -> new IllegalArgumentException("Select an enabled internal application."));
@@ -141,6 +159,7 @@ public class ExternalApplicationService
                 .orElseThrow(() -> new IllegalArgumentException("Select an enabled environment."));
         if (!environment.getApplication().getId().equals(internalApplication.getId()))
             throw new IllegalArgumentException("The selected environment does not belong to the selected application.");
+        accessService.assertCanAccessEnvironment(internalApplication.getId(), environment.getId(), "MONITORING_CONFIG");
 
         String url = validateBaseUrl(form.getBaseUrl());
         String authType = required(form.getAuthType(), "Authentication type").toUpperCase(Locale.ROOT);
@@ -151,9 +170,7 @@ public class ExternalApplicationService
                 .filter(existing -> !existing.getId().equals(form.getId())).isPresent())
             throw new IllegalArgumentException("An external application with this code already exists.");
 
-        ExternalApplication app = form.getId() == null ? new ExternalApplication()
-                : applicationRepository.findById(form.getId())
-                    .orElseThrow(() -> new IllegalArgumentException("External application was not found."));
+        ExternalApplication app = existing == null ? new ExternalApplication() : existing;
         app.setApplicationCode(code);
         app.setApplicationName(name);
         app.setExternalType(externalType);
@@ -209,6 +226,8 @@ public class ExternalApplicationService
     {
         ExternalApplication app = applicationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("External application was not found."));
+        if (app.getApplication() == null) throw new org.springframework.security.access.AccessDeniedException("External application is not assigned to an accessible application.");
+        accessService.assertCanAccessApplication(app.getApplication().getId(), "MONITORING_CONFIG");
         // The shared account is removed by the database's ON DELETE CASCADE foreign key.
         applicationRepository.delete(app);
     }
@@ -218,7 +237,15 @@ public class ExternalApplicationService
     {
         ExternalApplication app = applicationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("External application was not found."));
+        if (app.getApplication() == null) throw new org.springframework.security.access.AccessDeniedException("External application is not assigned to an accessible application.");
+        accessService.assertCanAccessApplication(app.getApplication().getId(), "MONITORING_CONFIG");
         app.setEnabled(!app.isEnabled());
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Set<Long> findConfiguredAccountIds(List<Long> externalApplicationIds) {
+        if (externalApplicationIds == null || externalApplicationIds.isEmpty()) return java.util.Set.of();
+        return java.util.Set.copyOf(accountRepository.findConfiguredExternalApplicationIds(externalApplicationIds));
     }
 
     @Transactional(readOnly = true)
