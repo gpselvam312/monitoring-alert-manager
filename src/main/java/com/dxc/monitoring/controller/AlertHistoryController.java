@@ -1,11 +1,11 @@
 package com.dxc.monitoring.controller;
 
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -71,7 +71,7 @@ public class AlertHistoryController {
             @RequestParam(required = false) String severity,
             @RequestParam(required = false) Long applicationId,
             @RequestParam(required = false) Long environmentId,
-            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "triggeredAt") String sort,
             @RequestParam(defaultValue = "desc") String direction,
             Model model) {
         List<Application> applications = accessService.getApplicationsWithPermission("ALERT_VIEW");
@@ -84,7 +84,7 @@ public class AlertHistoryController {
         Alert.AlertStatus statusFilter = parseStatus(status);
         AlertRule.Severity severityFilter = parseSeverity(severity);
         PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(0, size, sort, direction,
-                "createdAt", allowedSorts());
+                "triggeredAt", allowedSorts());
         long total = applicationIds.isEmpty() || invalidApplication ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
                         null, severityFilter, term.repositorySearch());
@@ -123,7 +123,7 @@ public class AlertHistoryController {
             @RequestParam(required = false) Long applicationId,
             @RequestParam(required = false) Long environmentId,
             @RequestParam(defaultValue = "0") int batch,
-            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "triggeredAt") String sort,
             @RequestParam(defaultValue = "desc") String direction) {
         List<Long> applicationIds = accessService.getApplicationsWithPermission("ALERT_VIEW")
                 .stream().map(Application::getId).toList();
@@ -230,7 +230,7 @@ public class AlertHistoryController {
 
     private Map<String, String> allowedSorts() {
         return Map.of("alertKey", "id", "occurrenceCount", "occurrenceCount",
-                "createdAt", "createdAt", "lastOccurredAt", "lastOccurredAt",
+                "triggeredAt", "firstOccurredAt", "createdAt", "createdAt", "lastOccurredAt", "lastOccurredAt",
                 "resolvedAt", "resolvedAt", "severity", "severity", "status", "status", "title", "title");
     }
 
