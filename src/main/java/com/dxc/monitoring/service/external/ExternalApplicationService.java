@@ -65,6 +65,28 @@ public class ExternalApplicationService
     }
 
     @Transactional(readOnly = true)
+    public List<ExternalApplication> findEnabledForCurrentUser() {
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG")
+                .stream().map(Application::getId).toList();
+        if (applicationIds.isEmpty()) return List.of();
+        return applicationRepository.findEnabledForApplications(applicationIds);
+    }
+
+    @Transactional(readOnly = true)
+    public ExternalApplication findEnabledByIdForCurrentUser(Long id) {
+        if (id == null) throw new IllegalArgumentException("Select an external application.");
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("SYSTEM_CONFIG")
+                .stream().map(Application::getId).toList();
+        if (applicationIds.isEmpty())
+            throw new org.springframework.security.access.AccessDeniedException("External application is not available in your application scope.");
+        return applicationRepository.findEnabledForApplications(applicationIds).stream()
+                .filter(application -> id.equals(application.getId()))
+                .findFirst()
+                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException(
+                        "External application is not available in your application scope."));
+    }
+
+    @Transactional(readOnly = true)
     public List<ExternalApplication> findEnabled()
     {
         return applicationRepository.findAllEnabledInstancesForDashboard();
