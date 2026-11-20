@@ -4,16 +4,14 @@ import com.dxc.monitoring.entity.Role;
 import com.dxc.monitoring.entity.User;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.service.UserService;
+import com.dxc.monitoring.web.PageRequestSupport;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -23,12 +21,18 @@ import java.util.Map;
 @RequestMapping("/administration/users")
 @PreAuthorize("hasAuthority('ROLE_ADMIN')")
 public class UserController {
+    private static final Map<String, String> SORT_FIELDS = Map.of(
+            "username", "username", "fullName", "fullName", "email", "email",
+            "enabled", "enabled", "createdAt", "createdAt");
     private final UserService userService;
     private final ApplicationRepository applicationRepository;
+    private final PageRequestSupport pageRequestSupport;
 
-    public UserController(UserService userService, ApplicationRepository applicationRepository) {
+    public UserController(UserService userService, ApplicationRepository applicationRepository,
+            PageRequestSupport pageRequestSupport) {
         this.userService = userService;
         this.applicationRepository = applicationRepository;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -48,45 +52,23 @@ public class UserController {
     }
 
     private void populateUserTable(Model model, int page, int size, String search, String sort, String direction) {
-        int safeSize = (size == 5 || size == 10 || size == 25) ? size : 5;
-        String query = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
-        Comparator<User> comparator = switch (sort == null ? "username" : sort) {
-            case "fullName" -> Comparator.comparing(u -> safe(u.getFullName()), String.CASE_INSENSITIVE_ORDER);
-            case "email" -> Comparator.comparing(u -> safe(u.getEmail()), String.CASE_INSENSITIVE_ORDER);
-            case "enabled" -> Comparator.comparing(User::isEnabled);
-            case "createdAt" -> Comparator.comparing(User::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
-            default -> Comparator.comparing(u -> safe(u.getUsername()), String.CASE_INSENSITIVE_ORDER);
-        };
-        if ("desc".equalsIgnoreCase(direction)) comparator = comparator.reversed();
-        List<User> filtered = userService.findAll().stream()
-                .filter(u -> query.isBlank() || safe(u.getUsername()).toLowerCase(Locale.ROOT).contains(query)
-                        || safe(u.getFullName()).toLowerCase(Locale.ROOT).contains(query)
-                        || safe(u.getEmail()).toLowerCase(Locale.ROOT).contains(query)
-                        || u.getRoles().stream().map(Role::getName).anyMatch(n -> n.toLowerCase(Locale.ROOT).contains(query)))
-                .sorted(comparator).toList();
-        int totalPages = (int) Math.ceil((double) filtered.size() / safeSize);
-        int safePage = Math.max(0, Math.min(page, Math.max(0, totalPages - 1)));
-        int from = Math.min(safePage * safeSize, filtered.size());
-        int to = Math.min(from + safeSize, filtered.size());
-        Pageable pageable = PageRequest.of(safePage, safeSize);
-        Page<User> users = new PageImpl<>(filtered.subList(from, to), pageable, filtered.size());
-        Map<Long, String> roleSummaries = new HashMap<>();
-        users.getContent().forEach(user -> {
-            String summary = userService.findRoleAssignmentSummary(user.getId());
-            if (!summary.isBlank()) roleSummaries.put(user.getId(), summary);
-        });
+        String query = search == null ? "" : search.trim();
+        var spec = pageRequestSupport.create(page, size, sort, direction, "username", SORT_FIELDS);
+        Page<User> users = userService.findPage(query, spec.pageable());
+        List<Long> ids = users.getContent().stream().map(User::getId).toList();
+        Map<Long, String> roleSummaries = userService.findRoleAssignmentSummaries(ids);
         List<Long> platformAdminIds = users.getContent().stream()
                 .filter(user -> user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName())))
                 .map(User::getId).toList();
         model.addAttribute("users", users);
-        model.addAttribute("pageSize", safeSize);
-        model.addAttribute("search", search == null ? "" : search.trim());
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("search", query);
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("roleSummaries", roleSummaries);
         model.addAttribute("platformAdminIds", platformAdminIds);
         model.addAttribute("currentPage", "users");
     }
-
-    private String safe(String value) { return value == null ? "" : value; }
 
     @GetMapping("/new")
     public String createUserForm(Model model) {
@@ -145,9 +127,8 @@ public class UserController {
     @PostMapping("/{id}/toggle")
     public String toggleUser(@PathVariable Long id) {
         User user = userService.findById(id);
-        if (user.getRoles().stream().noneMatch(role -> "ADMIN".equals(role.getName()))) {
+        if (user.getRoles().stream().noneMatch(role -> "ADMIN".equals(role.getName())))
             userService.toggleEnabled(id);
-        }
         return "redirect:/administration/users";
     }
 
@@ -160,7 +141,7 @@ public class UserController {
                 throw new IllegalArgumentException("Select a role for every assigned application.");
             try {
                 assignments.put(applicationId, Long.parseLong(roleValue));
-            } catch (NumberFormatException ex) {
+            } catch (NumberFormatException exception) {
                 throw new IllegalArgumentException("Invalid role selected for application " + applicationId + ".");
             }
         }

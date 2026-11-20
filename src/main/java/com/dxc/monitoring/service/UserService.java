@@ -8,6 +8,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +43,28 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<User> findAll() { return userRepository.findAll(); }
+
+    @Transactional(readOnly = true)
+    public Page<User> findPage(String search, Pageable pageable) {
+        String query = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        return userRepository.search(query, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, String> findRoleAssignmentSummaries(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Map.of();
+        Map<Long, List<String>> grouped = new HashMap<>();
+        for (Object[] row : userApplicationRoleRepository.findRoleAssignmentSummaries(userIds)) {
+            Long userId = (Long) row[0];
+            grouped.computeIfAbsent(userId, ignored -> new java.util.ArrayList<>()).add(String.valueOf(row[1]));
+        }
+        Map<Long, String> result = new HashMap<>();
+        grouped.forEach((id, names) -> {
+            names.sort(String.CASE_INSENSITIVE_ORDER);
+            result.put(id, String.join(", ", names));
+        });
+        return result;
+    }
 
     @Transactional(readOnly = true)
     public User findById(Long id) {
@@ -100,15 +124,13 @@ public class UserService {
     }
 
     private void setPlatformAdmin(User user, boolean platformAdmin) {
-        Role adminRole = roleRepository.findByName("ADMIN")
+        Role adminRole = roleRepository.findByNameForUpdate("ADMIN")
                 .orElseThrow(() -> new IllegalArgumentException("ADMIN role is not configured."));
         boolean currentlyAdmin = user.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName()));
         if (platformAdmin) {
             user.getRoles().add(adminRole);
         } else if (currentlyAdmin) {
-            long adminCount = userRepository.findAll().stream()
-                    .filter(existing -> existing.getRoles().stream().anyMatch(role -> "ADMIN".equals(role.getName())))
-                    .count();
+            long adminCount = userRepository.countByRoles_Name("ADMIN");
             if (adminCount <= 1)
                 throw new IllegalArgumentException("At least one platform administrator must remain enabled.");
             user.getRoles().removeIf(role -> "ADMIN".equals(role.getName()));

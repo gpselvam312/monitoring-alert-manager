@@ -19,6 +19,10 @@ public interface UserApplicationRoleRepository extends JpaRepository<UserApplica
 
     boolean existsByRole_Id(Long roleId);
 
+    @Query("select assignment.user.id, concat(assignment.application.name, ' — ', assignment.role.name) "
+            + "from UserApplicationRole assignment where assignment.user.id in :userIds")
+    List<Object[]> findRoleAssignmentSummaries(@Param("userIds") List<Long> userIds);
+
     Optional<UserApplicationRole> findFirstByUser_IdAndPrimaryTrue(Long userId);
 
     void deleteByUser_IdAndApplication_Id(Long userId, Long applicationId);
