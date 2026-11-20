@@ -6,11 +6,9 @@ import com.dxc.monitoring.repository.PermissionRepository;
 import com.dxc.monitoring.repository.RoleRepository;
 import com.dxc.monitoring.repository.UserApplicationRoleRepository;
 import com.dxc.monitoring.repository.UserRepository;
+import com.dxc.monitoring.web.PageRequestSupport;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,13 +29,15 @@ public class RoleManagementController {
     private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
     private final UserApplicationRoleRepository userApplicationRoleRepository;
+    private final PageRequestSupport pageRequestSupport;
 
     public RoleManagementController(RoleRepository roleRepository, PermissionRepository permissionRepository, UserRepository userRepository,
-            UserApplicationRoleRepository userApplicationRoleRepository) {
+            UserApplicationRoleRepository userApplicationRoleRepository, PageRequestSupport pageRequestSupport) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.userRepository = userRepository;
         this.userApplicationRoleRepository = userApplicationRoleRepository;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -57,27 +57,15 @@ public class RoleManagementController {
     }
 
     private void populateRoleTable(Model model, int page, int size, String search, String sort, String direction) {
-        int safeSize = (size == 5 || size == 10 || size == 25) ? size : 5;
         String query = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
-        java.util.Comparator<Role> comparator = "description".equals(sort)
-                ? java.util.Comparator.comparing(r -> r.getDescription() == null ? "" : r.getDescription(), String.CASE_INSENSITIVE_ORDER)
-                : java.util.Comparator.comparing(Role::getName, String.CASE_INSENSITIVE_ORDER);
-        if ("desc".equalsIgnoreCase(direction)) comparator = comparator.reversed();
-        java.util.List<Role> filtered = roleRepository.findAll().stream()
-                .filter(role -> query.isBlank()
-                        || role.getName().toLowerCase(java.util.Locale.ROOT).contains(query)
-                        || (role.getDescription() != null && role.getDescription().toLowerCase(java.util.Locale.ROOT).contains(query))
-                        || role.getPermissions().stream().anyMatch(permission -> permission.getName().toLowerCase(java.util.Locale.ROOT).contains(query)))
-                .sorted(comparator).toList();
-        int totalPages = (int) Math.ceil((double) filtered.size() / safeSize);
-        int safePage = Math.max(0, Math.min(page, Math.max(0, totalPages - 1)));
-        int from = Math.min(safePage * safeSize, filtered.size());
-        int to = Math.min(from + safeSize, filtered.size());
-        Pageable pageable = PageRequest.of(safePage, safeSize);
-        Page<Role> rolePage = new PageImpl<>(filtered.subList(from, to), pageable, filtered.size());
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name",
+                java.util.Map.of("name", "name", "description", "description"));
+        Page<Role> rolePage = roleRepository.search(query, spec.pageable());
         model.addAttribute("rolePage", rolePage);
-        model.addAttribute("pageSize", safeSize);
-        model.addAttribute("search", search == null ? "" : search.trim());
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("search", query);
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("currentPage", "roles");
     }
 
@@ -147,8 +135,7 @@ public class RoleManagementController {
         Role role = findRole(id);
         if ("ADMIN".equals(role.getName())) {
             flash.addFlashAttribute("errorMessage", "The built-in ADMIN role cannot be deleted.");
-        } else if (userRepository.findAll().stream().anyMatch(user -> user.getRoles().stream().anyMatch(assignedRole -> id.equals(assignedRole.getId())))
-                || userApplicationRoleRepository.findAll().stream().anyMatch(assignment -> id.equals(assignment.getRole().getId()))) {
+        } else if (userRepository.existsByRoles_Id(id) || userApplicationRoleRepository.existsByRole_Id(id)) {
             flash.addFlashAttribute("errorMessage", "This role is assigned to one or more users. Remove those assignments before deleting it.");
         } else {
             roleRepository.delete(role);
