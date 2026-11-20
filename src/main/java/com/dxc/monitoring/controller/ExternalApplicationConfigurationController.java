@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.ExternalApplication;
-import com.dxc.monitoring.repository.ExternalApplicationTypeRepository;
 import com.dxc.monitoring.service.external.ExternalApplicationForm;
 import com.dxc.monitoring.service.external.ExternalApplicationService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
@@ -37,17 +36,13 @@ public class ExternalApplicationConfigurationController
             "enabled", "enabled");
 
     private final ExternalApplicationService externalApplicationService;
-    private final ExternalApplicationTypeRepository externalApplicationTypeRepository;
     private final DashboardAccessService accessService;
     private final PageRequestSupport pageRequestSupport;
 
     public ExternalApplicationConfigurationController(ExternalApplicationService externalApplicationService,
-            ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
-            ExternalApplicationTypeRepository externalApplicationTypeRepository,
             DashboardAccessService accessService, PageRequestSupport pageRequestSupport)
     {
         this.externalApplicationService = externalApplicationService;
-        this.externalApplicationTypeRepository = externalApplicationTypeRepository;
         this.accessService = accessService;
         this.pageRequestSupport = pageRequestSupport;
     }

@@ -369,8 +369,8 @@ public class MonitoringJobController
             }
 
             // Audit
-            job.setCreatedBy(currentUser.getId());
-            job.setUpdatedBy(currentUser.getId());
+            job.setCreatedBy(currentUserId);
+            job.setUpdatedBy(currentUserId);
 
             monitoringJobService.save(job);
         }
