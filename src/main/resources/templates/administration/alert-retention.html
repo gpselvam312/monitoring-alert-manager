@@ -12,10 +12,10 @@
 <tr th:if="${#lists.isEmpty(policies)}"><td colspan="6" class="text-muted text-center py-3">No retention policies exist. No cleanup can run until you create and explicitly enable one.</td></tr>
 </tbody></table></div>
 <div class="p-3 border-top"><h3 class="h6 mb-3">Create Retention Policy</h3><form th:action="@{/administration/alert-retention/policies}" method="post"><div class="row g-3">
-<div class="col-12 col-lg-4"><label class="form-label">Data Type</label><select class="form-select" name="dataType" required><option value="">Select data type</option><option th:each="type : ${dataTypes}" th:value="${type.name()}" th:text="${type.name()}"></option></select></div>
+<div class="col-12 col-lg-4"><label class="form-label">Data Type</label><select class="form-select" id="retentionDataType" name="dataType" onchange="filterRetentionAlertTypes()" required><option value="">Select data type</option><option th:each="type : ${dataTypes}" th:value="${type.name()}" th:text="${type.name()}"></option></select></div>
 <div class="col-12 col-lg-4"><label class="form-label">Application</label><select class="form-select" id="retentionApplication" name="applicationId" onchange="filterRetentionEnvironments()"><option value="">All applications</option><option th:each="app : ${applications}" th:value="${app.id}" th:text="${app.name}"></option></select></div>
 <div class="col-12 col-lg-4"><label class="form-label">Environment</label><select class="form-select" id="retentionEnvironment" name="environmentId"><option value="">All environments</option><option th:each="env : ${environments}" th:value="${env.id}" th:attr="data-application-id=${env.application.id}" th:text="${env.application.name + ' / ' + env.name}"></option></select></div>
-<div class="col-12 col-lg-3"><label class="form-label">Alert Type</label><select class="form-select" name="alertType"><option value="ALL">All alert types</option><option th:each="type : ${alertTypes}" th:value="${type.code}" th:text="${type.name}"></option></select></div>
+<div class="col-12 col-lg-3"><label class="form-label">Alert Type</label><div class="form-text mb-1">Applies to alert and delivery records; rule evaluations use application and environment scope.</div><select class="form-select" id="retentionAlertType" name="alertType"><option value="ALL">All alert types</option><option th:each="type : ${alertTypes}" th:value="${type.code}" th:text="${type.name}"></option></select></div>
 <div class="col-12 col-lg-2"><label class="form-label">Retention (days)</label><input class="form-control" type="number" name="retentionDays" min="1" max="36500" placeholder="e.g. 90" required></div>
 <div class="col-12 col-lg-5"><label class="form-label">Description</label><input class="form-control" name="description" maxlength="1000"></div>
 <div class="col-12 col-lg-2 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="enabled" value="true" id="policyEnabled"><label class="form-check-label" for="policyEnabled">Enable policy</label></div></div>
@@ -34,7 +34,20 @@ function filterRetentionEnvironments() {
         if (!visible && option.selected) environmentSelect.value = '';
     });
 }
-document.addEventListener('DOMContentLoaded', filterRetentionEnvironments);
+function filterRetentionAlertTypes() {
+    const dataType = document.getElementById('retentionDataType').value;
+    const alertTypeSelect = document.getElementById('retentionAlertType');
+    const ruleEvaluations = dataType === 'RULE_EVALUATIONS';
+    Array.from(alertTypeSelect.options).forEach(function (option) {
+        if (!option.value) return;
+        option.hidden = ruleEvaluations && option.value !== 'ALL';
+    });
+    if (ruleEvaluations) alertTypeSelect.value = 'ALL';
+}
+document.addEventListener('DOMContentLoaded', function () {
+    filterRetentionEnvironments();
+    filterRetentionAlertTypes();
+});
 </script>
 
 <div class="app-card mb-3" th:if="${preview != null}"><div class="app-card-header"><h2 class="h6 mb-0">Cleanup Preview</h2></div><div class="app-card-body">
