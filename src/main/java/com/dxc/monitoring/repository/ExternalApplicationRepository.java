@@ -37,7 +37,8 @@ public interface ExternalApplicationRepository extends JpaRepository<ExternalApp
             from ExternalApplication externalApplication
             left join externalApplication.application application
             left join externalApplication.environment environment
-            where (:applicationId is null or application.id = :applicationId)
+            where application.id in :applicationIds
+              and (:applicationId is null or application.id = :applicationId)
               and (:environmentId is null or environment.id = :environmentId)
               and (:externalType is null or externalApplication.externalType = :externalType)
               and (
@@ -56,6 +57,14 @@ public interface ExternalApplicationRepository extends JpaRepository<ExternalApp
             @Param("applicationId") Long applicationId,
             @Param("environmentId") Long environmentId,
             @Param("externalType") String externalType, Pageable pageable);
+
+    @Query("""
+            select externalApplication from ExternalApplication externalApplication
+            where externalApplication.enabled = true
+              and externalApplication.application.id in :applicationIds
+            order by lower(externalApplication.applicationName)
+            """)
+    List<ExternalApplication> findEnabledForApplications(@Param("applicationIds") List<Long> applicationIds);
 
     Optional<ExternalApplication> findByApplicationCodeIgnoreCase(String applicationCode);
     boolean existsByApplicationCodeIgnoreCaseAndIdNot(String applicationCode, Long id);

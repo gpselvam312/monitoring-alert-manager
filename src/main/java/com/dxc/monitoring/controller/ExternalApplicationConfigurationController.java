@@ -26,7 +26,6 @@ import com.dxc.monitoring.web.PageRequestSupport;
 @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
 public class ExternalApplicationConfigurationController
 {
-    private static final List<Integer> PAGE_SIZES = List.of(5, 10, 25);
     private static final Map<String, String> SORT_FIELDS = Map.of(
             "applicationCode", "applicationCode",
             "applicationName", "applicationName",
@@ -177,8 +176,9 @@ public class ExternalApplicationConfigurationController
         model.addAttribute("selectedApplicationId", applicationId);
         model.addAttribute("selectedEnvironmentId", environmentId);
         model.addAttribute("selectedExternalType", externalType == null ? "" : externalType);
-        model.addAttribute("externalApplicationTypes", externalApplicationService.findEnabledTypes());
-        model.addAttribute("externalTypeLabels", externalApplicationTypeRepository.findAll().stream()
+        var externalTypes = externalApplicationService.findEnabledTypes();
+        model.addAttribute("externalApplicationTypes", externalTypes);
+        model.addAttribute("externalTypeLabels", externalTypes.stream()
                 .collect(java.util.stream.Collectors.toMap(type -> type.getCode(), type -> type.getDisplayName())));
         List<com.dxc.monitoring.entity.Application> accessibleApplications =
                 accessService.getApplicationsWithPermission("MONITORING_CONFIG");
