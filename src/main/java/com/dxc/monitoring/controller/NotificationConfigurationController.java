@@ -66,7 +66,7 @@ public class NotificationConfigurationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('NOTIFICATION_VIEW', 'NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ADMIN')")
     public String index(Model model) {
         model.addAttribute("channels", channelRepository.findAllByOrderByNameAsc());
         model.addAttribute("recipients", recipientRepository.findAll());
@@ -86,7 +86,7 @@ public class NotificationConfigurationController {
 
 
     @GetMapping("/{type:channels|recipients|groups|policies|routes}/add")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String addConfiguration(@PathVariable String type, Model model) {
         editOptions(model);
         model.addAttribute("editType", switch (type) {
@@ -110,7 +110,7 @@ public class NotificationConfigurationController {
     }
 
     @GetMapping("/channels/{id}/edit")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String editChannel(@PathVariable Long id, Model model) {
         NotificationChannel channel = channelRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Notification channel was not found."));
@@ -120,7 +120,7 @@ public class NotificationConfigurationController {
     }
 
     @GetMapping("/recipients/{id}/edit")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String editRecipient(@PathVariable Long id, Model model) {
         editOptions(model); model.addAttribute("editType", "RECIPIENT"); model.addAttribute("editId", id);
         model.addAttribute("editRecipient", recipientRepository.findById(id)
@@ -129,7 +129,7 @@ public class NotificationConfigurationController {
     }
 
     @GetMapping("/groups/{id}/edit")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String editGroup(@PathVariable Long id, Model model) {
         editOptions(model); model.addAttribute("editType", "GROUP"); model.addAttribute("editId", id);
         model.addAttribute("editGroup", groupRepository.findById(id)
@@ -140,7 +140,7 @@ public class NotificationConfigurationController {
     }
 
     @GetMapping("/policies/{id}/edit")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String editPolicy(@PathVariable Long id, Model model) {
         editOptions(model); model.addAttribute("editType", "POLICY"); model.addAttribute("editId", id);
         model.addAttribute("editPolicy", policyRepository.findById(id)
@@ -149,7 +149,7 @@ public class NotificationConfigurationController {
     }
 
     @GetMapping("/routes/{id}/edit")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String editRoute(@PathVariable Long id, Model model) {
         editOptions(model); model.addAttribute("editType", "ROUTE"); model.addAttribute("editId", id);
         model.addAttribute("editRoute", routeRepository.findById(id)
@@ -158,7 +158,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/channels/{id}/test")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String testChannel(@PathVariable Long id,
             @RequestParam(required = false) String testEmail,
             @RequestParam(required = false) String testPhone,
@@ -173,7 +173,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/channels/{id}")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String updateChannel(@PathVariable Long id, @ModelAttribute NotificationChannelForm form,
             Authentication authentication, RedirectAttributes redirect) {
         try {
@@ -187,7 +187,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/recipients/{id}")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String updateRecipient(@PathVariable Long id, @RequestParam String name,
             @RequestParam(required = false) String email, @RequestParam(required = false) String phoneNumber,
             Authentication authentication, RedirectAttributes redirect) {
@@ -202,7 +202,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/groups/{id}")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String updateGroup(@PathVariable Long id, @RequestParam String name,
             @RequestParam(required = false) String description, @RequestParam String channelType,
             @RequestParam(required = false) List<Long> recipientIds, Authentication authentication, RedirectAttributes redirect) {
@@ -217,7 +217,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/policies/{id}")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String updatePolicy(@PathVariable Long id, @RequestParam String name,
             @RequestParam(required = false) String description, Authentication authentication, RedirectAttributes redirect) {
         try {
@@ -231,7 +231,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/routes/{id}")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String updateRoute(@PathVariable Long id, @RequestParam Long policyId, @RequestParam Long channelId,
             @RequestParam String severity, @RequestParam String eventType, @RequestParam String targetType,
             @RequestParam(required = false) Long recipientId, @RequestParam(required = false) Long groupId,
@@ -248,27 +248,27 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/channels/{id}/delete")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String deleteChannel(@PathVariable Long id, RedirectAttributes redirect) {
         return deleteRecord(() -> configurationService.deleteChannel(id), "channel", redirect);
     }
     @PostMapping("/recipients/{id}/delete")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String deleteRecipient(@PathVariable Long id, RedirectAttributes redirect) {
         return deleteRecord(() -> configurationService.deleteRecipient(id), "recipient", redirect);
     }
     @PostMapping("/groups/{id}/delete")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String deleteGroup(@PathVariable Long id, RedirectAttributes redirect) {
         return deleteRecord(() -> configurationService.deleteGroup(id), "recipient group", redirect);
     }
     @PostMapping("/policies/{id}/delete")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String deletePolicy(@PathVariable Long id, RedirectAttributes redirect) {
         return deleteRecord(() -> configurationService.deletePolicy(id), "legacy policy", redirect);
     }
     @PostMapping("/routes/{id}/delete")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String deleteRoute(@PathVariable Long id, RedirectAttributes redirect) {
         return deleteRecord(() -> configurationService.deleteRoute(id), "legacy route", redirect);
     }
@@ -297,7 +297,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/channels")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String createChannel(@ModelAttribute NotificationChannelForm form, Authentication authentication,
             RedirectAttributes redirect) {
         try {
@@ -310,7 +310,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/recipients")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String createRecipient(@RequestParam String name, @RequestParam(required = false) String email,
             @RequestParam(required = false) String phoneNumber, Authentication authentication,
             RedirectAttributes redirect) {
@@ -324,7 +324,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/groups")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String createGroup(@RequestParam String name, @RequestParam(required = false) String description,
             @RequestParam String channelType, @RequestParam(required = false) List<Long> recipientIds, Authentication authentication,
             RedirectAttributes redirect) {
@@ -338,7 +338,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/policies")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String createPolicy(@RequestParam String name, @RequestParam(required = false) String description,
             Authentication authentication, RedirectAttributes redirect) {
         try {
@@ -351,7 +351,7 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/routes")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String createRoute(@RequestParam Long policyId, @RequestParam Long channelId,
             @RequestParam String severity, @RequestParam String eventType, @RequestParam String targetType,
             @RequestParam(required = false) Long recipientId, @RequestParam(required = false) Long groupId,
@@ -367,31 +367,31 @@ public class NotificationConfigurationController {
     }
 
     @PostMapping("/channels/{id}/toggle")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String toggleChannel(@PathVariable Long id, Authentication authentication, RedirectAttributes redirect) {
         return toggle(() -> configurationService.toggleChannel(id, userId(authentication)), "Notification channel updated.", redirect);
     }
 
     @PostMapping("/recipients/{id}/toggle")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String toggleRecipient(@PathVariable Long id, Authentication authentication, RedirectAttributes redirect) {
         return toggle(() -> configurationService.toggleRecipient(id, userId(authentication)), "Recipient updated.", redirect);
     }
 
     @PostMapping("/groups/{id}/toggle")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String toggleGroup(@PathVariable Long id, Authentication authentication, RedirectAttributes redirect) {
         return toggle(() -> configurationService.toggleGroup(id, userId(authentication)), "Notification group updated.", redirect);
     }
 
     @PostMapping("/policies/{id}/toggle")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String togglePolicy(@PathVariable Long id, Authentication authentication, RedirectAttributes redirect) {
         return toggle(() -> configurationService.togglePolicy(id, userId(authentication)), "Notification policy updated.", redirect);
     }
 
     @PostMapping("/routes/{id}/toggle")
-    @PreAuthorize("hasAuthority('NOTIFICATION_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String toggleRoute(@PathVariable Long id, RedirectAttributes redirect) {
         return toggle(() -> configurationService.toggleRoute(id), "Notification route updated.", redirect);
     }
