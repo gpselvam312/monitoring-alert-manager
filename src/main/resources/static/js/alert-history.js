@@ -67,7 +67,7 @@
             '</th>').join('');
         const channelDefinitions = [
             ['EMAIL', 'Email', 'envelope-fill'],
-            ['TEAMS', 'Teams', 'chat-dots-fill'],
+            ['TEAMS', 'Teams', 'microsoft-teams'],
             ['WHATSAPP', 'WhatsApp', 'whatsapp']
         ];
         const channelMarkup = item => channelDefinitions.map(([type, label, icon]) => {
@@ -91,7 +91,7 @@
                     + channel.pendingCount + ' pending, ' + channel.skippedCount + ' skipped)'
                 : '';
             const tooltip = label + ' — ' + (channel.configured ? statusLabel : 'Not configured') + countText;
-            return '<span class="d-inline-flex align-items-center gap-1 me-2" title="' + escapeHtml(tooltip)
+            return '<span class="d-inline-flex align-items-center gap-1 me-2" role="img" title="' + escapeHtml(tooltip)
                 + '" aria-label="' + escapeHtml(tooltip) + '">' +
                 '<i class="bi bi-' + icon + ' channel-indicator-icon' + disabledClass + '" aria-hidden="true"></i>' +
                 '<i class="bi bi-' + statusIcon + ' ' + statusClass + ' channel-indicator-status" aria-hidden="true"></i>' +
