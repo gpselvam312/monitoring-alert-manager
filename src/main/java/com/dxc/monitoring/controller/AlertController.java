@@ -313,7 +313,7 @@ public class AlertController {
             redirectAttributes.addFlashAttribute("successMessage", "Alert rule saved successfully.");
             return "redirect:/alerts/rules";
         } catch (IllegalArgumentException | DataIntegrityViolationException exception) {
-            log.error("Unable to save alert rule id={} with its notification routes", form.getId(), exception);
+            log.warn("Unable to save alert rule id={} exceptionType={}", form.getId(), exception.getClass().getSimpleName());
             addRuleFormModel(model, form);
             model.addAttribute("errorMessage", exception instanceof DataIntegrityViolationException
                     ? "Unable to save the alert rule or its notification routes because of a data constraint. Review the configured values and try again."
