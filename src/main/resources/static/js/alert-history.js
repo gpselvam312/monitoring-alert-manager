@@ -59,7 +59,7 @@
         const headers = [
             ['alertKey', 'Alert ID', 'alertKey'], ['triggeredAt', 'Triggered Time', 'triggeredAt'],
             ['severity', 'Severity', 'severity'], ['ruleTarget', 'Rule & Target', null],
-            ['status', 'Alert Status', 'status'], ['channels', 'Delivery', null],
+            ['status', 'Alert Status', 'status'], ['channels', 'Channels', null],
             ['occurrenceCount', 'Occurrences', 'occurrenceCount'], ['action', 'Action', null]
         ];
         const head = headers.map(([, label, sortField]) => '<th scope="col">' +
