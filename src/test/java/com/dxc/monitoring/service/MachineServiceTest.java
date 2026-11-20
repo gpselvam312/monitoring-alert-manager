@@ -26,6 +26,7 @@ class MachineServiceTest
                 mock(DashboardAccessService.class));
         Machine machine = new Machine();
         machine.setId(10L);
+        when(machines.findById(10L)).thenReturn(Optional.of(machine));
 
         assertThrows(AccessDeniedException.class, () -> service.findById(10L));
     }
