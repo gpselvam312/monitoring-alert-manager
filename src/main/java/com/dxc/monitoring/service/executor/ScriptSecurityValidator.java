@@ -86,7 +86,7 @@ public class ScriptSecurityValidator {
                 approvedHash.toLowerCase(Locale.ROOT).getBytes(java.nio.charset.StandardCharsets.US_ASCII)))
             throw new IllegalArgumentException("Execution blocked: Script SHA-256 validation failed. The script may have changed since approval.");
         String script = Files.readString(realScript);
-        if (validation.isEnabled()) validateCommands(script);
+        validateCommands(script);
         if (job.getWorkingDirectory() != null && !job.getWorkingDirectory().isBlank()) {
             Path workingDirectory = Path.of(job.getWorkingDirectory()).toAbsolutePath().normalize();
             if (Files.isSymbolicLink(workingDirectory) || !Files.isDirectory(workingDirectory))
@@ -109,10 +109,16 @@ public class ScriptSecurityValidator {
                 while (index<tokens.size() && (tokens.get(index).startsWith("-") || ASSIGNMENT.matcher(tokens.get(index)).matches())) index++;
                 if (wrapper.equals("env") || wrapper.equals("command") || wrapper.equals("builtin")) continue;
             }
+            while (index<tokens.size() && tokens.get(index).matches("(?:[0-9]+)?[<>]{1,2}")) {
+                index++;
+                if (index<tokens.size()) index++;
+            }
             if (index>=tokens.size()) continue;
             String command=base(tokens.get(index));
+            if (command.contains("$") || command.contains("`"))
+                throw new IllegalArgumentException("Script security validation rejected a dynamically selected command.");
             if (command.isBlank() || command.startsWith(">") || command.startsWith("<")) continue;
-            if (NESTED.contains(command) || command.endsWith(".sh") || command.equals("."))
+            if (isNested(command) || command.endsWith(".sh") || command.equals("."))
                 throw new IllegalArgumentException("Script security validation rejected nested or indirect script execution.");
             if (tokens.subList(index+1,tokens.size()).contains("-exec") && command.equals("find"))
                 throw new IllegalArgumentException("Script security validation rejected find -exec.");
@@ -121,11 +127,15 @@ public class ScriptSecurityValidator {
             if (command.equals("systemctl"))
                 restricted=tokens.size()>index+1 && Set.of("stop","disable","mask").contains(tokens.get(index+1));
             if (command.equals("service"))
-                restricted=tokens.size()>index+3 && tokens.get(index+2).equals("stop");
-            if (restricted && !isAllowed(command,tokens.subList(index+1,tokens.size()))) {
+                restricted=tokens.size()>index+2 && tokens.get(index+2).equals("stop");
+            if (restricted && validation.isEnabled() && !isAllowed(command,tokens.subList(index+1,tokens.size()))) {
                 throw new IllegalArgumentException("Script security validation rejected restricted command '" + command + "'.");
             }
         }
+    }
+
+    private boolean isNested(String command) {
+        return NESTED.contains(command) || command.matches("python[0-9.]*");
     }
 
     private boolean isAllowed(String command,List<String> arguments) {

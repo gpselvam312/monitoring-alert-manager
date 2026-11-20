@@ -23,7 +23,6 @@ public class ScriptValidationProperties {
     public List<AllowedCommandRule> getAllowedCommandRules() { return allowedCommandRules; }
     public void setAllowedCommandRules(List<AllowedCommandRule> rules) {
         this.allowedCommandRules = rules == null ? new ArrayList<>() : new ArrayList<>(rules);
-        validate();
     }
     public void validate() {
         for (AllowedCommandRule rule : allowedCommandRules) {

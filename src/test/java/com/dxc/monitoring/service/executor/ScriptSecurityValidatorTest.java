@@ -62,7 +62,8 @@ class ScriptSecurityValidatorTest {
         ScriptValidationProperties config=new ScriptValidationProperties();
         var rule=new ScriptValidationProperties.AllowedCommandRule();
         rule.setCommand("rm"); rule.setAllowedArguments(List.of("*"));
-        assertThrows(IllegalArgumentException.class,()->config.setAllowedCommandRules(List.of(rule)));
+        config.setAllowedCommandRules(List.of(rule));
+        assertThrows(IllegalArgumentException.class,config::validate);
     }
     private Path write(String body) throws Exception {
         Path script=tempDir.resolve("health.sh"); Files.writeString(script,"#!/bin/sh\n"+body); return script;
