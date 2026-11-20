@@ -5,9 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,8 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.ExternalApplication;
-import com.dxc.monitoring.repository.ApplicationRepository;
-import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.ExternalApplicationTypeRepository;
 import com.dxc.monitoring.service.external.ExternalApplicationForm;
 import com.dxc.monitoring.service.external.ExternalApplicationService;
@@ -41,8 +37,6 @@ public class ExternalApplicationConfigurationController
             "enabled", "enabled");
 
     private final ExternalApplicationService externalApplicationService;
-    private final ApplicationRepository applicationRepository;
-    private final EnvironmentRepository environmentRepository;
     private final ExternalApplicationTypeRepository externalApplicationTypeRepository;
     private final DashboardAccessService accessService;
     private final PageRequestSupport pageRequestSupport;
@@ -53,8 +47,6 @@ public class ExternalApplicationConfigurationController
             DashboardAccessService accessService, PageRequestSupport pageRequestSupport)
     {
         this.externalApplicationService = externalApplicationService;
-        this.applicationRepository = applicationRepository;
-        this.environmentRepository = environmentRepository;
         this.externalApplicationTypeRepository = externalApplicationTypeRepository;
         this.accessService = accessService;
         this.pageRequestSupport = pageRequestSupport;
