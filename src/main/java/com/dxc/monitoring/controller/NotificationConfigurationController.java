@@ -38,6 +38,7 @@ import com.dxc.monitoring.web.NotificationChannelForm;
 
 @Controller
 @RequestMapping("/administration/notifications")
+@PreAuthorize("hasAuthority('ROLE_ADMIN')")
 public class NotificationConfigurationController {
     private final NotificationChannelRepository channelRepository;
     private final NotificationRecipientRepository recipientRepository;
@@ -66,7 +67,7 @@ public class NotificationConfigurationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String index(Model model) {
         model.addAttribute("channels", channelRepository.findAllByOrderByNameAsc());
         model.addAttribute("recipients", recipientRepository.findAll());
