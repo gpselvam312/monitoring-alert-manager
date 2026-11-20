@@ -68,7 +68,7 @@ public class EnvironmentController
     }
 
     @GetMapping("/table")
-    @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     public String table(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
@@ -91,7 +91,7 @@ public class EnvironmentController
     }
 
     @GetMapping("/new")
-    @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     public String createForm(Model model)
     {
         model.addAttribute("environment", new Environment());
@@ -103,7 +103,7 @@ public class EnvironmentController
     }
 
     @GetMapping("/{id}/edit")
-    @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     public String editForm(@PathVariable Long id, Model model)
     {
         Environment environment = environmentRepository.findById(id)
@@ -118,7 +118,7 @@ public class EnvironmentController
     }
 
     @PostMapping("/save")
-    @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String save(@ModelAttribute Environment environment, @RequestParam(required = false) Long applicationId,
             RedirectAttributes redirectAttributes)
@@ -163,7 +163,7 @@ public class EnvironmentController
     }
 
     @PostMapping("/{id}/toggle")
-    @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String toggle(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
@@ -179,7 +179,7 @@ public class EnvironmentController
     }
 
     @PostMapping("/{id}/delete")
-    @PreAuthorize("hasAuthority('MONITORING_CONFIG')")
+    @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
     @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
