@@ -66,36 +66,42 @@
             (sortField ? '<button type="button" class="table-sort" data-sort="' + sortField + '" aria-label="Sort by ' + label + '">' + label + '<i class="bi table-sort-icon ms-1"></i></button>' : label) +
             '</th>').join('');
         const channelDefinitions = [
-            ['EMAIL', 'Email', 'envelope-fill', 'email'],
-            ['TEAMS', 'Teams', 'microsoft-teams', 'teams'],
-            ['WHATSAPP', 'WhatsApp', 'whatsapp', 'whatsapp']
+            ['EMAIL', 'Email', 'envelope'],
+            ['TEAMS', 'Teams', 'microsoft-teams'],
+            ['WHATSAPP', 'WhatsApp', 'whatsapp']
         ];
-        const channelMarkup = item => channelDefinitions.map(([type, label, icon, brand]) => {
+        const channelMarkup = item => channelDefinitions.map(([type, label, icon]) => {
             const channel = item.channels && item.channels[type]
                 ? item.channels[type] : { configured: false, status: 'NOT_CONFIGURED' };
             const status = channel.status || 'NOT_SENT';
-            const statusIcons = {
-                SENT: ['check-circle-fill', 'text-success', 'Delivered'],
-                FAILED: ['x-circle-fill', 'text-danger', 'Failed'],
-                PENDING: ['clock-fill', 'text-warning', 'Pending / retrying'],
-                SKIPPED: ['dash-circle-fill', 'text-secondary', 'Skipped'],
-                NOT_SENT: ['dash-circle', 'text-secondary', 'No delivery recorded'],
-                NOT_CONFIGURED: ['dash-circle-fill', 'text-secondary', 'Not configured']
-            };
-            const [statusIcon, statusClass, statusLabel] = statusIcons[status] || statusIcons.NOT_SENT;
-            const disabledClass = channel.configured ? '' : ' opacity-50';
             const counts = Number(channel.sentCount || 0) + Number(channel.failedCount || 0)
                 + Number(channel.pendingCount || 0) + Number(channel.skippedCount || 0);
             const countText = counts > 1
                 ? ' (' + channel.sentCount + ' delivered, ' + channel.failedCount + ' failed, '
                     + channel.pendingCount + ' pending, ' + channel.skippedCount + ' skipped)'
                 : '';
-            const tooltip = label + ' — ' + (channel.configured ? statusLabel : 'Not configured') + countText;
-            return '<span class="channel-delivery-indicator channel-brand-' + brand + (channel.configured ? '' : ' is-unconfigured') + '" role="img" title="' + escapeHtml(tooltip)
-                + '" aria-label="' + escapeHtml(tooltip) + '">' +
-                '<span class="channel-brand-icon"><i class="bi bi-' + icon + '" aria-hidden="true"></i></span>' +
-                '<span class="channel-status-mark ' + statusClass + '"><i class="bi bi-' + statusIcon + '" aria-hidden="true"></i></span>' +
-                '</span>';
+            const tooltip = label + ': ' + (channel.configured
+                ? ({ SENT: 'Delivered', FAILED: 'Failed', PENDING: 'Pending / retrying',
+                    SKIPPED: 'Skipped', NOT_SENT: 'Not sent' }[status] || 'No delivery recorded')
+                : 'Not Configured') + countText;
+            let badgeClass = 'ch-badge text-secondary opacity-50';
+            let statusMark = '—';
+            if (channel.configured && status === 'SENT') {
+                badgeClass = 'ch-badge text-success';
+                statusMark = '✔';
+            } else if (channel.configured && status === 'FAILED') {
+                badgeClass = 'ch-badge text-danger border-danger';
+                statusMark = '✖';
+            } else if (channel.configured && status === 'PENDING') {
+                badgeClass = 'ch-badge text-warning border-warning';
+                statusMark = '…';
+            } else if (channel.configured && status === 'SKIPPED') {
+                badgeClass = 'ch-badge text-secondary opacity-75';
+                statusMark = '—';
+            }
+            return '<span class="' + badgeClass + '" title="' + escapeHtml(tooltip)
+                + '" aria-label="' + escapeHtml(tooltip) + '"><i class="bi bi-' + icon
+                + '" aria-hidden="true"></i> ' + statusMark + '</span>';
         }).join('');
         const rows = visible.map(item => {
             const severityClass = item.severity === 'CRITICAL' ? 'text-bg-danger' : item.severity === 'WARNING' ? 'text-bg-warning' : item.severity === 'SUCCESS' ? 'text-bg-success' : 'text-bg-info';
