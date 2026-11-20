@@ -164,6 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 executionInfo.textContent = 'Execution #' + payload.executionId + ' · ' + payload.executionStartedAt + ' · ' + payload.triggerSource;
+                const discoveredFields = conditionBuilder.getDiscoveredFields();
                 showMessage(discoveredFields.length + ' fields discovered from the latest successful saved execution.','success');
             } catch (error) {
                 showMessage(error.message || 'Unable to load the saved result. Please try again.','danger');
@@ -231,7 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const payload = await response.json();
             if (!response.ok) throw new Error(payload.message || 'Unable to discover fields from this sample.');
-            populateDiscoveredFields(payload.fields);
+            conditionBuilder.populateDiscoveredFields(payload.fields);
+            const discoveredFields = conditionBuilder.getDiscoveredFields();
             if (!discoveredFields.length) throw new Error('No selectable fields were found in this sample.');
             executionInfo.textContent = 'Sample response · not saved';
             showMessage(discoveredFields.length + ' fields discovered from the sample.','success');

@@ -7,6 +7,7 @@ on:
       - feature/iframe-widget-configuration
       - feature/alert-rule-discovery-retention-scope
       - feature/configurable-alert-engine
+      - feature/common-crud-ui-framework
   pull_request:
     branches:
       - feature/monitoring-execution-scheduling
