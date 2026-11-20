@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Locale;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.AlertCleanupRun;
@@ -69,7 +72,11 @@ public class AlertRetentionService {
         if (environmentId != null && applicationId == null) {
             throw new IllegalArgumentException("Select an application before selecting an environment.");
         }
-        if (applicationId != null) accessService.assertCanAccessApplication(applicationId, "DATA_EXPUNGE");
+        if (applicationId == null) {
+            assertGlobalPolicyAccess();
+        } else {
+            accessService.assertCanAccessApplication(applicationId, "DATA_EXPUNGE");
+        }
         if (environmentId != null) accessService.assertCanAccessEnvironment(applicationId, environmentId, "DATA_EXPUNGE");
         Application application = applicationId == null ? null : applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new IllegalArgumentException("Selected application was not found."));
@@ -222,6 +229,10 @@ public class AlertRetentionService {
     }
 
     private void assertPolicyScopeAccess(AlertRetentionPolicy policy) {
+        if (policy.getApplication() == null) {
+            assertGlobalPolicyAccess();
+            return;
+        }
         if (policy.getEnvironment() != null) {
             accessService.assertCanAccessEnvironment(policy.getApplication().getId(),
                     policy.getEnvironment().getId(), "DATA_EXPUNGE");
@@ -230,13 +241,27 @@ public class AlertRetentionService {
         }
     }
 
+    private void assertGlobalPolicyAccess() {
+        if (!isPlatformAdmin())
+            throw new AccessDeniedException("Global retention policies require platform administrator access.");
+    }
+
+    private boolean isPlatformAdmin() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    }
+
     @Transactional(readOnly = true)
     public List<AlertRetentionPolicy> findPolicies() {
         List<Long> allowedApplicationIds = accessService.getApplicationsWithPermission("DATA_EXPUNGE")
                 .stream().map(Application::getId).toList();
+        boolean platformAdmin = isPlatformAdmin();
         return policyRepository.findAllByOrderByDataTypeAsc().stream()
                 .filter(policy -> policy.getApplication() == null
-                        || allowedApplicationIds.contains(policy.getApplication().getId()))
+                        ? platformAdmin
+                        : allowedApplicationIds.contains(policy.getApplication().getId()))
                 .toList();
     }
 }
