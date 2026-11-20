@@ -6222,3 +6222,14 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .alert-detail-tabs-card {
     padding: 0;
 }
+
+/* Keep Overview cards inset from the outer Alert Details tab border. */
+.alert-detail-tabs-card #alert-overview {
+    padding: 1rem 1.25rem;
+}
+
+@media (max-width: 575.98px) {
+    .alert-detail-tabs-card #alert-overview {
+        padding: .75rem;
+    }
+}
