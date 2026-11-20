@@ -54,6 +54,18 @@ public interface MonitoringJobRepository extends JpaRepository<MonitoringJob, Lo
     List<MonitoringJob> findByScheduleId(Long scheduleId);
 
     @EntityGraph(attributePaths = { "application", "environment", "machine", "schedule" })
+    @Query("""
+            SELECT j FROM MonitoringJob j
+            JOIN j.schedule s
+            WHERE j.enabled = true
+              AND j.executionMode = :executionMode
+              AND s.enabled = true
+              AND s.type IS NOT NULL
+            ORDER BY j.name ASC
+            """)
+    List<MonitoringJob> findSchedulableJobs(@Param("executionMode") MonitoringJob.ExecutionMode executionMode);
+
+    @EntityGraph(attributePaths = { "application", "environment", "machine", "schedule" })
     java.util.List<MonitoringJob> findByExecutionModeOrderByNameAsc(
             MonitoringJob.ExecutionMode executionMode);
 

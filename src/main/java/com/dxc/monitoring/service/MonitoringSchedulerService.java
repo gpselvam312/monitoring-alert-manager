@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.support.CronTrigger;
@@ -23,6 +25,7 @@ import com.dxc.monitoring.repository.MonitoringJobRepository;
 @Service
 public class MonitoringSchedulerService
 {
+    private static final Logger log = LoggerFactory.getLogger(MonitoringSchedulerService.class);
     private final MonitoringJobRepository monitoringJobRepository;
     private final MonitoringExecutionManager monitoringExecutionManager;
     private final ThreadPoolTaskScheduler taskScheduler;
@@ -42,8 +45,7 @@ public class MonitoringSchedulerService
     @Transactional(readOnly = true)
     public void initialize()
     {
-        monitoringJobRepository.findAll().stream()
-                .filter(this::isSchedulable)
+        monitoringJobRepository.findSchedulableJobs(MonitoringJob.ExecutionMode.STANDARD)
                 .forEach(this::scheduleJob);
     }
 
@@ -142,8 +144,8 @@ public class MonitoringSchedulerService
         {
             // The execution manager records execution failures. Scheduling must continue
             // even when a single scheduled execution cannot be started.
-            System.err.println("Scheduled monitoring job " + jobId + " was not executed: "
-                    + exception.getMessage());
+            log.warn("Scheduled monitoring job {} could not be started ({}).",
+                    jobId, exception.getClass().getSimpleName());
         }
     }
 

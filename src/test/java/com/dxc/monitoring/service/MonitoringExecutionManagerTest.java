@@ -17,13 +17,15 @@ import com.dxc.monitoring.service.executor.MonitoringResultNormalizer;
 class MonitoringExecutionManagerTest {
     private MonitoringExecutionService executionService;
     private MonitoringJobRepository jobRepository;
+    private MonitoringExecutorFactory executorFactory;
     private MonitoringExecutionManager manager;
 
     @BeforeEach
     void setUp() {
         executionService = mock(MonitoringExecutionService.class);
         jobRepository = mock(MonitoringJobRepository.class);
-        manager = new MonitoringExecutionManager(mock(MonitoringExecutorFactory.class), executionService,
+        executorFactory = mock(MonitoringExecutorFactory.class);
+        manager = new MonitoringExecutionManager(executorFactory, executionService,
                 mock(MonitoringResultNormalizer.class), mock(AlertEvaluationQueueService.class), jobRepository);
     }
 
@@ -46,7 +48,10 @@ class MonitoringExecutionManagerTest {
         job.setId(74L);
         job.setEnabled(true);
         job.setAllowConcurrentExecution(true);
-        // The test only verifies that the manager does not acquire a database claim for this mode.
+        job.setType(MonitoringJob.MonitorType.SCRIPT);
+        when(executorFactory.getExecutor(MonitoringJob.MonitorType.SCRIPT))
+                .thenThrow(new IllegalStateException("executor unavailable for test"));
+        assertThrows(IllegalStateException.class, () -> manager.execute(job));
         verifyNoInteractions(jobRepository);
     }
 }
