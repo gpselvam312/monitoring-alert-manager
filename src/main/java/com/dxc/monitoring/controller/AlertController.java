@@ -39,7 +39,6 @@ import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleRepository;
 import com.dxc.monitoring.repository.AlertRuleEvaluationRepository;
 import com.dxc.monitoring.repository.MonitoringJobRepository;
-import com.dxc.monitoring.repository.NotificationPolicyRepository;
 import com.dxc.monitoring.repository.UserAlertStateRepository;
 import com.dxc.monitoring.security.CustomUserDetails;
 import com.dxc.monitoring.service.AlertRuleManagementService;
@@ -69,7 +68,6 @@ public class AlertController {
     private final AlertRuleConfigurationService ruleConfigurationService;
     private final DashboardAccessService accessService;
     private final UserAlertStateRepository userAlertStateRepository;
-    private final NotificationPolicyRepository notificationPolicyRepository;
     private final AlertRuleFieldDiscoveryService fieldDiscoveryService;
     private final AlertRuleNotificationRouteService notificationRouteService;
     private final SystemSettingService systemSettingService;
@@ -81,7 +79,6 @@ public class AlertController {
             AlertRuleManagementService ruleManagementService, AlertRuleConfigurationService ruleConfigurationService,
             DashboardAccessService accessService,
             UserAlertStateRepository userAlertStateRepository,
-            NotificationPolicyRepository notificationPolicyRepository,
             AlertRuleFieldDiscoveryService fieldDiscoveryService,
             AlertRuleNotificationRouteService notificationRouteService,
             SystemSettingService systemSettingService, PageRequestSupport pageRequestSupport) {
@@ -96,7 +93,6 @@ public class AlertController {
         this.ruleConfigurationService = ruleConfigurationService;
         this.accessService = accessService;
         this.userAlertStateRepository = userAlertStateRepository;
-        this.notificationPolicyRepository = notificationPolicyRepository;
         this.fieldDiscoveryService = fieldDiscoveryService;
         this.notificationRouteService = notificationRouteService;
         this.systemSettingService = systemSettingService;
