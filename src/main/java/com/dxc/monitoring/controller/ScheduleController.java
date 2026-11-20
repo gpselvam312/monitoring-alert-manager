@@ -5,9 +5,7 @@ import java.util.Map;
 import org.springframework.scheduling.support.CronExpression;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,6 +19,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.Schedule;
 import com.dxc.monitoring.service.ScheduleService;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
 @RequestMapping("/scheduling/schedules")
@@ -28,12 +27,14 @@ public class ScheduleController
 {
 
     private final ScheduleService scheduleService;
+    private final PageRequestSupport pageRequestSupport;
     private static final Map<String, String> SCHEDULE_SORT_FIELDS =
         Map.of("name", "name", "type", "type", "enabled", "enabled");
 
-    public ScheduleController(ScheduleService scheduleService)
+    public ScheduleController(ScheduleService scheduleService, PageRequestSupport pageRequestSupport)
     {
         this.scheduleService = scheduleService;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -42,26 +43,16 @@ public class ScheduleController
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
-
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", SCHEDULE_SORT_FIELDS);
         String normalizedSearch = search == null ? "" : search.trim();
-
-        Sort pageableSort = buildScheduleSort(sort, direction);
-
-        Pageable pageable = PageRequest.of(page, size, pageableSort);
+        Pageable pageable = spec.pageable();
 
         Page<Schedule> schedules = scheduleService.findAll(normalizedSearch, pageable);
 
         model.addAttribute("schedules", schedules);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("search", normalizedSearch);
         model.addAttribute("currentPage", "schedules");
 
@@ -74,33 +65,23 @@ public class ScheduleController
             @RequestParam(defaultValue = "") String search, @RequestParam(defaultValue = "name") String sort,
             @RequestParam(defaultValue = "asc") String direction, Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
-
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", SCHEDULE_SORT_FIELDS);
         String normalizedSearch = search == null ? "" : search.trim();
-
-        Sort pageableSort = buildScheduleSort(sort, direction);
-
-        Pageable pageable = PageRequest.of(page, size, pageableSort);
+        Pageable pageable = spec.pageable();
 
         Page<Schedule> schedules = scheduleService.findAll(normalizedSearch, pageable);
 
         model.addAttribute("schedules", schedules);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("search", normalizedSearch);
 
         return "scheduling/schedules :: schedulesTable";
     }
 
     @GetMapping("/new")
-    @PreAuthorize("hasAuthority('SCHEDULE_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String createScheduleForm(Model model)
     {
         Schedule schedule = new Schedule();
@@ -114,7 +95,7 @@ public class ScheduleController
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('SCHEDULE_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String saveSchedule(@ModelAttribute("schedule") Schedule schedule, Model model)
     {
         String validationError = validateSchedule(schedule);
@@ -255,7 +236,7 @@ public class ScheduleController
     }
 
     @GetMapping("/{id}/edit")
-    @PreAuthorize("hasAuthority('SCHEDULE_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String editScheduleForm(@PathVariable Long id, Model model)
     {
         Schedule schedule = scheduleService.findById(id);
@@ -268,7 +249,7 @@ public class ScheduleController
     }
 
     @PostMapping("/{id}/toggle")
-    @PreAuthorize("hasAuthority('SCHEDULE_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String toggleEnabled(@PathVariable Long id)
     {
         scheduleService.toggleEnabled(id);
@@ -277,7 +258,7 @@ public class ScheduleController
     }
 
     @PostMapping("/{id}/delete")
-    @PreAuthorize("hasAuthority('SCHEDULE_CONFIG')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String deleteSchedule(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         String scheduleName = scheduleService.delete(id);
@@ -288,12 +269,4 @@ public class ScheduleController
         return "redirect:/scheduling/schedules";
     }
 
-    private Sort buildScheduleSort(String sort, String direction)
-    {
-        String sortField = SCHEDULE_SORT_FIELDS.getOrDefault(sort, "name");
-
-        Sort.Direction sortDirection = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
-
-        return Sort.by(sortDirection, sortField);
-    }
 }
