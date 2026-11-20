@@ -62,7 +62,7 @@ class ScriptSecurityValidatorTest {
         for (String body : List.of(
                 "trap 'rm -rf /tmp/x' EXIT\\n",
                 "busybox rm -rf /tmp/x\\n",
-                "awk 'BEGIN { system(\\"rm -rf /tmp/x\\") }'\\n")) {
+                "awk 'BEGIN { system(1) }'\\n")) {
             Path script = write(body);
             assertThrows(IllegalArgumentException.class,
                     () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
