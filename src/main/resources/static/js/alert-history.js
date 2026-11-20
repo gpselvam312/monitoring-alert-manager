@@ -57,26 +57,62 @@
             return;
         }
         const headers = [
-            ['alertKey', 'Alert ID', 'alertKey'], ['title', 'Alert', 'title'], ['severity', 'Severity', 'severity'],
-            ['applicationName', 'Application / Environment', null], ['status', 'Status', 'status'],
-            ['occurrenceCount', 'Occurrences', 'occurrenceCount'], ['createdAt', 'Created', 'createdAt'],
-            ['lastOccurredAt', 'Last Occurred', 'lastOccurredAt'], ['resolvedAt', 'Resolved', 'resolvedAt']
+            ['alertKey', 'Alert ID', 'alertKey'], ['triggeredAt', 'Triggered Time', 'triggeredAt'],
+            ['severity', 'Severity', 'severity'], ['ruleTarget', 'Rule & Target', null],
+            ['status', 'Alert Status', 'status'], ['channels', 'Delivery', null],
+            ['occurrenceCount', 'Occurrences', 'occurrenceCount'], ['action', 'Action', null]
         ];
         const head = headers.map(([, label, sortField]) => '<th scope="col">' +
             (sortField ? '<button type="button" class="table-sort" data-sort="' + sortField + '" aria-label="Sort by ' + label + '">' + label + '<i class="bi table-sort-icon ms-1"></i></button>' : label) +
             '</th>').join('');
+        const channelDefinitions = [
+            ['EMAIL', 'Email', 'envelope-fill'],
+            ['TEAMS', 'Teams', 'chat-dots-fill'],
+            ['WHATSAPP', 'WhatsApp', 'whatsapp']
+        ];
+        const channelMarkup = item => channelDefinitions.map(([type, label, icon]) => {
+            const channel = item.channels && item.channels[type]
+                ? item.channels[type] : { configured: false, status: 'NOT_CONFIGURED' };
+            const status = channel.status || 'NOT_SENT';
+            const statusIcons = {
+                SENT: ['check-circle-fill', 'text-success', 'Delivered'],
+                FAILED: ['x-circle-fill', 'text-danger', 'Failed'],
+                PENDING: ['clock-fill', 'text-warning', 'Pending / retrying'],
+                SKIPPED: ['dash-circle-fill', 'text-secondary', 'Skipped'],
+                NOT_SENT: ['dash-circle', 'text-secondary', 'No delivery recorded'],
+                NOT_CONFIGURED: ['dash-circle-fill', 'text-secondary', 'Not configured']
+            };
+            const [statusIcon, statusClass, statusLabel] = statusIcons[status] || statusIcons.NOT_SENT;
+            const disabledClass = channel.configured ? '' : ' opacity-50';
+            const counts = Number(channel.sentCount || 0) + Number(channel.failedCount || 0)
+                + Number(channel.pendingCount || 0) + Number(channel.skippedCount || 0);
+            const countText = counts > 1
+                ? ' (' + channel.sentCount + ' delivered, ' + channel.failedCount + ' failed, '
+                    + channel.pendingCount + ' pending, ' + channel.skippedCount + ' skipped)'
+                : '';
+            const tooltip = label + ' — ' + (channel.configured ? statusLabel : 'Not configured') + countText;
+            return '<span class="d-inline-flex align-items-center gap-1 me-2" title="' + escapeHtml(tooltip)
+                + '" aria-label="' + escapeHtml(tooltip) + '">' +
+                '<i class="bi bi-' + icon + ' channel-indicator-icon' + disabledClass + '" aria-hidden="true"></i>' +
+                '<i class="bi bi-' + statusIcon + ' ' + statusClass + ' channel-indicator-status" aria-hidden="true"></i>' +
+                '</span>';
+        }).join('');
         const rows = visible.map(item => {
             const severityClass = item.severity === 'CRITICAL' ? 'text-bg-danger' : item.severity === 'WARNING' ? 'text-bg-warning' : item.severity === 'SUCCESS' ? 'text-bg-success' : 'text-bg-info';
             const statusClass = item.status === 'ACTIVE' ? 'text-bg-danger' : 'text-bg-success';
             const detailUrl = config.detailEndpoint + encodeURIComponent(item.id) + '?from=history';
             return '<tr>' +
                 '<td><a class="fw-semibold text-decoration-none" href="' + detailUrl + '">' + escapeHtml(item.alertKey) + '</a></td>' +
-                '<td><a class="fw-semibold text-decoration-none" href="' + detailUrl + '">' + escapeHtml(item.title) + '</a><div class="small text-muted">' + escapeHtml(item.jobName) + '</div></td>' +
+                '<td class="text-nowrap">' + escapeHtml(item.triggeredAt) + '</td>' +
                 '<td><span class="badge ' + severityClass + '">' + escapeHtml(item.severity) + '</span></td>' +
-                '<td><div>' + escapeHtml(item.applicationName) + '</div><div class="small text-muted">' + escapeHtml(item.environmentName) + '</div></td>' +
+                '<td title="' + escapeHtml(item.title) + '"><div class="fw-semibold">' + escapeHtml(item.ruleName) + '</div>' +
+                    '<div class="small text-muted">' + escapeHtml(item.jobName) + ' · ' + escapeHtml(item.applicationName)
+                    + ' / ' + escapeHtml(item.environmentName) + '</div></td>' +
                 '<td><span class="badge ' + statusClass + '">' + (item.status === 'ACTIVE' ? 'Active' : 'Recovered') + '</span></td>' +
-                '<td>' + escapeHtml(item.occurrenceCount) + '</td><td>' + escapeHtml(item.createdAt) + '</td>' +
-                '<td>' + escapeHtml(item.lastOccurredAt) + '</td><td>' + escapeHtml(item.resolvedAt) + '</td></tr>';
+                '<td class="text-nowrap">' + channelMarkup(item) + '</td>' +
+                '<td>' + escapeHtml(item.occurrenceCount) + '</td>' +
+                '<td><a class="btn btn-sm btn-outline-secondary" href="' + detailUrl + '" aria-label="View alert '
+                    + escapeHtml(item.alertKey) + '" title="View alert"><i class="bi bi-eye" aria-hidden="true"></i></a></td></tr>';
         }).join('');
         container.innerHTML = '<table class="table app-table align-middle mb-0"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table>';
         container.querySelectorAll('.table-sort').forEach(button => button.addEventListener('click', () => {
