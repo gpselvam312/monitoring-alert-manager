@@ -64,5 +64,55 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 });
+
+document.addEventListener("submit", async function (event) {
+    const form = event.target.closest("#alert-comments .alert-comment-form");
+    if (!form) return;
+
+    event.preventDefault();
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalButtonHtml = submitButton ? submitButton.innerHTML : "";
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Adding...';
+    }
+
+    try {
+        const response = await fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+            credentials: "same-origin"
+        });
+        if (!response.ok) throw new Error("The comment could not be submitted.");
+
+        const responseHtml = await response.text();
+        const refreshedDocument = new DOMParser().parseFromString(responseHtml, "text/html");
+        const refreshedComments = refreshedDocument.querySelector("#alert-comments");
+        const currentComments = document.querySelector("#alert-comments");
+        if (!refreshedComments || !currentComments) {
+            window.location.assign(response.url);
+            return;
+        }
+
+        currentComments.innerHTML = refreshedComments.innerHTML;
+        const activeTab = document.querySelector("#alert-comments-tab");
+        if (activeTab && window.bootstrap && window.bootstrap.Tab) {
+            window.bootstrap.Tab.getOrCreateInstance(activeTab).show();
+        }
+    } catch (error) {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonHtml;
+        }
+        let message = document.querySelector("#alert-comments .alert-comment-submit-error");
+        if (!message) {
+            message = document.createElement("div");
+            message.className = "alert alert-danger alert-comment-submit-error py-2 small";
+            form.prepend(message);
+        }
+        message.textContent = "Unable to add the comment. Please try again.";
+    }
+});
 </script>
 </div></body></html>
