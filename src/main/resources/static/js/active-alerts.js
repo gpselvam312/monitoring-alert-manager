@@ -210,24 +210,57 @@
     const clearSearch = byId('clear-' + config.searchId);
     if (clearSearch) clearSearch.addEventListener('click', () => { clearTimeout(state.searchTimer); searchInput.value = ''; clearSearch.classList.add('d-none'); navigateWithFilters(); });
     if (pageSizeSelect) pageSizeSelect.addEventListener('change', resetAndLoad);
-    Object.entries(config.filters || {}).forEach(([name, id]) => {
-        if (name === 'applicationId') return;
-        const field = byId(id);
-        if (field) field.addEventListener('change', navigateWithFilters);
-    });
     const applicationFilter = byId(config.filters.applicationId);
-    if (applicationFilter) applicationFilter.addEventListener('change', () => {
-        const environmentFilter = byId(config.filters.environmentId);
-        if (environmentFilter) environmentFilter.value = '';
-        navigateWithFilters();
+    const environmentFilter = byId(config.filters.environmentId);
+
+    function filterEnvironments() {
+        if (!environmentFilter) return;
+        const selectedApplication = applicationFilter ? applicationFilter.value : '';
+        Array.from(environmentFilter.options).forEach(option => {
+            if (!option.value) {
+                option.hidden = false;
+                return;
+            }
+            option.hidden = Boolean(selectedApplication)
+                && option.dataset.applicationId !== selectedApplication;
+        });
+        if (environmentFilter.selectedOptions.length
+                && environmentFilter.selectedOptions[0].hidden) {
+            environmentFilter.value = '';
+        }
+    }
+
+    filterEnvironments();
+
+    Object.entries(config.filters || {}).forEach(([name, id]) => {
+        if (name === 'applicationId' || name === 'environmentId') return;
+        const field = byId(id);
+        if (field) field.addEventListener('change', resetAndLoad);
     });
+
+    if (environmentFilter) environmentFilter.addEventListener('change', resetAndLoad);
+    if (applicationFilter) applicationFilter.addEventListener('change', () => {
+        if (environmentFilter) environmentFilter.value = '';
+        filterEnvironments();
+        resetAndLoad();
+    });
+
     const clearFilters = byId(config.clearFiltersId || 'activeAlertClearFilters');
     if (clearFilters) clearFilters.addEventListener('click', () => {
-        if (searchInput) { searchInput.value = ''; const clear = byId('clear-' + config.searchId); if (clear) clear.classList.add('d-none'); }
-        Object.values(config.filters || {}).forEach(id => { const field = byId(id); if (field) field.value = ''; });
+        if (searchInput) {
+            searchInput.value = '';
+            const clear = byId('clear-' + config.searchId);
+            if (clear) clear.classList.add('d-none');
+        }
+        Object.values(config.filters || {}).forEach(id => {
+            const field = byId(id);
+            if (field) field.value = '';
+        });
         if (pageSizeSelect) pageSizeSelect.value = '10';
-        config.sort = 'createdAt'; config.direction = 'desc';
-        navigateWithFilters();
+        config.sort = 'lastOccurredAt';
+        config.direction = 'desc';
+        filterEnvironments();
+        resetAndLoad();
     });
 
     if (searchInput && searchInput.value.trim()) {
