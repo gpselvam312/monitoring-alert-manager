@@ -35,8 +35,8 @@ public class AlertEvaluationQueueWorker {
                 evaluationService.evaluateExecution(request.executionId());
                 queueService.markCompleted(request.requestId());
             } catch (Exception exception) {
-                log.error("Alert evaluation request {} failed on attempt {}.",
-                        request.requestId(), request.attemptCount(), exception);
+                log.error("Alert evaluation request {} failed on attempt {} exceptionType={}.",
+                        request.requestId(), request.attemptCount(), exception.getClass().getSimpleName());
                 try {
                     queueService.markFailed(request.requestId(), request.attemptCount(), MAX_ATTEMPTS,
                             exception.getClass().getSimpleName());
