@@ -73,6 +73,7 @@ public class AlertController {
     private final AlertRuleFieldDiscoveryService fieldDiscoveryService;
     private final AlertRuleNotificationRouteService notificationRouteService;
     private final SystemSettingService systemSettingService;
+    private final PageRequestSupport pageRequestSupport;
 
     public AlertController(AlertRepository alertRepository, ReferenceDataCacheService referenceDataCache, AlertHistoryRepository historyRepository,
             AlertCommentRepository commentRepository, AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
@@ -83,7 +84,7 @@ public class AlertController {
             NotificationPolicyRepository notificationPolicyRepository,
             AlertRuleFieldDiscoveryService fieldDiscoveryService,
             AlertRuleNotificationRouteService notificationRouteService,
-            SystemSettingService systemSettingService) {
+            SystemSettingService systemSettingService, PageRequestSupport pageRequestSupport) {
         this.alertRepository = alertRepository;
         this.referenceDataCache = referenceDataCache;
         this.historyRepository = historyRepository;
@@ -99,6 +100,7 @@ public class AlertController {
         this.fieldDiscoveryService = fieldDiscoveryService;
         this.notificationRouteService = notificationRouteService;
         this.systemSettingService = systemSettingService;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -221,7 +223,7 @@ public class AlertController {
 
     private void addRuleListModel(Model model, int page, int size, String search, String sort, String direction) {
         String safeSearch = search == null ? "" : search.trim();
-        PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(page, size, sort, direction,
+        PageRequestSupport.PageSpec pageSpec = pageRequestSupport.create(page, size, sort, direction,
                 "updatedAt", Map.of(
                         "name", "name",
                         "monitoringJob.name", "monitoringJob.name",
@@ -379,7 +381,8 @@ public class AlertController {
     private Pageable pageable(int page, int size) {
         int safePage = Math.max(0, page);
         int safeSize = size == 5 || size == 10 || size == 25 ? size : 10;
-        return PageRequest.of(safePage, safeSize);
+        return pageRequestSupport.create(safePage, safeSize, "occurredAt", "desc", "occurredAt",
+                Map.of("occurredAt", "occurredAt")).pageable();
     }
 
     private Long userId(Authentication authentication) {

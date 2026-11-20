@@ -48,12 +48,13 @@ public class AlertHistoryController {
     private final SystemSettingService systemSettingService;
     private final AlertRuleNotificationRouteRepository notificationRouteRepository;
     private final NotificationDeliveryRepository notificationDeliveryRepository;
+    private final PageRequestSupport pageRequestSupport;
 
     public AlertHistoryController(AlertRepository alertRepository, DashboardAccessService accessService,
             ReferenceDataCacheService referenceDataCache, LookupProperties lookupProperties,
             SystemSettingService systemSettingService,
             AlertRuleNotificationRouteRepository notificationRouteRepository,
-            NotificationDeliveryRepository notificationDeliveryRepository) {
+            NotificationDeliveryRepository notificationDeliveryRepository, PageRequestSupport pageRequestSupport) {
         this.alertRepository = alertRepository;
         this.accessService = accessService;
         this.referenceDataCache = referenceDataCache;
@@ -61,6 +62,7 @@ public class AlertHistoryController {
         this.systemSettingService = systemSettingService;
         this.notificationRouteRepository = notificationRouteRepository;
         this.notificationDeliveryRepository = notificationDeliveryRepository;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping
@@ -85,7 +87,7 @@ public class AlertHistoryController {
         SearchTerm term = searchTerm(safeSearch);
         Alert.AlertStatus statusFilter = parseStatus(status);
         AlertRule.Severity severityFilter = parseSeverity(severity);
-        PageRequestSupport.PageSpec pageSpec = PageRequestSupport.create(0, size, sort, direction,
+        PageRequestSupport.PageSpec pageSpec = pageRequestSupport.create(0, size, sort, direction,
                 "triggeredAt", allowedSorts());
         long total = applicationIds.isEmpty() ? 0
                 : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
