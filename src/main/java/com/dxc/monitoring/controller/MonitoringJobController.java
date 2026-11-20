@@ -614,6 +614,7 @@ public class MonitoringJobController
     public String runNow(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         MonitoringJob job = monitoringJobService.findById(id);
+        accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_RUN");
 
         if (job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING)
         {
@@ -653,6 +654,7 @@ public class MonitoringJobController
 
         Pageable pageable = PageRequest.of(page, size, buildExecutionSort(sort, direction));
 
+        monitoringJobService.findById(id);
         Page<MonitoringExecution> executions = monitoringExecutionService.findByJobId(id, normalizedSearch, pageable);
 
         Map<Long, MonitoringResult.ResultStatus> resultStatuses =
@@ -721,7 +723,7 @@ public class MonitoringJobController
     @PreAuthorize("hasAuthority('MONITORING_VIEW')")
     public String executionDetails(@PathVariable Long jobId, @PathVariable Long executionId, Model model)
     {
-        MonitoringExecution execution = monitoringExecutionService.findById(executionId);
+        MonitoringExecution execution = monitoringExecutionService.findByIdForJob(jobId, executionId);
 
         List<MonitoringResult> results = monitoringExecutionService.findResultsByExecutionId(executionId);
 

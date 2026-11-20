@@ -102,8 +102,8 @@ public class DashboardAccessService {
     }
 
     private boolean hasPermission(Role role, String permission) {
-        return role != null && ("ADMIN".equals(role.getName())
-                || role.getPermissions().stream().anyMatch(p -> permission.equals(p.getName())));
+        return role != null && role.getPermissions().stream()
+                .anyMatch(p -> permission.equals(p.getName()));
     }
 
     private boolean isPlatformAdmin() {

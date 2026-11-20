@@ -13,6 +13,8 @@ import com.dxc.monitoring.entity.MonitoringExecution;
 
 public interface MonitoringExecutionRepository extends JpaRepository<MonitoringExecution, Long>
 {
+    Optional<MonitoringExecution> findByIdAndMonitoringJob_Id(Long id, Long monitoringJobId);
+
     Optional<MonitoringExecution> findFirstByMonitoringJob_IdAndStatusOrderByStartedAtDescIdDesc(
             Long monitoringJobId, MonitoringExecution.ExecutionStatus status);
 

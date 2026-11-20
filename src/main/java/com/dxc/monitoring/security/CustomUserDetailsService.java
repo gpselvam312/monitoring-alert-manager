@@ -47,10 +47,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Data services must still verify the role against the specific application being accessed.
         Set<UserApplicationRole> assignments = new HashSet<>(
                 userApplicationRoleRepository.findAssignmentsForUser(user.getId()));
-        Set<String> applicationScopedPermissions = Set.of("MONITORING_VIEW", "MONITORING_RUN", "MONITORING_CONFIG");
         assignments.stream().map(UserApplicationRole::getRole).filter(role -> role != null)
                 .flatMap(role -> role.getPermissions().stream()).map(Permission::getName)
-                .filter(applicationScopedPermissions::contains)
+                .filter(name -> name != null && !name.isBlank())
                 .map(SimpleGrantedAuthority::new).forEach(authorities::add);
 
         return new CustomUserDetails(user.getId(), user.getUsername(), user.getPasswordHash(),
