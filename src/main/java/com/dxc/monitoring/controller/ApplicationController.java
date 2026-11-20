@@ -85,31 +85,18 @@ public class ApplicationController
             @RequestParam(defaultValue = "name") String sort, @RequestParam(defaultValue = "asc") String direction,
             Model model)
     {
-        if (page < 0)
-        {
-            page = 0;
-        }
-
-        if (size != 5 && size != 10 && size != 25)
-        {
-            size = 5;
-        }
-
+        var spec = pageRequestSupport.create(page, size, sort, direction, "name", APPLICATION_SORT_FIELDS);
         String normalizedSearch = search == null ? "" : search.trim();
-
         Pageable pageable = spec.pageable();
-
         java.util.List<Long> accessibleIds = accessService.getAccessibleApplications().stream()
                 .map(Application::getId).toList();
         Page<Application> applications = accessibleIds.isEmpty() ? Page.empty(pageable)
                 : applicationRepository.findAllForApplications(normalizedSearch, accessibleIds, pageable);
-
         model.addAttribute("applications", applications);
         model.addAttribute("pageSize", spec.pageSize());
         model.addAttribute("sort", spec.sort());
         model.addAttribute("direction", spec.direction());
         model.addAttribute("search", normalizedSearch);
-
         return "administration/applications :: applicationsTable";
     }
 
