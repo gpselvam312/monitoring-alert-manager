@@ -73,7 +73,7 @@ public class MenuItemService {
         String url = configuredUrl.trim();
         if (!url.startsWith("/") || url.startsWith("//") || url.contains("..")
                 || url.contains("\\") || url.contains("\r") || url.contains("\n")
-                || url.matches("(?i).*%(2f|5c|2e).*")) return null;
+                || url.contains("%") || url.contains("?") || url.contains("#")) return null;
         return url;
     }
 
