@@ -24,10 +24,10 @@
     function loadBatch(batch, localPage) {
         if (state.loading) return;
         state.loading = true;
-        container.innerHTML = '<div class="p-4 text-muted text-center"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading alert history...</div>';
+        container.innerHTML = '<div class="p-4 text-muted text-center"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading active alerts...</div>';
         fetch(config.endpoint + '?' + paramsForBatch(batch).toString(), { headers: { 'Accept': 'application/json' } })
             .then(response => {
-                if (!response.ok) throw new Error('Unable to load alert history.');
+                if (!response.ok) throw new Error('Unable to load active alerts.');
                 return response.json();
             })
             .then(data => {
@@ -43,7 +43,7 @@
             })
             .catch(error => {
                 console.error(error);
-                container.innerHTML = '<div class="p-4 text-danger">Unable to load alert history. Please try again.</div>';
+                container.innerHTML = '<div class="p-4 text-danger">Unable to load active alerts. Please try again.</div>';
                 updatePagination(true);
             })
             .finally(() => { state.loading = false; });
@@ -53,7 +53,7 @@
         const start = state.localPage * state.pageSize;
         const visible = state.items.slice(start, start + state.pageSize);
         if (!state.totalElements) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i class="bi bi-clock-history"></i></div><h6>No alerts found</h6><p>Try changing the selected filters.</p></div>';
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i class="bi bi-exclamation-triangle"></i></div><h6>No alerts found</h6><p>No active alerts match the selected filters.</p></div>';
             updatePagination(false);
             return;
         }
