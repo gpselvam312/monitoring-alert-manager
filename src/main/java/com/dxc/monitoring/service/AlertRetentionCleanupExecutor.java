@@ -91,7 +91,7 @@ public class AlertRetentionCleanupExecutor {
                 detail.put("historyRowsDeleted", deleted);
             }
             case NOTIFICATION_DELIVERIES -> {
-                String eligibleDeliveries = "SELECT id FROM ra_fcb.notification_deliveries WHERE created_at < ? AND (status IN ('SENT', 'SKIPPED') OR (status = 'FAILED' AND attempt_count >= 8))";
+                String eligibleDeliveries = eligibleNotificationDeliveriesSql();
                 examined = count("SELECT COUNT(*) FROM (" + eligibleDeliveries + ") eligible", cutoff);
                 deleted = jdbcTemplate.update(
                         "DELETE FROM ra_fcb.notification_deliveries WHERE id IN (" + eligibleDeliveries + ")", cutoff);
@@ -118,8 +118,7 @@ public class AlertRetentionCleanupExecutor {
             case ALERT_HISTORY -> count("SELECT COUNT(*) FROM (" + eligibleResolvedHistorySql() + ") eligible",
                     alertScopeParameters(policy, cutoff));
             case NOTIFICATION_DELIVERIES -> count(
-                    "SELECT COUNT(*) FROM ra_fcb.notification_deliveries WHERE created_at < ? AND status NOT IN ('PENDING', 'SENDING')",
-                    cutoff);
+                    "SELECT COUNT(*) FROM (" + eligibleNotificationDeliveriesSql() + ") eligible", cutoff);
             case RULE_EVALUATIONS -> count("SELECT COUNT(*) FROM (" + eligibleOldEvaluationsSql() + ") eligible", cutoff);
         };
     }
@@ -164,6 +163,16 @@ public class AlertRetentionCleanupExecutor {
                       SELECT 1 FROM ra_fcb.notification_deliveries d
                       WHERE d.alert_history_id = h.id
                   )
+                """;
+    }
+
+    private String eligibleNotificationDeliveriesSql() {
+        return """
+                SELECT id
+                FROM ra_fcb.notification_deliveries
+                WHERE created_at < ?
+                  AND (status IN ('SENT', 'SKIPPED')
+                       OR (status = 'FAILED' AND attempt_count >= 8))
                 """;
     }
 
