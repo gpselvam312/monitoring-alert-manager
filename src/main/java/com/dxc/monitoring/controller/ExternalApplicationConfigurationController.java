@@ -172,7 +172,8 @@ public class ExternalApplicationConfigurationController
 
         if (applications.getTotalPages() > 0 && requestedPage >= applications.getTotalPages())
         {
-            pageable = PageRequest.of(applications.getTotalPages() - 1, pageSize, Sort.by(sortDirection, sortField));
+            pageable = pageRequestSupport.create(applications.getTotalPages() - 1, pageSize,
+                    spec.sort(), spec.direction(), "applicationName", SORT_FIELDS).pageable();
             applications = externalApplicationService.findPage(
                     normalizedSearch, applicationId, environmentId, externalType, pageable);
         }
