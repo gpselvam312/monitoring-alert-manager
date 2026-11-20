@@ -73,6 +73,7 @@ class AlertControllerRuleCrudTest {
         rule = mock(AlertRule.class);
         MonitoringJob job = mock(MonitoringJob.class);
         application = mock(Application.class);
+        when(rule.getId()).thenReturn(9L);
         when(rule.getMonitoringJob()).thenReturn(job);
         when(job.getApplication()).thenReturn(application);
         when(application.getId()).thenReturn(42L);
