@@ -6128,54 +6128,19 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 
 
 
-/* Alert History: compact, brand-coloured delivery channel indicators. */
-.channel-delivery-indicator {
-    position: relative;
+/* Alert History channel badges — matches the supplied delivery-log prototype. */
+.ch-badge {
     display: inline-flex;
-    width: 2rem;
-    height: 2rem;
-    flex: 0 0 2rem;
     align-items: center;
-    justify-content: center;
-    margin-right: .35rem;
-    vertical-align: middle;
+    gap: .3rem;
+    padding: .25rem .45rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--text-primary) 5%, var(--card-bg));
+    font-size: .75rem;
+    line-height: 1.35;
+    white-space: nowrap;
 }
-.channel-brand-icon {
-    display: inline-flex;
-    width: 1.8rem;
-    height: 1.8rem;
-    align-items: center;
-    justify-content: center;
-    border-radius: .5rem;
-    font-size: 1.05rem;
-    background: var(--channel-brand-bg);
-    color: var(--channel-brand-color);
+.ch-badge .bi {
+    font-size: .85rem;
 }
-.channel-brand-email { --channel-brand-color: #0d6efd; --channel-brand-bg: rgba(13, 110, 253, .12); }
-.channel-brand-teams { --channel-brand-color: #6264a7; --channel-brand-bg: rgba(98, 100, 167, .14); }
-.channel-brand-whatsapp { --channel-brand-color: #25d366; --channel-brand-bg: rgba(37, 211, 102, .14); }
-.channel-status-mark {
-    position: absolute;
-    right: -.12rem;
-    bottom: -.12rem;
-    display: inline-flex;
-    width: .9rem;
-    height: .9rem;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid var(--card-bg);
-    border-radius: 50%;
-    color: #fff;
-    font-size: .58rem;
-    line-height: 1;
-}
-.channel-status-mark.text-success { background: #198754; }
-.channel-status-mark.text-danger { background: #dc3545; }
-.channel-status-mark.text-warning { background: #d99a00; color: #212529; }
-.channel-status-mark.text-secondary { background: #6c757d; }
-.channel-delivery-indicator.is-unconfigured .channel-brand-icon {
-    color: var(--text-secondary);
-    background: color-mix(in srgb, var(--text-secondary) 12%, transparent);
-    opacity: .55;
-}
-.channel-delivery-indicator.is-unconfigured .channel-status-mark { opacity: .8; }
