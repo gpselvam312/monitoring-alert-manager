@@ -35,5 +35,21 @@ public interface MachineRepository extends JpaRepository<Machine, Long>
             WHERE m.id = :id
             """)
     Optional<Machine> findByIdWithEnvironment(Long id);
+
+    @EntityGraph(attributePaths = { "environment", "environment.application" })
+    @Query("""
+            SELECT m
+            FROM Machine m
+            JOIN m.environment e
+            WHERE e.application.id IN :applicationIds
+              AND (LOWER(m.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(m.hostname, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(m.ipAddress, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(COALESCE(m.description, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                OR LOWER(e.name) LIKE LOWER(CONCAT('%', :search, '%')))
+            """)
+    Page<Machine> findAllForApplications(@Param("search") String search,
+            @Param("applicationIds") java.util.List<Long> applicationIds, Pageable pageable);
+
     boolean existsByEnvironment_Id(Long environmentId);
 }

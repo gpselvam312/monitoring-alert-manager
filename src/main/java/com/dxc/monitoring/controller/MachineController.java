@@ -21,7 +21,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.entity.Machine;
 import com.dxc.monitoring.entity.User;
-import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.UserRepository;
 import com.dxc.monitoring.service.MachineService;
 
@@ -32,17 +31,14 @@ public class MachineController
 
     private final MachineService machineService;
     private final UserRepository userRepository;
-    private final EnvironmentRepository environmentRepository;
     private static final Map<String, String> MACHINE_SORT_FIELDS = Map.of("name", "name", "hostname", "hostname",
             "ipAddress", "ipAddress", "environment.name", "environment.name", "enabled", "enabled");
 
-    public MachineController(MachineService machineService, UserRepository userRepository,
-            EnvironmentRepository environmentRepository)
+    public MachineController(MachineService machineService, UserRepository userRepository)
     {
 
         this.machineService = machineService;
         this.userRepository = userRepository;
-        this.environmentRepository = environmentRepository;
     }
 
     @GetMapping
@@ -111,7 +107,7 @@ public class MachineController
         model.addAttribute("machine", machine);
         model.addAttribute("pageTitle", "Add Machine");
         model.addAttribute("submitLabel", "Save Machine");
-        model.addAttribute("environments", environmentRepository.findByEnabledTrueOrderByName());
+        model.addAttribute("environments", machineService.findEnabledEnvironments());
 
         return "monitoring/machine-form";
     }
@@ -129,8 +125,8 @@ public class MachineController
         if (machine.getEnvironment() != null && machine.getEnvironment().getId() != null)
         {
 
-            selectedEnvironment = environmentRepository.findById(machine.getEnvironment().getId()).orElseThrow(
-                    () -> new IllegalArgumentException("Environment not found: " + machine.getEnvironment().getId()));
+            selectedEnvironment = new Environment();
+            selectedEnvironment.setId(machine.getEnvironment().getId());
         }
 
         if (machine.getId() != null)
@@ -183,7 +179,7 @@ public class MachineController
         model.addAttribute("machine", machine);
         model.addAttribute("pageTitle", "Edit Machine");
         model.addAttribute("submitLabel", "Update Machine");
-        model.addAttribute("environments", environmentRepository.findByEnabledTrueOrderByName());
+        model.addAttribute("environments", machineService.findEnabledEnvironments());
         return "monitoring/machine-form";
     }
 
