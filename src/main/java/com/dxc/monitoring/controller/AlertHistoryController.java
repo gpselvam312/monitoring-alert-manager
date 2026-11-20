@@ -68,7 +68,7 @@ public class AlertHistoryController {
     @GetMapping
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
     public String history(@RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "5") int size,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String severity,
             @RequestParam(required = false) Long applicationId,

@@ -109,7 +109,7 @@ public class AlertController {
             @RequestParam(required = false) Long applicationId,
             @RequestParam(required = false) Long environmentId,
             @RequestParam(required = false) String severity,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "lastOccurredAt") String sort,
             @RequestParam(defaultValue = "desc") String direction, Model model) {
         List<Application> applications = accessService.getApplicationsWithPermission("ALERT_VIEW");
@@ -134,7 +134,7 @@ public class AlertController {
         model.addAttribute("applicationId", applicationId);
         model.addAttribute("environmentId", environmentId);
         model.addAttribute("severity", severity == null ? "" : severity);
-        model.addAttribute("pageSize", size == 5 || size == 10 || size == 25 ? size : 10);
+        model.addAttribute("pageSize", size == 5 || size == 10 || size == 25 ? size : pageRequestSupport.defaultPageSize());
         model.addAttribute("sort", sort);
         model.addAttribute("direction", direction);
         model.addAttribute("currentPage", "active-alerts");
@@ -144,7 +144,7 @@ public class AlertController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
     public String alertDetails(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "active") String from,
+            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "active") String from,
             Authentication authentication, Model model) {
         List<Long> applicationIds = applicationIds("ALERT_VIEW");
         Alert alert = applicationIds.isEmpty() ? null
@@ -170,7 +170,7 @@ public class AlertController {
     @GetMapping("/rules")
     @PreAuthorize("hasAuthority('ALERT_CONFIG')")
     public String alertRules(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "updatedAt") String sort,
             @RequestParam(defaultValue = "desc") String direction, Model model) {
@@ -182,7 +182,7 @@ public class AlertController {
     @GetMapping("/rules/table")
     @PreAuthorize("hasAuthority('ALERT_CONFIG')")
     public String alertRulesTable(@RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "updatedAt") String sort,
             @RequestParam(defaultValue = "desc") String direction, Model model) {
@@ -380,7 +380,7 @@ public class AlertController {
 
     private Pageable pageable(int page, int size) {
         int safePage = Math.max(0, page);
-        int safeSize = size == 5 || size == 10 || size == 25 ? size : 10;
+        int safeSize = size == 5 || size == 10 || size == 25 ? size : pageRequestSupport.defaultPageSize();
         return pageRequestSupport.create(safePage, safeSize, "occurredAt", "desc", "occurredAt",
                 Map.of("occurredAt", "occurredAt")).pageable();
     }
