@@ -136,6 +136,7 @@
                     ? searchInput.value.trim()
                     : '';
 
+            container.classList.remove('text-danger');
             if (config._activeRequest) {
                 config._activeRequest.abort();
             }
