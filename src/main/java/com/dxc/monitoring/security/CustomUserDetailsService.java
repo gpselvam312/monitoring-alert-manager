@@ -56,7 +56,7 @@ public class CustomUserDetailsService implements UserDetailsService {
             Long applicationId = assignment.getApplication().getId();
             Set<String> permissions = applicationPermissions.computeIfAbsent(applicationId, ignored -> new HashSet<>());
             assignment.getRole().getPermissions().stream().map(Permission::getName)
-                    .filter(name -> name != null && !name.isBlank()).forEach(permission -> {
+                    .filter(name -> name != null && !name.isBlank() && !name.startsWith("ROLE_")).forEach(permission -> {
                         permissions.add(permission);
                         authorities.add(new SimpleGrantedAuthority(permission));
                     });

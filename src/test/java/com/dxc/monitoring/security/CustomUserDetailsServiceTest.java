@@ -32,9 +32,11 @@ class CustomUserDetailsServiceTest {
 
         Permission permission = new Permission();
         permission.setName("MONITORING_VIEW");
+        Permission reservedPermission = new Permission();
+        reservedPermission.setName("ROLE_ADMIN");
         Role role = new Role();
         role.setName("VIEWER");
-        role.setPermissions(Set.of(permission));
+        role.setPermissions(Set.of(permission, reservedPermission));
         Application application = new Application();
         application.setId(42L);
         UserApplicationRole assignment = new UserApplicationRole();
@@ -53,6 +55,7 @@ class CustomUserDetailsServiceTest {
         assertEquals(42L, details.getPrimaryApplicationId());
         assertTrue(details.getAuthorities().stream().anyMatch(a -> "MONITORING_VIEW".equals(a.getAuthority())));
         assertFalse(details.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority())));
+        assertFalse(details.hasApplicationPermission(42L, "ROLE_ADMIN"));
     }
 
     @Test
