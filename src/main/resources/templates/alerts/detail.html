@@ -37,25 +37,21 @@
 </tbody></table></div>
 <div th:if="${history.totalPages > 1}" class="d-flex justify-content-between align-items-center p-3 border-top"><span class="small text-muted" th:text="'Page ' + (${history.number + 1}) + ' of ' + ${history.totalPages}">Page</span><div class="btn-group btn-group-sm"><a class="btn btn-outline-secondary" th:classappend="${history.first} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number - 1},size=${pageSize},from=${detailSource})} + '#alert-lifecycle'">Previous</a><a class="btn btn-outline-secondary" th:classappend="${history.last} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number + 1},size=${pageSize},from=${detailSource})} + '#alert-lifecycle'">Next</a></div></div>
 </div></div></div>
-<div class="tab-pane fade" id="alert-comments" role="tabpanel" aria-labelledby="alert-comments-tab"><div class="app-card mt-3">
-    <div class="app-card-header"><h2 class="h6 mb-0">Comments</h2></div>
-    <div class="app-card-body">
-        <form method="post" th:action="@{/alerts/{id}/comments(id=${alert.id})}" class="mb-4"><input type="hidden" name="from" th:value="${detailSource}">
-            <label class="form-label" for="comment">Add a comment</label>
-            <textarea class="form-control" id="comment" name="comment" rows="3" maxlength="5000" required
-                      placeholder="Share an update or investigation note..."></textarea>
-            <div class="d-flex justify-content-end mt-2"><button class="btn btn-primary" type="submit">Add Comment</button></div>
-        </form>
-        <div th:if="${comments.isEmpty()}" class="text-muted small">No comments have been added to this alert.</div>
-        <div th:each="comment : ${comments}" class="border-top py-3">
-            <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
-                <strong th:text="${comment.authorName}">Author</strong>
-                <span class="small text-muted" th:text="${#temporals.format(comment.createdAt, dateTimeFormat)}">Time</span>
-            </div>
-            <p class="mb-0 text-break" style="white-space: pre-wrap" th:text="${comment.commentText}">Comment</p>
-        </div>
-    </div>
-</div></div>
+<div class="tab-pane fade" id="alert-comments" role="tabpanel" aria-labelledby="alert-comments-tab">
+<div class="alert-comments-panel">
+<div class="d-flex align-items-center justify-content-between mb-3"><h2 class="h6 mb-0">Comments</h2><span class="small text-muted" th:text="${comments.size()} + ' comment(s)'">0 comments</span></div>
+<form method="post" th:action="@{/alerts/{id}/comments(id=${alert.id})}" class="alert-comment-form mb-3"><input type="hidden" name="from" th:value="${detailSource}">
+<label class="form-label" for="comment">Add a comment</label>
+<textarea class="form-control" id="comment" name="comment" rows="2" maxlength="5000" required placeholder="Share an update or investigation note..."></textarea>
+<div class="d-flex justify-content-end mt-2"><button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-send me-1" aria-hidden="true"></i>Add Comment</button></div>
+</form>
+<div th:if="${comments.isEmpty()}" class="text-muted small py-2">No comments have been added to this alert.</div>
+<div th:each="comment : ${comments}" class="alert-comment-item">
+<div class="d-flex flex-wrap justify-content-between gap-2 mb-1"><strong th:text="${comment.authorName}">Author</strong><span class="small text-muted" th:text="${#temporals.format(comment.createdAt, dateTimeFormat)}">Time</span></div>
+<p class="mb-0 text-break" style="white-space: pre-wrap" th:text="${comment.commentText}">Comment</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 <script>
