@@ -8,11 +8,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.dxc.monitoring.config.BackgroundWorkReadiness;
 import com.dxc.monitoring.entity.NotificationChannel;
 import com.dxc.monitoring.entity.NotificationDelivery;
-import com.dxc.monitoring.repository.NotificationDeliveryRepository;
 import com.dxc.monitoring.service.notification.NotificationChannelSender;
-import com.dxc.monitoring.service.external.ExternalSecretEncryptionService;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -22,28 +21,28 @@ public class NotificationDeliveryWorker {
     private static final Logger log = LoggerFactory.getLogger(NotificationDeliveryWorker.class);
     private static final int BATCH_SIZE = 20;
     private static final int MAX_ATTEMPTS = 8;
-
     private final NotificationDeliveryQueueService queueService;
     private final NotificationChannelSecretService secretService;
     private final List<NotificationChannelSender> senders;
     private final ObjectMapper objectMapper;
+    private final BackgroundWorkReadiness readiness;
 
     public NotificationDeliveryWorker(NotificationDeliveryQueueService queueService,
             NotificationChannelSecretService secretService, List<NotificationChannelSender> senders,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper, BackgroundWorkReadiness readiness) {
         this.queueService = queueService;
         this.secretService = secretService;
         this.senders = senders;
         this.objectMapper = objectMapper;
+        this.readiness = readiness;
     }
 
     @Scheduled(fixedDelayString = "${alerts.notifications.poll-interval-ms:2000}")
     public void poll() {
+        if (!readiness.isReady()) return;
         List<NotificationDeliveryQueueService.ClaimedDelivery> deliveries =
                 queueService.claimDueDeliveries(BATCH_SIZE, MAX_ATTEMPTS);
-        if (!deliveries.isEmpty()) {
-            log.info("Notification delivery worker claimed {} pending deliveries", deliveries.size());
-        }
+        if (!deliveries.isEmpty()) log.info("Notification delivery worker claimed {} pending deliveries", deliveries.size());
         for (NotificationDeliveryQueueService.ClaimedDelivery claim : deliveries) {
             try {
                 NotificationDelivery delivery = queueService.loadForDelivery(claim.deliveryId());
@@ -61,21 +60,18 @@ public class NotificationDeliveryWorker {
                 }
                 NotificationChannelSender sender = senders.stream()
                         .filter(candidate -> candidate.channelType() == channel.getChannelType())
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalStateException("No sender is configured for this notification channel."));
+                        .findFirst().orElseThrow(() -> new IllegalStateException(
+                                "No sender is configured for this notification channel."));
                 Map<String, Object> payload = objectMapper.readValue(delivery.getMessagePayload(),
                         new TypeReference<Map<String, Object>>() {});
-                if (delivery.getCcRecipientsSnapshot() != null && !delivery.getCcRecipientsSnapshot().isBlank()) {
+                if (delivery.getCcRecipientsSnapshot() != null && !delivery.getCcRecipientsSnapshot().isBlank())
                     payload.put("ccRecipients", delivery.getCcRecipientsSnapshot());
-                }
                 String secretKey = channel.getCredentialReference();
-                if (secretKey == null || secretKey.isBlank()) {
-                    secretKey = switch (channel.getChannelType()) {
-                        case EMAIL -> "smtp-password";
-                        case TEAMS -> "webhook-url";
-                        case WHATSAPP -> "access-token";
-                    };
-                }
+                if (secretKey == null || secretKey.isBlank()) secretKey = switch (channel.getChannelType()) {
+                    case EMAIL -> "smtp-password";
+                    case TEAMS -> "webhook-url";
+                    case WHATSAPP -> "access-token";
+                };
                 String credential = secretService.getSecret(channel.getId(), secretKey);
                 log.info("Sending notification deliveryId={} alertId={} channelId={} channelType={} recipientId={} attempt={}",
                         claim.deliveryId(), delivery.getAlert() == null ? null : delivery.getAlert().getId(),
@@ -88,8 +84,7 @@ public class NotificationDeliveryWorker {
             } catch (Exception exception) {
                 log.error("Notification deliveryId={} failed on attempt {} exceptionType={} message={}",
                         claim.deliveryId(), claim.attemptCount(), exception.getClass().getSimpleName(), safeMessage(exception), exception);
-                queueService.markFailed(claim.deliveryId(), claim.attemptCount(), MAX_ATTEMPTS,
-                        safeMessage(exception));
+                queueService.markFailed(claim.deliveryId(), claim.attemptCount(), MAX_ATTEMPTS, safeMessage(exception));
             }
         }
     }

@@ -7,23 +7,27 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.dxc.monitoring.config.BackgroundWorkReadiness;
+
 @Component
 public class AlertEvaluationQueueWorker {
     private static final Logger log = LoggerFactory.getLogger(AlertEvaluationQueueWorker.class);
     private static final int BATCH_SIZE = 20;
     private static final int MAX_ATTEMPTS = 8;
-
     private final AlertEvaluationQueueService queueService;
     private final AlertEvaluationService evaluationService;
+    private final BackgroundWorkReadiness readiness;
 
     public AlertEvaluationQueueWorker(AlertEvaluationQueueService queueService,
-            AlertEvaluationService evaluationService) {
+            AlertEvaluationService evaluationService, BackgroundWorkReadiness readiness) {
         this.queueService = queueService;
         this.evaluationService = evaluationService;
+        this.readiness = readiness;
     }
 
     @Scheduled(fixedDelayString = "${alerts.evaluation.poll-interval-ms:2000}")
     public void poll() {
+        if (!readiness.isReady()) return;
         List<AlertEvaluationQueueService.ClaimedRequest> requests =
                 queueService.claimDueRequests(BATCH_SIZE, MAX_ATTEMPTS);
         for (AlertEvaluationQueueService.ClaimedRequest request : requests) {
