@@ -32,6 +32,7 @@ public class SecretEncryptionStartupRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        migrationService.assertEncryptionKeyAvailableWhenSecretsExist();
         if (updatePasswords) {
             if (currentKey == null || currentKey.isBlank())
                 throw new IllegalStateException("MONITORING_ENCRYPTION_KEY is required when updatePwd is true.");

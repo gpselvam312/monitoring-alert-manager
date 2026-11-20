@@ -85,6 +85,8 @@ public class ExternalSecretEncryptionService {
         }
     }
 
+    public boolean isConfigured() { return keyBytes != null; }
+
     private byte[] requireCurrentKey() {
         return requireKey(keyBytes);
     }

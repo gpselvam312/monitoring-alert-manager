@@ -23,6 +23,16 @@ public class SecretEncryptionMigrationService {
         this.encryption = encryption;
     }
 
+    @Transactional(readOnly = true)
+    public void assertEncryptionKeyAvailableWhenSecretsExist() {
+        boolean hasExternal = externalAccounts.findAll().stream()
+                .anyMatch(account -> account.getEncryptedSecret() != null && !account.getEncryptedSecret().isBlank());
+        boolean hasNotification = notificationSecrets.findAll().stream()
+                .anyMatch(secret -> secret.getEncryptedValue() != null && !secret.getEncryptedValue().isBlank());
+        if ((hasExternal || hasNotification) && !encryption.isConfigured())
+            throw new IllegalStateException("MONITORING_ENCRYPTION_KEY is required because encrypted secrets are stored in the database.");
+    }
+
     @Transactional
     public RotationResult rotate(String previousKey, String currentKey) {
         if (previousKey == null || previousKey.isBlank() || currentKey == null || currentKey.isBlank())
