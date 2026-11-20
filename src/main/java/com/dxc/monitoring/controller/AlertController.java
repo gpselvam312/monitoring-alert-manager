@@ -34,7 +34,6 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.repository.AlertHistoryRepository;
-import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.AlertCommentRepository;
 import com.dxc.monitoring.repository.AlertRepository;
 import com.dxc.monitoring.repository.AlertRuleRepository;
@@ -48,6 +47,7 @@ import com.dxc.monitoring.service.AlertRuleConfigurationService;
 import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
 import com.dxc.monitoring.service.AlertRuleFieldDiscoveryService;
 import com.dxc.monitoring.service.SystemSettingService;
+import com.dxc.monitoring.service.ReferenceDataCacheService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.AlertRuleForm;
 import com.dxc.monitoring.web.PageRequestSupport;
@@ -59,7 +59,7 @@ import jakarta.validation.Valid;
 public class AlertController {
     private static final Logger log = LoggerFactory.getLogger(AlertController.class);
     private final AlertRepository alertRepository;
-    private final EnvironmentRepository environmentRepository;
+    private final ReferenceDataCacheService referenceDataCache;
     private final AlertHistoryRepository historyRepository;
     private final AlertCommentRepository commentRepository;
     private final AlertRuleRepository ruleRepository;
@@ -74,7 +74,7 @@ public class AlertController {
     private final AlertRuleNotificationRouteService notificationRouteService;
     private final SystemSettingService systemSettingService;
 
-    public AlertController(AlertRepository alertRepository, EnvironmentRepository environmentRepository, AlertHistoryRepository historyRepository,
+    public AlertController(AlertRepository alertRepository, ReferenceDataCacheService referenceDataCache, AlertHistoryRepository historyRepository,
             AlertCommentRepository commentRepository, AlertRuleRepository ruleRepository, AlertRuleEvaluationRepository ruleEvaluationRepository,
             MonitoringJobRepository jobRepository,
             AlertRuleManagementService ruleManagementService, AlertRuleConfigurationService ruleConfigurationService,
@@ -85,7 +85,7 @@ public class AlertController {
             AlertRuleNotificationRouteService notificationRouteService,
             SystemSettingService systemSettingService) {
         this.alertRepository = alertRepository;
-        this.environmentRepository = environmentRepository;
+        this.referenceDataCache = referenceDataCache;
         this.historyRepository = historyRepository;
         this.commentRepository = commentRepository;
         this.ruleRepository = ruleRepository;
@@ -115,10 +115,11 @@ public class AlertController {
         if (applicationId != null && !applicationIds.contains(applicationId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot access this application.");
         }
-        List<com.dxc.monitoring.entity.Environment> environments = applicationId == null
-                ? (applicationIds.isEmpty() ? List.of()
-                        : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds))
-                : environmentRepository.findByApplicationIdAndEnabledTrueOrderByNameIgnoreCase(applicationId);
+        // Reuse the same cached environment reference data used by the Dashboard.
+        // Only environments belonging to applications authorized for ALERT_VIEW are exposed.
+        List<com.dxc.monitoring.entity.Environment> environments = applications.stream()
+                .flatMap(application -> referenceDataCache.getEnabledEnvironments(application.getId()).stream())
+                .toList();
         if (environmentId != null && environments.stream().noneMatch(env -> env.getId().equals(environmentId))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Choose an environment within your authorized application scope.");
