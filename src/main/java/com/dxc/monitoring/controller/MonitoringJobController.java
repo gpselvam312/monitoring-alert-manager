@@ -162,7 +162,9 @@ public class MonitoringJobController
                 .map(com.dxc.monitoring.entity.Application::getId).toList();
         model.addAttribute("applications", configurableApplications);
         model.addAttribute("environments", configurableApplicationIds.isEmpty() ? List.of()
-                : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(configurableApplicationIds));
+                : configurableApplicationIds.stream()
+                        .flatMap(allowedApplicationId -> accessService.getEnvironmentsForApplication(
+                                allowedApplicationId, "MONITORING_CONFIG").stream()).toList());
         model.addAttribute("maxStreamingRuntimeSeconds", configuredMaximumStreamingRuntimeSeconds);
         model.addAttribute("executionModeLocked", streamingContext);
         model.addAttribute("pageTitle", streamingContext ? "Add Streaming Job" : "Add Monitoring Job");
@@ -514,7 +516,9 @@ public class MonitoringJobController
                 .map(com.dxc.monitoring.entity.Application::getId).toList();
         model.addAttribute("applications", configurableApplications);
         model.addAttribute("environments", configurableApplicationIds.isEmpty() ? List.of()
-                : environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(configurableApplicationIds));
+                : configurableApplicationIds.stream()
+                        .flatMap(allowedApplicationId -> accessService.getEnvironmentsForApplication(
+                                allowedApplicationId, "MONITORING_CONFIG").stream()).toList());
         model.addAttribute("maxStreamingRuntimeSeconds", configuredMaximumStreamingRuntimeSeconds);
         model.addAttribute("executionModeLocked", streamingContext);
         model.addAttribute("pageTitle", streamingContext ? "Edit Streaming Job" : "Edit Monitoring Job");
