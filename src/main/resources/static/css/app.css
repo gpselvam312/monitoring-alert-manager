@@ -6036,10 +6036,9 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 .server-health-summary-healthy.summary-table-card { --summary-card-accent: var(--success); }
 .server-health-summary-unknown.summary-table-card { --summary-card-accent: var(--text-secondary); }
 
-/* Alert History summary cards: compact gradient cards with a clear accent edge. */
+/* Alert History summary cards */
 .alert-history-summary .summary-table-card {
-    --summary-card-accent: var(--theme-primary, #0d6efd);
-    position: relative;
+    --summary-card-accent: var(--theme-primary);
     display: flex;
     min-width: 0;
     min-height: 86px;
@@ -6061,6 +6060,14 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     border-left: 4px solid var(--summary-card-accent);
     border-radius: .65rem;
     transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.alert-history-summary .summary-card-active {
+    --summary-card-accent: var(--danger);
+}
+
+.alert-history-summary .summary-card-recovered {
+    --summary-card-accent: var(--success);
 }
 
 .alert-history-summary .summary-table-card-icon {
@@ -6095,7 +6102,7 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
 }
 
 .alert-history-summary .summary-table-card-filter:focus-visible {
-    outline: 2px solid var(--theme-primary, #0d6efd);
+    outline: 2px solid var(--summary-card-accent);
     outline-offset: 2px;
 }
 
@@ -6104,26 +6111,6 @@ body.dashboard-iframe-expanded .dashboard-iframe-expanded-column .dashboard-ifra
     box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--summary-card-accent) 22%, transparent);
 }
 
-.alert-history-summary .summary-card-active,
-.alert-history-summary .summary-table-card.summary-card-active {
-    --summary-card-accent: #dc3545;
-}
-
-.alert-history-summary .summary-card-recovered,
-.alert-history-summary .summary-table-card.summary-card-recovered {
-    --summary-card-accent: #198754;
-}
-
-@media (max-width: 767.98px) {
-    .alert-history-summary .summary-table-card {
-        min-height: 6.75rem;
-        padding: .75rem;
-    }
-
-    .alert-history-summary .summary-table-card-value {
-        font-size: 1.4rem;
-    }
-}
 @media (max-width: 767.98px) {
     .summary-table-cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
