@@ -32,6 +32,8 @@ import com.dxc.monitoring.service.AlertRuleNotificationRouteService;
 import com.dxc.monitoring.service.SystemSettingService;
 import com.dxc.monitoring.service.ReferenceDataCacheService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
+import com.dxc.monitoring.web.PageRequestSupport;
+import com.dxc.monitoring.web.PaginationProperties;
 
 class AlertControllerRuleCrudTest {
     private AlertRepository alertRepository;
@@ -62,7 +64,7 @@ class AlertControllerRuleCrudTest {
         controller = new AlertController(alertRepository, referenceDataCache, historyRepository, commentRepository, ruleRepository,
                 evaluationRepository, jobRepository, managementService, configurationService,
                 accessService, userAlertStateRepository, notificationPolicyRepository,
-                fieldDiscoveryService, routeService, systemSettingService);
+                fieldDiscoveryService, routeService, systemSettingService, new PageRequestSupport(new PaginationProperties()));
 
         rule = mock(AlertRule.class);
         MonitoringJob job = mock(MonitoringJob.class);
