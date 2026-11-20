@@ -66,11 +66,11 @@
             (sortField ? '<button type="button" class="table-sort" data-sort="' + sortField + '" aria-label="Sort by ' + label + '">' + label + '<i class="bi table-sort-icon ms-1"></i></button>' : label) +
             '</th>').join('');
         const channelDefinitions = [
-            ['EMAIL', 'Email', 'envelope-fill'],
-            ['TEAMS', 'Teams', 'microsoft-teams'],
-            ['WHATSAPP', 'WhatsApp', 'whatsapp']
+            ['EMAIL', 'Email', 'envelope-fill', 'email'],
+            ['TEAMS', 'Teams', 'microsoft-teams', 'teams'],
+            ['WHATSAPP', 'WhatsApp', 'whatsapp', 'whatsapp']
         ];
-        const channelMarkup = item => channelDefinitions.map(([type, label, icon]) => {
+        const channelMarkup = item => channelDefinitions.map(([type, label, icon, brand]) => {
             const channel = item.channels && item.channels[type]
                 ? item.channels[type] : { configured: false, status: 'NOT_CONFIGURED' };
             const status = channel.status || 'NOT_SENT';
@@ -91,10 +91,10 @@
                     + channel.pendingCount + ' pending, ' + channel.skippedCount + ' skipped)'
                 : '';
             const tooltip = label + ' — ' + (channel.configured ? statusLabel : 'Not configured') + countText;
-            return '<span class="d-inline-flex align-items-center gap-1 me-2" role="img" title="' + escapeHtml(tooltip)
+            return '<span class="channel-delivery-indicator channel-brand-' + brand + (channel.configured ? '' : ' is-unconfigured') + '" role="img" title="' + escapeHtml(tooltip)
                 + '" aria-label="' + escapeHtml(tooltip) + '">' +
-                '<i class="bi bi-' + icon + ' channel-indicator-icon' + disabledClass + '" aria-hidden="true"></i>' +
-                '<i class="bi bi-' + statusIcon + ' ' + statusClass + ' channel-indicator-status" aria-hidden="true"></i>' +
+                '<span class="channel-brand-icon"><i class="bi bi-' + icon + '" aria-hidden="true"></i></span>' +
+                '<span class="channel-status-mark ' + statusClass + '"><i class="bi bi-' + statusIcon + '" aria-hidden="true"></i></span>' +
                 '</span>';
         }).join('');
         const rows = visible.map(item => {
