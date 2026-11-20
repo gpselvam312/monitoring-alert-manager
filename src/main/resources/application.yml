@@ -33,6 +33,10 @@ management:
       show-details: when_authorized
 
 monitoring:
+  pagination:
+    default-page-size: ${MONITORING_PAGE_DEFAULT_SIZE:5}
+    allowed-page-sizes: ${MONITORING_PAGE_ALLOWED_SIZES:5,10,25}
+    max-page-size: ${MONITORING_PAGE_MAX_SIZE:100}
   lookup:
     # Records fetched per server request; independent from the UI page size.
     fetch-size: ${MONITORING_LOOKUP_FETCH_SIZE:100}
