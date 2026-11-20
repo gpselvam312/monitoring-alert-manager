@@ -11,6 +11,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.Model;
+import org.springframework.ui.ExtendedModelMap;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
@@ -32,6 +33,7 @@ import com.dxc.monitoring.service.SystemSettingService;
 import com.dxc.monitoring.service.ReferenceDataCacheService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.PageRequestSupport;
+import com.dxc.monitoring.web.AlertRuleForm;
 import com.dxc.monitoring.web.PaginationProperties;
 
 class AlertControllerRuleCrudTest {
@@ -39,6 +41,10 @@ class AlertControllerRuleCrudTest {
     private AlertRuleRepository ruleRepository;
     private AlertRuleEvaluationRepository evaluationRepository;
     private DashboardAccessService accessService;
+    private MonitoringJobRepository jobRepository;
+    private AlertRuleManagementService managementService;
+    private AlertRuleNotificationRouteService routeService;
+    private Application application;
     private AlertController controller;
     private AlertRule rule;
 
@@ -50,13 +56,13 @@ class AlertControllerRuleCrudTest {
         AlertCommentRepository commentRepository = mock(AlertCommentRepository.class);
         ruleRepository = mock(AlertRuleRepository.class);
         evaluationRepository = mock(AlertRuleEvaluationRepository.class);
-        MonitoringJobRepository jobRepository = mock(MonitoringJobRepository.class);
-        AlertRuleManagementService managementService = mock(AlertRuleManagementService.class);
+        jobRepository = mock(MonitoringJobRepository.class);
+        managementService = mock(AlertRuleManagementService.class);
         AlertRuleConfigurationService configurationService = mock(AlertRuleConfigurationService.class);
         accessService = mock(DashboardAccessService.class);
         UserAlertStateRepository userAlertStateRepository = mock(UserAlertStateRepository.class);
         AlertRuleFieldDiscoveryService fieldDiscoveryService = mock(AlertRuleFieldDiscoveryService.class);
-        AlertRuleNotificationRouteService routeService = mock(AlertRuleNotificationRouteService.class);
+        routeService = mock(AlertRuleNotificationRouteService.class);
         SystemSettingService systemSettingService = mock(SystemSettingService.class);
 
         controller = new AlertController(alertRepository, referenceDataCache, historyRepository, commentRepository, ruleRepository,
@@ -66,11 +72,34 @@ class AlertControllerRuleCrudTest {
 
         rule = mock(AlertRule.class);
         MonitoringJob job = mock(MonitoringJob.class);
-        Application application = mock(Application.class);
+        application = mock(Application.class);
         when(rule.getMonitoringJob()).thenReturn(job);
         when(job.getApplication()).thenReturn(application);
         when(application.getId()).thenReturn(42L);
         when(ruleRepository.findByIdWithJob(9L)).thenReturn(Optional.of(rule));
+    }
+
+    @Test
+    void loadsSecondaryTabsOnlyThroughTheScopedFragmentEndpoint() {
+        when(accessService.getApplicationsWithPermission("ALERT_CONFIG")).thenReturn(java.util.List.of(application));
+        when(jobRepository.existsByExecutionModeAndApplication_IdIn(
+                MonitoringJob.ExecutionMode.STANDARD, java.util.List.of(42L))).thenReturn(false);
+        AlertRuleForm form = new AlertRuleForm();
+        when(managementService.toForm(rule)).thenReturn(form);
+        when(routeService.routesAsJson(9L)).thenReturn("[]");
+        when(routeService.enabledChannels()).thenReturn(java.util.List.of());
+        when(routeService.enabledRecipients()).thenReturn(java.util.List.of());
+        when(routeService.enabledGroups()).thenReturn(java.util.List.of());
+        when(routeService.emailSenderAddresses()).thenReturn(java.util.Map.of());
+
+        Model model = new ExtendedModelMap();
+        assertEquals("alerts/fragments/alert-rule-secondary-tabs :: secondaryTabs",
+                controller.secondaryRuleTabs(9L, true, model));
+
+        assertEquals(false, model.getAttribute("lazySecondaryTabs"));
+        assertEquals(true, model.getAttribute("viewMode"));
+        assertEquals("[]", ((AlertRuleForm) model.getAttribute("ruleForm")).getNotificationRoutesJson());
+        verify(accessService).assertCanAccessApplication(42L, "ALERT_CONFIG");
     }
 
     @Test
