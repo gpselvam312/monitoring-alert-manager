@@ -200,8 +200,8 @@ public class AlertHistoryController {
             Map<String, NotificationDeliveryRepository.ChannelDeliverySummary> deliveries) {
         Map<String, ChannelStatus> channels = new LinkedHashMap<>();
         for (String channelType : List.of("EMAIL", "TEAMS", "WHATSAPP")) {
-            boolean configured = configuredChannels.contains(channelType);
             NotificationDeliveryRepository.ChannelDeliverySummary delivery = deliveries.get(channelType);
+            boolean configured = configuredChannels.contains(channelType) || delivery != null;
             ChannelStatus channelStatus = !configured
                     ? new ChannelStatus(false, "NOT_CONFIGURED", 0, 0, 0, 0)
                     : delivery == null
