@@ -100,10 +100,10 @@ public class MachineService
     }
     @Transactional(readOnly = true)
     public List<Environment> findEnabledEnvironments() {
-        List<Long> applicationIds = accessService.getApplicationsWithPermission("MACHINE_CONFIG")
-                .stream().map(Application::getId).toList();
-        if (applicationIds.isEmpty()) return List.of();
-        return environmentRepository.findByApplicationIdInAndEnabledTrueOrderByNameIgnoreCase(applicationIds);
+        return accessService.getApplicationsWithPermission("MACHINE_CONFIG").stream()
+                .flatMap(application -> accessService.getEnvironmentsForApplication(
+                        application.getId(), "MACHINE_CONFIG").stream())
+                .toList();
     }
 
     private void assertMachineAccess(Machine machine, String permission) {
