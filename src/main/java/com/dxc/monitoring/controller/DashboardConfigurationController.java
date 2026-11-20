@@ -148,7 +148,11 @@ public class DashboardConfigurationController
                 Long externalApplicationId = selectedId instanceof Number number
                         ? number.longValue()
                         : selectedId == null ? null : Long.valueOf(String.valueOf(selectedId));
-                var externalApplication = externalApplicationService.findEnabledById(externalApplicationId);
+                var externalApplication = externalApplicationService.findEnabledByIdForCurrentUser(externalApplicationId);
+                DashboardTab selectedTab = dashboardConfigurationService.findTabById(form.getTabId());
+                if (selectedTab.getApplication() == null || externalApplication.getApplication() == null
+                        || !selectedTab.getApplication().getId().equals(externalApplication.getApplication().getId()))
+                    throw new IllegalArgumentException("Select an external application registered for the dashboard tab application.");
                 // The registry is the single source of truth for the URL; keep only the reference.
                 iframeConfig.remove("url");
                 iframeConfig.put("externalApplicationId", externalApplication.getId());
