@@ -39,7 +39,7 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
 
     @Query(value = """
             WITH ranked_deliveries AS (
-                SELECT d.alert_id, c.channel_type, d.status,
+                SELECT d.alert_id, c.channel_type, d.status, d.attempt_count,
                        ROW_NUMBER() OVER (
                            PARTITION BY d.alert_id, d.channel_id, COALESCE(d.recipient_id, 0)
                            ORDER BY d.updated_at DESC, d.id DESC
@@ -51,14 +51,14 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
             SELECT alert_id AS "alertId",
                    channel_type AS "channelType",
                    CASE
-                       WHEN SUM(CASE WHEN status IN ('PENDING', 'SENDING') THEN 1 ELSE 0 END) > 0 THEN 'PENDING'
-                       WHEN SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) > 0 THEN 'FAILED'
+                       WHEN SUM(CASE WHEN status IN ('PENDING', 'SENDING') OR (status = 'FAILED' AND attempt_count < 8) THEN 1 ELSE 0 END) > 0 THEN 'PENDING'
+                       WHEN SUM(CASE WHEN status = 'FAILED' AND attempt_count >= 8 THEN 1 ELSE 0 END) > 0 THEN 'FAILED'
                        WHEN SUM(CASE WHEN status = 'SENT' THEN 1 ELSE 0 END) > 0 THEN 'SENT'
                        ELSE 'SKIPPED'
                    END AS "deliveryStatus",
                    SUM(CASE WHEN status = 'SENT' THEN 1 ELSE 0 END) AS "sentCount",
-                   SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS "failedCount",
-                   SUM(CASE WHEN status IN ('PENDING', 'SENDING') THEN 1 ELSE 0 END) AS "pendingCount",
+                   SUM(CASE WHEN status = 'FAILED' AND attempt_count >= 8 THEN 1 ELSE 0 END) AS "failedCount",
+                   SUM(CASE WHEN status IN ('PENDING', 'SENDING') OR (status = 'FAILED' AND attempt_count < 8) THEN 1 ELSE 0 END) AS "pendingCount",
                    SUM(CASE WHEN status = 'SKIPPED' THEN 1 ELSE 0 END) AS "skippedCount"
             FROM ranked_deliveries
             WHERE row_number = 1
