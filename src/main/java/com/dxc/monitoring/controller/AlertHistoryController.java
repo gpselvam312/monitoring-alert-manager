@@ -4,6 +4,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,7 +30,9 @@ import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
 import com.dxc.monitoring.repository.AlertRepository;
+import com.dxc.monitoring.repository.AlertRuleNotificationRouteRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
+import com.dxc.monitoring.repository.NotificationDeliveryRepository;
 import com.dxc.monitoring.service.SystemSettingService;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 import com.dxc.monitoring.web.PageRequestSupport;
@@ -41,15 +46,21 @@ public class AlertHistoryController {
     private final EnvironmentRepository environmentRepository;
     private final LookupProperties lookupProperties;
     private final SystemSettingService systemSettingService;
+    private final AlertRuleNotificationRouteRepository notificationRouteRepository;
+    private final NotificationDeliveryRepository notificationDeliveryRepository;
 
     public AlertHistoryController(AlertRepository alertRepository, DashboardAccessService accessService,
             EnvironmentRepository environmentRepository, LookupProperties lookupProperties,
-            SystemSettingService systemSettingService) {
+            SystemSettingService systemSettingService,
+            AlertRuleNotificationRouteRepository notificationRouteRepository,
+            NotificationDeliveryRepository notificationDeliveryRepository) {
         this.alertRepository = alertRepository;
         this.accessService = accessService;
         this.environmentRepository = environmentRepository;
         this.lookupProperties = lookupProperties;
         this.systemSettingService = systemSettingService;
+        this.notificationRouteRepository = notificationRouteRepository;
+        this.notificationDeliveryRepository = notificationDeliveryRepository;
     }
 
     @GetMapping
@@ -138,8 +149,34 @@ public class AlertHistoryController {
                 term.exactAlertId(), parseStatus(status), parseSeverity(severity), term.repositorySearch(), pageable);
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(
                 systemSettingService.getDateTimeFormat(), Locale.ENGLISH);
-        List<HistoryRow> rows = page.getContent().stream()
-                .map(alert -> toHistoryRow(alert, dateTimeFormatter)).toList();
+        List<Alert> alerts = page.getContent();
+        List<Long> alertIds = alerts.stream().map(Alert::getId).toList();
+        List<Long> ruleIds = alerts.stream().map(alert -> alert.getAlertRule().getId()).distinct().toList();
+
+        Map<Long, Set<String>> configuredChannelsByRule = new HashMap<>();
+        if (!ruleIds.isEmpty()) {
+            for (Object[] route : notificationRouteRepository.findConfiguredChannelTypesByAlertRuleIds(ruleIds)) {
+                Long ruleId = ((Number) route[0]).longValue();
+                configuredChannelsByRule.computeIfAbsent(ruleId, ignored -> new java.util.HashSet<>())
+                        .add(String.valueOf(route[1]));
+            }
+        }
+
+        Map<Long, Map<String, NotificationDeliveryRepository.ChannelDeliverySummary>> deliveriesByAlert =
+                new HashMap<>();
+        if (!alertIds.isEmpty()) {
+            for (NotificationDeliveryRepository.ChannelDeliverySummary summary
+                    : notificationDeliveryRepository.summarizeLatestByAlertIds(alertIds)) {
+                deliveriesByAlert.computeIfAbsent(summary.getAlertId(), ignored -> new HashMap<>())
+                        .put(summary.getChannelType(), summary);
+            }
+        }
+
+        List<HistoryRow> rows = alerts.stream()
+                .map(alert -> toHistoryRow(alert, dateTimeFormatter,
+                        configuredChannelsByRule.getOrDefault(alert.getAlertRule().getId(), Set.of()),
+                        deliveriesByAlert.getOrDefault(alert.getId(), Map.of())))
+                .toList();
         return new HistoryBatch(rows, page.getTotalElements(), safeBatch, page.hasNext(), fetchSize);
     }
 
@@ -158,13 +195,33 @@ public class AlertHistoryController {
         }
     }
 
-    private HistoryRow toHistoryRow(Alert alert, DateTimeFormatter dateTimeFormatter) {
+    private HistoryRow toHistoryRow(Alert alert, DateTimeFormatter dateTimeFormatter,
+            Set<String> configuredChannels,
+            Map<String, NotificationDeliveryRepository.ChannelDeliverySummary> deliveries) {
+        Map<String, ChannelStatus> channels = new LinkedHashMap<>();
+        for (String channelType : List.of("EMAIL", "TEAMS", "WHATSAPP")) {
+            boolean configured = configuredChannels.contains(channelType);
+            NotificationDeliveryRepository.ChannelDeliverySummary delivery = deliveries.get(channelType);
+            ChannelStatus channelStatus = !configured
+                    ? new ChannelStatus(false, "NOT_CONFIGURED", 0, 0, 0, 0)
+                    : delivery == null
+                            ? new ChannelStatus(true, "NOT_SENT", 0, 0, 0, 0)
+                            : new ChannelStatus(true, delivery.getDeliveryStatus(),
+                                    safeCount(delivery.getSentCount()), safeCount(delivery.getFailedCount()),
+                                    safeCount(delivery.getPendingCount()), safeCount(delivery.getSkippedCount()));
+            channels.put(channelType, channelStatus);
+        }
+        String environmentName = alert.getMonitoringJob().getEnvironment() == null
+                ? "—" : alert.getMonitoringJob().getEnvironment().getName();
         return new HistoryRow(alert.getId(), alert.getAlertKey(), alert.getTitle(),
-                alert.getMonitoringJob().getName(), alert.getSeverity().name(),
-                alert.getMonitoringJob().getApplication().getName(),
-                alert.getMonitoringJob().getEnvironment() == null ? "—" : alert.getMonitoringJob().getEnvironment().getName(),
-                alert.getStatus().name(), alert.getOccurrenceCount(), format(alert.getCreatedAt(), dateTimeFormatter),
-                format(alert.getLastOccurredAt(), dateTimeFormatter), format(alert.getResolvedAt(), dateTimeFormatter));
+                alert.getAlertRule().getName(), alert.getMonitoringJob().getName(),
+                alert.getSeverity().name(), alert.getMonitoringJob().getApplication().getName(),
+                environmentName, alert.getStatus().name(), alert.getOccurrenceCount(),
+                format(alert.getFirstOccurredAt(), dateTimeFormatter), channels);
+    }
+
+    private long safeCount(Long value) {
+        return value == null ? 0 : value;
     }
 
     private String format(java.time.OffsetDateTime value, DateTimeFormatter dateTimeFormatter) {
@@ -209,9 +266,11 @@ public class AlertHistoryController {
     }
 
     private record SearchTerm(Long exactAlertId, String repositorySearch) {}
-    public record HistoryRow(Long id, String alertKey, String title, String jobName, String severity,
-            String applicationName, String environmentName, String status, Long occurrenceCount,
-            String createdAt, String lastOccurredAt, String resolvedAt) {}
+    public record ChannelStatus(boolean configured, String status, long sentCount,
+            long failedCount, long pendingCount, long skippedCount) {}
+    public record HistoryRow(Long id, String alertKey, String title, String ruleName, String jobName,
+            String severity, String applicationName, String environmentName, String status,
+            Long occurrenceCount, String triggeredAt, Map<String, ChannelStatus> channels) {}
     public record HistoryBatch(List<HistoryRow> items, long totalElements, int batch,
             boolean hasNext, int fetchSize) {}
 }
