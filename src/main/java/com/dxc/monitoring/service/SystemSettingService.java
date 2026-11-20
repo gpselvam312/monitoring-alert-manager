@@ -8,6 +8,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
@@ -55,6 +57,13 @@ public class SystemSettingService
     public List<SystemSetting> findAll()
     {
         return systemSettingRepository.findAllByOrderBySortOrderAscSettingKeyAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<SystemSetting> findPage(String search, Pageable pageable)
+    {
+        String query = search == null ? "" : search.trim().toLowerCase(java.util.Locale.ROOT);
+        return systemSettingRepository.search(query, pageable);
     }
 
     @Transactional(readOnly = true)
