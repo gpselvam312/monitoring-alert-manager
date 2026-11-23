@@ -49,12 +49,12 @@
 <div th:each="comment : ${comments.content}" class="alert-comment-item">
 <div class="d-flex flex-wrap justify-content-between gap-2 mb-1"><strong th:text="${comment.authorName}">Author</strong><span class="small text-muted" th:text="${#temporals.format(comment.createdAt, dateTimeFormat)}">Time</span></div>
 <p class="mb-0 text-break" style="white-space: pre-wrap" th:text="${comment.commentText}">Comment</p>
+</div>
 <div th:if="${comments.totalPages > 1}" class="d-flex justify-content-between align-items-center pt-3 mt-3 border-top">
 <span class="small text-muted" th:text="'Page ' + (${comments.number + 1}) + ' of ' + ${comments.totalPages}">Page</span>
 <div class="btn-group btn-group-sm">
 <a class="btn btn-outline-secondary" th:classappend="${comments.first} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number},size=${pageSize},commentPage=${comments.number - 1},from=${detailSource})} + '#alert-comments'">Previous</a>
 <a class="btn btn-outline-secondary" th:classappend="${comments.last} ? ' disabled'" th:href="@{/alerts/{id}(id=${alert.id},page=${history.number},size=${pageSize},commentPage=${comments.number + 1},from=${detailSource})} + '#alert-comments'">Next</a>
-</div>
 </div>
 </div>
 </div>
