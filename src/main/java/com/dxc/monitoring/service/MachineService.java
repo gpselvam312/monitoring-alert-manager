@@ -87,7 +87,7 @@ public class MachineService
     public String delete(Long id)
     {
         Machine machine = findById(id);
-        assertMachineAccess(machine, "MONITORING_CONFIG");
+        assertMachineAccess(machine, "MACHINE_CONFIG");
 
         String machineName = machine.getName();
 
@@ -100,7 +100,7 @@ public class MachineService
     public void toggleEnabled(Long id)
     {
         Machine machine = findById(id);
-        assertMachineAccess(machine, "MONITORING_CONFIG");
+        assertMachineAccess(machine, "MACHINE_CONFIG");
         machine.setEnabled(!machine.isEnabled());
         machineRepository.save(machine);
     }
@@ -115,7 +115,7 @@ public class MachineService
     }
     @Transactional(readOnly = true)
     public List<Environment> findEnabledEnvironments() {
-        return accessService.getApplicationsWithPermission("MONITORING_CONFIG").stream()
+        return accessService.getApplicationsWithPermission("MACHINE_CONFIG").stream()
                 .flatMap(application -> accessService.getEnvironmentsForApplication(
                         application.getId(), "MACHINE_CONFIG").stream())
                 .toList();
