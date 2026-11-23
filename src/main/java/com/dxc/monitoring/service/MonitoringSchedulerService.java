@@ -7,6 +7,8 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -17,6 +19,9 @@ import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.scheduling.support.PeriodicTrigger;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
@@ -34,6 +39,8 @@ public class MonitoringSchedulerService
     private final MonitoringExecutionManager monitoringExecutionManager;
     private final ThreadPoolTaskScheduler taskScheduler;
     private final BackgroundWorkReadiness readiness;
+    private final ExecutorService executionExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private static final Logger log = LoggerFactory.getLogger(MonitoringSchedulerService.class);
 
     private final Map<Long, ScheduledFuture<?>> scheduledJobs = new ConcurrentHashMap<>();
     private final Map<Long, Integer> scheduleFingerprints = new ConcurrentHashMap<>();
@@ -130,6 +137,25 @@ public class MonitoringSchedulerService
             scheduledJobs.put(job.getId(), future);
             scheduleFingerprints.put(job.getId(), scheduleFingerprint(job));
         }
+    }
+
+    private void dispatchScheduledExecution(MonitoringJob job) {
+        try {
+            executionExecutor.execute(() -> {
+                try {
+                    monitoringExecutionManager.execute(job, MonitoringExecution.TriggerSource.SCHEDULED);
+                } catch (RuntimeException exception) {
+                    log.error("Scheduled execution failed for monitoring job {}", job.getId(), exception);
+                }
+            });
+        } catch (RuntimeException exception) {
+            log.error("Could not dispatch scheduled execution for monitoring job {}", job.getId(), exception);
+        }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        executionExecutor.shutdownNow();
     }
 
     private int scheduleFingerprint(MonitoringJob job) {
