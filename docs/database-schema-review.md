@@ -141,14 +141,14 @@ These mismatches are present between the baseline DDL and current entity/UI defi
 
 | Field | Baseline database definition | Current entity/UI definition |
 |---|---|---|
-| `users.full_name` | NOT NULL, VARCHAR(200) | Entity does not declare `nullable=false`. |
-| `monitoring_jobs.name` | VARCHAR(200) | Entity and UI use 150. |
-| `monitoring_jobs.description` | VARCHAR(1000) | Entity and UI use 500. |
-| `machines.ip_address` | VARCHAR(45) | Entity declares length 50. |
-| `schedules.name` | VARCHAR(150) | Entity and UI use 100. |
-| `schedules.cron_expression` | VARCHAR(150) | Entity declares length 100. |
+| `users.full_name` | NOT NULL, VARCHAR(200) | Entity now declares `nullable=false`, length 200. |
+| `monitoring_jobs.name` | VARCHAR(200) | Entity now matches 200; UI/service validation intentionally caps at 150. |
+| `monitoring_jobs.description` | VARCHAR(1000) | Entity now matches 1000; UI/service validation intentionally caps at 500. |
+| `machines.ip_address` | VARCHAR(45) | Entity now matches 45. |
+| `schedules.name` | VARCHAR(150) | Entity now matches 150; UI validation intentionally caps at 100. |
+| `schedules.cron_expression` | VARCHAR(150) | Entity now matches 150. |
 
-No data was truncated or schema columns changed as part of this review. The final direction for each mismatch will be recorded before adding the corresponding forward migration.
+The entity/database mapping mismatches above have been corrected without changing the physical schema. The smaller UI/service limits remain deliberate application-level validation rules. No data was truncated or schema columns changed as part of this review.
 
 ## 6. Proposed cleanup migration sequence
 
