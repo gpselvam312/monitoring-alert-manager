@@ -40,17 +40,17 @@ public class MachineService
     }
 
     @Transactional(readOnly = true)
-    public List<Machine> findAllForConfiguration() {
-        List<Long> applicationIds = accessService.getApplicationsWithPermission("MACHINE_CONFIG")
+    public List<Machine> findAllForMonitoringJobConfiguration() {
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("MONITORING_CONFIG")
                 .stream().map(Application::getId).toList();
         return applicationIds.isEmpty() ? List.of() : machineRepository.findAllForApplications(applicationIds);
     }
 
     @Transactional(readOnly = true)
-    public Machine findByIdForConfiguration(Long id) {
+    public Machine findByIdForMonitoringJobConfiguration(Long id) {
         Machine machine = machineRepository.findByIdWithEnvironment(id)
                 .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + id));
-        assertMachineAccess(machine, "MACHINE_CONFIG");
+        assertMachineAccess(machine, "MONITORING_CONFIG");
         return machine;
     }
 
@@ -87,7 +87,7 @@ public class MachineService
     public String delete(Long id)
     {
         Machine machine = findById(id);
-        assertMachineAccess(machine, "MACHINE_CONFIG");
+        assertMachineAccess(machine, "MONITORING_CONFIG");
 
         String machineName = machine.getName();
 
@@ -100,7 +100,7 @@ public class MachineService
     public void toggleEnabled(Long id)
     {
         Machine machine = findById(id);
-        assertMachineAccess(machine, "MACHINE_CONFIG");
+        assertMachineAccess(machine, "MONITORING_CONFIG");
         machine.setEnabled(!machine.isEnabled());
         machineRepository.save(machine);
     }
@@ -115,7 +115,7 @@ public class MachineService
     }
     @Transactional(readOnly = true)
     public List<Environment> findEnabledEnvironments() {
-        return accessService.getApplicationsWithPermission("MACHINE_CONFIG").stream()
+        return accessService.getApplicationsWithPermission("MONITORING_CONFIG").stream()
                 .flatMap(application -> accessService.getEnvironmentsForApplication(
                         application.getId(), "MACHINE_CONFIG").stream())
                 .toList();

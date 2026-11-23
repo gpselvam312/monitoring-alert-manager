@@ -154,7 +154,7 @@ public class MonitoringJobController
         job.setMaxStreamingRuntimeSeconds(300);
 
         model.addAttribute("job", job);
-        model.addAttribute("machines", machineService.findAllForConfiguration());
+        model.addAttribute("machines", machineService.findAllForMonitoringJobConfiguration());
         model.addAttribute("schedules", scheduleRepository.findAll());
         List<com.dxc.monitoring.entity.Application> configurableApplications =
                 accessService.getApplicationsWithPermission("MONITORING_CONFIG");
@@ -295,7 +295,7 @@ public class MonitoringJobController
             // Machine
             if (machineId != null)
             {
-                existingJob.setMachine(machineService.findByIdForConfiguration(machineId));
+                existingJob.setMachine(machineService.findByIdForMonitoringJobConfiguration(machineId));
             } else
             {
                 existingJob.setMachine(null);
@@ -344,7 +344,7 @@ public class MonitoringJobController
             // Machine
             if (machineId != null)
             {
-                job.setMachine(machineService.findByIdForConfiguration(machineId));
+                job.setMachine(machineService.findByIdForMonitoringJobConfiguration(machineId));
             }
 
             // Schedule
@@ -506,7 +506,7 @@ public class MonitoringJobController
                 && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING;
 
         model.addAttribute("job", job);
-        model.addAttribute("machines", machineService.findAllForConfiguration());
+        model.addAttribute("machines", machineService.findAllForMonitoringJobConfiguration());
         model.addAttribute("schedules", scheduleRepository.findAll());
         List<com.dxc.monitoring.entity.Application> configurableApplications =
                 accessService.getApplicationsWithPermission("MONITORING_CONFIG");

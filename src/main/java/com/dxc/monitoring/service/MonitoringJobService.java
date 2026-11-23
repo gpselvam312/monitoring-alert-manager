@@ -64,8 +64,6 @@ public class MonitoringJobService
                 throw new IllegalArgumentException(
                         "The selected machine must belong to the monitoring job's selected environment.");
             }
-            accessService.assertCanAccessEnvironment(job.getApplication().getId(),
-                    job.getMachine().getEnvironment().getId(), "MACHINE_CONFIG");
         }
         MonitoringJob saved = monitoringJobRepository.save(job);
         monitoringSchedulerService.refreshJob(saved.getId());
