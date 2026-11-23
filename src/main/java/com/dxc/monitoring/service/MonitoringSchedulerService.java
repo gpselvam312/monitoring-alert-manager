@@ -126,7 +126,7 @@ public class MonitoringSchedulerService
         }
 
         ScheduledFuture<?> future = taskScheduler.schedule(
-                () -> executeIfWithinWindow(job.getId()),
+                () -> dispatchScheduledExecution(job.getId()),
                 trigger);
 
         if (future != null)
@@ -187,10 +187,6 @@ public class MonitoringSchedulerService
         PeriodicTrigger trigger = new PeriodicTrigger(Duration.ofSeconds(seconds));
         trigger.setFixedRate(fixedRate);
         return trigger;
-    }
-
-    private void executeIfWithinWindow(Long jobId) {
-        dispatchScheduledExecution(jobId);
     }
 
     private boolean isSchedulable(MonitoringJob job)
