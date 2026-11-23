@@ -81,16 +81,16 @@ class ScriptSecurityValidatorTest {
     }
     @Test void detectsRestrictedCommandsAfterEnvironmentOptions() throws Exception {
         for (String body : List.of(
-                "env -u PATH rm -rf /tmp/x\\n",
-                "env -C /tmp /bin/rm -rf /tmp/x\\n",
-                "env --unset=PATH rm -rf /tmp/x\\n")) {
+                "env -u PATH rm -rf /tmp/x\n",
+                "env -C /tmp /bin/rm -rf /tmp/x\n",
+                "env --unset=PATH rm -rf /tmp/x\n")) {
             Path script = write(body);
             assertThrows(IllegalArgumentException.class,
                     () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
         }
     }
     @Test void allowsOrdinaryEnvironmentOptionsWithoutHidingTheCommand() throws Exception {
-        Path script = write("env -i echo healthy\\n");
+        Path script = write("env -i echo healthy\n");
         assertEquals(script.toRealPath(),
                 new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
     }
