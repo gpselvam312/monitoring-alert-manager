@@ -49,6 +49,8 @@
         direction: "asc",
         loading: false,
         requestSequence: 0,
+        filterRequestSequence: 0,
+        filterController: null,
         searchTimer: null
     };
 
@@ -81,44 +83,60 @@
     }
 
     async function loadFilters() {
+        const sequence = ++state.filterRequestSequence;
+        if (state.filterController) state.filterController.abort();
+        state.filterController = null;
+
         if (elements.applicationFilter) {
             elements.applicationFilter.classList.toggle("d-none", !state.filters.includes("application"));
         }
         if (elements.environmentFilter) {
             elements.environmentFilter.classList.toggle("d-none", !state.filters.includes("environment"));
         }
-        if (!state.filters.includes("application") && !state.filters.includes("environment")) return;
-        const filterParams = new URLSearchParams();
-        if (state.applicationId) filterParams.set("applicationId", state.applicationId);
-        const filterUrl = state.filterEndpoint || state.endpoint + "/filters";
-        const response = await fetch(filterUrl + (filterParams.size ? "?" + filterParams.toString() : ""), {
-            headers: {"Accept": "application/json"},
-            credentials: "same-origin"
-        });
-        if (!response.ok) throw new Error("Unable to load lookup filters.");
-        const data = await response.json();
-        const selectedApp = state.applicationId;
-        if (state.filters.includes("application")) {
-            if (elements.applicationFilter) elements.applicationFilter.classList.remove("d-none");
-            elements.application.replaceChildren(new Option("All applications", ""));
-            (data.applications || []).forEach(function (item) {
-                elements.application.add(new Option(item.name, String(item.id)));
-            });
-            elements.application.value = selectedApp;
-        } else {
-            if (elements.applicationFilter) elements.applicationFilter.classList.add("d-none");
-        }
+        if (!state.filters.includes("application") && !state.filters.includes("environment")) return true;
 
+        const controller = new AbortController();
+        state.filterController = controller;
+        const selectedApp = state.applicationId;
         const selectedEnv = state.environmentId;
-        if (state.filters.includes("environment")) {
-            if (elements.environmentFilter) elements.environmentFilter.classList.remove("d-none");
-            elements.environment.replaceChildren(new Option("All environments", ""));
-            (data.environments || []).forEach(function (item) {
-                elements.environment.add(new Option(item.name, String(item.id)));
+        const filterParams = new URLSearchParams();
+        if (selectedApp) filterParams.set("applicationId", selectedApp);
+        const filterUrl = state.filterEndpoint || state.endpoint + "/filters";
+
+        try {
+            const response = await fetch(filterUrl + (filterParams.size ? "?" + filterParams.toString() : ""), {
+                signal: controller.signal,
+                headers: {"Accept": "application/json"},
+                credentials: "same-origin"
             });
-            elements.environment.value = selectedEnv;
-        } else {
-            if (elements.environmentFilter) elements.environmentFilter.classList.add("d-none");
+            if (!response.ok) throw new Error(response.status === 403
+                ? "You are not authorized to view these lookup filters."
+                : "Unable to load lookup filters.");
+            const data = await response.json();
+            if (sequence !== state.filterRequestSequence || state.trigger == null) return false;
+
+            if (state.filters.includes("application")) {
+                if (elements.applicationFilter) elements.applicationFilter.classList.remove("d-none");
+                elements.application.replaceChildren(new Option("All applications", ""));
+                (data.applications || []).forEach(function (item) {
+                    elements.application.add(new Option(item.name, String(item.id)));
+                });
+                elements.application.value = selectedApp;
+            }
+            if (state.filters.includes("environment")) {
+                if (elements.environmentFilter) elements.environmentFilter.classList.remove("d-none");
+                elements.environment.replaceChildren(new Option("All environments", ""));
+                (data.environments || []).forEach(function (item) {
+                    elements.environment.add(new Option(item.name, String(item.id)));
+                });
+                elements.environment.value = selectedEnv;
+            }
+            return true;
+        } catch (error) {
+            if (error.name === "AbortError" || sequence !== state.filterRequestSequence) return false;
+            throw error;
+        } finally {
+            if (sequence === state.filterRequestSequence) state.filterController = null;
         }
     }
 
@@ -147,6 +165,10 @@
             const result = await response.json();
             if (sequence !== state.requestSequence) return;
             state.items = result.items || [];
+            state.items.forEach(function (item) {
+                const id = String(item.id);
+                if (state.selected.has(id)) state.selected.set(id, item);
+            });
             state.totalElements = result.totalElements || 0;
             state.batch = result.batch || 0;
             state.fetchSize = result.fetchSize || 100;
@@ -333,10 +355,12 @@
         elements.confirmText.textContent = state.selectionMode === "MULTIPLE" ? "Select 0 record(s)" : "Select";
         modal.show();
         try {
-            await loadFilters();
+            const filtersLoaded = await loadFilters();
+            if (!filtersLoaded || state.trigger !== trigger) return;
             resetBatch();
         } catch (error) {
-            elements.rows.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">' + escapeHtml(error.message) + '</td></tr>';
+            if (state.trigger !== trigger) return;
+            elements.rows.innerHTML = '<tr><td colspan="' + (state.columns.length + 1) + '" class="text-center text-danger py-4">' + escapeHtml(error.message) + '</td></tr>';
             elements.summary.textContent = "Unable to load lookup filters";
         }
     });
@@ -371,14 +395,16 @@
         resetBatch();
     });
     elements.application.addEventListener("change", async function () {
+        const trigger = state.trigger;
         state.applicationId = elements.application.value;
         state.environmentId = "";
         try {
-            await loadFilters();
+            const filtersLoaded = await loadFilters();
+            if (!filtersLoaded || state.trigger !== trigger) return;
             state.environmentId = elements.environment.value;
             resetBatch();
         } catch (error) {
-            elements.summary.textContent = error.message;
+            if (state.trigger === trigger) elements.summary.textContent = error.message;
         }
     });
     elements.environment.addEventListener("change", function () {
@@ -421,6 +447,9 @@
     modalElement.addEventListener("hidden.bs.modal", function () {
         clearTimeout(state.searchTimer);
         state.requestSequence++;
+        state.filterRequestSequence++;
+        if (state.filterController) state.filterController.abort();
+        state.filterController = null;
         state.trigger = null;
         state.items = [];
         state.totalElements = 0;
