@@ -73,7 +73,6 @@ public class ScriptExecutor implements MonitoringExecutor
             if (!completed)
             {
                 terminateProcessTree(process);
-                process.waitFor();
                 result.setExecutionStatus(MonitoringExecution.ExecutionStatus.TIMEOUT);
                 result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
                 result.setMessage("Script execution timed out after " + timeoutSeconds + " seconds.");
@@ -120,7 +119,7 @@ public class ScriptExecutor implements MonitoringExecutor
         catch (IllegalArgumentException exception)
         {
             if (process != null)
-                process.destroyForcibly();
+                terminateProcessTree(process);
             result.setExecutionStatus(MonitoringExecution.ExecutionStatus.ERROR);
             result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
             result.setMessage(safeSecurityMessage(exception.getMessage()));
@@ -129,9 +128,9 @@ public class ScriptExecutor implements MonitoringExecutor
         }
         catch (InterruptedException exception)
         {
-            Thread.currentThread().interrupt();
             if (process != null)
-                process.destroyForcibly();
+                terminateProcessTree(process);
+            Thread.currentThread().interrupt();
             result.setExecutionStatus(MonitoringExecution.ExecutionStatus.ERROR);
             result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
             result.setMessage("Script execution was interrupted.");
@@ -141,7 +140,7 @@ public class ScriptExecutor implements MonitoringExecutor
         catch (IOException | ExecutionException | TimeoutException exception)
         {
             if (process != null)
-                process.destroyForcibly();
+                terminateProcessTree(process);
             result.setExecutionStatus(MonitoringExecution.ExecutionStatus.ERROR);
             result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
             result.setMessage("Unable to execute or collect output from the monitoring script.");
