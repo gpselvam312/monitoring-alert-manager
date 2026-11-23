@@ -135,7 +135,7 @@ public class ScriptSecurityValidator {
                     .anyMatch(arg -> Set.of("-exec", "-execdir", "-ok", "-okdir").contains(arg)))
                 throw new IllegalArgumentException("Script security validation rejected find command execution actions.");
             if ((command.equals("awk") || command.equals("gawk"))
-                    && Pattern.compile("(?i)\\\\bsystem\\\\s*\\\\(")
+                    && Pattern.compile("(?i)\\bsystem\\s*\\(")
                             .matcher(String.join(" ", tokens.subList(index + 1, tokens.size()))).find())
                 throw new IllegalArgumentException("Script security validation rejected awk system() command execution.");
             boolean restricted=validation.getRestrictedCommands().contains(command)
