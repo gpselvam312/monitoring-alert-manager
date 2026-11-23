@@ -16,14 +16,14 @@ public class MonitoringJob
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 150)
+    @Column(nullable = false, unique = true, length = 200)
     private String name;
 
-    @Column(length = 500)
+    @Column(length = 1000)
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "job_type", nullable = false, length = 30)
+    @Column(name = "job_type", nullable = false, length = 50)
     private MonitorType type;
 
     @ManyToOne(fetch = FetchType.LAZY)

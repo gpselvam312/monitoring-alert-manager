@@ -23,7 +23,7 @@ public class Schedule
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, unique = true, length = 150)
     private String name;
 
     @Column(length = 500)
@@ -33,7 +33,7 @@ public class Schedule
     @Column(name = "schedule_type", nullable = false, length = 30)
     private ScheduleType type;
 
-    @Column(name = "cron_expression", length = 100)
+    @Column(name = "cron_expression", length = 150)
     private String cronExpression;
 
     @Column(name = "fixed_delay_seconds")
