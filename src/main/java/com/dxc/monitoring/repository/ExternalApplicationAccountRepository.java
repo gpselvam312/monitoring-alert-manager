@@ -14,6 +14,8 @@ public interface ExternalApplicationAccountRepository extends JpaRepository<Exte
 {
     Optional<ExternalApplicationAccount> findByExternalApplication_Id(Long externalApplicationId);
 
+    boolean existsByEncryptedSecretIsNotNullAndEncryptedSecretNot(String emptyValue);
+
     @Query("""
             select account.externalApplication.id from ExternalApplicationAccount account
             where account.externalApplication.id in :externalApplicationIds
