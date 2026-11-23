@@ -58,6 +58,7 @@ public class MonitoringSchedulerService
 
     @org.springframework.scheduling.annotation.Scheduled(
             fixedDelayString = "${monitoring.scheduler.reconcile-interval-ms:30000}")
+    @Transactional(readOnly = true)
     public synchronized void reconcileSchedules() {
         if (!readiness.isReady()) return;
         var currentJobs = monitoringJobRepository.findSchedulableJobs(MonitoringJob.ExecutionMode.STANDARD);
