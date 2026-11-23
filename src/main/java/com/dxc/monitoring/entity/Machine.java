@@ -17,7 +17,7 @@ public class Machine {
     @Column(length = 255)
     private String hostname;
 
-    @Column(name = "ip_address", length = 50)
+    @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
     @ManyToOne(fetch = FetchType.LAZY)
