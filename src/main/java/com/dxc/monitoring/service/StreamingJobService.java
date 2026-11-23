@@ -193,7 +193,7 @@ public class StreamingJobService
         }
 
         appendOutput(jobId, "Starting streaming job: " + job.getName());
-        scheduler.execute(() -> launch(job, context));
+        processExecutor.execute(() -> launch(job, context));
     }
 
     public void stop(Long jobId)
@@ -349,8 +349,8 @@ public class StreamingJobService
         updateClaimStatus(job.getId(), "RUNNING");
         activateRuntime(job.getId(), context);
         appendOutput(job.getId(), "Process started locally (PID " + context.pid + ").");
-        scheduler.execute(() -> readLines(job.getId(), process));
-        scheduler.execute(() -> waitForExit(job.getId(), context, process));
+        processExecutor.execute(() -> readLines(job.getId(), process));
+        processExecutor.execute(() -> waitForExit(job.getId(), context, process));
     }
 
     private void launchRemote(MonitoringJob job, String host, RunContext context, String validatedScriptPath, String verifiedHash) throws Exception
@@ -397,8 +397,8 @@ public class StreamingJobService
                 + "kill \"$tail_pid\" 2>/dev/null || true; wait \"$tail_pid\" 2>/dev/null || true";
         Process tail = new ProcessBuilder(sshCommand(host, tailCommand)).redirectErrorStream(true).start();
         context.outputProcess = tail;
-        scheduler.execute(() -> readLines(job.getId(), tail));
-        scheduler.execute(() -> waitForExit(job.getId(), context, tail));
+        processExecutor.execute(() -> readLines(job.getId(), tail));
+        processExecutor.execute(() -> waitForExit(job.getId(), context, tail));
     }
 
     private void waitForExit(Long jobId, RunContext context, Process observedProcess)
