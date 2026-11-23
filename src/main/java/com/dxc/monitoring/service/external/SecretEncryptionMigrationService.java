@@ -25,10 +25,8 @@ public class SecretEncryptionMigrationService {
 
     @Transactional(readOnly = true)
     public void assertEncryptionKeyAvailableWhenSecretsExist() {
-        boolean hasExternal = externalAccounts.findAll().stream()
-                .anyMatch(account -> account.getEncryptedSecret() != null && !account.getEncryptedSecret().isBlank());
-        boolean hasNotification = notificationSecrets.findAll().stream()
-                .anyMatch(secret -> secret.getEncryptedValue() != null && !secret.getEncryptedValue().isBlank());
+        boolean hasExternal = externalAccounts.existsByEncryptedSecretIsNotNullAndEncryptedSecretNot("");
+        boolean hasNotification = notificationSecrets.existsByEncryptedValueIsNotNullAndEncryptedValueNot("");
         if ((hasExternal || hasNotification) && !encryption.isConfigured())
             throw new IllegalStateException("MONITORING_ENCRYPTION_KEY is required because encrypted secrets are stored in the database.");
     }
