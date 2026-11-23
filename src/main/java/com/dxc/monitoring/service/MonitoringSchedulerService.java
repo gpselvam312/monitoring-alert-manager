@@ -125,8 +125,9 @@ public class MonitoringSchedulerService
             return;
         }
 
+        int expectedFingerprint = scheduleFingerprint(job);
         ScheduledFuture<?> future = taskScheduler.schedule(
-                () -> dispatchScheduledExecution(job.getId()),
+                () -> dispatchScheduledExecution(job.getId(), expectedFingerprint),
                 trigger);
 
         if (future != null)
@@ -136,12 +137,13 @@ public class MonitoringSchedulerService
         }
     }
 
-    private void dispatchScheduledExecution(Long jobId) {
+    private void dispatchScheduledExecution(Long jobId, int expectedFingerprint) {
         try {
             executionExecutor.execute(() -> {
                 try {
                     MonitoringJob job = monitoringJobRepository.findByIdForDetails(jobId).orElse(null);
-                    if (!isSchedulable(job) || !isWithinWindow(job.getSchedule())) return;
+                    if (!isSchedulable(job) || scheduleFingerprint(job) != expectedFingerprint
+                            || !isWithinWindow(job.getSchedule())) return;
                     monitoringExecutionManager.execute(job, MonitoringExecution.TriggerSource.SCHEDULED);
                 } catch (RuntimeException exception) {
                     log.error("Scheduled execution failed for monitoring job {}", jobId, exception);
