@@ -199,7 +199,7 @@ public class MonitoringJobController
         if (applicationId != null)
             accessService.assertCanAccessApplication(applicationId, "MONITORING_CONFIG");
         if (job.getId() != null) {
-            MonitoringJob existingForAuthorization = monitoringJobService.findById(job.getId());
+            MonitoringJob existingForAuthorization = monitoringJobService.findByIdForConfiguration(job.getId());
             if (existingForAuthorization.getApplication() != null)
                 accessService.assertCanAccessApplication(existingForAuthorization.getApplication().getId(), "MONITORING_CONFIG");
         }
@@ -250,7 +250,7 @@ public class MonitoringJobController
              * EDIT EXISTING JOB
              */
 
-            MonitoringJob existingJob = monitoringJobService.findById(job.getId());
+            MonitoringJob existingJob = monitoringJobService.findByIdForConfiguration(job.getId());
 
             // Basic information
             existingJob.setName(job.getName());
@@ -500,7 +500,7 @@ public class MonitoringJobController
     @GetMapping("/{id}/edit")
     public String editJobForm(@PathVariable Long id, @RequestParam(required = false) String mode, Model model)
     {
-        MonitoringJob job = monitoringJobService.findById(id);
+        MonitoringJob job = monitoringJobService.findByIdForConfiguration(id);
         accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_CONFIG");
         boolean streamingContext = "STREAMING".equalsIgnoreCase(mode)
                 && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING;
@@ -533,7 +533,7 @@ public class MonitoringJobController
     public String toggleEnabled(@PathVariable Long id, @RequestParam(required = false) String mode,
             RedirectAttributes redirectAttributes)
     {
-        MonitoringJob job = monitoringJobService.findById(id);
+        MonitoringJob job = monitoringJobService.findByIdForConfiguration(id);
         boolean streamingContext = "STREAMING".equalsIgnoreCase(mode);
         if (streamingContext)
         {
@@ -563,7 +563,7 @@ public class MonitoringJobController
         boolean streamingContext = "STREAMING".equalsIgnoreCase(mode);
         if (streamingContext)
         {
-            MonitoringJob streamingJob = monitoringJobService.findById(id);
+            MonitoringJob streamingJob = monitoringJobService.findByIdForConfiguration(id);
             if (streamingJob.getExecutionMode() != MonitoringJob.ExecutionMode.STREAMING)
                 throw new IllegalArgumentException("Only streaming jobs can be deleted from the Streaming Jobs page.");
             if (streamingJob.getApplication() != null)
