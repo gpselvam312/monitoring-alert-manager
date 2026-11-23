@@ -49,13 +49,15 @@ public class NotificationDeliveryWorker {
                 NotificationChannel channel = delivery.getChannel();
                 if (!channel.isEnabled()) {
                     log.warn("Skipping notification deliveryId={} because channelId={} is disabled", claim.deliveryId(), channel.getId());
-                    queueService.markSkipped(claim.deliveryId(), "Notification channel is disabled.");
+                    if (!queueService.markSkipped(claim.deliveryId(), claim.attemptCount(), "Notification channel is disabled."))
+                        log.warn("Ignoring stale notification claim deliveryId={} attempt={}", claim.deliveryId(), claim.attemptCount());
                     continue;
                 }
                 if (delivery.getRecipient() != null && !delivery.getRecipient().isEnabled()) {
                     log.warn("Skipping notification deliveryId={} because recipientId={} is disabled",
                             claim.deliveryId(), delivery.getRecipient().getId());
-                    queueService.markSkipped(claim.deliveryId(), "Notification recipient is disabled.");
+                    if (!queueService.markSkipped(claim.deliveryId(), claim.attemptCount(), "Notification recipient is disabled."))
+                        log.warn("Ignoring stale notification claim deliveryId={} attempt={}", claim.deliveryId(), claim.attemptCount());
                     continue;
                 }
                 NotificationChannelSender sender = senders.stream()
@@ -78,7 +80,10 @@ public class NotificationDeliveryWorker {
                         channel.getId(), channel.getChannelType(),
                         delivery.getRecipient() == null ? null : delivery.getRecipient().getId(), claim.attemptCount());
                 String providerId = sender.send(channel, delivery.getRecipient(), payload, credential);
-                queueService.markSent(claim.deliveryId(), providerId);
+                if (!queueService.markSent(claim.deliveryId(), claim.attemptCount(), providerId)) {
+                    log.warn("Ignoring stale notification success deliveryId={} attempt={}", claim.deliveryId(), claim.attemptCount());
+                    continue;
+                }
                 log.info("Notification deliveryId={} marked SENT via channelId={} channelType={}",
                         claim.deliveryId(), channel.getId(), channel.getChannelType());
             } catch (Exception exception) {
@@ -86,7 +91,8 @@ public class NotificationDeliveryWorker {
                 log.error("Notification deliveryId={} failed on attempt {} exceptionType={} message={}",
                         claim.deliveryId(), claim.attemptCount(), exception.getClass().getSimpleName(), failure);
                 try {
-                    queueService.markFailed(claim.deliveryId(), claim.attemptCount(), MAX_ATTEMPTS, failure);
+                    if (!queueService.markFailed(claim.deliveryId(), claim.attemptCount(), MAX_ATTEMPTS, failure))
+                        log.warn("Ignoring stale notification failure deliveryId={} attempt={}", claim.deliveryId(), claim.attemptCount());
                 } catch (RuntimeException stateException) {
                     log.error("Unable to persist failure state for notification deliveryId={} exceptionType={}",
                             claim.deliveryId(), stateException.getClass().getSimpleName());

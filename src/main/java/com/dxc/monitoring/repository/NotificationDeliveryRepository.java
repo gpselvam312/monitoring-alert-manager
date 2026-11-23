@@ -40,6 +40,42 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
             @Param("lastError") String lastError,
             @Param("messagePayload") String messagePayload);
 
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update NotificationDelivery d
+               set d.status = :status, d.providerMessageId = :providerMessageId,
+                   d.sentAt = :sentAt, d.lockedAt = null, d.lastError = null
+             where d.id = :id and d.status = :expectedStatus and d.attemptCount = :attemptCount
+            """)
+    int completeClaimedAsSent(@Param("id") Long id, @Param("attemptCount") int attemptCount,
+            @Param("expectedStatus") NotificationDelivery.DeliveryStatus expectedStatus,
+            @Param("status") NotificationDelivery.DeliveryStatus status,
+            @Param("providerMessageId") String providerMessageId,
+            @Param("sentAt") java.time.OffsetDateTime sentAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update NotificationDelivery d
+               set d.status = :status, d.lockedAt = null, d.lastError = :error,
+                   d.nextAttemptAt = :nextAttemptAt
+             where d.id = :id and d.status = :expectedStatus and d.attemptCount = :attemptCount
+            """)
+    int completeClaimedAsFailed(@Param("id") Long id, @Param("attemptCount") int attemptCount,
+            @Param("expectedStatus") NotificationDelivery.DeliveryStatus expectedStatus,
+            @Param("status") NotificationDelivery.DeliveryStatus status,
+            @Param("error") String error, @Param("nextAttemptAt") java.time.OffsetDateTime nextAttemptAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update NotificationDelivery d
+               set d.status = :status, d.lockedAt = null, d.lastError = :reason
+             where d.id = :id and d.status = :expectedStatus and d.attemptCount = :attemptCount
+            """)
+    int completeClaimedAsSkipped(@Param("id") Long id, @Param("attemptCount") int attemptCount,
+            @Param("expectedStatus") NotificationDelivery.DeliveryStatus expectedStatus,
+            @Param("status") NotificationDelivery.DeliveryStatus status, @Param("reason") String reason);
+
     @EntityGraph(attributePaths = {"alert", "alertHistory", "channel", "recipient"})
     @Query("select d from NotificationDelivery d where d.id = :id")
     Optional<NotificationDelivery> findByIdWithDetails(@Param("id") Long id);

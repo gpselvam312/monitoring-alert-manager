@@ -38,38 +38,27 @@ public class NotificationDeliveryQueueService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markSent(Long id, String providerMessageId) {
-        NotificationDelivery delivery = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Notification delivery was not found."));
-        delivery.setStatus(NotificationDelivery.DeliveryStatus.SENT);
-        delivery.setProviderMessageId(providerMessageId);
-        delivery.setSentAt(OffsetDateTime.now());
-        delivery.setLockedAt(null);
-        delivery.setLastError(null);
+    public boolean markSent(Long id, int attemptCount, String providerMessageId) {
+        return repository.completeClaimedAsSent(id, attemptCount,
+                NotificationDelivery.DeliveryStatus.SENDING, NotificationDelivery.DeliveryStatus.SENT,
+                providerMessageId, OffsetDateTime.now()) == 1;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markSkipped(Long id, String reason) {
-        NotificationDelivery delivery = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Notification delivery was not found."));
-        delivery.setStatus(NotificationDelivery.DeliveryStatus.SKIPPED);
-        delivery.setLockedAt(null);
-        delivery.setLastError(sanitize(reason));
+    public boolean markSkipped(Long id, int attemptCount, String reason) {
+        return repository.completeClaimedAsSkipped(id, attemptCount,
+                NotificationDelivery.DeliveryStatus.SENDING, NotificationDelivery.DeliveryStatus.SKIPPED,
+                sanitize(reason)) == 1;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markFailed(Long id, int attemptCount, int maxAttempts, String error) {
-        NotificationDelivery delivery = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Notification delivery was not found."));
-        delivery.setStatus(NotificationDelivery.DeliveryStatus.FAILED);
-        delivery.setLockedAt(null);
-        delivery.setLastError(sanitize(error));
-        if (attemptCount >= maxAttempts) {
-            delivery.setNextAttemptAt(OffsetDateTime.now());
-        } else {
-            long delaySeconds = Math.min(900L, 2L << Math.min(attemptCount, 8));
-            delivery.setNextAttemptAt(OffsetDateTime.now().plusSeconds(delaySeconds));
-        }
+    public boolean markFailed(Long id, int attemptCount, int maxAttempts, String error) {
+        long delaySeconds = attemptCount >= maxAttempts
+                ? 0L : Math.min(900L, 2L << Math.min(attemptCount, 8));
+        OffsetDateTime nextAttemptAt = OffsetDateTime.now().plusSeconds(delaySeconds);
+        return repository.completeClaimedAsFailed(id, attemptCount,
+                NotificationDelivery.DeliveryStatus.SENDING, NotificationDelivery.DeliveryStatus.FAILED,
+                sanitize(error), nextAttemptAt) == 1;
     }
 
     private String sanitize(String error) {
