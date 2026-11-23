@@ -41,6 +41,8 @@ monitoring:
     # Records fetched per server request; independent from the UI page size.
     fetch-size: ${MONITORING_LOOKUP_FETCH_SIZE:100}
   datetime-format: "MM/dd/yyyy hh:mm:ss a"
+  scheduler:
+    reconcile-interval-ms: ${MONITORING_SCHEDULER_RECONCILE_INTERVAL_MS:30000}
   streaming:
     max-runtime-seconds: ${MONITORING_STREAMING_MAX_RUNTIME_SECONDS:86400}
     ssh-user: ${MONITORING_STREAMING_SSH_USER:}
