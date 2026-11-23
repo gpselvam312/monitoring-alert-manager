@@ -3,9 +3,7 @@ package com.dxc.monitoring.controller;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,21 +14,24 @@ import com.dxc.monitoring.entity.DashboardWidget;
 import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.service.MonitoringExecutionService;
 import com.dxc.monitoring.service.dashboard.DashboardService;
+import com.dxc.monitoring.web.PageRequestSupport;
 
 @Controller
 public class DashboardWidgetDetailsController
 {
     private final DashboardService dashboardService;
     private final MonitoringExecutionService monitoringExecutionService;
+    private final PageRequestSupport pageRequestSupport;
 
     private static final java.util.Map<String, String> RESULT_SORT_FIELDS =
         java.util.Map.of("startedAt", "startedAt", "completedAt", "completedAt", "status", "status");
 
     public DashboardWidgetDetailsController(DashboardService dashboardService,
-            MonitoringExecutionService monitoringExecutionService)
+            MonitoringExecutionService monitoringExecutionService, PageRequestSupport pageRequestSupport)
     {
         this.dashboardService = dashboardService;
         this.monitoringExecutionService = monitoringExecutionService;
+        this.pageRequestSupport = pageRequestSupport;
     }
 
     @GetMapping("/dashboard/widgets/{id}/details")
@@ -39,13 +40,9 @@ public class DashboardWidgetDetailsController
             @RequestParam(defaultValue = "startedAt") String sort,
             @RequestParam(defaultValue = "desc") String direction, Model model)
     {
-        if (page < 0) page = 0;
-        if (size != 5 && size != 10 && size != 25) size = 5;
-
+        var pageSpec = pageRequestSupport.create(page, size, sort, direction, "startedAt", RESULT_SORT_FIELDS);
+        Pageable pageable = pageSpec.pageable();
         String normalizedSearch = search == null ? "" : search.trim();
-        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, size,
-                Sort.by(sortDirection, RESULT_SORT_FIELDS.getOrDefault(sort, "startedAt")));
 
         DashboardWidget widget = dashboardService.getWidget(id);
 
@@ -54,10 +51,10 @@ public class DashboardWidgetDetailsController
             model.addAttribute("currentPage", "dashboard");
             model.addAttribute("widget", widget);
             model.addAttribute("history", Page.empty(pageable));
-            model.addAttribute("pageSize", size);
+            model.addAttribute("pageSize", pageSpec.pageSize());
             model.addAttribute("search", normalizedSearch);
-            model.addAttribute("sort", sort);
-            model.addAttribute("direction", direction);
+            model.addAttribute("sort", pageSpec.sort());
+            model.addAttribute("direction", pageSpec.direction());
             return "dashboard-widget-details";
         }
 

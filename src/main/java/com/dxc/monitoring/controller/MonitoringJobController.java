@@ -122,7 +122,9 @@ public class MonitoringJobController
         Page<MonitoringJob> jobs = monitoringJobService.findAll(normalizedSearch, pageable);
 
         model.addAttribute("jobs", jobs);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", spec.pageSize());
+        model.addAttribute("sort", spec.sort());
+        model.addAttribute("direction", spec.direction());
         model.addAttribute("search", normalizedSearch);
 
         return "monitoring/jobs :: jobsTable";
