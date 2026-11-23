@@ -54,13 +54,15 @@ class AlertControllerDetailPaginationTest {
         accessService = mock(DashboardAccessService.class);
         systemSettingService = mock(SystemSettingService.class);
 
+        PaginationProperties paginationProperties = new PaginationProperties();
+        paginationProperties.setAllowedPageSizes(List.of(5, 10, 25, 50));
         controller = new AlertController(alertRepository, mock(ReferenceDataCacheService.class),
                 historyRepository, commentRepository, mock(AlertRuleRepository.class),
                 mock(AlertRuleEvaluationRepository.class), mock(MonitoringJobRepository.class),
                 mock(AlertRuleManagementService.class), mock(AlertRuleConfigurationService.class),
                 accessService, mock(UserAlertStateRepository.class),
                 mock(AlertRuleFieldDiscoveryService.class), mock(AlertRuleNotificationRouteService.class),
-                systemSettingService, new PageRequestSupport(new PaginationProperties()));
+                systemSettingService, new PageRequestSupport(paginationProperties));
 
         Application application = mock(Application.class);
         when(application.getId()).thenReturn(12L);
@@ -72,6 +74,19 @@ class AlertControllerDetailPaginationTest {
         when(commentRepository.findByAlertIdOrderByCreatedAtDescIdDesc(any(), any()))
                 .thenReturn(Page.empty());
         when(systemSettingService.getDateTimeFormat()).thenReturn("yyyy-MM-dd HH:mm");
+    }
+
+    @Test
+    void honorsConfiguredPageSizesBeyondTheDefaultSet() {
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        controller.alertDetails(77L, 0, 50, 0, "active", null, model);
+
+        ArgumentCaptor<Pageable> historyPage = ArgumentCaptor.forClass(Pageable.class);
+        verify(historyRepository).findByAlertIdOrderByOccurredAtDescIdDesc(
+                org.mockito.ArgumentMatchers.eq(77L), historyPage.capture());
+        assertEquals(50, historyPage.getValue().getPageSize());
+        assertEquals(50, model.getAttribute("pageSize"));
     }
 
     @Test

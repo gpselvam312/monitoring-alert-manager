@@ -131,7 +131,7 @@ public class AlertController {
         model.addAttribute("applicationId", applicationId);
         model.addAttribute("environmentId", environmentId);
         model.addAttribute("severity", severity == null ? "" : severity);
-        model.addAttribute("pageSize", size == 5 || size == 10 || size == 25 ? size : pageRequestSupport.defaultPageSize());
+        model.addAttribute("pageSize", pageable(0, size).getPageSize());
         model.addAttribute("sort", sort);
         model.addAttribute("direction", direction);
         model.addAttribute("currentPage", "active-alerts");
@@ -404,9 +404,7 @@ public class AlertController {
     }
 
     private Pageable pageable(int page, int size) {
-        int safePage = Math.max(0, page);
-        int safeSize = size == 5 || size == 10 || size == 25 ? size : pageRequestSupport.defaultPageSize();
-        return pageRequestSupport.create(safePage, safeSize, "occurredAt", "desc", "occurredAt",
+        return pageRequestSupport.create(Math.max(0, page), size, "occurredAt", "desc", "occurredAt",
                 Map.of("occurredAt", "occurredAt")).pageable();
     }
 
