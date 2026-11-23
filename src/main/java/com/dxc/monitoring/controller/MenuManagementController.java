@@ -4,12 +4,13 @@ import com.dxc.monitoring.entity.MenuItem;
 import com.dxc.monitoring.repository.MenuItemRepository;
 import com.dxc.monitoring.web.PageRequestSupport;
 import com.dxc.monitoring.service.MenuUrlPolicy;
+import com.dxc.monitoring.service.MenuDefinitionsChangedEvent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -30,10 +31,13 @@ public class MenuManagementController {
             "key", "menuKey", "name", "menuName", "order", "displayOrder", "enabled", "enabled");
     private final MenuItemRepository menuItemRepository;
     private final PageRequestSupport pageRequestSupport;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public MenuManagementController(MenuItemRepository menuItemRepository, PageRequestSupport pageRequestSupport) {
+    public MenuManagementController(MenuItemRepository menuItemRepository, PageRequestSupport pageRequestSupport,
+            ApplicationEventPublisher eventPublisher) {
         this.menuItemRepository = menuItemRepository;
         this.pageRequestSupport = pageRequestSupport;
+        this.eventPublisher = eventPublisher;
     }
 
     @GetMapping
@@ -102,7 +106,6 @@ public class MenuManagementController {
 
     @PostMapping("/save")
     @Transactional
-    @CacheEvict(cacheNames = "menuDefinitions", allEntries = true)
     public String save(@RequestParam(required = false) Long id, @RequestParam String menuKey,
             @RequestParam String menuName, @RequestParam(required = false) String url,
             @RequestParam(required = false) String icon, @RequestParam(required = false) Long parentId,
@@ -137,6 +140,7 @@ public class MenuManagementController {
         entity.setIcon(normalizedIcon); entity.setParentId(parentId); entity.setDisplayOrder(displayOrder);
         entity.setRequiredPermission(normalizedPermission); entity.setSectionName(normalizedSection); entity.setEnabled(enabled);
         menuItemRepository.save(entity);
+        eventPublisher.publishEvent(new MenuDefinitionsChangedEvent());
         redirectAttributes.addFlashAttribute("successMessage", "Menu item saved.");
         return "redirect:/administration/menus";
     }
@@ -166,12 +170,12 @@ public class MenuManagementController {
 
     @PostMapping("/{id}/toggle")
     @Transactional
-    @CacheEvict(cacheNames = "menuDefinitions", allEntries = true)
     public String toggle(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         MenuItem menuItem = menuItemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found"));
         menuItem.setEnabled(!menuItem.isEnabled());
         menuItemRepository.save(menuItem);
+        eventPublisher.publishEvent(new MenuDefinitionsChangedEvent());
         redirectAttributes.addFlashAttribute("successMessage",
                 menuItem.isEnabled() ? "Menu item enabled." : "Menu item disabled.");
         return "redirect:/administration/menus";
