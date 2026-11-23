@@ -12,8 +12,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.Trigger;
 import org.springframework.scheduling.support.CronTrigger;
@@ -40,7 +38,6 @@ public class MonitoringSchedulerService
     private final ThreadPoolTaskScheduler taskScheduler;
     private final BackgroundWorkReadiness readiness;
     private final ExecutorService executionExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    private static final Logger log = LoggerFactory.getLogger(MonitoringSchedulerService.class);
 
     private final Map<Long, ScheduledFuture<?>> scheduledJobs = new ConcurrentHashMap<>();
     private final Map<Long, Integer> scheduleFingerprints = new ConcurrentHashMap<>();
@@ -199,17 +196,7 @@ public class MonitoringSchedulerService
             return;
         }
 
-        try
-        {
-            monitoringExecutionManager.execute(job, MonitoringExecution.TriggerSource.SCHEDULED);
-        }
-        catch (Exception exception)
-        {
-            // The execution manager records execution failures. Scheduling must continue
-            // even when a single scheduled execution cannot be started.
-            log.warn("Scheduled monitoring job {} could not be started ({}).",
-                    jobId, exception.getClass().getSimpleName());
-        }
+        dispatchScheduledExecution(job);
     }
 
     private boolean isSchedulable(MonitoringJob job)
