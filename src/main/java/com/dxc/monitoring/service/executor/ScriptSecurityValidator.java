@@ -106,12 +106,12 @@ public class ScriptSecurityValidator {
             while (index<tokens.size() && ASSIGNMENT.matcher(tokens.get(index)).matches()) index++;
             while (index<tokens.size() && WRAPPERS.contains(base(tokens.get(index)))) {
                 String wrapper=base(tokens.get(index++));
-                if (wrapper.equals("env") && index<tokens.size()
-                        && (tokens.get(index).equals("-S") || tokens.get(index).startsWith("-S")
-                            || tokens.get(index).startsWith("--split-string"))) {
-                    throw new IllegalArgumentException("Script security validation rejected env split-string execution.");
+                if (wrapper.equals("env")) {
+                    index = skipEnvironmentOptions(tokens, index);
+                } else {
+                    while (index<tokens.size() && (tokens.get(index).startsWith("-")
+                            || ASSIGNMENT.matcher(tokens.get(index)).matches())) index++;
                 }
-                while (index<tokens.size() && (tokens.get(index).startsWith("-") || ASSIGNMENT.matcher(tokens.get(index)).matches())) index++;
                 if (wrapper.equals("env") || wrapper.equals("command") || wrapper.equals("builtin")) continue;
             }
             while (index<tokens.size()) {
@@ -153,6 +153,39 @@ public class ScriptSecurityValidator {
                 throw new IllegalArgumentException("Script security validation rejected restricted command '" + command + "'.");
             }
         }
+    }
+
+    private int skipEnvironmentOptions(List<String> tokens, int index) {
+        while (index < tokens.size()) {
+            String argument = tokens.get(index);
+            if (argument.equals("-S") || argument.startsWith("-S") || argument.startsWith("--split-string")) {
+                throw new IllegalArgumentException("Script security validation rejected env split-string execution.");
+            }
+            if (ASSIGNMENT.matcher(argument).matches()) {
+                index++;
+                continue;
+            }
+            if (argument.equals("--")) return index + 1;
+            if (Set.of("-i", "--ignore-environment", "-0", "--null", "-v", "--debug").contains(argument)) {
+                index++;
+                continue;
+            }
+            if (Set.of("-u", "--unset", "-C", "--chdir").contains(argument)) {
+                if (index + 1 >= tokens.size())
+                    throw new IllegalArgumentException("Script security validation rejected incomplete env options.");
+                index += 2;
+                continue;
+            }
+            if (argument.startsWith("--unset=") || argument.startsWith("--chdir=")) {
+                index++;
+                continue;
+            }
+            if (argument.startsWith("-")) {
+                throw new IllegalArgumentException("Script security validation rejected unsupported env options.");
+            }
+            return index;
+        }
+        return index;
     }
 
     private boolean isNested(String command) {
