@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Locale;
 
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -274,13 +276,12 @@ public class AlertRetentionService {
     }
 
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<AlertCleanupRun> findVisibleCleanupRuns(
-            org.springframework.data.domain.Pageable pageable) {
+    public Page<AlertCleanupRun> findVisibleCleanupRuns(Pageable pageable) {
         List<Long> allowedApplicationIds = accessService.getApplicationsWithPermission("DATA_EXPUNGE")
                 .stream().map(Application::getId).toList();
         boolean platformAdmin = isPlatformAdmin();
         if (!platformAdmin && allowedApplicationIds.isEmpty()) {
-            return org.springframework.data.domain.Page.empty(pageable);
+            return Page.empty(pageable);
         }
         return runRepository.findVisibleRuns(platformAdmin, allowedApplicationIds, pageable);
     }
