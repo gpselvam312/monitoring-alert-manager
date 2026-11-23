@@ -48,7 +48,11 @@ public class StreamingJobService
     private final JdbcTemplate jdbcTemplate;
     private final DashboardAccessService accessService;
     private final ScriptSecurityValidator scriptSecurityValidator;
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+    // Blocking process launch, output reads and waitFor tasks use virtual threads so they
+    // cannot starve heartbeat and timeout scheduling when several streams run together.
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+    private final java.util.concurrent.ExecutorService processExecutor =
+            Executors.newVirtualThreadPerTaskExecutor();
     private final Map<Long, RunContext> activeRuns = new ConcurrentHashMap<>();
     private final Map<Long, Deque<String>> outputBuffers = new ConcurrentHashMap<>();
     private final Map<Long, Set<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -710,6 +714,7 @@ public class StreamingJobService
         for (Long jobId : new ArrayList<>(activeRuns.keySet()))
             stopInternal(jobId, "STOPPED", "Application is shutting down.");
         scheduler.shutdownNow();
+        processExecutor.shutdownNow();
     }
 
     public record StreamingJobView(Long id, String name, String description, String application, String environment,
