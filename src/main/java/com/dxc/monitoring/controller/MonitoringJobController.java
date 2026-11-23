@@ -295,8 +295,7 @@ public class MonitoringJobController
             // Machine
             if (machineId != null)
             {
-                existingJob.setMachine(machineService.findByIdForConfiguration(machineId)
-                        .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + machineId)));
+                existingJob.setMachine(machineService.findByIdForConfiguration(machineId));
             } else
             {
                 existingJob.setMachine(null);
@@ -345,8 +344,7 @@ public class MonitoringJobController
             // Machine
             if (machineId != null)
             {
-                job.setMachine(machineRepository.findById(machineId)
-                        .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + machineId)));
+                job.setMachine(machineService.findByIdForConfiguration(machineId));
             }
 
             // Schedule
@@ -508,7 +506,7 @@ public class MonitoringJobController
                 && job.getExecutionMode() == MonitoringJob.ExecutionMode.STREAMING;
 
         model.addAttribute("job", job);
-        model.addAttribute("machines", machineRepository.findAll());
+        model.addAttribute("machines", machineService.findAllForConfiguration());
         model.addAttribute("schedules", scheduleRepository.findAll());
         List<com.dxc.monitoring.entity.Application> configurableApplications =
                 accessService.getApplicationsWithPermission("MONITORING_CONFIG");
