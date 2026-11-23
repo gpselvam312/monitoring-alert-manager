@@ -50,4 +50,54 @@ class MachineServiceTest
         assertEquals(machine, service.findById(10L));
         verify(access).assertCanAccessEnvironment(4L, 8L, "MACHINE_VIEW");
     }
+    @Test
+    void usesMonitoringConfigurationPermissionWhenSelectingMachineForJob() {
+        MachineRepository machines = mock(MachineRepository.class);
+        DashboardAccessService access = mock(DashboardAccessService.class);
+        Machine machine = machineInEnvironment(10L, 20L, 30L);
+        when(machines.findByIdWithEnvironment(10L)).thenReturn(Optional.of(machine));
+
+        MachineService service = new MachineService(machines, mock(EnvironmentRepository.class), access);
+        assertEquals(machine, service.findByIdForMonitoringJobConfiguration(10L));
+        verify(access).assertCanAccessEnvironment(20L, 30L, "MONITORING_CONFIG");
+    }
+
+    @Test
+    void allowsMachineConfigurationWithoutRequiringViewPermission() {
+        MachineRepository machines = mock(MachineRepository.class);
+        DashboardAccessService access = mock(DashboardAccessService.class);
+        Machine machine = machineInEnvironment(10L, 20L, 30L);
+        when(machines.findByIdWithEnvironment(10L)).thenReturn(Optional.of(machine));
+
+        MachineService service = new MachineService(machines, mock(EnvironmentRepository.class), access);
+        assertEquals(machine, service.findByIdForMachineConfiguration(10L));
+        verify(access).assertCanAccessEnvironment(20L, 30L, "MACHINE_CONFIG");
+    }
+
+    @Test
+    void deleteRequiresMachineConfigurationPermissionNotViewPermission() {
+        MachineRepository machines = mock(MachineRepository.class);
+        DashboardAccessService access = mock(DashboardAccessService.class);
+        Machine machine = machineInEnvironment(10L, 20L, 30L);
+        machine.setName("test-machine");
+        when(machines.findByIdWithEnvironment(10L)).thenReturn(Optional.of(machine));
+
+        MachineService service = new MachineService(machines, mock(EnvironmentRepository.class), access);
+        assertEquals("test-machine", service.delete(10L));
+        verify(access).assertCanAccessEnvironment(20L, 30L, "MACHINE_CONFIG");
+        verify(machines).delete(machine);
+    }
+
+    private Machine machineInEnvironment(Long machineId, Long applicationId, Long environmentId) {
+        Machine machine = new Machine();
+        machine.setId(machineId);
+        com.dxc.monitoring.entity.Application application = new com.dxc.monitoring.entity.Application();
+        application.setId(applicationId);
+        com.dxc.monitoring.entity.Environment environment = new com.dxc.monitoring.entity.Environment();
+        environment.setId(environmentId);
+        environment.setApplication(application);
+        machine.setEnvironment(environment);
+        return machine;
+    }
+
 }
