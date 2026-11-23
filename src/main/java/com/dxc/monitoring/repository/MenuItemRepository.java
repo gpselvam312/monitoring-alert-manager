@@ -12,6 +12,14 @@ import java.util.List;
 public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findByEnabledTrueOrderByDisplayOrderAscIdAsc();
 
+    @Query("""
+            select menuItem from MenuItem menuItem
+            where menuItem.parentId is null
+              and (menuItem.url is null or trim(menuItem.url) = '')
+            order by menuItem.displayOrder asc, menuItem.id asc
+            """)
+    List<MenuItem> findTopLevelGroupingMenus();
+
     boolean existsByMenuKeyIgnoreCase(String menuKey);
     boolean existsByParentId(Long parentId);
     boolean existsByMenuKeyIgnoreCaseAndIdNot(String menuKey, Long id);
