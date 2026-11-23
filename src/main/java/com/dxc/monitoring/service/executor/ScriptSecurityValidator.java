@@ -106,6 +106,11 @@ public class ScriptSecurityValidator {
             while (index<tokens.size() && ASSIGNMENT.matcher(tokens.get(index)).matches()) index++;
             while (index<tokens.size() && WRAPPERS.contains(base(tokens.get(index)))) {
                 String wrapper=base(tokens.get(index++));
+                if (wrapper.equals("env") && index<tokens.size()
+                        && (tokens.get(index).equals("-S") || tokens.get(index).startsWith("-S")
+                            || tokens.get(index).startsWith("--split-string"))) {
+                    throw new IllegalArgumentException("Script security validation rejected env split-string execution.");
+                }
                 while (index<tokens.size() && (tokens.get(index).startsWith("-") || ASSIGNMENT.matcher(tokens.get(index)).matches())) index++;
                 if (wrapper.equals("env") || wrapper.equals("command") || wrapper.equals("builtin")) continue;
             }
