@@ -100,11 +100,9 @@ public class NotificationRoutingService {
             }
             log.debug("Processing notification route id={} channelId={} channelType={} recipientCount={} groupCount={}",
                     route.getId(), channel.getId(), channel.getChannelType(),
-                    route.getRecipients().size() + (route.getRecipient() == null ? 0 : 1),
-                    route.getGroups().size() + (route.getGroup() == null ? 0 : 1));
+                    route.getRecipients().size(), route.getGroups().size());
             RouteTarget target = new RouteTarget(route.getId(), channel,
                     List.copyOf(route.getRecipients()), List.copyOf(route.getGroups()),
-                    route.getRecipient(), route.getGroup(),
                     usingCreatedRouteForRecurrence ? eventType : route.getEventType(),
                     route.getMinimumIntervalSeconds(), route.getCcRecipients());
             if (channel.getChannelType() == NotificationChannel.ChannelType.TEAMS) {
@@ -155,14 +153,9 @@ public class NotificationRoutingService {
         for (NotificationRecipient recipient : route.recipients()) {
             if (recipient != null && recipient.isEnabled()) recipients.put(recipient.getId(), recipient);
         }
-        // Legacy singular targets are retained as a fallback for routes created before V58.
-        if (route.legacyRecipient() != null && route.legacyRecipient().isEnabled()) {
-            recipients.put(route.legacyRecipient().getId(), route.legacyRecipient());
-        }
         NotificationGroup.ChannelType expectedGroupType = route.channel().getChannelType() == NotificationChannel.ChannelType.WHATSAPP
                 ? NotificationGroup.ChannelType.WHATSAPP : NotificationGroup.ChannelType.EMAIL;
-        Set<Long> groupIds = java.util.stream.Stream.concat(route.groups().stream(),
-                route.legacyGroup() == null ? java.util.stream.Stream.empty() : java.util.stream.Stream.of(route.legacyGroup()))
+        Set<Long> groupIds = route.groups().stream()
                 .filter(group -> group != null && group.isEnabled() && group.getChannelType() == expectedGroupType)
                 .map(NotificationGroup::getId).collect(java.util.stream.Collectors.toSet());
         if (!groupIds.isEmpty()) {
@@ -354,7 +347,6 @@ public class NotificationRoutingService {
 
     private record RouteTarget(Long id, NotificationChannel channel,
             List<NotificationRecipient> recipients, List<NotificationGroup> groups,
-            NotificationRecipient legacyRecipient, NotificationGroup legacyGroup,
             NotificationRoute.EventType eventType, Integer minimumIntervalSeconds, String ccRecipients) {}
     private record OptionalRecent(NotificationDelivery delivery) {}
 }

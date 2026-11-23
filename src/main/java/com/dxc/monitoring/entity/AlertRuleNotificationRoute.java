@@ -14,10 +14,6 @@ public class AlertRuleNotificationRoute {
     private AlertRule alertRule;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "channel_id", nullable = false)
     private NotificationChannel channel;
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "recipient_id")
-    private NotificationRecipient recipient;
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "group_id")
-    private NotificationGroup group;
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "alert_rule_notification_route_recipients", schema = "ra_fcb",
             joinColumns = @JoinColumn(name = "route_id"), inverseJoinColumns = @JoinColumn(name = "recipient_id"))
@@ -45,8 +41,6 @@ public class AlertRuleNotificationRoute {
     public Long getId(){return id;} public void setId(Long v){id=v;}
     public AlertRule getAlertRule(){return alertRule;} public void setAlertRule(AlertRule v){alertRule=v;}
     public NotificationChannel getChannel(){return channel;} public void setChannel(NotificationChannel v){channel=v;}
-    public NotificationRecipient getRecipient(){return recipient;} public void setRecipient(NotificationRecipient v){recipient=v;}
-    public NotificationGroup getGroup(){return group;} public void setGroup(NotificationGroup v){group=v;}
     public Set<NotificationRecipient> getRecipients(){return recipients;} public void setRecipients(Set<NotificationRecipient> v){recipients=v==null?new LinkedHashSet<>():new LinkedHashSet<>(v);}
     public Set<NotificationGroup> getGroups(){return groups;} public void setGroups(Set<NotificationGroup> v){groups=v==null?new LinkedHashSet<>():new LinkedHashSet<>(v);}
     public AlertRule.Severity getSeverity(){return severity;} public void setSeverity(AlertRule.Severity v){severity=v;}

@@ -86,8 +86,6 @@ public class AlertRuleNotificationRouteService {
                     .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
             Set<Long> groupIds = route.getGroups().stream().map(NotificationGroup::getId)
                     .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-            if (recipientIds.isEmpty() && route.getRecipient() != null) recipientIds.add(route.getRecipient().getId());
-            if (groupIds.isEmpty() && route.getGroup() != null) groupIds.add(route.getGroup().getId());
             row.put("recipientIds", recipientIds);
             row.put("groupIds", groupIds);
             row.put("ccRecipients", route.getCcRecipients() == null ? "" : route.getCcRecipients());
@@ -122,14 +120,6 @@ public class AlertRuleNotificationRouteService {
             Long channelId = longValue(row.get("channelId"));
             List<Long> recipientIds = longListValue(row.get("recipientIds"));
             List<Long> groupIds = longListValue(row.get("groupIds"));
-            // Read the previous single-target JSON shape so existing saved configurations remain editable.
-            if (recipientIds.isEmpty() && groupIds.isEmpty()) {
-                Long legacyRecipientId = longValue(row.get("recipientId"));
-                Long legacyGroupId = longValue(row.get("groupId"));
-                String legacyTargetType = stringValue(row.get("targetType"));
-                if ("RECIPIENT".equals(legacyTargetType) && legacyRecipientId != null) recipientIds = List.of(legacyRecipientId);
-                if ("GROUP".equals(legacyTargetType) && legacyGroupId != null) groupIds = List.of(legacyGroupId);
-            }
             if (channelId == null) throw new IllegalArgumentException("Select a notification channel for every route.");
 
             NotificationChannel channel = channelRepository.findById(channelId)
@@ -179,8 +169,6 @@ public class AlertRuleNotificationRouteService {
             AlertRuleNotificationRoute route = new AlertRuleNotificationRoute();
             route.setAlertRule(rule);
             route.setChannel(channel);
-            route.setRecipient(null);
-            route.setGroup(null);
             route.setRecipients(new LinkedHashSet<>(recipients));
             route.setGroups(new LinkedHashSet<>(groups));
             String ccRecipients = normalizeCcRecipients(row.get("ccRecipients"));
