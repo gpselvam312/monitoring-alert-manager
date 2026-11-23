@@ -137,7 +137,8 @@ public class UserService {
             userApplicationRoleRepository.deleteAllAssignmentsForUser(user.getId());
             return;
         }
-        if (roleAssignments.containsKey(null) || roleAssignments.containsValue(null)) {
+        if (roleAssignments.entrySet().stream()
+                .anyMatch(entry -> entry.getKey() == null || entry.getValue() == null)) {
             throw new IllegalArgumentException("Every application assignment must include a valid application and role.");
         }
 
