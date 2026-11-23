@@ -136,17 +136,19 @@ public class MonitoringSchedulerService
         }
     }
 
-    private void dispatchScheduledExecution(MonitoringJob job) {
+    private void dispatchScheduledExecution(Long jobId) {
         try {
             executionExecutor.execute(() -> {
                 try {
+                    MonitoringJob job = monitoringJobRepository.findByIdForDetails(jobId).orElse(null);
+                    if (!isSchedulable(job) || !isWithinWindow(job.getSchedule())) return;
                     monitoringExecutionManager.execute(job, MonitoringExecution.TriggerSource.SCHEDULED);
                 } catch (RuntimeException exception) {
-                    log.error("Scheduled execution failed for monitoring job {}", job.getId(), exception);
+                    log.error("Scheduled execution failed for monitoring job {}", jobId, exception);
                 }
             });
         } catch (RuntimeException exception) {
-            log.error("Could not dispatch scheduled execution for monitoring job {}", job.getId(), exception);
+            log.error("Could not dispatch scheduled execution for monitoring job {}", jobId, exception);
         }
     }
 
@@ -187,16 +189,8 @@ public class MonitoringSchedulerService
         return trigger;
     }
 
-    private void executeIfWithinWindow(Long jobId)
-    {
-        MonitoringJob job = monitoringJobRepository.findByIdForDetails(jobId).orElse(null);
-
-        if (!isSchedulable(job) || !isWithinWindow(job.getSchedule()))
-        {
-            return;
-        }
-
-        dispatchScheduledExecution(job);
+    private void executeIfWithinWindow(Long jobId) {
+        dispatchScheduledExecution(jobId);
     }
 
     private boolean isSchedulable(MonitoringJob job)
