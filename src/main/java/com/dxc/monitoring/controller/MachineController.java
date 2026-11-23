@@ -109,7 +109,7 @@ public class MachineController
         {
 
             // EDIT existing machine
-            Machine existingMachine = machineService.findById(machine.getId());
+            Machine existingMachine = machineService.findByIdForMachineConfiguration(machine.getId());
 
             existingMachine.setName(machine.getName());
             existingMachine.setHostname(machine.getHostname());
@@ -150,7 +150,7 @@ public class MachineController
     @PreAuthorize("hasAuthority('MACHINE_CONFIG')")
     public String editMachineForm(@PathVariable Long id, Model model)
     {
-        Machine machine = machineService.findById(id);
+        Machine machine = machineService.findByIdForMachineConfiguration(id);
 
         model.addAttribute("machine", machine);
         model.addAttribute("pageTitle", "Edit Machine");

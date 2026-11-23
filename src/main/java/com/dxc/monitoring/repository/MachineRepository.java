@@ -59,7 +59,7 @@ public interface MachineRepository extends JpaRepository<Machine, Long>
             FROM Machine m
             JOIN m.environment e
             WHERE e.application.id IN :applicationIds
-              AND e.enabled = true AND e.application.enabled = true
+              AND e.enabled = true AND e.application.enabled = true AND m.enabled = true
             ORDER BY m.name
             """)
     java.util.List<Machine> findAllForApplications(

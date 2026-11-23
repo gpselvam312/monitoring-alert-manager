@@ -47,6 +47,14 @@ public class MachineService
     }
 
     @Transactional(readOnly = true)
+    public Machine findByIdForMachineConfiguration(Long id) {
+        Machine machine = machineRepository.findByIdWithEnvironment(id)
+                .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + id));
+        assertMachineAccess(machine, "MACHINE_CONFIG");
+        return machine;
+    }
+
+    @Transactional(readOnly = true)
     public Machine findByIdForMonitoringJobConfiguration(Long id) {
         Machine machine = machineRepository.findByIdWithEnvironment(id)
                 .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + id));
@@ -86,7 +94,8 @@ public class MachineService
     @Transactional
     public String delete(Long id)
     {
-        Machine machine = findById(id);
+        Machine machine = machineRepository.findByIdWithEnvironment(id)
+                .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + id));
         assertMachineAccess(machine, "MACHINE_CONFIG");
 
         String machineName = machine.getName();
@@ -99,7 +108,8 @@ public class MachineService
     @Transactional
     public void toggleEnabled(Long id)
     {
-        Machine machine = findById(id);
+        Machine machine = machineRepository.findByIdWithEnvironment(id)
+                .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + id));
         assertMachineAccess(machine, "MACHINE_CONFIG");
         machine.setEnabled(!machine.isEnabled());
         machineRepository.save(machine);
