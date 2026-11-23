@@ -58,6 +58,7 @@ public interface ExternalApplicationRepository extends JpaRepository<ExternalApp
             @Param("environmentId") Long environmentId,
             @Param("externalType") String externalType, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"application", "environment"})
     @Query("""
             select externalApplication from ExternalApplication externalApplication
             where externalApplication.enabled = true
