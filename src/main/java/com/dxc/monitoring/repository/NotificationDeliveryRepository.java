@@ -64,7 +64,8 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
     int completeClaimedAsFailed(@Param("id") Long id, @Param("attemptCount") int attemptCount,
             @Param("expectedStatus") NotificationDelivery.DeliveryStatus expectedStatus,
             @Param("status") NotificationDelivery.DeliveryStatus status,
-            @Param("error") String error, @Param("nextAttemptAt") java.time.OffsetDateTime nextAttemptAt,\n            @Param("updatedAt") java.time.OffsetDateTime updatedAt);
+            @Param("error") String error, @Param("nextAttemptAt") java.time.OffsetDateTime nextAttemptAt,
+            @Param("updatedAt") java.time.OffsetDateTime updatedAt);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -74,7 +75,8 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
             """)
     int completeClaimedAsSkipped(@Param("id") Long id, @Param("attemptCount") int attemptCount,
             @Param("expectedStatus") NotificationDelivery.DeliveryStatus expectedStatus,
-            @Param("status") NotificationDelivery.DeliveryStatus status, @Param("reason") String reason,\n            @Param("updatedAt") java.time.OffsetDateTime updatedAt);
+            @Param("status") NotificationDelivery.DeliveryStatus status, @Param("reason") String reason,
+            @Param("updatedAt") java.time.OffsetDateTime updatedAt);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
