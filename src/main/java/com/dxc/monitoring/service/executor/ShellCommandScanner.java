@@ -2,9 +2,16 @@ package com.dxc.monitoring.service.executor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
-/** Conservative shell token scanner: comments and quoted text are not treated as commands. */
+/**
+ * Conservative shell token scanner. It is not a shell parser; unsupported
+ * constructs must be rejected by the validator rather than treated as safe.
+ */
 final class ShellCommandScanner {
+    private static final Set<String> CONTROL_BOUNDARIES =
+            Set.of("then", "do", "else", "elif", "fi", "done");
+
     private ShellCommandScanner() {}
 
     static List<List<String>> commands(String source) {
@@ -65,9 +72,16 @@ final class ShellCommandScanner {
             }
             if (Character.isWhitespace(c)) {
                 flush(token, command);
+                if (!command.isEmpty()
+                        && CONTROL_BOUNDARIES.contains(command.get(command.size() - 1).toLowerCase(java.util.Locale.ROOT))) {
+                    finish(command, result);
+                }
                 continue;
             }
             token.append(c);
+        }
+        if (quote != 0 || escaped) {
+            throw new IllegalArgumentException("Script security validation rejected an incomplete quoted or escaped token.");
         }
         flush(token, command);
         finish(command, result);
