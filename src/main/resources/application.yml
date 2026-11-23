@@ -54,6 +54,7 @@ monitoring:
     script:
       # Trusted directories remain environment-specific; approved hashes are stored per Monitoring Job.
       allowed-directories: ${MONITORING_SCRIPT_ALLOWED_DIRECTORIES:${user.dir}/scripts}
+      max-output-bytes: ${MONITORING_SCRIPT_MAX_OUTPUT_BYTES:262144}
       validation:
         enabled: ${MONITORING_SCRIPT_VALIDATION_ENABLED:true}
         restricted-commands:

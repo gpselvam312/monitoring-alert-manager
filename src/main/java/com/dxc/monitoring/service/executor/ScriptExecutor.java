@@ -2,15 +2,20 @@ package com.dxc.monitoring.service.executor;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import jakarta.annotation.PreDestroy;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.dxc.monitoring.entity.MonitoringExecution;
@@ -22,11 +27,15 @@ public class ScriptExecutor implements MonitoringExecutor
 {
     private final MonitoringResultNormalizer resultNormalizer;
     private final ScriptSecurityValidator scriptSecurityValidator;
+    private final int maxOutputBytes;
+    private final ExecutorService outputReaderExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public ScriptExecutor(MonitoringResultNormalizer resultNormalizer, ScriptSecurityValidator scriptSecurityValidator)
+    public ScriptExecutor(MonitoringResultNormalizer resultNormalizer, ScriptSecurityValidator scriptSecurityValidator,
+            @Value("${monitoring.security.script.max-output-bytes:262144}") int maxOutputBytes)
     {
         this.resultNormalizer = resultNormalizer;
         this.scriptSecurityValidator = scriptSecurityValidator;
+        this.maxOutputBytes = Math.max(1024, maxOutputBytes);
     }
 
     @Override
@@ -54,34 +63,16 @@ public class ScriptExecutor implements MonitoringExecutor
 
             // Drain stdout and stderr independently so scripts can emit machine-readable JSON
             // on stdout while keeping diagnostics on stderr.
-            CompletableFuture<byte[]> stdoutFuture = CompletableFuture.supplyAsync(() ->
-            {
-                try
-                {
-                    return runningProcess.getInputStream().readAllBytes();
-                }
-                catch (IOException exception)
-                {
-                    throw new java.util.concurrent.CompletionException(exception);
-                }
-            });
-            CompletableFuture<byte[]> stderrFuture = CompletableFuture.supplyAsync(() ->
-            {
-                try
-                {
-                    return runningProcess.getErrorStream().readAllBytes();
-                }
-                catch (IOException exception)
-                {
-                    throw new java.util.concurrent.CompletionException(exception);
-                }
-            });
+            CompletableFuture<ProcessOutputCapture.CapturedOutput> stdoutFuture =
+                    CompletableFuture.supplyAsync(() -> capture(runningProcess.getInputStream()), outputReaderExecutor);
+            CompletableFuture<ProcessOutputCapture.CapturedOutput> stderrFuture =
+                    CompletableFuture.supplyAsync(() -> capture(runningProcess.getErrorStream()), outputReaderExecutor);
 
             int timeoutSeconds = job.getTimeoutSeconds() == null ? 30 : Math.max(1, job.getTimeoutSeconds());
             boolean completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
             if (!completed)
             {
-                process.destroyForcibly();
+                terminateProcessTree(process);
                 process.waitFor();
                 result.setExecutionStatus(MonitoringExecution.ExecutionStatus.TIMEOUT);
                 result.setResultStatus(MonitoringResult.ResultStatus.FAILED);
@@ -94,8 +85,8 @@ public class ScriptExecutor implements MonitoringExecutor
                 return result;
             }
 
-            String stdout = new String(stdoutFuture.get(5, TimeUnit.SECONDS), StandardCharsets.UTF_8);
-            String stderr = new String(stderrFuture.get(5, TimeUnit.SECONDS), StandardCharsets.UTF_8);
+            String stdout = stdoutFuture.get(5, TimeUnit.SECONDS).text();
+            String stderr = stderrFuture.get(5, TimeUnit.SECONDS).text();
             String combinedOutput = combineOutput(stdout, stderr);
             result.setRawOutput(combinedOutput);
             int exitCode = process.exitValue();
@@ -160,6 +151,46 @@ public class ScriptExecutor implements MonitoringExecutor
         return result;
     }
 
+    @PreDestroy
+    public void shutdownOutputReaders()
+    {
+        outputReaderExecutor.shutdownNow();
+    }
+
+    private ProcessOutputCapture.CapturedOutput capture(InputStream input)
+    {
+        try
+        {
+            return ProcessOutputCapture.capture(input, maxOutputBytes);
+        }
+        catch (IOException exception)
+        {
+            throw new java.util.concurrent.CompletionException(exception);
+        }
+    }
+
+    private void terminateProcessTree(Process process)
+    {
+        List<ProcessHandle> descendants = process.descendants().toList();
+        for (int index = descendants.size() - 1; index >= 0; index--)
+            descendants.get(index).destroyForcibly();
+        process.destroyForcibly();
+        try
+        {
+            process.waitFor(2, TimeUnit.SECONDS);
+            for (ProcessHandle descendant : descendants)
+                descendant.onExit().get(2, TimeUnit.SECONDS);
+        }
+        catch (InterruptedException exception)
+        {
+            Thread.currentThread().interrupt();
+        }
+        catch (ExecutionException | TimeoutException ignored)
+        {
+            // Do not block execution cleanup indefinitely after forceful termination.
+        }
+    }
+
     private String safeSecurityMessage(String message)
     {
         if (message == null || message.isBlank())
@@ -192,11 +223,11 @@ public class ScriptExecutor implements MonitoringExecutor
         return stdout + "\n[stderr]\n" + stderr;
     }
 
-    private String readOutput(CompletableFuture<byte[]> outputFuture)
+    private String readOutput(CompletableFuture<ProcessOutputCapture.CapturedOutput> outputFuture)
     {
         try
         {
-            return new String(outputFuture.get(2, TimeUnit.SECONDS), StandardCharsets.UTF_8);
+            return outputFuture.get(2, TimeUnit.SECONDS).text();
         }
         catch (Exception ignored)
         {
