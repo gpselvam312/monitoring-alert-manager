@@ -65,8 +65,9 @@ public class ApiExecutor implements MonitoringExecutor
                     .followRedirects(HttpClient.Redirect.NEVER)
                     .build();
 
+            URI targetUri = validateTargetUri(resolveTemplate(job.getUrl().trim(), parameters));
             HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(resolveTemplate(job.getUrl().trim(), parameters)))
+                    .uri(targetUri)
                     .timeout(Duration.ofSeconds(timeoutSeconds));
 
             String headers = job.getRequestHeaders();
@@ -137,6 +138,28 @@ public class ApiExecutor implements MonitoringExecutor
             failed(result, "Unable to complete API monitoring request.", exception.getMessage(), startedAt, job.getResultParserConfig());
         }
         return result;
+    }
+
+    static URI validateTargetUri(String value)
+    {
+        try
+        {
+            URI uri = URI.create(value);
+            String scheme = uri.getScheme();
+            if (uri.getHost() == null || scheme == null
+                    || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
+                    || uri.getUserInfo() != null || uri.getFragment() != null
+                    || uri.getPort() > 65535 || uri.getPort() == 0)
+            {
+                throw new IllegalArgumentException();
+            }
+            return uri;
+        }
+        catch (RuntimeException exception)
+        {
+            throw new IllegalArgumentException(
+                    "API monitoring URL must be an absolute HTTP or HTTPS URL with a valid host and port, without embedded credentials or a fragment.");
+        }
     }
 
     private String resolveTemplate(String value, Map<String, String> parameters)
