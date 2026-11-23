@@ -265,13 +265,21 @@ public class AlertHistoryController {
     }
 
     private Alert.AlertStatus parseStatus(String value) {
-        try { return value == null || value.isBlank() ? null : Alert.AlertStatus.valueOf(value); }
-        catch (IllegalArgumentException exception) { return null; }
+        if (value == null || value.isBlank()) return null;
+        try {
+            return Alert.AlertStatus.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a valid alert status.");
+        }
     }
 
     private AlertRule.Severity parseSeverity(String value) {
-        try { return value == null || value.isBlank() ? null : AlertRule.Severity.valueOf(value); }
-        catch (IllegalArgumentException exception) { return null; }
+        if (value == null || value.isBlank()) return null;
+        try {
+            return AlertRule.Severity.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a valid alert severity.");
+        }
     }
 
     private record SearchTerm(Long exactAlertId, String repositorySearch) {}
