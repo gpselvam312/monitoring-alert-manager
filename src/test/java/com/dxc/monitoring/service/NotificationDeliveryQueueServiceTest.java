@@ -49,13 +49,13 @@ class NotificationDeliveryQueueServiceTest {
         NotificationDeliveryRepository repository = mock(NotificationDeliveryRepository.class);
         when(repository.completeClaimedAsFailed(eq(42L), eq(2),
                 eq(NotificationDelivery.DeliveryStatus.SENDING), eq(NotificationDelivery.DeliveryStatus.FAILED),
-                eq("provider unavailable"), any(OffsetDateTime.class))).thenReturn(1);
+                eq("provider unavailable"), any(OffsetDateTime.class), any(OffsetDateTime.class))).thenReturn(1);
 
         NotificationDeliveryQueueService service = new NotificationDeliveryQueueService(repository);
 
         assertTrue(service.markFailed(42L, 2, 8, "provider unavailable"));
         verify(repository).completeClaimedAsFailed(eq(42L), eq(2),
                 eq(NotificationDelivery.DeliveryStatus.SENDING), eq(NotificationDelivery.DeliveryStatus.FAILED),
-                eq("provider unavailable"), any(OffsetDateTime.class));
+                eq("provider unavailable"), any(OffsetDateTime.class), any(OffsetDateTime.class));
     }
 }

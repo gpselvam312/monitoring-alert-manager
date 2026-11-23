@@ -45,7 +45,7 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
     @Query("""
             update NotificationDelivery d
                set d.status = :status, d.providerMessageId = :providerMessageId,
-                   d.sentAt = :sentAt, d.lockedAt = null, d.lastError = null
+                   d.sentAt = :sentAt, d.lockedAt = null, d.lastError = null, d.updatedAt = :sentAt
              where d.id = :id and d.status = :expectedStatus and d.attemptCount = :attemptCount
             """)
     int completeClaimedAsSent(@Param("id") Long id, @Param("attemptCount") int attemptCount,
@@ -58,23 +58,23 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
     @Query("""
             update NotificationDelivery d
                set d.status = :status, d.lockedAt = null, d.lastError = :error,
-                   d.nextAttemptAt = :nextAttemptAt
+                   d.nextAttemptAt = :nextAttemptAt, d.updatedAt = :updatedAt
              where d.id = :id and d.status = :expectedStatus and d.attemptCount = :attemptCount
             """)
     int completeClaimedAsFailed(@Param("id") Long id, @Param("attemptCount") int attemptCount,
             @Param("expectedStatus") NotificationDelivery.DeliveryStatus expectedStatus,
             @Param("status") NotificationDelivery.DeliveryStatus status,
-            @Param("error") String error, @Param("nextAttemptAt") java.time.OffsetDateTime nextAttemptAt);
+            @Param("error") String error, @Param("nextAttemptAt") java.time.OffsetDateTime nextAttemptAt,\n            @Param("updatedAt") java.time.OffsetDateTime updatedAt);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update NotificationDelivery d
-               set d.status = :status, d.lockedAt = null, d.lastError = :reason
+               set d.status = :status, d.lockedAt = null, d.lastError = :reason, d.updatedAt = :updatedAt
              where d.id = :id and d.status = :expectedStatus and d.attemptCount = :attemptCount
             """)
     int completeClaimedAsSkipped(@Param("id") Long id, @Param("attemptCount") int attemptCount,
             @Param("expectedStatus") NotificationDelivery.DeliveryStatus expectedStatus,
-            @Param("status") NotificationDelivery.DeliveryStatus status, @Param("reason") String reason);
+            @Param("status") NotificationDelivery.DeliveryStatus status, @Param("reason") String reason,\n            @Param("updatedAt") java.time.OffsetDateTime updatedAt);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """

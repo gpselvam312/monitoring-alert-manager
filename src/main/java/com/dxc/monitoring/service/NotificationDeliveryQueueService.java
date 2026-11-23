@@ -53,7 +53,7 @@ public class NotificationDeliveryQueueService {
     public boolean markSkipped(Long id, int attemptCount, String reason) {
         return repository.completeClaimedAsSkipped(id, attemptCount,
                 NotificationDelivery.DeliveryStatus.SENDING, NotificationDelivery.DeliveryStatus.SKIPPED,
-                sanitize(reason)) == 1;
+                sanitize(reason), OffsetDateTime.now()) == 1;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -63,7 +63,7 @@ public class NotificationDeliveryQueueService {
         OffsetDateTime nextAttemptAt = OffsetDateTime.now().plusSeconds(delaySeconds);
         return repository.completeClaimedAsFailed(id, attemptCount,
                 NotificationDelivery.DeliveryStatus.SENDING, NotificationDelivery.DeliveryStatus.FAILED,
-                sanitize(error), nextAttemptAt) == 1;
+                sanitize(error), nextAttemptAt, OffsetDateTime.now()) == 1;
     }
 
     private String sanitize(String error) {
