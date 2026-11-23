@@ -3,6 +3,7 @@ package com.dxc.monitoring.controller;
 import com.dxc.monitoring.entity.MenuItem;
 import com.dxc.monitoring.repository.MenuItemRepository;
 import com.dxc.monitoring.web.PageRequestSupport;
+import com.dxc.monitoring.service.MenuUrlPolicy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -147,14 +148,14 @@ public class MenuManagementController {
             return "Menu Name is required and must be no longer than 100 characters.";
         if (sectionName != null && sectionName.length() > 80) return "Sidebar Section must be no longer than 80 characters.";
         if (order < 0) return "Display Order must be zero or greater.";
-        if (url != null && (!url.startsWith("/") || url.startsWith("//") || url.contains("..")
-                || url.contains("\\") || url.contains("\r") || url.contains("\n")
-                || url.matches("(?i).*%(2f|5c|2e).*")))
-            return "URL must be a safe local application path beginning with /; external or encoded traversal paths are not allowed.";
+        if (url != null && !MenuUrlPolicy.isSafeLocalPath(url))
+            return "URL must be a safe local application path beginning with /; query strings, fragments, encoded paths, and traversal paths are not allowed.";
         boolean duplicate = id == null ? menuItemRepository.existsByMenuKeyIgnoreCase(key)
                 : menuItemRepository.existsByMenuKeyIgnoreCaseAndIdNot(key, id);
         if (duplicate) return "That Menu Key is already in use.";
         if (parentId != null) {
+            if (id != null && menuItemRepository.existsByParentId(id))
+                return "A menu grouping item cannot be nested under another grouping item.";
             MenuItem parent = menuItemRepository.findById(parentId).orElse(null);
             if (parent == null || parent.getParentId() != null || (parent.getUrl() != null && !parent.getUrl().isBlank()))
                 return "Choose a top-level grouping menu as the parent.";

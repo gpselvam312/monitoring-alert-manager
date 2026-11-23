@@ -13,6 +13,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findByEnabledTrueOrderByDisplayOrderAscIdAsc();
 
     boolean existsByMenuKeyIgnoreCase(String menuKey);
+    boolean existsByParentId(Long parentId);
     boolean existsByMenuKeyIgnoreCaseAndIdNot(String menuKey, Long id);
 
     @Query(value = """

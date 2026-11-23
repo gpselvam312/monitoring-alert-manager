@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.dxc.monitoring.service.MenuUrlPolicy;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,9 +73,7 @@ public class MenuItemService {
     private String routeFor(String configuredUrl) {
         if (configuredUrl == null || configuredUrl.isBlank()) return null;
         String url = configuredUrl.trim();
-        if (!url.startsWith("/") || url.startsWith("//") || url.contains("..")
-                || url.contains("\\") || url.contains("\r") || url.contains("\n")
-                || url.contains("%") || url.contains("?") || url.contains("#")) return null;
+        if (!MenuUrlPolicy.isSafeLocalPath(url)) return null;
         return url;
     }
 
