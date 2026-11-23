@@ -97,9 +97,7 @@ public class MenuManagementController {
     }
 
     private void populateForm(Model model, Long currentId) {
-        List<MenuItem> parentMenus = menuItemRepository.findAll(Sort.by(Sort.Direction.ASC, "displayOrder", "id"))
-                .stream().filter(item -> item.getParentId() == null)
-                .filter(item -> item.getUrl() == null || item.getUrl().isBlank())
+        List<MenuItem> parentMenus = menuItemRepository.findTopLevelGroupingMenus().stream()
                 .filter(item -> currentId == null || !currentId.equals(item.getId())).toList();
         model.addAttribute("parentMenus", parentMenus);
     }
