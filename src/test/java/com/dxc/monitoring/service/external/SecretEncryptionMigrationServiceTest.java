@@ -20,6 +20,23 @@ class SecretEncryptionMigrationServiceTest {
     private static final String NEW_KEY = newKey();
 
     @Test
+    void checksSecretPresenceWithoutLoadingSecretRows() {
+        ExternalApplicationAccountRepository external = mock(ExternalApplicationAccountRepository.class);
+        NotificationChannelSecretRepository notifications = mock(NotificationChannelSecretRepository.class);
+        when(external.existsByEncryptedSecretIsNotNullAndEncryptedSecretNot("")).thenReturn(true);
+        when(notifications.existsByEncryptedValueIsNotNullAndEncryptedValueNot("")).thenReturn(false);
+
+        var service = new SecretEncryptionMigrationService(external, notifications,
+                new ExternalSecretEncryptionService(null));
+
+        assertThrows(IllegalStateException.class, service::assertEncryptionKeyAvailableWhenSecretsExist);
+        verify(external).existsByEncryptedSecretIsNotNullAndEncryptedSecretNot("");
+        verify(notifications).existsByEncryptedValueIsNotNullAndEncryptedValueNot("");
+        verify(external, never()).findAll();
+        verify(notifications, never()).findAll();
+    }
+
+    @Test
     void rotatesBothSecretStores() {
         ExternalApplicationAccountRepository external = mock(ExternalApplicationAccountRepository.class);
         NotificationChannelSecretRepository notifications = mock(NotificationChannelSecretRepository.class);
