@@ -6,7 +6,6 @@ import com.dxc.monitoring.web.PageRequestSupport;
 import com.dxc.monitoring.service.MenuUrlPolicy;
 import com.dxc.monitoring.service.MenuDefinitionsChangedEvent;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.context.ApplicationEventPublisher;
