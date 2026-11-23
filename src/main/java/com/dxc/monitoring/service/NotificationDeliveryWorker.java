@@ -40,6 +40,8 @@ public class NotificationDeliveryWorker {
     @Scheduled(fixedDelayString = "${alerts.notifications.poll-interval-ms:2000}")
     public void poll() {
         if (!readiness.isReady()) return;
+        int recovered = queueService.recoverExhaustedClaims(MAX_ATTEMPTS);
+        if (recovered > 0) log.warn("Marked {} stale final-attempt notification deliveries as FAILED; provider outcome may be unknown", recovered);
         List<NotificationDeliveryQueueService.ClaimedDelivery> deliveries =
                 queueService.claimDueDeliveries(BATCH_SIZE, MAX_ATTEMPTS);
         if (!deliveries.isEmpty()) log.info("Notification delivery worker claimed {} pending deliveries", deliveries.size());

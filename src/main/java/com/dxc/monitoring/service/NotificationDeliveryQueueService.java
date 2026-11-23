@@ -31,6 +31,11 @@ public class NotificationDeliveryQueueService {
         }).toList();
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int recoverExhaustedClaims(int maxAttempts) {
+        return repository.failExhaustedStaleClaims(maxAttempts);
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public NotificationDelivery loadForDelivery(Long id) {
         return repository.findByIdWithDetails(id)

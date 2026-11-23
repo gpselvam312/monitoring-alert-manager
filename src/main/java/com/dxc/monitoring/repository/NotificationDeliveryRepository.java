@@ -76,6 +76,20 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
             @Param("expectedStatus") NotificationDelivery.DeliveryStatus expectedStatus,
             @Param("status") NotificationDelivery.DeliveryStatus status, @Param("reason") String reason);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE ra_fcb.notification_deliveries
+               SET status = 'FAILED',
+                   locked_at = NULL,
+                   next_attempt_at = CURRENT_TIMESTAMP,
+                   last_error = 'Worker lease expired during the final attempt; provider outcome may be unknown.',
+                   updated_at = CURRENT_TIMESTAMP
+             WHERE status = 'SENDING'
+               AND attempt_count >= :maxAttempts
+               AND locked_at < CURRENT_TIMESTAMP - INTERVAL '10 minutes'
+            """, nativeQuery = true)
+    int failExhaustedStaleClaims(@Param("maxAttempts") int maxAttempts);
+
     @EntityGraph(attributePaths = {"alert", "alertHistory", "channel", "recipient"})
     @Query("select d from NotificationDelivery d where d.id = :id")
     Optional<NotificationDelivery> findByIdWithDetails(@Param("id") Long id);
