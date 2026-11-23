@@ -111,7 +111,7 @@ class AlertRetentionServiceTest {
             application.setId(31L);
             when(access.getApplicationsWithPermission("DATA_EXPUNGE")).thenReturn(List.of(application));
             Pageable pageable = PageRequest.of(0, 20);
-            when(runs.findVisibleRuns(false, List.of(31L), pageable))
+            when(runs.findByPolicy_Application_IdInOrderByStartedAtDescIdDesc(List.of(31L), pageable))
                     .thenReturn(new PageImpl<>(List.of(), pageable, 0));
             AlertRetentionService service = new AlertRetentionService(
                     mock(AlertRetentionPolicyRepository.class), runs,
@@ -121,7 +121,7 @@ class AlertRetentionServiceTest {
 
             service.findVisibleCleanupRuns(pageable);
 
-            verify(runs).findVisibleRuns(false, List.of(31L), pageable);
+            verify(runs).findByPolicy_Application_IdInOrderByStartedAtDescIdDesc(List.of(31L), pageable);
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -137,7 +137,7 @@ class AlertRetentionServiceTest {
             DashboardAccessService access = mock(DashboardAccessService.class);
             Pageable pageable = PageRequest.of(0, 20);
             when(access.getApplicationsWithPermission("DATA_EXPUNGE")).thenReturn(List.of());
-            when(runs.findVisibleRuns(true, List.of(), pageable))
+            when(runs.findAllByOrderByStartedAtDescIdDesc(pageable))
                     .thenReturn(new PageImpl<>(List.of(), pageable, 0));
             AlertRetentionService service = new AlertRetentionService(
                     mock(AlertRetentionPolicyRepository.class), runs,
@@ -147,7 +147,7 @@ class AlertRetentionServiceTest {
 
             service.findVisibleCleanupRuns(pageable);
 
-            verify(runs).findVisibleRuns(true, List.of(), pageable);
+            verify(runs).findAllByOrderByStartedAtDescIdDesc(pageable);
         } finally {
             SecurityContextHolder.clearContext();
         }
