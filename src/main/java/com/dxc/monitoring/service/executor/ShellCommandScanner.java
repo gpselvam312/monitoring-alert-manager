@@ -48,6 +48,9 @@ final class ShellCommandScanner {
             if (c == '`' || (c == '$' && i + 1 < source.length() && source.charAt(i + 1) == '(')) {
                 throw new IllegalArgumentException("Script security validation rejected command substitution.");
             }
+            if ((c == '{' || c == '}') && token.length() == 0) {
+                throw new IllegalArgumentException("Script security validation rejected shell grouping syntax.");
+            }
             if (c == '\\') {
                 escaped = true;
                 continue;

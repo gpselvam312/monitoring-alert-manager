@@ -28,7 +28,7 @@ public class ScriptSecurityValidator {
     private static final Pattern ASSIGNMENT = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*=.*");
     private static final Set<String> SHELL_WORDS = Set.of("if","then","else","elif","fi","do","done","while","until","!");
     private static final Set<String> WRAPPERS = Set.of("env","command","builtin","nohup","time");
-    private static final Set<String> NESTED = Set.of("source","eval","exec","xargs","bash","sh","dash","zsh","ksh","python","python2","python3","perl","ruby","node","nodejs","trap","busybox");
+    private static final Set<String> NESTED = Set.of("source","eval","exec","xargs","bash","sh","dash","zsh","ksh","python","python2","python3","perl","ruby","node","nodejs","trap","busybox","nice","timeout","stdbuf","setsid","chrt","ionice");
     private final Path[] fallbackAllowedDirectories;
     private final SystemSettingService systemSettingService;
     private final ScriptValidationProperties validation;
@@ -121,6 +121,11 @@ public class ScriptSecurityValidator {
             }
             if (index>=tokens.size()) continue;
             String command=base(tokens.get(index));
+            if (Set.of("case", "function", "select", "coproc").contains(command))
+                throw new IllegalArgumentException("Script security validation rejected unsupported shell control syntax.");
+            if (command.equals("env") && tokens.subList(index + 1, tokens.size()).stream()
+                    .anyMatch(arg -> arg.equals("-S") || arg.startsWith("-S") || arg.startsWith("--split-string")))
+                throw new IllegalArgumentException("Script security validation rejected env split-string execution.");
             if (command.contains("$") || command.contains("`"))
                 throw new IllegalArgumentException("Script security validation rejected a dynamically selected command.");
             if (command.isBlank() || command.startsWith(">") || command.startsWith("<")) continue;
@@ -130,7 +135,8 @@ public class ScriptSecurityValidator {
                     .anyMatch(arg -> Set.of("-exec", "-execdir", "-ok", "-okdir").contains(arg)))
                 throw new IllegalArgumentException("Script security validation rejected find command execution actions.");
             if ((command.equals("awk") || command.equals("gawk"))
-                    && tokens.subList(index+1,tokens.size()).stream().anyMatch(arg -> arg.contains("system(")))
+                    && Pattern.compile("(?i)\\\\bsystem\\\\s*\\\\(")
+                            .matcher(String.join(" ", tokens.subList(index + 1, tokens.size()))).find())
                 throw new IllegalArgumentException("Script security validation rejected awk system() command execution.");
             boolean restricted=validation.getRestrictedCommands().contains(command)
                     || (command.startsWith("mkfs.") && validation.getRestrictedCommands().contains("mkfs"));

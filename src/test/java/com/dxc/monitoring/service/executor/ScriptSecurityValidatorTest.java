@@ -64,6 +64,26 @@ class ScriptSecurityValidatorTest {
                     () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
         }
     }
+    @Test void rejectsUnsupportedShellFunctionAndCaseConstructs() throws Exception {
+        for (String body : List.of(
+                "check() { rm -rf /tmp/x; }\\n",
+                "case \\$MODE in test) rm -rf /tmp/x ;; esac\\n",
+                "select option in one two; do rm -rf /tmp/x; done\\n")) {
+            Path script = write(body);
+            assertThrows(IllegalArgumentException.class,
+                    () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
+        }
+    }
+    @Test void rejectsEnvironmentSplitStringCommandDispatch() throws Exception {
+        Path script = write("env -S 'rm -rf /tmp/x'\\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
+    }
+    @Test void rejectsAwkSystemCallsWithWhitespaceBeforeParenthesis() throws Exception {
+        Path script = write("awk 'BEGIN { system (1) }'\\n");
+        assertThrows(IllegalArgumentException.class,
+                () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
+    }
     @Test void rejectsNestedScriptInvocation() throws Exception {
         Path script=write("sh helper.sh\n");
         assertThrows(IllegalArgumentException.class,()->new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
