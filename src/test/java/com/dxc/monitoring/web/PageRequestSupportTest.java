@@ -38,6 +38,23 @@ class PageRequestSupportTest {
         assertEquals(Sort.Direction.DESC, spec.pageable().getSort().getOrderFor("severity").getDirection());
     }
 
+    @Test void fixedFetchSizeUsesSameSortWhitelistAndStableTieBreaker() {
+        var spec = support().createWithFixedSize(-4, 100, "notAColumn", "asc",
+                "lastOccurredAt", Map.of("lastOccurredAt", "lastOccurredAt", "severity", "severity"));
+        assertEquals(100, spec.pageSize());
+        assertEquals(0, spec.pageable().getPageNumber());
+        assertEquals("lastOccurredAt", spec.sort());
+        assertEquals("asc", spec.direction());
+        assertEquals(Sort.Direction.ASC, spec.pageable().getSort().getOrderFor("lastOccurredAt").getDirection());
+        assertEquals(Sort.Direction.DESC, spec.pageable().getSort().getOrderFor("id").getDirection());
+    }
+
+    @Test void fixedFetchSizeRejectsInvalidConfiguration() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> support().createWithFixedSize(0, 0, "severity", "desc",
+                        "lastOccurredAt", Map.of("lastOccurredAt", "lastOccurredAt", "severity", "severity")));
+    }
+
     @Test void rejectsInvalidPaginationConfiguration() {
         PaginationProperties properties = new PaginationProperties();
         properties.setDefaultPageSize(7);

@@ -20,17 +20,24 @@ public class PageRequestSupport {
 
     public PageSpec create(int page, int size, String sort, String direction,
             String defaultSort, Map<String, String> allowedSorts) {
-        int safePage = Math.max(0, page);
         int safeSize = properties.getAllowedPageSizes().contains(size) && size <= properties.getMaxPageSize()
                 ? size : properties.getDefaultPageSize();
+        return createWithFixedSize(page, safeSize, sort, direction, defaultSort, allowedSorts);
+    }
+
+    /** Creates a stable, whitelisted page request for batch endpoints with a separate configured fetch size. */
+    public PageSpec createWithFixedSize(int page, int fixedSize, String sort, String direction,
+            String defaultSort, Map<String, String> allowedSorts) {
+        if (fixedSize < 1) throw new IllegalArgumentException("Fixed page size must be positive.");
+        int safePage = Math.max(0, page);
         String sortKey = sort != null && allowedSorts.containsKey(sort) ? sort : defaultSort;
         String sortProperty = allowedSorts.getOrDefault(sortKey, defaultSort);
         Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction)
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
         Sort stableSort = Sort.by(sortDirection, sortProperty);
         if (!"id".equals(sortProperty)) stableSort = stableSort.and(Sort.by(Sort.Direction.DESC, "id"));
-        Pageable pageable = PageRequest.of(safePage, safeSize, stableSort);
-        return new PageSpec(pageable, safeSize, sortKey, sortDirection.name().toLowerCase());
+        Pageable pageable = PageRequest.of(safePage, fixedSize, stableSort);
+        return new PageSpec(pageable, fixedSize, sortKey, sortDirection.name().toLowerCase());
     }
 
     public record PageSpec(Pageable pageable, int pageSize, String sort, String direction) {}

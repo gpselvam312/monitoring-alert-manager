@@ -11,9 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -133,13 +131,9 @@ public class AlertHistoryController {
                 .stream().map(Application::getId).toList();
         int fetchSize = lookupProperties.getFetchSize();
         int safeBatch = Math.max(0, Math.min(batch, 1_000_000));
-        String sortProperty = sortProperty(sort);
-        Sort ordering = Sort.by("desc".equalsIgnoreCase(direction)
-                ? Sort.Direction.DESC : Sort.Direction.ASC, sortProperty);
-        if (!"id".equals(sortProperty)) {
-            ordering = ordering.and(Sort.by(Sort.Direction.DESC, "id"));
-        }
-        Pageable pageable = PageRequest.of(safeBatch, fetchSize, ordering);
+        PageRequestSupport.PageSpec batchPage = pageRequestSupport.createWithFixedSize(
+                safeBatch, fetchSize, sort, direction, "triggeredAt", allowedSorts());
+        Pageable pageable = batchPage.pageable();
         if (applicationIds.isEmpty()) {
             return new HistoryBatch(List.of(), 0, safeBatch, false, fetchSize);
         }
@@ -241,10 +235,6 @@ public class AlertHistoryController {
         return Map.of("alertKey", "id", "occurrenceCount", "occurrenceCount",
                 "triggeredAt", "firstOccurredAt", "createdAt", "createdAt", "lastOccurredAt", "lastOccurredAt",
                 "resolvedAt", "resolvedAt", "severity", "severity", "status", "status", "title", "title");
-    }
-
-    private String sortProperty(String sort) {
-        return allowedSorts().getOrDefault(sort, "createdAt");
     }
 
     private String normalizeSearch(String search) {
