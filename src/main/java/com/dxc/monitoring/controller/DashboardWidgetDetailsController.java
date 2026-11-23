@@ -60,16 +60,21 @@ public class DashboardWidgetDetailsController
 
         Page<MonitoringExecution> history =
             monitoringExecutionService.findByJobId(widget.getDataSourceId(), normalizedSearch, pageable);
+        if (history.getTotalPages() > 0 && pageable.getPageNumber() >= history.getTotalPages()) {
+            pageable = pageRequestSupport.create(history.getTotalPages() - 1, pageSpec.pageSize(),
+                    pageSpec.sort(), pageSpec.direction(), "startedAt", RESULT_SORT_FIELDS).pageable();
+            history = monitoringExecutionService.findByJobId(widget.getDataSourceId(), normalizedSearch, pageable);
+        }
 
         List<MonitoringExecution> executions = history.getContent();
         model.addAttribute("currentPage", "dashboard");
         model.addAttribute("widget", widget);
         model.addAttribute("history", history);
         model.addAttribute("executions", executions);
-        model.addAttribute("pageSize", size);
+        model.addAttribute("pageSize", pageSpec.pageSize());
         model.addAttribute("search", normalizedSearch);
-        model.addAttribute("sort", sort);
-        model.addAttribute("direction", direction);
+        model.addAttribute("sort", pageSpec.sort());
+        model.addAttribute("direction", pageSpec.direction());
 
         return "dashboard-widget-details";
     }
