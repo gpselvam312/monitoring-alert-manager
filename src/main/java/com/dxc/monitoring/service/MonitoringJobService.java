@@ -29,7 +29,7 @@ public class MonitoringJobService
     @Transactional(readOnly = true)
     public Page<MonitoringJob> findAll(String search, Pageable pageable)
     {
-        java.util.List<Long> applicationIds = accessService.getAccessibleApplications().stream()
+        java.util.List<Long> applicationIds = accessService.getApplicationsWithPermission("MONITORING_VIEW").stream()
                 .map(com.dxc.monitoring.entity.Application::getId).toList();
         if (applicationIds.isEmpty()) return Page.empty(pageable);
         return monitoringJobRepository.findAllForApplications(search, MonitoringJob.ExecutionMode.STANDARD,

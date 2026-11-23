@@ -20,6 +20,27 @@ import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 class MonitoringJobServiceTest {
 
     @Test
+    void listsOnlyApplicationsWhereTheUserHasMonitoringViewPermission() {
+        MonitoringJobRepository jobs = mock(MonitoringJobRepository.class);
+        MonitoringSchedulerService scheduler = mock(MonitoringSchedulerService.class);
+        DashboardAccessService access = mock(DashboardAccessService.class);
+        MonitoringJobService service = new MonitoringJobService(jobs, scheduler, access);
+        Application application = application(10L);
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 5);
+        when(access.getApplicationsWithPermission("MONITORING_VIEW")).thenReturn(java.util.List.of(application));
+        when(jobs.findAllForApplications("", MonitoringJob.ExecutionMode.STANDARD,
+                java.util.List.of(10L), pageable)).thenReturn(org.springframework.data.domain.Page.empty(pageable));
+
+        service.findAll("", pageable);
+
+        verify(access).getApplicationsWithPermission("MONITORING_VIEW");
+        verify(access, never()).getAccessibleApplications();
+        verify(jobs).findAllForApplications("", MonitoringJob.ExecutionMode.STANDARD,
+                java.util.List.of(10L), pageable);
+    }
+
+    @Test
     void configurationLookupChecksConfigurationPermissionInsteadOfViewPermission() {
         MonitoringJobRepository jobs = mock(MonitoringJobRepository.class);
         MonitoringSchedulerService scheduler = mock(MonitoringSchedulerService.class);
