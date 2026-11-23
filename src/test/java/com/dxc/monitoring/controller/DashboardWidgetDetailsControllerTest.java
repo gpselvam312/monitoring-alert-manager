@@ -49,7 +49,7 @@ class DashboardWidgetDetailsControllerTest {
         assertEquals("dashboard-widget-details",
                 controller.details(7L, 99, 999, " failure ", "unknown", "sideways", model));
 
-        org.springframework.data.domain.ArgumentCaptor<Pageable> captor =
+        org.mockito.ArgumentCaptor<Pageable> captor =
                 org.mockito.ArgumentCaptor.forClass(Pageable.class);
         verify(executionService, org.mockito.Mockito.times(2))
                 .findByJobId(eq(42L), eq("failure"), captor.capture());
