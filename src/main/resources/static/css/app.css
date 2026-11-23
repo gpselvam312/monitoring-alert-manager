@@ -433,7 +433,7 @@ body {
 }
 
 .app-table tbody tr:hover {
-    background: #fafaf8;
+    background: var(--table-row-hover-bg);
 }
 
 /* ==============================
@@ -1118,7 +1118,7 @@ body {
 
 .schedule-config code {
     padding: 4px 7px;
-    background: #f3f3f1;
+    background: var(--code-bg);
     border: 1px solid var(--border-color);
     border-radius: 5px;
     color: var(--text-primary);
@@ -1239,7 +1239,7 @@ textarea.form-control {
     align-items: center;
     gap: 15px;
     padding: 16px 18px;
-    background: #fafaf8;
+    background: var(--table-header-bg);
     border: 1px solid var(--border-color);
     border-radius: 10px;
 }
