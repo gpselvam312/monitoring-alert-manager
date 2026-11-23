@@ -87,15 +87,13 @@ public class AlertHistoryController {
         AlertRule.Severity severityFilter = parseSeverity(severity);
         PageRequestSupport.PageSpec pageSpec = pageRequestSupport.create(0, size, sort, direction,
                 "triggeredAt", allowedSorts());
-        long total = applicationIds.isEmpty() ? 0
-                : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
-                        null, severityFilter, term.repositorySearch());
-        long active = applicationIds.isEmpty() ? 0
-                : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
-                        Alert.AlertStatus.ACTIVE, severityFilter, term.repositorySearch());
-        long resolved = applicationIds.isEmpty() ? 0
-                : alertRepository.countHistory(applicationIds, applicationId, environmentId, term.exactAlertId(),
-                        Alert.AlertStatus.RESOLVED, severityFilter, term.repositorySearch());
+        Object[] counts = applicationIds.isEmpty() ? new Object[] { 0L, 0L, 0L }
+                : alertRepository.summarizeHistory(applicationIds, applicationId, environmentId,
+                        term.exactAlertId(), severityFilter, term.repositorySearch(),
+                        Alert.AlertStatus.ACTIVE, Alert.AlertStatus.RESOLVED);
+        long total = countValue(counts, 0);
+        long active = countValue(counts, 1);
+        long resolved = countValue(counts, 2);
 
         List<Environment> environments = applicationId == null ? List.of()
                 : referenceDataCache.getEnabledEnvironments(applicationId);
@@ -221,6 +219,11 @@ public class AlertHistoryController {
                 alert.getSeverity().name(), alert.getMonitoringJob().getApplication().getName(),
                 environmentName, alert.getStatus().name(), alert.getOccurrenceCount(),
                 format(alert.getFirstOccurredAt(), dateTimeFormatter), channels);
+    }
+
+    private long countValue(Object[] values, int index) {
+        if (values == null || values.length <= index || !(values[index] instanceof Number value)) return 0;
+        return value.longValue();
     }
 
     private long safeCount(Long value) {

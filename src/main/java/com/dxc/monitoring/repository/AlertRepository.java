@@ -62,7 +62,10 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
             @Param("severity") AlertRule.Severity severity, @Param("search") String search, Pageable pageable);
 
     @Query("""
-            select count(a) from Alert a
+            select count(a),
+                   sum(case when a.status = :activeStatus then 1 else 0 end),
+                   sum(case when a.status = :resolvedStatus then 1 else 0 end)
+            from Alert a
             where a.monitoringJob.application.id in :applicationIds
               and (:applicationId is null or a.monitoringJob.application.id = :applicationId)
               and (:environmentId is null or a.monitoringJob.environment.id = :environmentId)
@@ -75,12 +78,12 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
                    lower(a.alertRule.name) like lower(concat('%', :search, '%')) or
                    lower(a.monitoringJob.application.name) like lower(concat('%', :search, '%')) or
                    str(a.id) like concat('%', :search, '%'))
-              and (:status is null or a.status = :status)
             """)
-    long countHistory(@Param("applicationIds") java.util.List<Long> applicationIds,
+    Object[] summarizeHistory(@Param("applicationIds") java.util.List<Long> applicationIds,
             @Param("applicationId") Long applicationId, @Param("environmentId") Long environmentId,
-            @Param("exactAlertId") Long exactAlertId, @Param("status") Alert.AlertStatus status,
-            @Param("severity") AlertRule.Severity severity, @Param("search") String search);
+            @Param("exactAlertId") Long exactAlertId, @Param("severity") AlertRule.Severity severity,
+            @Param("search") String search, @Param("activeStatus") Alert.AlertStatus activeStatus,
+            @Param("resolvedStatus") Alert.AlertStatus resolvedStatus);
 
     boolean existsByAlertRuleId(Long alertRuleId);
     long countByStatus(Alert.AlertStatus status);
