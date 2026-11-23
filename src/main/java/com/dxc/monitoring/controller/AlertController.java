@@ -30,6 +30,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.dxc.monitoring.entity.Alert;
 import com.dxc.monitoring.entity.AlertHistory;
+import com.dxc.monitoring.entity.AlertComment;
 import com.dxc.monitoring.entity.AlertRule;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.MonitoringJob;
@@ -140,7 +141,8 @@ public class AlertController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ALERT_VIEW')")
     public String alertDetails(@PathVariable Long id, @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "active") String from,
+            @RequestParam(defaultValue = "5") int size, @RequestParam(defaultValue = "0") int commentPage,
+            @RequestParam(defaultValue = "active") String from,
             Authentication authentication, Model model) {
         List<Long> applicationIds = applicationIds("ALERT_VIEW");
         Alert alert = applicationIds.isEmpty() ? null
@@ -152,9 +154,13 @@ public class AlertController {
         Pageable historyPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "occurredAt").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<AlertHistory> history = historyRepository.findByAlertIdOrderByOccurredAtDescIdDesc(id, historyPageable);
+        int safeCommentPage = Math.max(0, Math.min(commentPage, 1_000_000));
+        Pageable commentPageable = PageRequest.of(safeCommentPage, 10,
+                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
+        Page<AlertComment> comments = commentRepository.findByAlertIdOrderByCreatedAtDescIdDesc(id, commentPageable);
         model.addAttribute("alert", alert);
         model.addAttribute("history", history);
-        model.addAttribute("comments", commentRepository.findByAlertIdOrderByCreatedAtDescIdDesc(id));
+        model.addAttribute("comments", comments);
         model.addAttribute("dateTimeFormat", systemSettingService.getDateTimeFormat());
         model.addAttribute("pageSize", pageable.getPageSize());
         String detailSource = "history".equalsIgnoreCase(from) ? "history" : "active";
