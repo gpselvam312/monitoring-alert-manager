@@ -3,6 +3,9 @@ package com.dxc.monitoring.service;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
+import com.dxc.monitoring.config.BackgroundWorkReadiness;
 import com.dxc.monitoring.entity.MonitoringExecution;
 import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.Schedule;
@@ -29,16 +33,19 @@ public class MonitoringSchedulerService
     private final MonitoringJobRepository monitoringJobRepository;
     private final MonitoringExecutionManager monitoringExecutionManager;
     private final ThreadPoolTaskScheduler taskScheduler;
+    private final BackgroundWorkReadiness readiness;
 
     private final Map<Long, ScheduledFuture<?>> scheduledJobs = new ConcurrentHashMap<>();
+    private final Map<Long, Integer> scheduleFingerprints = new ConcurrentHashMap<>();
 
     public MonitoringSchedulerService(MonitoringJobRepository monitoringJobRepository,
             MonitoringExecutionManager monitoringExecutionManager,
-            ThreadPoolTaskScheduler taskScheduler)
+            ThreadPoolTaskScheduler taskScheduler, BackgroundWorkReadiness readiness)
     {
         this.monitoringJobRepository = monitoringJobRepository;
         this.monitoringExecutionManager = monitoringExecutionManager;
         this.taskScheduler = taskScheduler;
+        this.readiness = readiness;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -47,6 +54,25 @@ public class MonitoringSchedulerService
     {
         monitoringJobRepository.findSchedulableJobs(MonitoringJob.ExecutionMode.STANDARD)
                 .forEach(this::scheduleJob);
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(
+            fixedDelayString = "${monitoring.scheduler.reconcile-interval-ms:30000}")
+    public synchronized void reconcileSchedules() {
+        if (!readiness.isReady()) return;
+        var currentJobs = monitoringJobRepository.findSchedulableJobs(MonitoringJob.ExecutionMode.STANDARD);
+        Set<Long> currentIds = new HashSet<>();
+        for (MonitoringJob job : currentJobs) {
+            currentIds.add(job.getId());
+            int fingerprint = scheduleFingerprint(job);
+            if (!Objects.equals(scheduleFingerprints.get(job.getId()), fingerprint)) {
+                cancelJob(job.getId());
+                scheduleJob(job);
+            }
+        }
+        for (Long scheduledId : new HashSet<>(scheduledJobs.keySet())) {
+            if (!currentIds.contains(scheduledId)) cancelJob(scheduledId);
+        }
     }
 
     public synchronized void refreshJob(Long jobId)
@@ -71,6 +97,7 @@ public class MonitoringSchedulerService
     public synchronized void cancelJob(Long jobId)
     {
         ScheduledFuture<?> future = scheduledJobs.remove(jobId);
+        scheduleFingerprints.remove(jobId);
         if (future != null)
         {
             future.cancel(false);
@@ -100,7 +127,16 @@ public class MonitoringSchedulerService
         if (future != null)
         {
             scheduledJobs.put(job.getId(), future);
+            scheduleFingerprints.put(job.getId(), scheduleFingerprint(job));
         }
+    }
+
+    private int scheduleFingerprint(MonitoringJob job) {
+        Schedule schedule = job.getSchedule();
+        return Objects.hash(job.getUpdatedAt(), job.isEnabled(), job.getExecutionMode(),
+                schedule.getId(), schedule.getUpdatedAt(), schedule.isEnabled(), schedule.getType(),
+                schedule.getCronExpression(), schedule.getFixedDelaySeconds(), schedule.getFixedRateSeconds(),
+                schedule.getStartTime(), schedule.getEndTime());
     }
 
     private Trigger createCronTrigger(Schedule schedule)
