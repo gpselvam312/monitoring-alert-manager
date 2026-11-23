@@ -99,6 +99,18 @@ class ScriptSecurityValidatorTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
     }
+    @Test void rejectsServiceAndSystemManagerCommandsRegardlessOfOptions() throws Exception {
+        for (String body : List.of(
+                "systemctl --user stop example\\n",
+                "systemctl status example\\n",
+                "service example status\\n",
+                "time -o /tmp/out rm -rf /tmp/x\\n",
+                "nohup rm -rf /tmp/x\\n")) {
+            Path script = write(body);
+            assertThrows(IllegalArgumentException.class,
+                    () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
+        }
+    }
     @Test void rejectsNestedScriptInvocation() throws Exception {
         Path script=write("sh helper.sh\n");
         assertThrows(IllegalArgumentException.class,()->new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));

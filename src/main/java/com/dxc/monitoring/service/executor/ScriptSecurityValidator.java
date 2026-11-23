@@ -27,8 +27,8 @@ public class ScriptSecurityValidator {
     private static final Logger log = LoggerFactory.getLogger(ScriptSecurityValidator.class);
     private static final Pattern ASSIGNMENT = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*=.*");
     private static final Set<String> SHELL_WORDS = Set.of("if","then","else","elif","fi","do","done","while","until","!");
-    private static final Set<String> WRAPPERS = Set.of("env","command","builtin","nohup","time");
-    private static final Set<String> NESTED = Set.of("source","eval","exec","xargs","bash","sh","dash","zsh","ksh","python","python2","python3","perl","ruby","node","nodejs","trap","busybox","nice","timeout","stdbuf","setsid","chrt","ionice");
+    private static final Set<String> WRAPPERS = Set.of("env","command","builtin");
+    private static final Set<String> NESTED = Set.of("source","eval","exec","xargs","bash","sh","dash","zsh","ksh","python","python2","python3","perl","ruby","node","nodejs","trap","busybox","nice","timeout","stdbuf","setsid","chrt","ionice","nohup","time");
     private final Path[] fallbackAllowedDirectories;
     private final SystemSettingService systemSettingService;
     private final ScriptValidationProperties validation;
@@ -145,10 +145,8 @@ public class ScriptSecurityValidator {
                 throw new IllegalArgumentException("Script security validation rejected awk system() command execution.");
             boolean restricted=validation.getRestrictedCommands().contains(command)
                     || (command.startsWith("mkfs.") && validation.getRestrictedCommands().contains("mkfs"));
-            if (command.equals("systemctl"))
-                restricted=tokens.size()>index+1 && Set.of("start","stop","restart","disable","mask").contains(tokens.get(index+1));
-            if (command.equals("service"))
-                restricted=tokens.size()>index+2 && Set.of("stop","restart").contains(tokens.get(index+2));
+            if (command.equals("systemctl") || command.equals("service"))
+                restricted = true;
             if (restricted && validation.isEnabled() && !isAllowed(command,tokens.subList(index+1,tokens.size()))) {
                 throw new IllegalArgumentException("Script security validation rejected restricted command '" + command + "'.");
             }
