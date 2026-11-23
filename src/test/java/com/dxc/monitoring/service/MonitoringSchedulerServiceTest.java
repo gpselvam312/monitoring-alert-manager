@@ -25,7 +25,7 @@ class MonitoringSchedulerServiceTest {
         BackgroundWorkReadiness readiness = mock(BackgroundWorkReadiness.class);
         ScheduledFuture<?> future = mock(ScheduledFuture.class);
         when(readiness.isReady()).thenReturn(true);
-        when(scheduler.schedule(any(Runnable.class), any(Trigger.class))).thenReturn(future);
+        doReturn(future).when(scheduler).schedule(any(Runnable.class), any(Trigger.class));
 
         MonitoringJob job = new MonitoringJob();
         job.setId(10L);
