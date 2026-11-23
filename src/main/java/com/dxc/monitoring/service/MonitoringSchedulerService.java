@@ -2,10 +2,10 @@ package com.dxc.monitoring.service;
 
 import java.time.Duration;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,7 +40,7 @@ public class MonitoringSchedulerService
     private final ExecutorService executionExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     private final Map<Long, ScheduledFuture<?>> scheduledJobs = new ConcurrentHashMap<>();
-    private final Map<Long, Integer> scheduleFingerprints = new ConcurrentHashMap<>();
+    private final Map<Long, ScheduleFingerprint> scheduleFingerprints = new ConcurrentHashMap<>();
 
     public MonitoringSchedulerService(MonitoringJobRepository monitoringJobRepository,
             MonitoringExecutionManager monitoringExecutionManager,
@@ -69,7 +69,7 @@ public class MonitoringSchedulerService
         Set<Long> currentIds = new HashSet<>();
         for (MonitoringJob job : currentJobs) {
             currentIds.add(job.getId());
-            int fingerprint = scheduleFingerprint(job);
+            ScheduleFingerprint fingerprint = scheduleFingerprint(job);
             if (!Objects.equals(scheduleFingerprints.get(job.getId()), fingerprint)) {
                 cancelJob(job.getId());
                 scheduleJob(job);
@@ -125,7 +125,7 @@ public class MonitoringSchedulerService
             return;
         }
 
-        int expectedFingerprint = scheduleFingerprint(job);
+        ScheduleFingerprint expectedFingerprint = scheduleFingerprint(job);
         ScheduledFuture<?> future = taskScheduler.schedule(
                 () -> dispatchScheduledExecution(job.getId(), expectedFingerprint),
                 trigger);
@@ -137,12 +137,12 @@ public class MonitoringSchedulerService
         }
     }
 
-    private void dispatchScheduledExecution(Long jobId, int expectedFingerprint) {
+    private void dispatchScheduledExecution(Long jobId, ScheduleFingerprint expectedFingerprint) {
         try {
             executionExecutor.execute(() -> {
                 try {
                     MonitoringJob job = monitoringJobRepository.findByIdForDetails(jobId).orElse(null);
-                    if (!isSchedulable(job) || scheduleFingerprint(job) != expectedFingerprint
+                    if (!isSchedulable(job) || !scheduleFingerprint(job).equals(expectedFingerprint)
                             || !isWithinWindow(job.getSchedule())) return;
                     monitoringExecutionManager.execute(job, MonitoringExecution.TriggerSource.SCHEDULED);
                 } catch (RuntimeException exception) {
@@ -159,13 +159,19 @@ public class MonitoringSchedulerService
         executionExecutor.shutdownNow();
     }
 
-    private int scheduleFingerprint(MonitoringJob job) {
+    private ScheduleFingerprint scheduleFingerprint(MonitoringJob job) {
         Schedule schedule = job.getSchedule();
-        return Objects.hash(job.getUpdatedAt(), job.isEnabled(), job.getExecutionMode(),
+        return new ScheduleFingerprint(job.getUpdatedAt(), job.isEnabled(), job.getExecutionMode(),
                 schedule.getId(), schedule.getUpdatedAt(), schedule.isEnabled(), schedule.getType(),
                 schedule.getCronExpression(), schedule.getFixedDelaySeconds(), schedule.getFixedRateSeconds(),
                 schedule.getStartTime(), schedule.getEndTime());
     }
+
+    private record ScheduleFingerprint(LocalDateTime jobUpdatedAt, boolean jobEnabled,
+            MonitoringJob.ExecutionMode executionMode, Long scheduleId, LocalDateTime scheduleUpdatedAt,
+            boolean scheduleEnabled, Schedule.ScheduleType scheduleType, String cronExpression,
+            Integer fixedDelaySeconds, Integer fixedRateSeconds, LocalTime startTime, LocalTime endTime) { }
+
 
     private Trigger createCronTrigger(Schedule schedule)
     {
