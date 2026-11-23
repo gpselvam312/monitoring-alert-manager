@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.Application;
@@ -22,6 +23,7 @@ import com.dxc.monitoring.repository.UserApplicationRoleRepository;
 import com.dxc.monitoring.repository.UserRepository;
 
 @Service
+@PreAuthorize("hasAuthority('ROLE_ADMIN')")
 public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;

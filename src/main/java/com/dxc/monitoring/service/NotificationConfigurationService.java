@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.AlertRule;
@@ -27,6 +28,7 @@ import com.dxc.monitoring.web.NotificationChannelForm;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
+@PreAuthorize("hasAuthority('ROLE_ADMIN')")
 public class NotificationConfigurationService {
     private final NotificationChannelRepository channelRepository;
     private final NotificationRecipientRepository recipientRepository;
