@@ -47,6 +47,16 @@ public class MonitoringJobService
         return job;
     }
 
+    @Transactional(readOnly = true)
+    public MonitoringJob findByIdForConfiguration(Long id) {
+        MonitoringJob job = monitoringJobRepository.findByIdForDetails(id)
+                .orElseThrow(() -> new IllegalArgumentException("Monitoring job not found: " + id));
+        if (job.getApplication() == null)
+            throw new org.springframework.security.access.AccessDeniedException("This job is not assigned to an application.");
+        accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_CONFIG");
+        return job;
+    }
+
     @Transactional
     public MonitoringJob save(MonitoringJob job)
     {
@@ -90,7 +100,7 @@ public class MonitoringJobService
     @Transactional
     public void toggleEnabled(Long id)
     {
-        MonitoringJob job = findById(id);
+        MonitoringJob job = findByIdForConfiguration(id);
         if (job.getApplication() == null)
             throw new org.springframework.security.access.AccessDeniedException("This job is not assigned to an application.");
         accessService.assertCanAccessApplication(job.getApplication().getId(), "MONITORING_CONFIG");

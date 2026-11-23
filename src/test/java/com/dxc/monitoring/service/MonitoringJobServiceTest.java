@@ -20,6 +20,20 @@ import com.dxc.monitoring.service.dashboard.DashboardAccessService;
 class MonitoringJobServiceTest {
 
     @Test
+    void configurationLookupChecksConfigurationPermissionInsteadOfViewPermission() {
+        MonitoringJobRepository jobs = mock(MonitoringJobRepository.class);
+        MonitoringSchedulerService scheduler = mock(MonitoringSchedulerService.class);
+        DashboardAccessService access = mock(DashboardAccessService.class);
+        MonitoringJobService service = new MonitoringJobService(jobs, scheduler, access);
+        MonitoringJob job = new MonitoringJob();
+        job.setApplication(application(10L));
+        when(jobs.findByIdForDetails(99L)).thenReturn(java.util.Optional.of(job));
+
+        assertEquals(job, service.findByIdForConfiguration(99L));
+        verify(access).assertCanAccessApplication(10L, "MONITORING_CONFIG");
+    }
+
+    @Test
     void savesJobOnlyWhenMachineBelongsToSelectedEnvironment() {
         MonitoringJobRepository jobs = mock(MonitoringJobRepository.class);
         MonitoringSchedulerService scheduler = mock(MonitoringSchedulerService.class);
