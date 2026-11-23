@@ -68,8 +68,9 @@ public class DashboardService
                 .findAllByApplication_IdAndEnvironment_IdAndEnabledTrueOrderBySortOrderAsc(applicationId, environmentId)
                 .stream().filter(tab -> tab.getEnvironment() != null && tab.getEnvironment().isEnabled()).toList();
         java.util.Set<Long> tabIds = tabs.stream().map(DashboardTab::getId).collect(java.util.stream.Collectors.toSet());
-        List<DashboardWidget> widgets = dashboardWidgetRepository.findAllByEnabledTrueOrderByTabSortOrderAscSortOrderAsc()
-                .stream().filter(widget -> widget.getTab() != null && tabIds.contains(widget.getTab().getId())).toList();
+        List<DashboardWidget> widgets = tabIds.isEmpty() ? List.of()
+                : dashboardWidgetRepository.findAllByTab_IdInAndEnabledTrueOrderByTab_SortOrderAscSortOrderAsc(
+                        List.copyOf(tabIds));
 
         // Keep legacy result-backed widgets working, but resolve them to the owning job
         // so the dashboard always displays the latest execution rather than a frozen result.
