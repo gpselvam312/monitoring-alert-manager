@@ -12,10 +12,12 @@ import com.dxc.monitoring.entity.Application;
 
 import org.springframework.data.domain.Page;
 import java.util.Map;
-import org.springframework.cache.annotation.CacheEvict;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
+import com.dxc.monitoring.service.ReferenceDataChangedEvent;
 import org.springframework.ui.Model;
 
 import org.springframework.web.bind.annotation.*;
@@ -32,11 +34,12 @@ public class EnvironmentController
     private final DashboardTabRepository dashboardTabRepository;
     private final MachineRepository machineRepository;
     private final PageRequestSupport pageRequestSupport;
+    private final ApplicationEventPublisher eventPublisher;
 
     public EnvironmentController(EnvironmentRepository environmentRepository, ApplicationRepository applicationRepository,
             DashboardAccessService accessService, MonitoringJobRepository monitoringJobRepository,
             DashboardTabRepository dashboardTabRepository, MachineRepository machineRepository,
-            PageRequestSupport pageRequestSupport)
+            PageRequestSupport pageRequestSupport, ApplicationEventPublisher eventPublisher)
     {
         this.environmentRepository = environmentRepository;
         this.applicationRepository = applicationRepository;
@@ -45,6 +48,7 @@ public class EnvironmentController
         this.dashboardTabRepository = dashboardTabRepository;
         this.machineRepository = machineRepository;
         this.pageRequestSupport = pageRequestSupport;
+        this.eventPublisher = eventPublisher;
     }
 
     @GetMapping
@@ -118,8 +122,8 @@ public class EnvironmentController
     }
 
     @PostMapping("/save")
+    @Transactional
     @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
-    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String save(@ModelAttribute Environment environment, @RequestParam(required = false) Long applicationId,
             RedirectAttributes redirectAttributes)
     {
@@ -156,6 +160,7 @@ public class EnvironmentController
             environmentRepository.save(environment);
         }
 
+        eventPublisher.publishEvent(new ReferenceDataChangedEvent());
         redirectAttributes.addFlashAttribute("successMessage",
                 "Environment '" + environment.getName() + "' was saved successfully.");
 
@@ -163,8 +168,8 @@ public class EnvironmentController
     }
 
     @PostMapping("/{id}/toggle")
+    @Transactional
     @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
-    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String toggle(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         Environment environment = environmentRepository.findById(id)
@@ -174,13 +179,13 @@ public class EnvironmentController
         environment.setEnabled(!environment.isEnabled());
 
         environmentRepository.save(environment);
-
+        eventPublisher.publishEvent(new ReferenceDataChangedEvent());
         return "redirect:/administration/environments";
     }
 
     @PostMapping("/{id}/delete")
+    @Transactional
     @PreAuthorize("hasAuthority('SYSTEM_CONFIG')")
-    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         Environment environment = environmentRepository.findById(id)
@@ -197,7 +202,7 @@ public class EnvironmentController
         }
 
         environmentRepository.delete(environment);
-
+        eventPublisher.publishEvent(new ReferenceDataChangedEvent());
         redirectAttributes.addFlashAttribute("successMessage",
                 "Environment '" + environmentName + "' was deleted successfully.");
 

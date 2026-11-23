@@ -4,10 +4,11 @@ import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Controller;
+import org.springframework.context.ApplicationEventPublisher;
+import com.dxc.monitoring.service.ReferenceDataChangedEvent;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -36,6 +37,7 @@ public class ApplicationController
     private final EnvironmentRepository environmentRepository;
     private final DashboardTabRepository dashboardTabRepository;
     private final PageRequestSupport pageRequestSupport;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final Map<String, String> APPLICATION_SORT_FIELDS =
         Map.of("name", "name", "description", "description", "enabled", "enabled");
@@ -43,7 +45,7 @@ public class ApplicationController
     public ApplicationController(ApplicationRepository applicationRepository,
             MonitoringJobRepository monitoringJobRepository, DashboardAccessService accessService,
             EnvironmentRepository environmentRepository, DashboardTabRepository dashboardTabRepository,
-            PageRequestSupport pageRequestSupport)
+            PageRequestSupport pageRequestSupport, ApplicationEventPublisher eventPublisher)
     {
         this.applicationRepository = applicationRepository;
         this.monitoringJobRepository = monitoringJobRepository;
@@ -51,6 +53,7 @@ public class ApplicationController
         this.environmentRepository = environmentRepository;
         this.dashboardTabRepository = dashboardTabRepository;
         this.pageRequestSupport = pageRequestSupport;
+        this.eventPublisher = eventPublisher;
     }
 
     @GetMapping
@@ -146,7 +149,6 @@ public class ApplicationController
     @PostMapping("/save")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Transactional
-    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String save(@ModelAttribute("appName") Application application)
     {
         if (application.getId() != null)
@@ -164,13 +166,13 @@ public class ApplicationController
             Application saved = applicationRepository.save(application);
             createStandardEnvironments(saved);
         }
-
+        eventPublisher.publishEvent(new ReferenceDataChangedEvent());
         return "redirect:/administration/applications";
     }
 
     @PostMapping("/{id}/toggle")
+    @Transactional
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String toggle(@PathVariable Long id)
     {
         Application application = applicationRepository.findById(id)
@@ -179,13 +181,13 @@ public class ApplicationController
         application.setEnabled(!application.isEnabled());
 
         applicationRepository.save(application);
-
+        eventPublisher.publishEvent(new ReferenceDataChangedEvent());
         return "redirect:/administration/applications";
     }
 
     @PostMapping("/{id}/delete")
+    @Transactional
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    @CacheEvict(cacheNames = {"enabledApplications", "enabledEnvironmentsByApplication"}, allEntries = true)
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes)
     {
         Application application = applicationRepository.findById(id)
@@ -201,7 +203,7 @@ public class ApplicationController
         }
 
         applicationRepository.delete(application);
-
+        eventPublisher.publishEvent(new ReferenceDataChangedEvent());
         redirectAttributes.addFlashAttribute("successMessage",
                 "Application '" + application.getName() + "' was deleted successfully.");
 
