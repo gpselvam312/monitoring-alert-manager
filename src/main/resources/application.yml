@@ -92,7 +92,8 @@ monitoring:
         #     allowed-arguments: ["-f", "*.tmp"]
     encryption:
       # Supply a Base64-encoded 32-byte key through the runtime environment; never commit production keys.
-      key: ${MONITORING_ENCRYPTION_KEY:${MONITORING_EXTERNAL_APP_ENCRYPTION_KEY:}}
+      # Development fallback only. Production must override this with a secret-managed 32-byte key.
+      key: ${MONITORING_ENCRYPTION_KEY:${MONITORING_EXTERNAL_APP_ENCRYPTION_KEY:TW9uaXRvcmluZ0FsZXJ0TWFuYWdlckRldktleTIwMjY=}}
       previous-key: ${MONITORING_PREVIOUS_ENCRYPTION_KEY:}
       # Set true for one startup to migrate all encrypted values, then return to false and remove previous-key.
       updatePwd: ${MONITORING_ENCRYPTION_UPDATE_PWD:false}
