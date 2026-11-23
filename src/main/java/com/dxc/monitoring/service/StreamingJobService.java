@@ -80,7 +80,7 @@ public class StreamingJobService
 
     public Page<StreamingJobView> listJobs(String search, Pageable pageable)
     {
-        List<Long> applicationIds = accessService.getAccessibleApplications().stream()
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("MONITORING_VIEW").stream()
                 .map(com.dxc.monitoring.entity.Application::getId).toList();
         if (applicationIds.isEmpty()) return Page.empty(pageable);
         String normalizedSearch = search == null ? "" : search.trim();
@@ -107,7 +107,7 @@ public class StreamingJobService
 
     public List<StreamingJobView> listJobs()
     {
-        List<Long> applicationIds = accessService.getAccessibleApplications().stream()
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("MONITORING_VIEW").stream()
                 .map(com.dxc.monitoring.entity.Application::getId).toList();
         if (applicationIds.isEmpty()) return List.of();
         List<MonitoringJob> jobs = jobRepository.findByExecutionModeAndApplication_IdInOrderByNameAsc(
