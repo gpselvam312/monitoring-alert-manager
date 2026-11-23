@@ -58,13 +58,8 @@ public interface ExternalApplicationRepository extends JpaRepository<ExternalApp
             @Param("environmentId") Long environmentId,
             @Param("externalType") String externalType, Pageable pageable);
 
-    @Query("""
-            select externalApplication from ExternalApplication externalApplication
-            where externalApplication.enabled = true
-              and externalApplication.application.id in :applicationIds
-            order by lower(externalApplication.applicationName)
-            """)
-    List<ExternalApplication> findEnabledForApplications(@Param("applicationIds") List<Long> applicationIds);
+    @EntityGraph(attributePaths = {"application", "environment"})
+    Optional<ExternalApplication> findFirstByIdAndEnabledTrueAndApplication_IdIn(Long id, List<Long> applicationIds);
 
     Optional<ExternalApplication> findByApplicationCodeIgnoreCase(String applicationCode);
     boolean existsByApplicationCodeIgnoreCaseAndIdNot(String applicationCode, Long id);

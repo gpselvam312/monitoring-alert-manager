@@ -79,9 +79,7 @@ public class ExternalApplicationService
                 .stream().map(Application::getId).toList();
         if (applicationIds.isEmpty())
             throw new org.springframework.security.access.AccessDeniedException("External application is not available in your application scope.");
-        return applicationRepository.findEnabledForApplications(applicationIds).stream()
-                .filter(application -> id.equals(application.getId()))
-                .findFirst()
+        return applicationRepository.findFirstByIdAndEnabledTrueAndApplication_IdIn(id, applicationIds)
                 .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException(
                         "External application is not available in your application scope."));
     }

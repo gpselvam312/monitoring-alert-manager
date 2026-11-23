@@ -49,6 +49,33 @@ class ExternalApplicationServiceTest {
     }
 
     @Test
+    void loadsOnlyTheRequestedEnabledExternalApplicationWithinAuthorizedScope() {
+        Application app = new Application();
+        app.setId(31L);
+        when(accessService.getApplicationsWithPermission("SYSTEM_CONFIG")).thenReturn(List.of(app));
+        com.dxc.monitoring.entity.ExternalApplication external = new com.dxc.monitoring.entity.ExternalApplication();
+        when(applications.findFirstByIdAndEnabledTrueAndApplication_IdIn(77L, List.of(31L)))
+                .thenReturn(java.util.Optional.of(external));
+
+        assertTrue(service.findEnabledByIdForCurrentUser(77L) == external);
+        verify(applications).findFirstByIdAndEnabledTrueAndApplication_IdIn(77L, List.of(31L));
+        verify(applications, never()).findEnabledForApplications(anyList());
+    }
+
+    @Test
+    void deniesRequestedExternalApplicationOutsideAuthorizedScope() {
+        Application app = new Application();
+        app.setId(31L);
+        when(accessService.getApplicationsWithPermission("SYSTEM_CONFIG")).thenReturn(List.of(app));
+        when(applications.findFirstByIdAndEnabledTrueAndApplication_IdIn(77L, List.of(31L)))
+                .thenReturn(java.util.Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.security.access.AccessDeniedException.class,
+                () -> service.findEnabledByIdForCurrentUser(77L));
+    }
+
+    @Test
     void doesNotQueryExternalApplicationsWhenUserHasNoConfigurationScope() {
         when(accessService.getApplicationsWithPermission("MONITORING_CONFIG")).thenReturn(List.of());
         Pageable pageable = PageRequest.of(0, 5);
