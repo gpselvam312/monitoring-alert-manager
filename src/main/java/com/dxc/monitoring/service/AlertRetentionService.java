@@ -274,6 +274,18 @@ public class AlertRetentionService {
     }
 
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<AlertCleanupRun> findVisibleCleanupRuns(
+            org.springframework.data.domain.Pageable pageable) {
+        List<Long> allowedApplicationIds = accessService.getApplicationsWithPermission("DATA_EXPUNGE")
+                .stream().map(Application::getId).toList();
+        boolean platformAdmin = isPlatformAdmin();
+        if (!platformAdmin && allowedApplicationIds.isEmpty()) {
+            return org.springframework.data.domain.Page.empty(pageable);
+        }
+        return runRepository.findVisibleRuns(platformAdmin, allowedApplicationIds, pageable);
+    }
+
+    @Transactional(readOnly = true)
     public List<AlertRetentionPolicy> findPolicies() {
         List<Long> allowedApplicationIds = accessService.getApplicationsWithPermission("DATA_EXPUNGE")
                 .stream().map(Application::getId).toList();

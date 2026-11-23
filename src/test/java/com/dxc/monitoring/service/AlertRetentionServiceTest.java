@@ -7,6 +7,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
+import java.util.List;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.eq;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
@@ -86,6 +94,61 @@ class AlertRetentionServiceTest {
             AlertRetentionPolicy saved = service.createPolicy(
                     "RESOLVED_ALERTS", 90, false, null, null, null, "ALL", 1L);
             assertEquals(null, saved.getApplication());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+
+    @Test
+    void scopesCleanupAuditHistoryToApplicationsTheUserCanExpunge() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("operator", "n/a",
+                        List.of(new SimpleGrantedAuthority("DATA_EXPUNGE"))));
+        try {
+            AlertCleanupRunRepository runs = mock(AlertCleanupRunRepository.class);
+            DashboardAccessService access = mock(DashboardAccessService.class);
+            Application application = new Application();
+            application.setId(31L);
+            when(access.getApplicationsWithPermission("DATA_EXPUNGE")).thenReturn(List.of(application));
+            Pageable pageable = PageRequest.of(0, 20);
+            when(runs.findVisibleRuns(false, List.of(31L), pageable))
+                    .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+            AlertRetentionService service = new AlertRetentionService(
+                    mock(AlertRetentionPolicyRepository.class), runs,
+                    mock(AlertRetentionCleanupExecutor.class), mock(AlertCleanupAuditService.class),
+                    mock(ApplicationRepository.class), mock(EnvironmentRepository.class),
+                    access, mock(AlertTypeRepository.class), mock(JdbcTemplate.class));
+
+            service.findVisibleCleanupRuns(pageable);
+
+            verify(runs).findVisibleRuns(false, List.of(31L), pageable);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void platformAdministratorCanSeeGlobalCleanupAuditHistory() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("admin", "n/a",
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+        try {
+            AlertCleanupRunRepository runs = mock(AlertCleanupRunRepository.class);
+            DashboardAccessService access = mock(DashboardAccessService.class);
+            Pageable pageable = PageRequest.of(0, 20);
+            when(access.getApplicationsWithPermission("DATA_EXPUNGE")).thenReturn(List.of());
+            when(runs.findVisibleRuns(true, List.of(), pageable))
+                    .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+            AlertRetentionService service = new AlertRetentionService(
+                    mock(AlertRetentionPolicyRepository.class), runs,
+                    mock(AlertRetentionCleanupExecutor.class), mock(AlertCleanupAuditService.class),
+                    mock(ApplicationRepository.class), mock(EnvironmentRepository.class),
+                    access, mock(AlertTypeRepository.class), mock(JdbcTemplate.class));
+
+            service.findVisibleCleanupRuns(pageable);
+
+            verify(runs).findVisibleRuns(true, List.of(), pageable);
         } finally {
             SecurityContextHolder.clearContext();
         }

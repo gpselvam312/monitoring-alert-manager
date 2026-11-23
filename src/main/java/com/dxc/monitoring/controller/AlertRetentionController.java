@@ -23,7 +23,6 @@ import com.dxc.monitoring.entity.AlertRetentionPolicy;
 import com.dxc.monitoring.entity.AlertType;
 import com.dxc.monitoring.entity.Application;
 import com.dxc.monitoring.entity.Environment;
-import com.dxc.monitoring.repository.AlertCleanupRunRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
 import com.dxc.monitoring.repository.AlertTypeRepository;
 import com.dxc.monitoring.service.dashboard.DashboardAccessService;
@@ -35,16 +34,14 @@ import com.dxc.monitoring.service.AlertRetentionService;
 @RequestMapping("/administration/alert-retention")
 public class AlertRetentionController {
     private final AlertRetentionService retentionService;
-    private final AlertCleanupRunRepository runRepository;
     private final EnvironmentRepository environmentRepository;
     private final DashboardAccessService accessService;
     private final AlertTypeRepository alertTypeRepository;
 
     public AlertRetentionController(AlertRetentionService retentionService,
-            AlertCleanupRunRepository runRepository, EnvironmentRepository environmentRepository,
+            EnvironmentRepository environmentRepository,
             DashboardAccessService accessService, AlertTypeRepository alertTypeRepository) {
         this.retentionService = retentionService;
-        this.runRepository = runRepository;
         this.environmentRepository = environmentRepository;
         this.accessService = accessService;
         this.alertTypeRepository = alertTypeRepository;
@@ -54,7 +51,7 @@ public class AlertRetentionController {
     @PreAuthorize("hasAuthority('DATA_EXPUNGE')")
     public String index(@RequestParam(required = false) Long previewPolicyId, Model model) {
         model.addAttribute("policies", retentionService.findPolicies());
-        Page<AlertCleanupRun> runs = runRepository.findAllByOrderByStartedAtDesc(PageRequest.of(0, 20));
+        Page<AlertCleanupRun> runs = retentionService.findVisibleCleanupRuns(PageRequest.of(0, 20));
         model.addAttribute("runs", runs);
         model.addAttribute("dataTypes", AlertRetentionPolicy.DataType.values());
         List<Application> applications = accessService.getApplicationsWithPermission("DATA_EXPUNGE");
