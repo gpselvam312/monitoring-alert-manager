@@ -40,6 +40,21 @@ public class MachineService
     }
 
     @Transactional(readOnly = true)
+    public List<Machine> findAllForConfiguration() {
+        List<Long> applicationIds = accessService.getApplicationsWithPermission("MACHINE_CONFIG")
+                .stream().map(Application::getId).toList();
+        return applicationIds.isEmpty() ? List.of() : machineRepository.findAllForApplications(applicationIds);
+    }
+
+    @Transactional(readOnly = true)
+    public Machine findByIdForConfiguration(Long id) {
+        Machine machine = machineRepository.findByIdWithEnvironment(id)
+                .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + id));
+        assertMachineAccess(machine, "MACHINE_CONFIG");
+        return machine;
+    }
+
+    @Transactional(readOnly = true)
     public Machine findById(Long id)
     {
         Machine machine = machineRepository.findById(id)

@@ -24,7 +24,7 @@ import com.dxc.monitoring.entity.MonitoringJob;
 import com.dxc.monitoring.entity.MonitoringResult;
 import com.dxc.monitoring.repository.ApplicationRepository;
 import com.dxc.monitoring.repository.EnvironmentRepository;
-import com.dxc.monitoring.repository.MachineRepository;
+import com.dxc.monitoring.service.MachineService;
 import com.dxc.monitoring.repository.ScheduleRepository;
 import com.dxc.monitoring.service.MonitoringExecutionManager;
 import com.dxc.monitoring.service.MonitoringExecutionService;
@@ -42,7 +42,7 @@ public class MonitoringJobController
 
     private final MonitoringJobService monitoringJobService;
     private final StreamingJobService streamingJobService;
-    private final MachineRepository machineRepository;
+    private final MachineService machineService;
     private final ScheduleRepository scheduleRepository;
     private final ApplicationRepository applicationRepository;
     private final EnvironmentRepository environmentRepository;
@@ -64,7 +64,7 @@ public class MonitoringJobController
                 "machine.name", "machine.name", "type", "type", "severity", "severity", "schedule.name",
                 "schedule.name", "enabled", "enabled");
 
-    public MonitoringJobController(MonitoringJobService monitoringJobService, StreamingJobService streamingJobService, MachineRepository machineRepository,
+    public MonitoringJobController(MonitoringJobService monitoringJobService, StreamingJobService streamingJobService, MachineService machineService,
             ScheduleRepository scheduleRepository,
             ApplicationRepository applicationRepository, EnvironmentRepository environmentRepository,
             MonitoringExecutionManager monitoringExecutionManager,
@@ -73,7 +73,7 @@ public class MonitoringJobController
     {
         this.monitoringJobService = monitoringJobService;
         this.streamingJobService = streamingJobService;
-        this.machineRepository = machineRepository;
+        this.machineService = machineService;
         this.scheduleRepository = scheduleRepository;
         this.applicationRepository = applicationRepository;
         this.environmentRepository = environmentRepository;
@@ -154,7 +154,7 @@ public class MonitoringJobController
         job.setMaxStreamingRuntimeSeconds(300);
 
         model.addAttribute("job", job);
-        model.addAttribute("machines", machineRepository.findAll());
+        model.addAttribute("machines", machineService.findAllForConfiguration());
         model.addAttribute("schedules", scheduleRepository.findAll());
         List<com.dxc.monitoring.entity.Application> configurableApplications =
                 accessService.getApplicationsWithPermission("MONITORING_CONFIG");
@@ -295,7 +295,7 @@ public class MonitoringJobController
             // Machine
             if (machineId != null)
             {
-                existingJob.setMachine(machineRepository.findById(machineId)
+                existingJob.setMachine(machineService.findByIdForConfiguration(machineId)
                         .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + machineId)));
             } else
             {

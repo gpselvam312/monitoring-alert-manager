@@ -3,6 +3,7 @@ package com.dxc.monitoring.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.dxc.monitoring.entity.Schedule;
@@ -48,6 +49,7 @@ public class ScheduleService
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public Schedule save(Schedule schedule)
     {
         Schedule saved = scheduleRepository.save(schedule);
@@ -56,6 +58,7 @@ public class ScheduleService
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public String delete(Long id)
     {
         Schedule schedule = scheduleRepository.findById(id)
@@ -70,6 +73,7 @@ public class ScheduleService
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public void toggleEnabled(Long id)
     {
         Schedule schedule = findById(id);

@@ -56,6 +56,17 @@ public class MonitoringJobService
         if (job.getEnvironment() == null || job.getEnvironment().getApplication() == null
                 || !job.getApplication().getId().equals(job.getEnvironment().getApplication().getId()))
             throw new IllegalArgumentException("The selected environment must belong to the selected application.");
+        accessService.assertCanAccessEnvironment(job.getApplication().getId(),
+                job.getEnvironment().getId(), "MONITORING_CONFIG");
+        if (job.getMachine() != null) {
+            if (job.getMachine().getEnvironment() == null
+                    || !job.getEnvironment().getId().equals(job.getMachine().getEnvironment().getId())) {
+                throw new IllegalArgumentException(
+                        "The selected machine must belong to the monitoring job's selected environment.");
+            }
+            accessService.assertCanAccessEnvironment(job.getApplication().getId(),
+                    job.getMachine().getEnvironment().getId(), "MACHINE_CONFIG");
+        }
         MonitoringJob saved = monitoringJobRepository.save(job);
         monitoringSchedulerService.refreshJob(saved.getId());
         return saved;

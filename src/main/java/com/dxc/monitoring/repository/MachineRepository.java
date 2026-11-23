@@ -31,7 +31,8 @@ public interface MachineRepository extends JpaRepository<Machine, Long>
     @Query("""
             SELECT m
             FROM Machine m
-            LEFT JOIN FETCH m.environment
+            LEFT JOIN FETCH m.environment e
+            LEFT JOIN FETCH e.application
             WHERE m.id = :id
             """)
     Optional<Machine> findByIdWithEnvironment(Long id);
@@ -51,6 +52,18 @@ public interface MachineRepository extends JpaRepository<Machine, Long>
             """)
     Page<Machine> findAllForApplications(@Param("search") String search,
             @Param("applicationIds") java.util.List<Long> applicationIds, Pageable pageable);
+
+    @EntityGraph(attributePaths = { "environment", "environment.application" })
+    @Query("""
+            SELECT m
+            FROM Machine m
+            JOIN m.environment e
+            WHERE e.application.id IN :applicationIds
+              AND e.enabled = true AND e.application.enabled = true
+            ORDER BY m.name
+            """)
+    java.util.List<Machine> findAllForApplications(
+            @Param("applicationIds") java.util.List<Long> applicationIds);
 
     boolean existsByEnvironment_Id(Long environmentId);
 }
