@@ -1,10 +1,8 @@
 package com.dxc.monitoring.service;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -100,8 +98,6 @@ public class UserService {
             Long primaryApplicationId, boolean platformAdmin) {
         user.setPasswordHash(passwordEncoder.encode(password));
         setPlatformAdmin(user, platformAdmin);
-        Set<Application> assignedApplications = resolveApplications(roleAssignments);
-        user.setApplications(assignedApplications);
         User saved = userRepository.save(user);
         replaceRoleAssignments(saved, roleAssignments, primaryApplicationId);
         return saved;
@@ -117,7 +113,6 @@ public class UserService {
         existing.setEnabled(currentlyPlatformAdmin || platformAdmin || enabled);
         setPlatformAdmin(existing, platformAdmin);
         if (password != null && !password.isBlank()) existing.setPasswordHash(passwordEncoder.encode(password));
-        existing.setApplications(resolveApplications(roleAssignments));
         User saved = userRepository.save(existing);
         replaceRoleAssignments(saved, roleAssignments, primaryApplicationId);
         return saved;
@@ -137,24 +132,24 @@ public class UserService {
         }
     }
 
-    private Set<Application> resolveApplications(Map<Long, Long> roleAssignments) {
-        if (roleAssignments == null || roleAssignments.isEmpty()) return new HashSet<>();
-        List<Application> found = applicationRepository.findAllById(roleAssignments.keySet());
-        if (found.size() != roleAssignments.keySet().size())
-            throw new IllegalArgumentException("One or more selected applications do not exist.");
-        if (found.stream().anyMatch(app -> !app.isEnabled()))
-            throw new IllegalArgumentException("Disabled applications cannot be assigned to users.");
-        if (roleAssignments.values().stream().anyMatch(id -> id == null))
-            throw new IllegalArgumentException("Select a role for every assigned application.");
-        List<Role> roles = roleRepository.findAllById(roleAssignments.values());
-        if (roles.size() != roleAssignments.values().stream().distinct().count())
-            throw new IllegalArgumentException("One or more selected roles do not exist.");
-        return new HashSet<>(found);
-    }
-
     private void replaceRoleAssignments(User user, Map<Long, Long> roleAssignments, Long requestedPrimaryApplicationId) {
-        userApplicationRoleRepository.deleteAllAssignmentsForUser(user.getId());
-        if (roleAssignments == null || roleAssignments.isEmpty()) return;
+        if (roleAssignments == null || roleAssignments.isEmpty()) {
+            userApplicationRoleRepository.deleteAllAssignmentsForUser(user.getId());
+            return;
+        }
+        if (roleAssignments.containsKey(null) || roleAssignments.containsValue(null)) {
+            throw new IllegalArgumentException("Every application assignment must include a valid application and role.");
+        }
+
+        List<Application> applications = applicationRepository.findAllById(roleAssignments.keySet());
+        if (applications.size() != roleAssignments.size())
+            throw new IllegalArgumentException("One or more selected applications do not exist.");
+        if (applications.stream().anyMatch(application -> !application.isEnabled()))
+            throw new IllegalArgumentException("Disabled applications cannot be assigned to users.");
+
+        List<Role> assignedRoles = roleRepository.findAllById(roleAssignments.values());
+        if (assignedRoles.size() != roleAssignments.values().stream().distinct().count())
+            throw new IllegalArgumentException("One or more selected roles do not exist.");
 
         Long primaryApplicationId = requestedPrimaryApplicationId;
         if (primaryApplicationId == null) {
@@ -164,10 +159,12 @@ public class UserService {
             throw new IllegalArgumentException("The primary application must be one of the user's assigned applications.");
         }
 
-        Map<Long, Application> apps = applicationRepository.findAllById(roleAssignments.keySet()).stream()
+        Map<Long, Application> apps = applications.stream()
                 .collect(Collectors.toMap(Application::getId, a -> a));
-        Map<Long, Role> roles = roleRepository.findAllById(roleAssignments.values()).stream()
+        Map<Long, Role> roles = assignedRoles.stream()
                 .collect(Collectors.toMap(Role::getId, r -> r));
+
+        userApplicationRoleRepository.deleteAllAssignmentsForUser(user.getId());
         for (Map.Entry<Long, Long> entry : roleAssignments.entrySet()) {
             UserApplicationRole assignment = new UserApplicationRole();
             assignment.setId(new UserApplicationRoleId(user.getId(), entry.getKey()));
