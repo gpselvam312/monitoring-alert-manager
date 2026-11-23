@@ -109,6 +109,10 @@
                 headers: {"Accept": "application/json"},
                 credentials: "same-origin"
             });
+            if (response.status === 401) {
+                window.location.assign("/login?expired");
+                throw new Error("Your session has expired.");
+            }
             if (!response.ok) throw new Error(response.status === 403
                 ? "You are not authorized to view these lookup filters."
                 : "Unable to load lookup filters.");
@@ -159,6 +163,10 @@
                 headers: {"Accept": "application/json"},
                 credentials: "same-origin"
             });
+            if (response.status === 401) {
+                window.location.assign("/login?expired");
+                throw new Error("Your session has expired.");
+            }
             if (!response.ok) throw new Error(response.status === 403
                 ? "You are not authorized to view these records."
                 : "Unable to load lookup records. Please try again.");
