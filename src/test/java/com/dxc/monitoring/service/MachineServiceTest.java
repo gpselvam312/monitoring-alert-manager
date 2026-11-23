@@ -58,6 +58,8 @@ class MachineServiceTest
         when(machines.findByIdWithEnvironment(10L)).thenReturn(Optional.of(machine));
 
         MachineService service = new MachineService(machines, mock(EnvironmentRepository.class), access);
+        machine.setEnabled(true);
+        machine.getEnvironment().setEnabled(true);
         assertEquals(machine, service.findByIdForMonitoringJobConfiguration(10L));
         verify(access).assertCanAccessEnvironment(20L, 30L, "MONITORING_CONFIG");
     }

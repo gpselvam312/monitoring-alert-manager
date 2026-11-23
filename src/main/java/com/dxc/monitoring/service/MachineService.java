@@ -59,6 +59,8 @@ public class MachineService
         Machine machine = machineRepository.findByIdWithEnvironment(id)
                 .orElseThrow(() -> new IllegalArgumentException("Machine not found: " + id));
         assertMachineAccess(machine, "MONITORING_CONFIG");
+        if (!machine.isEnabled() || machine.getEnvironment() == null || !machine.getEnvironment().isEnabled())
+            throw new IllegalArgumentException("Select an enabled machine in an enabled environment.");
         return machine;
     }
 

@@ -69,6 +69,8 @@ public class MonitoringJobService
         accessService.assertCanAccessEnvironment(job.getApplication().getId(),
                 job.getEnvironment().getId(), "MONITORING_CONFIG");
         if (job.getMachine() != null) {
+            if (!job.getMachine().isEnabled())
+                throw new IllegalArgumentException("The selected machine must be enabled.");
             if (job.getMachine().getEnvironment() == null
                     || !job.getEnvironment().getId().equals(job.getMachine().getEnvironment().getId())) {
                 throw new IllegalArgumentException(
