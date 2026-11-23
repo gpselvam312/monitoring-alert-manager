@@ -19,19 +19,19 @@ class ScriptSecurityValidatorTest {
     @TempDir Path tempDir;
 
     @Test void acceptsScriptOnlyWhenPathAndHashAreConfigured() throws Exception {
-        Path script=write("printf 'healthy\\n'\\n");
+        Path script=write("printf 'healthy\\n'\n");
         assertEquals(script.toRealPath(),new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
     }
     @Test void rejectsScriptWithoutConfiguredHash() throws Exception {
-        Path script=write("echo healthy\\n"); MonitoringJob job=job(script); job.setApprovedSha256(null);
+        Path script=write("echo healthy\n"); MonitoringJob job=job(script); job.setApprovedSha256(null);
         assertThrows(IllegalArgumentException.class,()->new ScriptSecurityValidator(tempDir.toString()).validate(job));
     }
     @Test void rejectsKnownDestructiveCommandEvenWhenHashMatches() throws Exception {
-        Path script=write("rm -rf /tmp/example\\n");
+        Path script=write("rm -rf /tmp/example\n");
         assertThrows(IllegalArgumentException.class,()->new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
     }
     @Test void permitsOnlyExactConfiguredArgumentPattern() throws Exception {
-        Path script=write("/bin/rm -f /tmp/report.tmp\\n");
+        Path script=write("/bin/rm -f /tmp/report.tmp\n");
         ScriptValidationProperties config=new ScriptValidationProperties();
         var rule=new ScriptValidationProperties.AllowedCommandRule();
         rule.setCommand("rm"); rule.setAllowedArguments(List.of("-f","*.tmp"));
@@ -39,7 +39,7 @@ class ScriptSecurityValidatorTest {
         assertEquals(script.toRealPath(),new ScriptSecurityValidator(tempDir.toString(),config).validate(job(script)));
     }
     @Test void doesNotPermitBroaderArgumentsOrPartialSubstringMatches() throws Exception {
-        Path script=write("rm -rf /tmp/report.tmp\\n");
+        Path script=write("rm -rf /tmp/report.tmp\n");
         ScriptValidationProperties config=new ScriptValidationProperties();
         var rule=new ScriptValidationProperties.AllowedCommandRule();
         rule.setCommand("rm"); rule.setAllowedArguments(List.of("-f","*.tmp"));
@@ -47,32 +47,32 @@ class ScriptSecurityValidatorTest {
         assertThrows(IllegalArgumentException.class,()->new ScriptSecurityValidator(tempDir.toString(),config).validate(job(script)));
     }
     @Test void ignoresDangerousTextInCommentsAndQuotedArguments() throws Exception {
-        Path script=write("# rm -rf /\\necho 'rm -rf /'\\n");
+        Path script=write("# rm -rf /\necho 'rm -rf /'\n");
         assertEquals(script.toRealPath(),new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
     }
     @Test void stillBlocksRestrictedCommandAfterPipelineAndWrappers() throws Exception {
-        Path script=write("printf ok | env MODE=test command /usr/bin/rm -rf /tmp/x\\n");
+        Path script=write("printf ok | env MODE=test command /usr/bin/rm -rf /tmp/x\n");
         assertThrows(IllegalArgumentException.class,()->new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
     }
     @Test void blocksRestrictedCommandsInsideConditionalAndLoopBodies() throws Exception {
         for (String body : List.of(
-                "if true; then rm -rf /tmp/x; fi\\n",
-                "while true; do /bin/rm -rf /tmp/x; done\\n",
-                "if false; then echo safe; else rm -rf /tmp/x; fi\\n")) {
+                "if true; then rm -rf /tmp/x; fi\n",
+                "while true; do /bin/rm -rf /tmp/x; done\n",
+                "if false; then echo safe; else rm -rf /tmp/x; fi\n")) {
             Path script = write(body);
             assertThrows(IllegalArgumentException.class,
                     () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
         }
     }
     @Test void rejectsNestedScriptInvocation() throws Exception {
-        Path script=write("sh helper.sh\\n");
+        Path script=write("sh helper.sh\n");
         assertThrows(IllegalArgumentException.class,()->new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
     }
     @Test void rejectsIndirectCommandExecutionThroughShellHooksAndUtilities() throws Exception {
         for (String body : List.of(
-                "trap 'rm -rf /tmp/x' EXIT\\n",
-                "busybox rm -rf /tmp/x\\n",
-                "awk 'BEGIN { system(1) }'\\n")) {
+                "trap 'rm -rf /tmp/x' EXIT\n",
+                "busybox rm -rf /tmp/x\n",
+                "awk 'BEGIN { system(1) }'\n")) {
             Path script = write(body);
             assertThrows(IllegalArgumentException.class,
                     () -> new ScriptSecurityValidator(tempDir.toString()).validate(job(script)));
@@ -86,7 +86,7 @@ class ScriptSecurityValidatorTest {
         assertThrows(IllegalArgumentException.class,config::validate);
     }
     private Path write(String body) throws Exception {
-        Path script=tempDir.resolve("health.sh"); Files.writeString(script,"#!/bin/sh\\n"+body); return script;
+        Path script=tempDir.resolve("health.sh"); Files.writeString(script,"#!/bin/sh\n"+body); return script;
     }
     private MonitoringJob job(Path script) {
         MonitoringJob job=new MonitoringJob(); job.setScriptPath(script.toString());
